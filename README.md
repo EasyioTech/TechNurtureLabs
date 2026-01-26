@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EduQuest: Immersive Gamified Learning Platform
 
-## Getting Started
+> **Learning that feels like play.**
 
-First, run the development server:
+EduQuest is a next-generation Learning Management System (LMS) designed to transform traditional education into an engaging, gamified experience. By blending academic rigor with the mechanics of modern gaming, EduQuest ensures that students aren't just consuming content—they are embarking on a journey of discovery.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🌟 Mission
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Our mission is simple: to make learning addictive. We believe that education should be as engaging as a video game, where progress is celebrated, challenges are rewarding, and every student feels motivated to reach the next level. EduQuest bridges the gap between classroom instruction and interactive digital experiences.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🚀 Key Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### For Students: The Hero's Journey
+- **Gamified Progression**: Earn XP (Experience Points), maintain daily streaks, and unlock achievements for completing lessons and quizzes.
+- **Interactive Content**: Dive into immersive video lessons, hands-on activities, and 3D learning modules that bring subjects to life.
+- **Social Learning**: Collaborate with peers involving group projects and discussions in a safe, moderated environment.
+- **Personalized Dashboard**: A futuristic, student-centric interface that tracks progress, upcoming quests, and earned badges.
 
-## Learn More
+### For Schools & Educators: The Command Center
+- **Real-Time Analytics**: Gain deep insights into student performance, identifying learning gaps and high achievers instantly.
+- **Seamless Onboarding**: A streamlined process to register schools and onboard thousands of students efficiently.
+- **White-Labeling**: Custom branding options allow schools to make the platform their own.
+- **Automated Tracking**: Effortless monitoring of attendance, assignment completions, and overall class engagement.
 
-To learn more about Next.js, take a look at the following resources:
+## 🛠 How It Works
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1.  **Register Your School**: Schools sign up with verified credentials to create their dedicated digital campus.
+2.  **Onboard Students**: Students join using unique school codes, instantly accessing their personalized learning paths.
+3.  **Track & Grow**: Students earn rewards for learning, while teachers monitor growth through detailed performance dashboards.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🎨 Design Philosophy
 
-## Deploy on Vercel
+EduQuest is built with a **"Student-First" aesthetic**. We veered away from the sterile, corporate look of traditional LMS platforms. Instead, we embraced:
+- **Immersive Dark Mode**: easy on the eyes for long study sessions.
+- **Vibrant Gradients & Motion**: Creating a dynamic interface that feels alive and responsive.
+- **Micro-Interactions**: Every click and achievement is celebrated with satisfying visual feedback.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+*EduQuest is not just a tool; it's the future of how we learn, grow, and play.*
