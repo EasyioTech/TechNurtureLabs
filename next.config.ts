@@ -29,7 +29,8 @@ const nextConfig: NextConfig = {
         loaders: [LOADER]
       }
     }
-  }
+  },
+  output: 'standalone',
 };
 
 export default nextConfig;
