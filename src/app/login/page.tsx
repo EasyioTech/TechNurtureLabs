@@ -49,7 +49,7 @@ export default function StudentLoginPage() {
       }
 
       toast.success('Welcome back!');
-      router.push('/student');
+      window.location.href = '/student';
     } catch (err: any) {
       setLoading(false);
       toast.error('Login failed: ' + err.message);

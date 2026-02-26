@@ -49,7 +49,7 @@ export default function SchoolLoginPage() {
       }
 
       toast.success('Welcome back!');
-      router.push('/school-admin');
+      window.location.href = '/school-admin';
     } catch (err: any) {
       setLoading(false);
       toast.error('Login failed: ' + err.message);

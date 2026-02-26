@@ -169,3 +169,13 @@ VALUES (
 UPDATE
 SET password_hash = EXCLUDED.password_hash,
     full_name = EXCLUDED.full_name;
+-- Super Admin (admin_users table)
+-- admin@eduquest.com / admin123
+INSERT INTO admin_users (id, email, password_hash)
+VALUES (
+        gen_random_uuid(),
+        'admin@eduquest.com',
+        crypt('admin123', gen_salt('bf', 10))
+    ) ON CONFLICT (email) DO
+UPDATE
+SET password_hash = EXCLUDED.password_hash;

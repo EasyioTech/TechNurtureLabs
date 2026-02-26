@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
 
       localStorage.setItem('adminUser', JSON.stringify(data.admin));
       toast.success('Welcome back, Admin!');
-      router.push('/admin');
+      window.location.href = '/admin';
     } catch (error) {
       toast.error('An error occurred. Please try again.');
     } finally {
@@ -81,7 +81,7 @@ export default function AdminLoginPage() {
               <Crown className="text-white" size={28} />
             </div>
           </div>
-          
+
           <div className="text-center mb-8">
             <h1 className="text-2xl font-black mb-2">Super Admin Login</h1>
             <p className="text-white/50 text-sm">Access the EduQuest administration console</p>
