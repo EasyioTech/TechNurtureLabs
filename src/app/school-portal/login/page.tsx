@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { LogIn, ArrowLeft, Loader2, School, Eye, EyeOff, Wand2 } from 'lucide-react';
 
@@ -34,33 +33,26 @@ export default function SchoolLoginPage() {
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role: 'school_admin' })
+      });
+      const data = await res.json();
 
-    setLoading(false);
+      setLoading(false);
 
-    if (error) {
-      toast.error('Login failed: ' + error.message);
-      return;
-    }
-
-    if (data.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
-
-      if (profile?.role !== 'school_admin') {
-        toast.error('Access denied. This portal is for school administrators only.');
-        await supabase.auth.signOut();
+      if (!res.ok) {
+        toast.error('Login failed: ' + (data.error || 'Unknown error'));
         return;
       }
 
       toast.success('Welcome back!');
       router.push('/school-admin');
+    } catch (err: any) {
+      setLoading(false);
+      toast.error('Login failed: ' + err.message);
     }
   };
 
@@ -73,8 +65,8 @@ export default function SchoolLoginPage() {
 
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-cyan-900/30" />
-        <img 
-          src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1200&q=80" 
+        <img
+          src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1200&q=80"
           alt="School"
           className="w-full h-full object-cover opacity-40"
         />
@@ -184,22 +176,22 @@ export default function SchoolLoginPage() {
                     Sign In
                   </>
                 )}
-</Button>
-              </form>
+              </Button>
+            </form>
 
-              <div className="mt-4">
-                <Button
-                  type="button"
-                  onClick={fillDemoCredentials}
-                  variant="outline"
-                  className="w-full border-blue-500/30 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200"
-                >
-                  <Wand2 size={16} className="mr-2" />
-                  Use Demo Credentials
-                </Button>
-              </div>
+            <div className="mt-4">
+              <Button
+                type="button"
+                onClick={fillDemoCredentials}
+                variant="outline"
+                className="w-full border-blue-500/30 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200"
+              >
+                <Wand2 size={16} className="mr-2" />
+                Use Demo Credentials
+              </Button>
+            </div>
 
-              <div className="mt-8 pt-8 border-t border-white/10">
+            <div className="mt-8 pt-8 border-t border-white/10">
               <p className="text-center text-white/50 text-sm">
                 Don&apos;t have an account?{' '}
                 <Link href="/school-portal/register" className="text-blue-400 hover:text-blue-300 font-semibold">

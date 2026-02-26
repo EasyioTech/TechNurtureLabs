@@ -4,9 +4,13 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.headers.get('host') || '';
-  
+
   const subdomain = hostname.split('.')[0];
-  
+
+  if (url.pathname === '/school') {
+    return NextResponse.redirect(new URL('/school-portal/login', request.url));
+  }
+
   if (subdomain === 'school' || hostname.startsWith('school.')) {
     if (url.pathname === '/') {
       url.pathname = '/school-portal';
@@ -21,7 +25,7 @@ export function middleware(request: NextRequest) {
       return NextResponse.rewrite(url);
     }
   }
-  
+
   if (subdomain === 'admin' || hostname.startsWith('admin.')) {
     if (url.pathname === '/') {
       url.pathname = '/admin-portal';
@@ -32,7 +36,7 @@ export function middleware(request: NextRequest) {
       return NextResponse.rewrite(url);
     }
   }
-  
+
   return NextResponse.next();
 }
 

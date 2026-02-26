@@ -16,7 +16,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { supabase } from '@/lib/supabase';
+import { fetchCourseLessons, saveLessonOrderAdmin } from '@/app/admin-actions';
 import { LessonItem } from './lesson-item';
 import { Button } from '@/components/ui/button';
 import { Plus, Save } from 'lucide-react';
@@ -42,13 +42,12 @@ export function CourseBuilder({ courseId }: { courseId: string }) {
 
   useEffect(() => {
     async function fetchLessons() {
-      const { data } = await supabase
-        .from('lessons')
-        .select('id, title, sequence_index, content_type')
-        .eq('course_id', courseId)
-        .order('sequence_index', { ascending: true });
-      
-      if (data) setLessons(data);
+      try {
+        const data = await fetchCourseLessons(courseId);
+        if (data) setLessons(data as any);
+      } catch (e) {
+        console.error(e);
+      }
       setLoading(false);
     }
     fetchLessons();
@@ -71,14 +70,11 @@ export function CourseBuilder({ courseId }: { courseId: string }) {
       sequence_index: index,
     }));
 
-    const { error } = await supabase.from('lessons').upsert(
-      updates.map(u => ({ ...u, course_id: courseId, title: lessons.find(l => l.id === u.id)?.title || '' }))
-    );
-
-    if (error) {
-      toast.error('Failed to save order');
-    } else {
+    try {
+      await saveLessonOrderAdmin(updates);
       toast.success('Order saved successfully');
+    } catch (error) {
+      toast.error('Failed to save order');
     }
   };
 

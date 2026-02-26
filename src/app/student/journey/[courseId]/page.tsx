@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, use } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '@/lib/supabase';
+import { getCourseJourneyData } from '@/app/course-actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -39,40 +39,12 @@ export default function JourneyPage({ params }: { params: Promise<{ courseId: st
 
   useEffect(() => {
     async function fetchData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const [courseRes, lessonsRes, progressRes] = await Promise.all([
-        supabase.from('courses').select('*').eq('id', courseId).single(),
-        supabase.from('lessons').select('*').eq('course_id', courseId).order('sequence_index', { ascending: true }),
-        user ? supabase.from('progress_tracking').select('lesson_id, status').eq('user_id', user.id) : Promise.resolve({ data: [] })
-      ]);
-
-      if (courseRes.data) setCourse(courseRes.data);
-      if (lessonsRes.data) {
-        const completedLessonIds = new Set(
-          (progressRes.data || []).filter(p => p.status === 'completed').map(p => p.lesson_id)
-        );
-        
-        const formatted = lessonsRes.data.map((l, i, arr) => {
-          const isCompleted = completedLessonIds.has(l.id);
-          const previousCompleted = i === 0 || completedLessonIds.has(arr[i - 1]?.id);
-          
-          let status: 'completed' | 'available' | 'locked';
-          if (isCompleted) {
-            status = 'completed';
-          } else if (i === 0 || previousCompleted) {
-            status = 'available';
-          } else {
-            status = 'locked';
-          }
-          
-          return {
-            ...l,
-            xp_reward: l.xp_reward || 50,
-            status
-          };
-        });
-        setLessons(formatted as Lesson[]);
+      try {
+        const data = await getCourseJourneyData(courseId);
+        setCourse(data.course as any);
+        setLessons(data.lessons as any);
+      } catch (err) {
+        console.error(err);
       }
       setLoading(false);
     }
@@ -163,8 +135,8 @@ export default function JourneyPage({ params }: { params: Promise<{ courseId: st
             >
               <Card className="bg-white/80 backdrop-blur-xl border-slate-200/60 shadow-xl overflow-hidden">
                 <div className="h-32 relative overflow-hidden">
-                  <img 
-                    src={course?.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400'} 
+                  <img
+                    src={course?.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400'}
                     alt={course?.title}
                     className="w-full h-full object-cover"
                   />
@@ -187,7 +159,7 @@ export default function JourneyPage({ params }: { params: Promise<{ courseId: st
                       <span className="font-bold text-emerald-600">{Math.round(progress)}%</span>
                     </div>
                     <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                      <motion.div 
+                      <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${progress}%` }}
                         transition={{ duration: 1, ease: 'easeOut' }}
@@ -342,9 +314,9 @@ function LessonNode({ lesson, index }: { lesson: Lesson; index: number }) {
   const isCompleted = lesson.status === 'completed';
   const isAvailable = lesson.status === 'available';
 
-  const Icon = lesson.content_type === 'video' ? Play : 
-               lesson.content_type === 'mcq' ? Trophy : 
-               FileText;
+  const Icon = lesson.content_type === 'video' ? Play :
+    lesson.content_type === 'mcq' ? Trophy :
+      FileText;
 
   return (
     <div className="relative">
@@ -354,16 +326,16 @@ function LessonNode({ lesson, index }: { lesson: Lesson; index: number }) {
         className={`
           w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg cursor-pointer
           transition-all duration-300 border-2
-          ${isCompleted 
-            ? 'bg-gradient-to-br from-emerald-400 to-teal-500 border-emerald-300 text-white' 
-            : isLocked 
-              ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' 
+          ${isCompleted
+            ? 'bg-gradient-to-br from-emerald-400 to-teal-500 border-emerald-300 text-white'
+            : isLocked
+              ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
               : 'bg-white border-violet-300 text-violet-600 shadow-violet-100'}
         `}
       >
-        {isCompleted ? <CheckCircle2 size={28} /> : 
-         isLocked ? <Lock size={24} /> : 
-         <Icon size={26} fill={lesson.content_type === 'video' ? 'currentColor' : 'none'} />}
+        {isCompleted ? <CheckCircle2 size={28} /> :
+          isLocked ? <Lock size={24} /> :
+            <Icon size={26} fill={lesson.content_type === 'video' ? 'currentColor' : 'none'} />}
       </motion.div>
 
       {isAvailable && (
@@ -395,19 +367,18 @@ function LessonCard({ lesson, index, align }: { lesson: Lesson; index: number; a
   const content = (
     <Card className={`
       max-w-xs transition-all duration-300 overflow-hidden
-      ${isLocked 
-        ? 'bg-slate-50 border-slate-200 opacity-60' 
-        : isCompleted 
-          ? 'bg-emerald-50 border-emerald-200 shadow-lg' 
+      ${isLocked
+        ? 'bg-slate-50 border-slate-200 opacity-60'
+        : isCompleted
+          ? 'bg-emerald-50 border-emerald-200 shadow-lg'
           : 'bg-white border-violet-200 shadow-lg hover:shadow-xl hover:border-violet-300'}
     `}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-2">
-          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-            isCompleted ? 'bg-emerald-100 text-emerald-700' : 
-            isLocked ? 'bg-slate-200 text-slate-500' : 
-            'bg-violet-100 text-violet-700'
-          }`}>
+          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isCompleted ? 'bg-emerald-100 text-emerald-700' :
+              isLocked ? 'bg-slate-200 text-slate-500' :
+                'bg-violet-100 text-violet-700'
+            }`}>
             {typeLabels[lesson.content_type] || 'Lesson'}
           </span>
           <div className="flex items-center gap-1 text-amber-500">
@@ -434,8 +405,8 @@ function LessonCard({ lesson, index, align }: { lesson: Lesson; index: number; a
         </div>
 
         {isAvailable && (
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             className="w-full mt-3 bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white border-0 shadow-md"
           >
             Start Lesson

@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { supabase } from '@/lib/supabase';
+import { getSchoolAdminDashboardData, updateSchoolBranding, promoteStudentsAction } from '@/app/school-admin-actions';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import {
@@ -21,7 +21,7 @@ import {
   MoreVertical, ChevronRight, ArrowUpRight, ArrowDownRight,
   Activity, Clock, Target, Star, Trophy, Flame,
   BarChart3, PieChart, LineChart, Sparkles, School,
-    UserPlus, Upload, RefreshCw,
+  UserPlus, Upload, RefreshCw,
   CheckCircle2, XCircle, AlertCircle, Eye, Edit, Trash2, LogOut
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -81,7 +81,7 @@ type ClassProgressData = {
 };
 
 export default function SchoolAdminDashboard() {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
   const [students, setStudents] = useState<Student[]>([]);
@@ -108,27 +108,14 @@ export default function SchoolAdminDashboard() {
   };
 
   useEffect(() => {
-    async function getAdminData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        if (profile) {
-          setAdminProfile(profile);
-          fetchAllData(profile.school_id);
-        } else {
-          setLoading(false);
-        }
-      } else {
-        setLoading(false);
-      }
+    const authUser = user as any;
+    if (authUser && authUser.role === 'school_admin' && authUser.school_id) {
+      setAdminProfile(authUser);
+      fetchAllData(authUser.school_id);
+    } else if (authUser) {
+      setLoading(false);
     }
-    getAdminData();
-  }, []);
+  }, [user]);
 
   async function fetchAllData(schoolId: string | null) {
     if (!schoolId) {
@@ -137,42 +124,45 @@ export default function SchoolAdminDashboard() {
     }
     setLoading(true);
 
-    const [studentsRes, coursesRes, classesRes, lessonsRes, progressRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('school_id', schoolId).eq('role', 'student'),
-      supabase.from('courses').select('*').eq('school_id', schoolId),
-      supabase.from('classes').select('*').eq('school_id', schoolId).order('level_index'),
-      supabase.from('lessons').select('id, course_id, title'),
-      supabase.from('progress_tracking').select('*, lesson_id, user_id, status, completed_at').order('completed_at', { ascending: false }).limit(50)
-    ]);
+    const data = await getSchoolAdminDashboardData(schoolId);
 
-    const studentsData = studentsRes.data || [];
-    const coursesData = coursesRes.data || [];
-    const classesData = classesRes.data || [];
-    const lessonsData = lessonsRes.data || [];
-    const progressData = progressRes.data || [];
+    const studentsData = data.students || [];
+    const coursesData = (data.coursesData as any[]) || [];
+    const classesData = data.classesData || [];
+    const lessonsData = data.lessonsData || [];
+    const progressData = data.progressData || [];
 
     const classMap = new Map(classesData.map(c => [c.id, c.name]));
     const studentMap = new Map(studentsData.map(s => [s.id, s.full_name]));
     const lessonMap = new Map(lessonsData.map(l => [l.id, l.title]));
     const schoolStudentIds = new Set(studentsData.map(s => s.id));
-    
+
     const formattedStudents: Student[] = studentsData.map(s => {
       // Calculate real progress for this student
-      const studentCompletedLessons = progressData.filter(p => 
+      const studentCompletedLessons = progressData.filter(p =>
         p.user_id === s.id && p.status === 'completed'
       ).length;
-      const totalSchoolLessons = lessonsData.filter(l => 
+      const totalSchoolLessons = lessonsData.filter(l =>
         coursesData.some(c => c.id === l.course_id)
       ).length;
-      const realProgress = totalSchoolLessons > 0 
+      const realProgress = totalSchoolLessons > 0
         ? Math.round((studentCompletedLessons / totalSchoolLessons) * 100)
         : 0;
-      
+
+      const lastActivityTime = progressData
+        .filter(p => p.user_id === s.id)
+        .reduce((latest, p) => {
+          const pDate = p.updated_at ? new Date(p.updated_at).getTime() : 0;
+          return pDate > latest ? pDate : latest;
+        }, 0) || null;
+
       return {
         ...s,
-        class_name: classMap.get(s.class_id) || 'Unassigned',
+        class_id: s.class_id || '',
+        class_name: classMap.get(s.class_id || '') || 'Unassigned',
         progress: realProgress,
-        status: s.last_activity_date && new Date(s.last_activity_date) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        last_activity_date: lastActivityTime ? new Date(lastActivityTime).toISOString() : null,
+        status: lastActivityTime && lastActivityTime > Date.now() - 7 * 24 * 60 * 60 * 1000
           ? 'active' : 'inactive'
       };
     });
@@ -198,7 +188,7 @@ export default function SchoolAdminDashboard() {
 
     // Format recent activities from real progress data
     const relevantProgress = progressData.filter(p => schoolStudentIds.has(p.user_id) && p.status === 'completed');
-    
+
     const activities: RecentActivity[] = relevantProgress.slice(0, 6).map((p, i) => {
       const studentName = studentMap.get(p.user_id) || 'Unknown Student';
       const lessonTitle = lessonMap.get(p.lesson_id) || 'a lesson';
@@ -208,7 +198,7 @@ export default function SchoolAdminDashboard() {
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMins / 60);
       const diffDays = Math.floor(diffHours / 24);
-      
+
       let timeAgo = '';
       if (diffDays > 0) timeAgo = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
       else if (diffHours > 0) timeAgo = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
@@ -216,7 +206,7 @@ export default function SchoolAdminDashboard() {
       else timeAgo = 'Just now';
 
       return {
-        id: p.id || `activity-${i}`,
+        id: `${p.user_id}-${p.lesson_id}`,
         action: `Completed lesson "${lessonTitle}"`,
         user: studentName,
         time: timeAgo,
@@ -246,42 +236,42 @@ export default function SchoolAdminDashboard() {
     setStudents(formattedStudents);
     setCourses(formattedCourses);
     setClasses(formattedClasses);
-    
+
     // Calculate real class progress from database
     const schoolLessonIds = new Set(lessonsData.filter(l => coursesData.some(c => c.id === l.course_id)).map(l => l.id));
     const totalLessonsForSchool = schoolLessonIds.size;
-    
+
     const classProgressChart: ClassProgressData[] = classesData.map(cls => {
       const classStudents = studentsData.filter(s => s.class_id === cls.id);
       const classStudentIds = new Set(classStudents.map(s => s.id));
-      
+
       // Count completed lessons for this class
-      const completedLessonsForClass = progressData.filter(p => 
-        classStudentIds.has(p.user_id) && 
-        schoolLessonIds.has(p.lesson_id) && 
+      const completedLessonsForClass = progressData.filter(p =>
+        classStudentIds.has(p.user_id) &&
+        schoolLessonIds.has(p.lesson_id) &&
         p.status === 'completed'
       );
-      
+
       // Calculate progress: (completed lessons) / (total lessons * student count)
       const maxPossible = totalLessonsForSchool * classStudents.length;
-      const progress = maxPossible > 0 
+      const progress = maxPossible > 0
         ? Math.round((completedLessonsForClass.length / maxPossible) * 100)
         : 0;
-      
+
       return {
         name: cls.name,
         progress,
         studentCount: classStudents.length
       };
     });
-    
+
     setClassProgressData(classProgressChart);
     setStats({
       totalStudents: studentsData.length,
       activeStudents: formattedStudents.filter(s => s.status === 'active').length,
       totalCourses: coursesData.length,
       totalLessons: lessonsData.length,
-      avgProgress: formattedStudents.length > 0 
+      avgProgress: formattedStudents.length > 0
         ? Math.round(formattedStudents.reduce((a, s) => a + (s.progress || 0), 0) / formattedStudents.length)
         : 0,
       totalXpEarned: studentsData.reduce((a, s) => a + (s.total_xp || 0), 0)
@@ -292,31 +282,30 @@ export default function SchoolAdminDashboard() {
 
   const updateBranding = async () => {
     if (!adminProfile?.school_id) return;
-    const { error } = await supabase
-      .from('schools')
-      .update({ branding_config: { primary_color: primaryColor } })
-      .eq('id', adminProfile.school_id);
-
-    if (error) toast.error('Failed to update branding');
-    else {
+    try {
+      await updateSchoolBranding(adminProfile.school_id, primaryColor);
       toast.success('Branding updated!');
       document.documentElement.style.setProperty('--primary', primaryColor);
+    } catch (err) {
+      toast.error('Failed to update branding');
     }
   };
 
   const handlePromote = async () => {
     if (!adminProfile?.school_id) return;
     setPromoting(true);
-    const { error } = await supabase.rpc('promote_students', { target_school_id: adminProfile.school_id });
-    if (error) toast.error('Promotion failed: ' + error.message);
-    else {
+    try {
+      await promoteStudentsAction(adminProfile.school_id);
       toast.success('All students promoted!');
       fetchAllData(adminProfile.school_id);
+    } catch (error: any) {
+      toast.error('Promotion failed: ' + error.message);
+    } finally {
+      setPromoting(false);
     }
-    setPromoting(false);
   };
 
-  const filteredStudents = students.filter(s => 
+  const filteredStudents = students.filter(s =>
     s.full_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -340,36 +329,36 @@ export default function SchoolAdminDashboard() {
       <header className="relative z-50 border-b border-stone-200 bg-white/80 backdrop-blur-xl sticky top-0">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-sky-500 flex items-center justify-center shadow-lg shadow-sky-200">
-                  <School className="text-white" size={24} />
-                </div>
-                <div>
-                  <h1 className="text-xl font-black text-slate-800">EduQuest Admin</h1>
-                  <p className="text-sm text-slate-500">Manage students, courses & settings</p>
-                </div>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-sky-500 flex items-center justify-center shadow-lg shadow-sky-200">
+                <School className="text-white" size={24} />
               </div>
-
-              <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" className="relative text-slate-500 hover:text-slate-800">
-                  <Bell size={20} />
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">3</span>
-                </Button>
-                <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-800">
-                  <Settings size={20} />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout" className="text-slate-500 hover:text-slate-800">
-                  <LogOut size={20} />
-                </Button>
-                <Avatar className="w-10 h-10 border-2 border-sky-200">
-                  <AvatarFallback className="bg-sky-100 text-sky-600 font-bold">
-                    {adminProfile?.full_name?.charAt(0) || 'A'}
-                  </AvatarFallback>
-                </Avatar>
+              <div>
+                <h1 className="text-xl font-black text-slate-800">EduQuest Admin</h1>
+                <p className="text-sm text-slate-500">Manage students, courses & settings</p>
               </div>
             </div>
+
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="relative text-slate-500 hover:text-slate-800">
+                <Bell size={20} />
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">3</span>
+              </Button>
+              <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-800">
+                <Settings size={20} />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout" className="text-slate-500 hover:text-slate-800">
+                <LogOut size={20} />
+              </Button>
+              <Avatar className="w-10 h-10 border-2 border-sky-200">
+                <AvatarFallback className="bg-sky-100 text-sky-600 font-bold">
+                  {adminProfile?.full_name?.charAt(0) || 'A'}
+                </AvatarFallback>
+              </Avatar>
+            </div>
           </div>
-        </header>
+        </div>
+      </header>
 
 
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-8">
@@ -447,20 +436,20 @@ export default function SchoolAdminDashboard() {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={classProgressData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                          <XAxis 
-                            dataKey="name" 
+                          <XAxis
+                            dataKey="name"
                             tick={{ fill: '#64748b', fontSize: 12 }}
                             angle={-45}
                             textAnchor="end"
                             interval={0}
                             height={60}
                           />
-                          <YAxis 
+                          <YAxis
                             tick={{ fill: '#64748b', fontSize: 12 }}
                             domain={[0, 100]}
                             tickFormatter={(value) => `${value}%`}
                           />
-                          <Tooltip 
+                          <Tooltip
                             content={({ active, payload }) => {
                               if (active && payload && payload.length) {
                                 const data = payload[0].payload as ClassProgressData;
@@ -477,8 +466,8 @@ export default function SchoolAdminDashboard() {
                           />
                           <Bar dataKey="progress" radius={[4, 4, 0, 0]}>
                             {classProgressData.map((entry, index) => (
-                              <Cell 
-                                key={`cell-${index}`} 
+                              <Cell
+                                key={`cell-${index}`}
                                 fill={entry.progress >= 70 ? '#10b981' : entry.progress >= 40 ? '#f59e0b' : '#8b5cf6'}
                               />
                             ))}
@@ -604,64 +593,64 @@ export default function SchoolAdminDashboard() {
 
           <TabsContent value="settings" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-white border-stone-200 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-slate-800">
-                  <Palette className="text-sky-500" size={20} />
-                  School Branding
-                </CardTitle>
-                <CardDescription className="text-slate-500">Customize your school&apos;s appearance</CardDescription>
-              </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-3">
-                      <Label>Primary Color</Label>
-                      <div className="flex gap-3">
-                        <div className="relative">
-                          <Input
-                            type="color"
-                            value={primaryColor}
-                            onChange={(e) => setPrimaryColor(e.target.value)}
-                            className="w-14 h-14 p-1 cursor-pointer rounded-xl"
-                          />
-                        </div>
-                        <div className="flex-1 space-y-2">
-                          <Input
-                            type="text"
-                            value={primaryColor}
-                            onChange={(e) => setPrimaryColor(e.target.value)}
-                            className="font-mono"
-                          />
-                          <div className="flex gap-2">
-                            {['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'].map(color => (
-                              <button
-                                key={color}
-                                onClick={() => setPrimaryColor(color)}
-                                className="w-8 h-8 rounded-lg shadow-sm border-2 border-white hover:scale-110 transition-transform"
-                                style={{ backgroundColor: color }}
-                              />
-                            ))}
-                          </div>
+              <Card className="bg-white border-stone-200 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <Palette className="text-sky-500" size={20} />
+                    School Branding
+                  </CardTitle>
+                  <CardDescription className="text-slate-500">Customize your school&apos;s appearance</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-3">
+                    <Label>Primary Color</Label>
+                    <div className="flex gap-3">
+                      <div className="relative">
+                        <Input
+                          type="color"
+                          value={primaryColor}
+                          onChange={(e) => setPrimaryColor(e.target.value)}
+                          className="w-14 h-14 p-1 cursor-pointer rounded-xl"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          type="text"
+                          value={primaryColor}
+                          onChange={(e) => setPrimaryColor(e.target.value)}
+                          className="font-mono"
+                        />
+                        <div className="flex gap-2">
+                          {['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'].map(color => (
+                            <button
+                              key={color}
+                              onClick={() => setPrimaryColor(color)}
+                              className="w-8 h-8 rounded-lg shadow-sm border-2 border-white hover:scale-110 transition-transform"
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
-                      <p className="text-sm font-medium text-slate-600 mb-3">Preview</p>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: primaryColor }}>
-                          <School size={20} />
-                        </div>
-                        <div>
-                          <p className="font-bold" style={{ color: primaryColor }}>EduQuest</p>
-                          <p className="text-xs text-slate-500">Learning Platform</p>
-                        </div>
+                  <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                    <p className="text-sm font-medium text-slate-600 mb-3">Preview</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: primaryColor }}>
+                        <School size={20} />
+                      </div>
+                      <div>
+                        <p className="font-bold" style={{ color: primaryColor }}>EduQuest</p>
+                        <p className="text-xs text-slate-500">Learning Platform</p>
                       </div>
                     </div>
+                  </div>
 
-                    <Button className="w-full" onClick={updateBranding} style={{ backgroundColor: primaryColor }}>
-                      Apply Changes
-                    </Button>
-                  </CardContent>
+                  <Button className="w-full" onClick={updateBranding} style={{ backgroundColor: primaryColor }}>
+                    Apply Changes
+                  </Button>
+                </CardContent>
 
               </Card>
 
@@ -909,11 +898,11 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
           <p className="text-sm text-slate-500 line-clamp-2 mb-4">
             {course.description || 'No description available'}
           </p>
-<Link href={`/school-admin/course/${course.id}`}>
-              <Button variant="outline" size="sm" className="w-full">
-                <Eye size={14} className="mr-1" />View Details
-              </Button>
-            </Link>
+          <Link href={`/school-admin/course/${course.id}`}>
+            <Button variant="outline" size="sm" className="w-full">
+              <Eye size={14} className="mr-1" />View Details
+            </Button>
+          </Link>
         </CardContent>
       </Card>
     </motion.div>

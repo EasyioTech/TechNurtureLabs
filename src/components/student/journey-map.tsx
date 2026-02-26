@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Play, CheckCircle2, Trophy, FileText } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { supabase } from '@/lib/supabase';
+import { getLessonsByCourse } from '@/app/actions';
 import Link from 'next/link';
 
 type Lesson = {
@@ -23,18 +23,17 @@ export function JourneyMap({ courseId }: { courseId: string }) {
 
   useEffect(() => {
     async function fetchLessons() {
-      const { data: lessonData } = await supabase
-        .from('lessons')
-        .select('*')
-        .eq('course_id', courseId)
-        .order('sequence_index', { ascending: true });
-
-      if (lessonData) {
-        const formattedLessons = lessonData.map((l, i) => ({
-          ...l,
-          status: i === 0 ? 'available' : 'locked',
-        }));
-        setLessons(formattedLessons as Lesson[]);
+      try {
+        const lessonData = await getLessonsByCourse(courseId);
+        if (lessonData) {
+          const formattedLessons = lessonData.map((l, i) => ({
+            ...l,
+            status: i === 0 ? 'available' : 'locked',
+          }));
+          setLessons(formattedLessons as Lesson[]);
+        }
+      } catch (err) {
+        console.error(err);
       }
       setLoading(false);
     }
@@ -84,13 +83,13 @@ export function JourneyMap({ courseId }: { courseId: string }) {
 
         <div className="space-y-[110px] relative z-10">
           {lessons.map((lesson, i) => (
-            <div 
-              key={lesson.id} 
+            <div
+              key={lesson.id}
               className={`flex justify-center ${i % 2 === 0 ? 'translate-x-12' : '-translate-x-12'}`}
             >
-              <LessonNode 
-                lesson={lesson} 
-                onComplete={() => handleLessonComplete(lesson.id)} 
+              <LessonNode
+                lesson={lesson}
+                onComplete={() => handleLessonComplete(lesson.id)}
               />
             </div>
           ))}
@@ -104,9 +103,9 @@ function LessonNode({ lesson, onComplete }: { lesson: Lesson; onComplete: () => 
   const isLocked = lesson.status === 'locked';
   const isCompleted = lesson.status === 'completed';
 
-  const Icon = lesson.content_type === 'video' ? Play : 
-               lesson.content_type === 'mcq' ? Trophy : 
-               FileText;
+  const Icon = lesson.content_type === 'video' ? Play :
+    lesson.content_type === 'mcq' ? Trophy :
+      FileText;
 
   const content = (
     <motion.div
@@ -117,16 +116,16 @@ function LessonNode({ lesson, onComplete }: { lesson: Lesson; onComplete: () => 
       <div className={`
         w-20 h-20 rounded-3xl flex items-center justify-center shadow-lg cursor-pointer
         transition-all duration-500 border-b-4 active:border-b-0 active:translate-y-1
-        ${isCompleted ? 'bg-emerald-500 border-emerald-700 text-white' : 
-          isLocked ? 'bg-zinc-200 border-zinc-300 text-zinc-400 cursor-not-allowed' : 
-          'bg-white dark:bg-zinc-900 border-primary/20 dark:border-primary/40 text-primary'}
+        ${isCompleted ? 'bg-emerald-500 border-emerald-700 text-white' :
+          isLocked ? 'bg-zinc-200 border-zinc-300 text-zinc-400 cursor-not-allowed' :
+            'bg-white dark:bg-zinc-900 border-primary/20 dark:border-primary/40 text-primary'}
       `}>
-        {isCompleted ? <CheckCircle2 size={32} /> : 
-         isLocked ? <Lock size={32} /> : 
-         <Icon size={32} fill={lesson.content_type === 'video' ? 'currentColor' : 'none'} />}
+        {isCompleted ? <CheckCircle2 size={32} /> :
+          isLocked ? <Lock size={32} /> :
+            <Icon size={32} fill={lesson.content_type === 'video' ? 'currentColor' : 'none'} />}
       </div>
-      
-      <motion.div 
+
+      <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="absolute -bottom-12 w-48 text-center"

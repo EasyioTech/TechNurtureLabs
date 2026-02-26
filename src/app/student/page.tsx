@@ -4,14 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
 import { useAuth } from '@/components/providers/auth-provider';
-import { supabase } from '@/lib/supabase';
+import { getStudentDashboardData } from '@/app/student-actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { 
-  Flame, Star, Trophy, Zap, BookOpen, Clock, Target, 
+import {
+  Flame, Star, Trophy, Zap, BookOpen, Clock, Target,
   ChevronRight, Sparkles, Award,
   Play, GraduationCap, Medal, Crown, Calendar, Bell, LogOut
 } from 'lucide-react';
@@ -132,156 +132,15 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     async function fetchUserAndCourses() {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      let studentGrade: number | null = null;
-      let userId: string | null = null;
-
-      if (user) {
-        userId = user.id;
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, full_name, grade, total_xp, level, current_streak, total_lessons_completed, total_learning_time_minutes, longest_streak')
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          setUserProfile(profile);
-          studentGrade = profile.grade;
-          setStats({
-            xp: profile.total_xp || 0,
-            streak: profile.current_streak || 0,
-            level: profile.level || 1,
-            lessonsCompleted: profile.total_lessons_completed || 0,
-            totalTime: Math.round((profile.total_learning_time_minutes || 0) / 60),
-            rank: 0
-          });
-        }
-
-        const today = new Date().toISOString().split('T')[0];
-        const { data: challengesData } = await supabase
-          .from('daily_challenges')
-          .select('id, title, challenge_type, target_value, xp_reward, icon')
-          .eq('is_active', true)
-          .limit(3);
-
-        if (challengesData) {
-          const { data: userChallenges } = await supabase
-            .from('user_daily_challenges')
-            .select('challenge_id, current_progress, is_completed')
-            .eq('user_id', user.id)
-            .eq('challenge_date', today);
-
-          const challengeProgressMap = new Map(
-            userChallenges?.map(uc => [uc.challenge_id, uc]) || []
-          );
-
-          const formattedChallenges: DailyChallenge[] = challengesData.map(c => ({
-            id: c.id,
-            title: c.title,
-            challenge_type: c.challenge_type,
-            target_value: c.target_value,
-            xp_reward: c.xp_reward,
-            icon: c.icon,
-            current_progress: challengeProgressMap.get(c.id)?.current_progress || 0,
-            is_completed: challengeProgressMap.get(c.id)?.is_completed || false
-          }));
-          setDailyChallenges(formattedChallenges);
-        }
-
-        const { data: allAchievements } = await supabase
-          .from('achievements')
-          .select('id, name, description, icon, category')
-          .eq('is_hidden', false)
-          .limit(10);
-
-        if (allAchievements) {
-          const { data: userAchievements } = await supabase
-            .from('user_achievements')
-            .select('achievement_id, unlocked_at')
-            .eq('user_id', user.id);
-
-          const unlockedMap = new Map(
-            userAchievements?.map(ua => [ua.achievement_id, ua.unlocked_at]) || []
-          );
-
-          const formattedAchievements: Achievement[] = allAchievements.map(a => ({
-            id: a.id,
-            name: a.name,
-            description: a.description,
-            icon: a.icon,
-            category: a.category,
-            unlocked: unlockedMap.has(a.id),
-            unlocked_at: unlockedMap.get(a.id)
-          }));
-
-          formattedAchievements.sort((a, b) => {
-            if (a.unlocked && !b.unlocked) return -1;
-            if (!a.unlocked && b.unlocked) return 1;
-            return 0;
-          });
-
-          setAchievements(formattedAchievements);
-        }
-
-        const { count: rankCount } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .gt('total_xp', profile?.total_xp || 0)
-          .eq('role', 'student');
-
-        setStats(prev => ({ ...prev, rank: (rankCount || 0) + 1 }));
-      }
-
-      let query = supabase
-        .from('courses')
-        .select('id, title, description, thumbnail, grade, all_grades')
-        .eq('published', true);
-
-      const { data: courseData } = await query;
-
-      if (courseData) {
-        const filteredCourses = courseData.filter(course => {
-          if (course.all_grades === true) return true;
-          if (!studentGrade) return true;
-          if (course.grade === studentGrade) return true;
-          return false;
-        });
-
-        const coursesWithProgress = await Promise.all(
-          filteredCourses.map(async (course) => {
-            const { count: totalLessons } = await supabase
-              .from('lessons')
-              .select('*', { count: 'exact', head: true })
-              .eq('course_id', course.id);
-
-            let completedLessons = 0;
-            if (userId) {
-              const { data: lessonIds } = await supabase
-                .from('lessons')
-                .select('id')
-                .eq('course_id', course.id);
-
-              if (lessonIds && lessonIds.length > 0) {
-                const { count: completedCount } = await supabase
-                  .from('progress_tracking')
-                  .select('*', { count: 'exact', head: true })
-                  .eq('user_id', userId)
-                  .eq('status', 'completed')
-                  .in('lesson_id', lessonIds.map(l => l.id));
-
-                completedLessons = completedCount || 0;
-              }
-            }
-
-            return {
-              ...course,
-              totalLessons: totalLessons || 0,
-              completedLessons
-            };
-          })
-        );
-        setCourses(coursesWithProgress);
+      try {
+        const data = await getStudentDashboardData();
+        setCourses(data.courses);
+        setUserProfile(data.profile);
+        setDailyChallenges(data.dailyChallenges);
+        setAchievements(data.achievements);
+        setStats(data.stats);
+      } catch (err) {
+        console.error(err);
       }
       setLoading(false);
     }
@@ -330,7 +189,7 @@ export default function StudentDashboard() {
                 <StatPill icon={Star} value={stats.xp.toLocaleString()} label="XP" color="amber" />
                 <StatPill icon={Crown} value={stats.level} label="Level" color="sky" />
               </div>
-              
+
               <div className="flex md:hidden items-center gap-1">
                 <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-orange-100 text-orange-600">
                   <Flame size={14} fill="currentColor" />
@@ -341,20 +200,20 @@ export default function StudentDashboard() {
                   <span className="font-bold text-xs">{stats.level}</span>
                 </div>
               </div>
-              
+
               <button className="relative p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-white hover:bg-stone-50 border border-stone-200 transition-colors shadow-sm">
                 <Bell size={16} className="text-slate-500 sm:w-[18px] sm:h-[18px]" />
                 <span className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 w-2 h-2 bg-red-500 rounded-full" />
               </button>
 
-              <button 
+              <button
                 onClick={handleLogout}
                 className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-white hover:bg-stone-50 border border-stone-200 transition-colors shadow-sm"
                 title="Logout"
               >
                 <LogOut size={16} className="text-slate-500 sm:w-[18px] sm:h-[18px]" />
               </button>
-              
+
               <Link href="/student/profile" className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-sky-500 flex items-center justify-center font-bold text-xs sm:text-sm text-white shadow-lg shadow-sky-200 hover:scale-105 transition-transform cursor-pointer">
                 {userProfile?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'ST'}
               </Link>
@@ -364,7 +223,7 @@ export default function StudentDashboard() {
       </header>
 
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-8">
-        <motion.section 
+        <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-10"
@@ -392,31 +251,31 @@ export default function StudentDashboard() {
               </motion.div>
 
               <div className="grid grid-cols-2 gap-3 mt-auto">
-                <QuickStatCard 
-                  icon={BookOpen} 
-                  value={stats.lessonsCompleted} 
-                  label="Lessons Done" 
+                <QuickStatCard
+                  icon={BookOpen}
+                  value={stats.lessonsCompleted}
+                  label="Lessons Done"
                   gradient="from-emerald-400 to-teal-500"
                   bgColor="bg-emerald-50"
                 />
-                <QuickStatCard 
-                  icon={Clock} 
-                  value={`${stats.totalTime}h`} 
-                  label="Learning Time" 
+                <QuickStatCard
+                  icon={Clock}
+                  value={`${stats.totalTime}h`}
+                  label="Learning Time"
                   gradient="from-sky-400 to-blue-500"
                   bgColor="bg-sky-50"
                 />
-                <QuickStatCard 
-                  icon={Target} 
-                  value="85%" 
-                  label="Accuracy" 
+                <QuickStatCard
+                  icon={Target}
+                  value="85%"
+                  label="Accuracy"
                   gradient="from-violet-400 to-purple-500"
                   bgColor="bg-violet-50"
                 />
-                <QuickStatCard 
-                  icon={Medal} 
-                  value={`#${stats.rank}`} 
-                  label="Class Rank" 
+                <QuickStatCard
+                  icon={Medal}
+                  value={`#${stats.rank}`}
+                  label="Class Rank"
                   gradient="from-amber-400 to-orange-500"
                   bgColor="bg-amber-50"
                 />
@@ -456,7 +315,7 @@ export default function StudentDashboard() {
                       <span className="font-bold text-sky-600">{currentLevelXp} / 1000 XP</span>
                     </div>
                     <div className="h-2.5 bg-stone-100 rounded-full overflow-hidden">
-                      <motion.div 
+                      <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${levelProgress}%` }}
                         transition={{ duration: 1, ease: 'easeOut' }}
@@ -525,7 +384,7 @@ export default function StudentDashboard() {
           </div>
         </motion.section>
 
-        <motion.section 
+        <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
@@ -543,10 +402,10 @@ export default function StudentDashboard() {
               <span>Resets in {resetTime}</span>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {dailyChallenges.length > 0 ? dailyChallenges.map((challenge) => (
-              <ChallengeCard 
+              <ChallengeCard
                 key={challenge.id}
                 title={challenge.title}
                 progress={challenge.current_progress}
@@ -558,7 +417,7 @@ export default function StudentDashboard() {
               />
             )) : (
               <>
-                <ChallengeCard 
+                <ChallengeCard
                   title="Complete 2 Lessons"
                   progress={0}
                   total={2}
@@ -566,7 +425,7 @@ export default function StudentDashboard() {
                   icon={BookOpen}
                   color="emerald"
                 />
-                <ChallengeCard 
+                <ChallengeCard
                   title="Score 80%+ on Quiz"
                   progress={0}
                   total={1}
@@ -574,7 +433,7 @@ export default function StudentDashboard() {
                   icon={Trophy}
                   color="amber"
                 />
-                <ChallengeCard 
+                <ChallengeCard
                   title="Study for 30 Minutes"
                   progress={0}
                   total={30}
@@ -588,7 +447,7 @@ export default function StudentDashboard() {
           </div>
         </motion.section>
 
-        <motion.section 
+        <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
@@ -606,21 +465,21 @@ export default function StudentDashboard() {
             </Button>
           </div>
 
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course, i) => (
-                <motion.div
-                  key={course.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * i }}
-                >
-                  <CourseCard course={course} />
-                </motion.div>
-              ))}
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {courses.map((course, i) => (
+              <motion.div
+                key={course.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * i }}
+              >
+                <CourseCard course={course} />
+              </motion.div>
+            ))}
+          </div>
         </motion.section>
 
-          <motion.section
+        <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
@@ -636,10 +495,10 @@ export default function StudentDashboard() {
 
           <div className="flex gap-5 overflow-x-auto pb-4 -mx-6 px-6 scrollbar-hide">
             {achievements.length > 0 ? achievements.map((achievement) => (
-              <AchievementBadge 
+              <AchievementBadge
                 key={achievement.id}
-                title={achievement.name} 
-                description={achievement.description} 
+                title={achievement.name}
+                description={achievement.description}
                 unlocked={achievement.unlocked}
                 locked={!achievement.unlocked}
               />
@@ -726,7 +585,7 @@ function ChallengeCard({ title, progress, total, reward, icon: Icon, unit = '', 
             </span>
           </div>
           <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-            <motion.div 
+            <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${percentage}%` }}
               transition={{ duration: 0.5 }}
@@ -740,16 +599,16 @@ function ChallengeCard({ title, progress, total, reward, icon: Icon, unit = '', 
 }
 
 function CourseCard({ course }: { course: Course }) {
-  const progress = course.totalLessons > 0 
-    ? (course.completedLessons / course.totalLessons) * 100 
+  const progress = course.totalLessons > 0
+    ? (course.completedLessons / course.totalLessons) * 100
     : 0;
 
   return (
     <Link href={`/student/course/${course.id}`}>
       <Card className="bg-white border-stone-200 hover:border-sky-300 shadow-sm hover:shadow-md transition-all group overflow-hidden cursor-pointer">
         <div className="relative h-44 overflow-hidden">
-          <img 
-            src={course.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400'} 
+          <img
+            src={course.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400'}
             alt={course.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
@@ -767,21 +626,21 @@ function CourseCard({ course }: { course: Course }) {
           <p className="text-sm text-slate-500 mb-4 line-clamp-2">
             {course.description || 'Master the fundamentals with interactive lessons and quizzes.'}
           </p>
-          
+
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">{course.completedLessons} of {course.totalLessons} complete</span>
               <span className="font-semibold text-sky-600">{Math.round(progress)}%</span>
             </div>
             <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-sky-500 rounded-full transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
           </div>
 
-          <Button 
+          <Button
             className="w-full mt-5 bg-sky-500 hover:bg-sky-600 border-0 shadow-lg shadow-sky-200 text-white font-semibold"
           >
             <Play size={16} className="mr-2" />
@@ -796,9 +655,8 @@ function CourseCard({ course }: { course: Course }) {
 function AchievementBadge({ title, description, unlocked, locked }: any) {
   return (
     <div className={`flex-shrink-0 w-36 text-center p-4 rounded-2xl ${locked ? 'opacity-50' : 'bg-white border border-stone-200 shadow-sm'}`}>
-      <div className={`w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center shadow-md ${
-        unlocked ? 'bg-amber-500' : 'bg-stone-200'
-      }`}>
+      <div className={`w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center shadow-md ${unlocked ? 'bg-amber-500' : 'bg-stone-200'
+        }`}>
         <Trophy size={28} className={unlocked ? 'text-white' : 'text-slate-400'} />
       </div>
       <p className="text-sm font-bold text-slate-800 truncate">{title}</p>

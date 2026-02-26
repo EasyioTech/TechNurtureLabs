@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { supabase } from '@/lib/supabase';
+import { registerSchool } from '@/app/register-actions';
 import { toast } from 'sonner';
 import { School, ArrowLeft, Building, MapPin, Users, CheckCircle2, Loader2, Sparkles, Globe, Shield, BarChart3 } from 'lucide-react';
 
@@ -81,7 +81,7 @@ export default function SchoolRegistrationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.udise_code || !formData.state || !formData.district) {
       toast.error('Please fill in all required fields');
       return;
@@ -94,29 +94,14 @@ export default function SchoolRegistrationPage() {
 
     setLoading(true);
 
-    const { error } = await supabase.from('schools').insert({
-      name: formData.name,
-      udise_code: formData.udise_code,
-      address: formData.address,
-      district: formData.district,
-      state: formData.state,
-      pincode: formData.pincode,
-      school_type: formData.school_type,
-      grades_available: formData.grades_available,
-      student_count: formData.student_count ? parseInt(formData.student_count) : 0,
-      contact_email: formData.contact_email,
-      contact_phone: formData.contact_phone,
-      principal_name: formData.principal_name,
-      is_approved: false,
-    });
-
-    setLoading(false);
-
-    if (error) {
-      toast.error('Registration failed: ' + error.message);
-    } else {
+    try {
+      await registerSchool(formData);
       toast.success('School registered successfully!');
       router.push('/register/school/success');
+    } catch (error: any) {
+      toast.error('Registration failed: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -132,8 +117,8 @@ export default function SchoolRegistrationPage() {
 
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-cyan-900/30" />
-        <img 
-          src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1200&q=80" 
+        <img
+          src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1200&q=80"
           alt="School"
           className="w-full h-full object-cover opacity-40"
         />
@@ -144,7 +129,7 @@ export default function SchoolRegistrationPage() {
             </div>
             <span className="text-2xl font-black">EduQuest</span>
           </div>
-          
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -158,7 +143,7 @@ export default function SchoolRegistrationPage() {
             <p className="text-white/60 text-lg max-w-md mb-8">
               Join hundreds of schools using EduQuest to deliver engaging, gamified education to their students.
             </p>
-            
+
             <div className="grid grid-cols-3 gap-4">
               <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                 <Globe size={24} className="text-blue-400 mb-2" />
@@ -182,10 +167,10 @@ export default function SchoolRegistrationPage() {
 
       <div className="flex-1 flex items-start justify-center p-6 lg:p-12 relative z-10 overflow-y-auto">
         <div className="w-full max-w-lg py-8">
-            <Link href="/school-portal" className="inline-flex items-center gap-2 text-white/50 hover:text-white mb-8 transition-colors text-sm">
-              <ArrowLeft size={16} />
-              Back to School Portal
-            </Link>
+          <Link href="/school-portal" className="inline-flex items-center gap-2 text-white/50 hover:text-white mb-8 transition-colors text-sm">
+            <ArrowLeft size={16} />
+            Back to School Portal
+          </Link>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -314,11 +299,10 @@ export default function SchoolRegistrationPage() {
                           key={grade}
                           type="button"
                           onClick={() => handleGradeToggle(grade)}
-                          className={`p-3 rounded-lg border text-sm font-bold transition-all ${
-                            formData.grades_available.includes(grade)
+                          className={`p-3 rounded-lg border text-sm font-bold transition-all ${formData.grades_available.includes(grade)
                               ? 'bg-blue-500 border-blue-400 text-white'
                               : 'bg-white/5 border-white/10 text-white/50 hover:border-white/30'
-                          }`}
+                            }`}
                         >
                           {grade}
                         </button>
@@ -436,14 +420,14 @@ export default function SchoolRegistrationPage() {
               )}
             </form>
 
-              <div className="mt-8 pt-8 border-t border-white/10">
-                <p className="text-center text-white/50 text-sm">
-                  Already registered?{' '}
-                  <Link href="/school-portal/login" className="text-blue-400 hover:text-blue-300 font-semibold">
-                    Sign in
-                  </Link>
-                </p>
-              </div>
+            <div className="mt-8 pt-8 border-t border-white/10">
+              <p className="text-center text-white/50 text-sm">
+                Already registered?{' '}
+                <Link href="/school-portal/login" className="text-blue-400 hover:text-blue-300 font-semibold">
+                  Sign in
+                </Link>
+              </p>
+            </div>
           </motion.div>
         </div>
       </div>

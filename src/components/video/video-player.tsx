@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { MediaPlayer, MediaProvider, Poster, Track } from '@vidstack/react';
+import { MediaPlayer, MediaProvider, Poster } from '@vidstack/react';
 import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/layouts/default';
 import '@vidstack/react/player/styles/default/theme.css';
 import '@vidstack/react/player/styles/default/layouts/video.css';
-import { supabase } from '@/lib/supabase';
+import { saveVideoProgress, markLessonComplete } from '@/app/actions';
 
 interface VideoPlayerProps {
   src: string;
@@ -36,22 +36,20 @@ export function VideoPlayer({ src, poster, lessonId, userId, onComplete }: Video
   const saveProgress = async (position: number) => {
     if (!userId) return;
     lastSavedPosition.current = position;
-    await supabase.from('progress_tracking').upsert({
-      user_id: userId,
-      lesson_id: lessonId,
-      last_position: position,
-      status: 'locked' // Keep as locked until end
-    }, { onConflict: 'user_id,lesson_id' });
+    try {
+      await saveVideoProgress(lessonId, position);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const onEnded = async () => {
     if (userId) {
-      await supabase.from('progress_tracking').upsert({
-        user_id: userId,
-        lesson_id: lessonId,
-        status: 'completed',
-        completed_at: new Error().stack ? new Date().toISOString() : null
-      }, { onConflict: 'user_id,lesson_id' });
+      try {
+        await markLessonComplete(lessonId);
+      } catch (err) {
+        console.error(err);
+      }
     }
     if (onComplete) onComplete();
   };

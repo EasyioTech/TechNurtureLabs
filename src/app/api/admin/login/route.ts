@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { db } from '@/lib/db';
+import { adminUsers } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { createSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,14 +16,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: admin, error } = await supabase
-      .from('admin_users')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .eq('is_active', true)
-      .single();
+    const admin = await db.query.adminUsers.findFirst({
+      where: eq(adminUsers.email, email.toLowerCase())
+    });
 
-    if (error || !admin) {
+    if (!admin || !admin.is_active) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
@@ -41,10 +36,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await supabase
-      .from('admin_users')
-      .update({ last_login: new Date().toISOString() })
-      .eq('id', admin.id);
+    await db.update(adminUsers).set({ last_login: new Date() }).where(eq(adminUsers.id, admin.id));
+    await createSession({ userId: admin.id, role: 'admin' });
 
     const { password_hash, ...adminData } = admin;
 

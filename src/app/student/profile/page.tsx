@@ -2,12 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/lib/supabase';
+import { getStudentProfileData, updateStudentBio, updateStudentAvatar } from '@/app/profile-actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { 
-  ArrowLeft, Trophy, Star, Flame, BookOpen, Clock, Target, 
+import {
+  ArrowLeft, Trophy, Star, Flame, BookOpen, Clock, Target,
   Sparkles, Award, Crown, Medal, Calendar, Edit3, Check, X,
   Zap, GraduationCap, TrendingUp, Heart, Shield, Rocket
 } from 'lucide-react';
@@ -80,87 +80,46 @@ export default function StudentProfile() {
   }, []);
 
   const fetchProfileData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const data = await getStudentProfileData();
+      setProfile(data.profile as any);
+      setAchievements(data.achievements as any);
+      setRank(data.rank);
+      setBioText(data.profile?.bio || '');
 
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (profileData) {
-      setProfile(profileData);
-      setBioText(profileData.bio || '');
-      
-      if (profileData.avatar_style) {
-        const [gradient, icon] = profileData.avatar_style.split(':');
+      if (data.profile?.avatar_style) {
+        const [gradient, icon] = data.profile.avatar_style.split(':');
         setSelectedGradient(gradient || 'violet');
         setSelectedIcon(icon || 'rocket');
       }
+    } catch (err) {
+      console.error(err);
     }
-
-    const { data: allAchievements } = await supabase
-      .from('achievements')
-      .select('id, name, description, icon, category, xp_reward');
-
-    if (allAchievements) {
-      const { data: userAchievements } = await supabase
-        .from('user_achievements')
-        .select('achievement_id, unlocked_at')
-        .eq('user_id', user.id);
-
-      const unlockedMap = new Map(
-        userAchievements?.map(ua => [ua.achievement_id, ua.unlocked_at]) || []
-      );
-
-      const formattedAchievements: Achievement[] = allAchievements.map(a => ({
-        ...a,
-        unlocked: unlockedMap.has(a.id),
-        unlocked_at: unlockedMap.get(a.id)
-      }));
-
-      formattedAchievements.sort((a, b) => {
-        if (a.unlocked && !b.unlocked) return -1;
-        if (!a.unlocked && b.unlocked) return 1;
-        return 0;
-      });
-
-      setAchievements(formattedAchievements);
-    }
-
-    const { count: rankCount } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .gt('total_xp', profileData?.total_xp || 0)
-      .eq('role', 'student');
-
-    setRank((rankCount || 0) + 1);
     setLoading(false);
   };
 
   const saveBio = async () => {
     if (!profile) return;
-    
-    await supabase
-      .from('profiles')
-      .update({ bio: bioText })
-      .eq('id', profile.id);
-    
-    setProfile({ ...profile, bio: bioText });
+
+    try {
+      await updateStudentBio(bioText);
+      setProfile({ ...profile, bio: bioText });
+    } catch (err) {
+      console.error(err);
+    }
     setEditingBio(false);
   };
 
   const saveAvatar = async () => {
     if (!profile) return;
-    
+
     const avatarStyle = `${selectedGradient}:${selectedIcon}`;
-    await supabase
-      .from('profiles')
-      .update({ avatar_style: avatarStyle })
-      .eq('id', profile.id);
-    
-    setProfile({ ...profile, avatar_style: avatarStyle });
+    try {
+      await updateStudentAvatar(avatarStyle);
+      setProfile({ ...profile, avatar_style: avatarStyle });
+    } catch (err) {
+      console.error(err);
+    }
     setEditingAvatar(false);
   };
 
@@ -207,9 +166,9 @@ export default function StudentProfile() {
   };
 
   const formatJoinDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { 
-      month: 'long', 
-      year: 'numeric' 
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric'
     });
   };
 
@@ -250,29 +209,29 @@ export default function StudentProfile() {
       </header>
 
       <main className="relative z-10 max-w-5xl mx-auto px-6 py-8">
-        <motion.section 
+        <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-10"
         >
           <Card className="bg-white/80 backdrop-blur-xl border-slate-200/60 shadow-xl overflow-hidden">
             <div className="h-32 bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-600 relative">
-              <div 
-                className="absolute inset-0 opacity-50" 
+              <div
+                className="absolute inset-0 opacity-50"
                 style={{ backgroundImage: `url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.1"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')` }}
               />
             </div>
             <CardContent className="px-8 pb-8 -mt-16 relative">
               <div className="flex flex-col md:flex-row gap-6 items-start">
                 <div className="relative group">
-                  <motion.div 
+                  <motion.div
                     whileHover={{ scale: 1.05 }}
                     className={`w-32 h-32 rounded-2xl bg-gradient-to-br ${avatarGradient.from} ${avatarGradient.to} flex items-center justify-center shadow-xl ${avatarGradient.shadow} border-4 border-white cursor-pointer`}
                     onClick={() => setEditingAvatar(true)}
                   >
                     <AvatarIcon size={48} className="text-white" />
                   </motion.div>
-                  <button 
+                  <button
                     onClick={() => setEditingAvatar(true)}
                     className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-slate-50 transition-colors border border-slate-200"
                   >
@@ -326,7 +285,7 @@ export default function StudentProfile() {
                         </div>
                       </div>
                     ) : (
-                      <div 
+                      <div
                         onClick={() => setEditingBio(true)}
                         className="p-4 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:border-violet-300 transition-colors group"
                       >
@@ -343,7 +302,7 @@ export default function StudentProfile() {
           </Card>
         </motion.section>
 
-        <motion.section 
+        <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -380,7 +339,7 @@ export default function StudentProfile() {
                 </div>
               </div>
               <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
-                <motion.div 
+                <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${levelProgress}%` }}
                   transition={{ duration: 1, ease: 'easeOut' }}
@@ -391,7 +350,7 @@ export default function StudentProfile() {
           </Card>
         </motion.section>
 
-        <motion.section 
+        <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -412,7 +371,7 @@ export default function StudentProfile() {
             {achievements.map((achievement) => {
               const IconComponent = getAchievementIcon(achievement.icon);
               const catColors = getCategoryColor(achievement.category);
-              
+
               return (
                 <motion.div
                   key={achievement.id}
@@ -423,11 +382,10 @@ export default function StudentProfile() {
                   <Card className={`${achievement.unlocked ? 'bg-white' : 'bg-slate-50 opacity-60'} border-slate-200 shadow-lg overflow-hidden transition-all`}>
                     <CardContent className="p-5">
                       <div className="flex items-start gap-4">
-                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-md ${
-                          achievement.unlocked 
-                            ? 'bg-gradient-to-br from-amber-400 to-orange-500' 
+                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-md ${achievement.unlocked
+                            ? 'bg-gradient-to-br from-amber-400 to-orange-500'
                             : 'bg-slate-200'
-                        }`}>
+                          }`}>
                           <IconComponent size={24} className={achievement.unlocked ? 'text-white' : 'text-slate-400'} />
                         </div>
                         <div className="flex-1">
@@ -479,7 +437,7 @@ export default function StudentProfile() {
               <h3 className="text-xl font-bold text-slate-800 mb-6">Customize Your Avatar</h3>
 
               <div className="flex justify-center mb-8">
-                <motion.div 
+                <motion.div
                   key={`${selectedGradient}-${selectedIcon}`}
                   initial={{ scale: 0.8 }}
                   animate={{ scale: 1 }}
@@ -496,11 +454,10 @@ export default function StudentProfile() {
                     <button
                       key={gradient.id}
                       onClick={() => setSelectedGradient(gradient.id)}
-                      className={`w-full aspect-square rounded-xl bg-gradient-to-br ${gradient.from} ${gradient.to} transition-all ${
-                        selectedGradient === gradient.id 
-                          ? 'ring-4 ring-violet-400 ring-offset-2 scale-110' 
+                      className={`w-full aspect-square rounded-xl bg-gradient-to-br ${gradient.from} ${gradient.to} transition-all ${selectedGradient === gradient.id
+                          ? 'ring-4 ring-violet-400 ring-offset-2 scale-110'
                           : 'hover:scale-105'
-                      }`}
+                        }`}
                     />
                   ))}
                 </div>
@@ -513,11 +470,10 @@ export default function StudentProfile() {
                     <button
                       key={item.id}
                       onClick={() => setSelectedIcon(item.id)}
-                      className={`w-full aspect-square rounded-xl bg-slate-100 flex items-center justify-center transition-all ${
-                        selectedIcon === item.id 
-                          ? 'ring-4 ring-violet-400 ring-offset-2 bg-violet-100 scale-110' 
+                      className={`w-full aspect-square rounded-xl bg-slate-100 flex items-center justify-center transition-all ${selectedIcon === item.id
+                          ? 'ring-4 ring-violet-400 ring-offset-2 bg-violet-100 scale-110'
                           : 'hover:bg-slate-200 hover:scale-105'
-                      }`}
+                        }`}
                     >
                       <item.icon size={24} className={selectedIcon === item.id ? 'text-violet-600' : 'text-slate-600'} />
                     </button>

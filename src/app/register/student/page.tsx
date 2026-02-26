@@ -27,7 +27,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { supabase } from '@/lib/supabase';
+import { fetchApprovedSchools, registerStudent } from '@/app/register-actions';
 import { toast } from 'sonner';
 import { GraduationCap, ArrowLeft, User, School, Loader2, Sparkles, Eye, EyeOff, Check, Zap, Trophy, ChevronsUpDown, Search } from 'lucide-react';
 
@@ -65,14 +65,11 @@ export default function StudentRegistrationPage() {
 
   async function fetchSchools() {
     setLoadingSchools(true);
-    const { data } = await supabase
-      .from('schools')
-      .select('id, name, district, state, grades_available')
-      .eq('is_approved', true)
-      .order('name');
-
-    if (data) {
-      setSchools(data);
+    try {
+      const data = await fetchApprovedSchools();
+      setSchools(data as any);
+    } catch (err) {
+      console.error(err);
     }
     setLoadingSchools(false);
   }
@@ -103,41 +100,15 @@ export default function StudentRegistrationPage() {
 
     setLoading(true);
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-    });
-
-    if (authError) {
+    try {
+      await registerStudent(formData);
+      toast.success('Registration successful!');
+      router.push('/login');
+    } catch (err: any) {
+      toast.error(err.message || 'Registration failed');
+    } finally {
       setLoading(false);
-      toast.error('Registration failed: ' + authError.message);
-      return;
     }
-
-    if (authData.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: authData.user.id,
-        full_name: formData.full_name,
-        email: formData.email,
-        school_id: formData.school_id,
-        grade: parseInt(formData.grade),
-        gender: formData.gender,
-        role: 'student',
-        total_xp: 0,
-        level: 1,
-        current_streak: 0,
-      });
-
-      if (profileError) {
-        setLoading(false);
-        toast.error('Profile creation failed: ' + profileError.message);
-        return;
-      }
-    }
-
-    setLoading(false);
-    toast.success('Registration successful!');
-    router.push('/register/student/success');
   };
 
   const availableGrades = selectedSchool?.grades_available || [];
@@ -153,8 +124,8 @@ export default function StudentRegistrationPage() {
 
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/20 to-teal-900/30" />
-        <img 
-          src="https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=1200&q=80" 
+        <img
+          src="https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=1200&q=80"
           alt="Students"
           className="w-full h-full object-cover opacity-40"
         />
@@ -165,7 +136,7 @@ export default function StudentRegistrationPage() {
             </div>
             <span className="text-2xl font-black">EduQuest</span>
           </div>
-          
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -179,7 +150,7 @@ export default function StudentRegistrationPage() {
             <p className="text-white/60 text-lg max-w-md mb-8">
               Join thousands of students earning XP, unlocking achievements, and mastering new skills every day.
             </p>
-            
+
             <div className="flex gap-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
@@ -265,61 +236,61 @@ export default function StudentRegistrationPage() {
                     </Select>
                   </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-white/70 text-sm">Select Your School</Label>
-                      {loadingSchools ? (
-                        <div className="flex items-center gap-2 text-white/40 p-3 bg-white/5 rounded-xl">
-                          <Loader2 className="animate-spin" size={16} />
-                          Loading schools...
-                        </div>
-                      ) : schools.length === 0 ? (
-                        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm">
-                          No schools registered yet.{' '}
-                          <Link href="/register/school" className="underline">Register your school</Link>
-                        </div>
-                      ) : (
-                        <Popover open={schoolSearchOpen} onOpenChange={setSchoolSearchOpen}>
-                          <PopoverTrigger asChild>
-                            <button
-                              type="button"
-                              className="w-full bg-white/5 border border-white/10 h-12 text-white px-4 rounded-xl flex items-center justify-between"
-                            >
-                              <span className={selectedSchool ? "text-white" : "text-white/30"}>
-                                {selectedSchool ? `${selectedSchool.name} - ${selectedSchool.district}` : "Select your school"}
-                              </span>
-                              <ChevronsUpDown size={16} className="text-white/40" />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-slate-900 border-white/10" align="start">
-                            <Command className="bg-slate-900">
-                              <CommandInput placeholder="Search schools..." className="text-white placeholder:text-white/40" />
-                              <CommandList className="max-h-60">
-                                <CommandEmpty className="text-white/50">No school found.</CommandEmpty>
-                                <CommandGroup>
-                                  {schools.map((school) => (
-                                    <CommandItem
-                                      key={school.id}
-                                      value={`${school.name} ${school.district}`}
-                                      onSelect={() => {
-                                        handleSchoolChange(school.id);
-                                        setSchoolSearchOpen(false);
-                                      }}
-                                      className="text-white/80 hover:bg-white/10 data-[selected=true]:bg-white/10 cursor-pointer"
-                                    >
-                                      <Check
-                                        size={16}
-                                        className={formData.school_id === school.id ? "opacity-100" : "opacity-0"}
-                                      />
-                                      {school.name} - {school.district}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                      )}
-                    </div>
+                  <div className="space-y-2">
+                    <Label className="text-white/70 text-sm">Select Your School</Label>
+                    {loadingSchools ? (
+                      <div className="flex items-center gap-2 text-white/40 p-3 bg-white/5 rounded-xl">
+                        <Loader2 className="animate-spin" size={16} />
+                        Loading schools...
+                      </div>
+                    ) : schools.length === 0 ? (
+                      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm">
+                        No schools registered yet.{' '}
+                        <Link href="/register/school" className="underline">Register your school</Link>
+                      </div>
+                    ) : (
+                      <Popover open={schoolSearchOpen} onOpenChange={setSchoolSearchOpen}>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="w-full bg-white/5 border border-white/10 h-12 text-white px-4 rounded-xl flex items-center justify-between"
+                          >
+                            <span className={selectedSchool ? "text-white" : "text-white/30"}>
+                              {selectedSchool ? `${selectedSchool.name} - ${selectedSchool.district}` : "Select your school"}
+                            </span>
+                            <ChevronsUpDown size={16} className="text-white/40" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-slate-900 border-white/10" align="start">
+                          <Command className="bg-slate-900">
+                            <CommandInput placeholder="Search schools..." className="text-white placeholder:text-white/40" />
+                            <CommandList className="max-h-60">
+                              <CommandEmpty className="text-white/50">No school found.</CommandEmpty>
+                              <CommandGroup>
+                                {schools.map((school) => (
+                                  <CommandItem
+                                    key={school.id}
+                                    value={`${school.name} ${school.district}`}
+                                    onSelect={() => {
+                                      handleSchoolChange(school.id);
+                                      setSchoolSearchOpen(false);
+                                    }}
+                                    className="text-white/80 hover:bg-white/10 data-[selected=true]:bg-white/10 cursor-pointer"
+                                  >
+                                    <Check
+                                      size={16}
+                                      className={formData.school_id === school.id ? "opacity-100" : "opacity-0"}
+                                    />
+                                    {school.name} - {school.district}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  </div>
 
                   {selectedSchool && (
                     <div className="space-y-2">
@@ -437,14 +408,14 @@ export default function StudentRegistrationPage() {
               )}
             </form>
 
-              <div className="mt-8 pt-8 border-t border-white/10">
-                <p className="text-center text-white/50 text-sm">
-                  Already have an account?{' '}
-                  <Link href="/login" className="text-emerald-400 hover:text-emerald-300 font-semibold">
-                    Sign in
-                  </Link>
-                </p>
-              </div>
+            <div className="mt-8 pt-8 border-t border-white/10">
+              <p className="text-center text-white/50 text-sm">
+                Already have an account?{' '}
+                <Link href="/login" className="text-emerald-400 hover:text-emerald-300 font-semibold">
+                  Sign in
+                </Link>
+              </p>
+            </div>
           </motion.div>
         </div>
       </div>

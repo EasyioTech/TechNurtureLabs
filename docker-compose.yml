@@ -1,6 +1,9 @@
 services:
+  # ----------------------------
+  # Next.js Application
+  # ----------------------------
   app:
-    container_name: orchids_lms_app
+    container_name: LMS_app
     build:
       context: .
       dockerfile: Dockerfile
@@ -9,5 +12,53 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-    env_file:
-      - .env
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/orchids
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=super-secret-jwt-key
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - storage_data:/app/local_storage
+
+  # ----------------------------
+  # PostgreSQL Database
+  # seed.sql is auto-executed on first DB init
+  # ----------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: LMS_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: orchids
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./seed.sql:/docker-entrypoint-initdb.d/seed.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d orchids" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------
+  # Redis Cache
+  # ----------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: LMS_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+  storage_data:

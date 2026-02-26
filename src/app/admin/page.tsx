@@ -60,7 +60,7 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
-import { supabase } from '@/lib/supabase';
+import { fetchAllAdminData, fetchCourseLessons, saveCourseAdmin, deleteCourseAdmin, saveLessonAdmin, deleteLessonAdmin, saveLessonOrderAdmin, savePlanAdmin, deletePlanAdmin } from '@/app/admin-actions';
 import { toast } from 'sonner';
 import {
   Users, BookOpen, School, TrendingUp, BarChart3, PieChart as PieChartIcon,
@@ -77,12 +77,10 @@ import { useAuth } from '@/components/providers/auth-provider';
 type Course = {
   id: string;
   title: string;
-  description: string;
-  thumbnail: string;
-  is_common: boolean;
+  description: string | null;
+  thumbnail: string | null;
   published: boolean;
-  school_id: string | null;
-  created_at: string;
+  created_at: Date | string;
   lesson_count?: number;
   enrolled_count?: number;
   grade?: number | null;
@@ -196,36 +194,31 @@ export default function SuperAdminConsole() {
   async function fetchAllData() {
     setLoading(true);
 
-    const [
-      studentsRes,
-      schoolsRes,
-      coursesRes,
-      lessonsRes,
-      plansRes,
-      progressRes,
-    ] = await Promise.all([
-      supabase.from('profiles').select('*').eq('role', 'student'),
-      supabase.from('schools').select('*'),
-      supabase.from('courses').select('*').order('created_at', { ascending: false }),
-      supabase.from('lessons').select('*'),
-      supabase.from('payment_plans').select('*').order('price'),
-      supabase.from('progress_tracking').select('*'),
-    ]);
+    const data = await fetchAllAdminData();
 
-    const students = studentsRes.data || [];
-    const schools = schoolsRes.data || [];
-    const coursesData = coursesRes.data || [];
-    const lessonsData = lessonsRes.data || [];
-    const plansData = plansRes.data || [];
-    const progressData = progressRes.data || [];
+    const students = data.students || [];
+    const schools = data.schools || [];
+    const coursesData = data.courses || [];
+    const lessonsData = data.lessons || [];
+    const plansData = data.plans || [];
+    const progressData = data.progress || [];
 
-    const activeCount = students.filter(s => 
-      s.last_activity_date && new Date(s.last_activity_date) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const getUserLastActivity = (studentId: string) => {
+      const userProgress = progressData.filter(p => p.user_id === studentId);
+      if (userProgress.length === 0) return null;
+      return userProgress.reduce((latest, p) => {
+        const pDate = p.updated_at ? new Date(p.updated_at).getTime() : 0;
+        return pDate > latest ? pDate : latest;
+      }, 0);
+    };
+
+    const activeCount = students.filter(s =>
+      getUserLastActivity(s.id) && getUserLastActivity(s.id)! > Date.now() - 7 * 24 * 60 * 60 * 1000
     ).length;
 
     const completedLessons = progressData.filter(p => p.status === 'completed').length;
-    const avgCompletion = progressData.length > 0 
-      ? Math.round((completedLessons / progressData.length) * 100) 
+    const avgCompletion = progressData.length > 0
+      ? Math.round((completedLessons / progressData.length) * 100)
       : 0;
 
     setStats({
@@ -256,6 +249,7 @@ export default function SuperAdminConsole() {
 
     const plans: PaymentPlan[] = plansData.map(p => ({
       ...p,
+      price: Number(p.price),
       features: Array.isArray(p.features) ? p.features : [],
     }));
     setPaymentPlans(plans);
@@ -271,19 +265,19 @@ export default function SuperAdminConsole() {
         level: s.level || 1,
         current_streak: s.current_streak || 0,
         lessons_completed: userProgress.filter(p => p.status === 'completed').length,
-        last_activity: s.last_activity_date,
+        last_activity: getUserLastActivity(s.id) ? new Date(getUserLastActivity(s.id)!).toISOString() : null,
       };
     });
     setUserMetrics(userMets);
 
     const courseMets: CourseMetric[] = coursesData.map(c => {
       const courseLessons = lessonsData.filter(l => l.course_id === c.id);
-      const courseProgress = progressData.filter(p => 
+      const courseProgress = progressData.filter(p =>
         courseLessons.some(l => l.id === p.lesson_id)
       );
       const uniqueEnrolled = new Set(courseProgress.map(p => p.user_id));
       const completed = courseProgress.filter(p => p.status === 'completed').length;
-      const scores = courseProgress.filter(p => p.score != null).map(p => p.score);
+      const scores = courseProgress.filter(p => p.score != null).map(p => p.score as number);
       return {
         id: c.id,
         title: c.title,
@@ -300,12 +294,8 @@ export default function SuperAdminConsole() {
 
   async function selectCourse(course: Course) {
     setSelectedCourse(course);
-    const { data } = await supabase
-      .from('lessons')
-      .select('*')
-      .eq('course_id', course.id)
-      .order('sequence_index');
-    setLessons(data || []);
+    const data = await fetchCourseLessons(course.id);
+    setLessons(data as any || []);
   }
 
   async function saveCourse() {
@@ -314,35 +304,11 @@ export default function SuperAdminConsole() {
       return;
     }
 
-    if (editingCourse.id) {
-      const { error } = await supabase
-        .from('courses')
-        .update({
-          title: editingCourse.title,
-          description: editingCourse.description,
-          thumbnail: editingCourse.thumbnail,
-          is_common: editingCourse.is_common,
-          published: editingCourse.published,
-          grade: editingCourse.all_grades ? null : editingCourse.grade,
-          all_grades: editingCourse.all_grades,
-        })
-        .eq('id', editingCourse.id);
-
-      if (error) toast.error('Failed to update course');
-      else toast.success('Course updated');
-    } else {
-      const { error } = await supabase.from('courses').insert({
-        title: editingCourse.title,
-        description: editingCourse.description || '',
-        thumbnail: editingCourse.thumbnail || '',
-        is_common: editingCourse.is_common ?? true,
-        published: editingCourse.published ?? false,
-        grade: editingCourse.all_grades ? null : editingCourse.grade,
-        all_grades: editingCourse.all_grades ?? true,
-      });
-
-      if (error) toast.error('Failed to create course');
-      else toast.success('Course created');
+    try {
+      await saveCourseAdmin(editingCourse);
+      toast.success(editingCourse.id ? 'Course updated' : 'Course created');
+    } catch (error) {
+      toast.error('Failed to save course');
     }
 
     setShowCourseDialog(false);
@@ -351,15 +317,16 @@ export default function SuperAdminConsole() {
   }
 
   async function deleteCourse(id: string) {
-    const { error } = await supabase.from('courses').delete().eq('id', id);
-    if (error) toast.error('Failed to delete course');
-    else {
+    try {
+      await deleteCourseAdmin(id);
       toast.success('Course deleted');
       if (selectedCourse?.id === id) {
         setSelectedCourse(null);
         setLessons([]);
       }
       fetchAllData();
+    } catch (err) {
+      toast.error('Failed to delete course');
     }
   }
 
@@ -369,37 +336,15 @@ export default function SuperAdminConsole() {
       return;
     }
 
-    if (editingLesson.id) {
-      const { error } = await supabase
-        .from('lessons')
-        .update({
-          title: editingLesson.title,
-          content_type: editingLesson.content_type,
-          content_url: editingLesson.content_url,
-          xp_reward: editingLesson.xp_reward,
-          duration: editingLesson.duration,
-          mcq_questions: editingLesson.mcq_questions || null,
-          file_path: editingLesson.file_path || null,
-        })
-        .eq('id', editingLesson.id);
-
-      if (error) toast.error('Failed to update lesson');
-      else toast.success('Lesson updated');
-    } else {
-      const { error } = await supabase.from('lessons').insert({
-        course_id: selectedCourse.id,
-        title: editingLesson.title,
-        content_type: editingLesson.content_type || 'video',
-        content_url: editingLesson.content_url || '',
-        xp_reward: editingLesson.xp_reward || 100,
-        duration: editingLesson.duration || 10,
-        sequence_index: lessons.length,
-        mcq_questions: editingLesson.mcq_questions || null,
-        file_path: editingLesson.file_path || null,
+    try {
+      await saveLessonAdmin({
+        ...editingLesson,
+        course_id: editingLesson.course_id || selectedCourse.id,
+        sequence_index: editingLesson.sequence_index ?? lessons.length
       });
-
-      if (error) toast.error('Failed to create lesson');
-      else toast.success('Lesson created');
+      toast.success(editingLesson.id ? 'Lesson updated' : 'Lesson created');
+    } catch (error) {
+      toast.error('Failed to save lesson');
     }
 
     setShowLessonDialog(false);
@@ -408,11 +353,12 @@ export default function SuperAdminConsole() {
   }
 
   async function deleteLesson(id: string) {
-    const { error } = await supabase.from('lessons').delete().eq('id', id);
-    if (error) toast.error('Failed to delete lesson');
-    else {
+    try {
+      await deleteLessonAdmin(id);
       toast.success('Lesson deleted');
       if (selectedCourse) selectCourse(selectedCourse);
+    } catch (error) {
+      toast.error('Failed to delete lesson');
     }
   }
 
@@ -425,9 +371,12 @@ export default function SuperAdminConsole() {
       sequence_index: index,
     }));
 
-    const { error } = await supabase.from('lessons').upsert(updates);
-    if (error) toast.error('Failed to save order');
-    else toast.success('Order saved');
+    try {
+      await saveLessonOrderAdmin(updates);
+      toast.success('Order saved');
+    } catch (err) {
+      toast.error('Failed to save order');
+    }
   }
 
   async function savePlan() {
@@ -447,18 +396,11 @@ export default function SuperAdminConsole() {
       is_active: editingPlan.is_active ?? true,
     };
 
-    if (editingPlan.id) {
-      const { error } = await supabase
-        .from('payment_plans')
-        .update(planData)
-        .eq('id', editingPlan.id);
-
-      if (error) toast.error('Failed to update plan');
-      else toast.success('Plan updated');
-    } else {
-      const { error } = await supabase.from('payment_plans').insert(planData);
-      if (error) toast.error('Failed to create plan');
-      else toast.success('Plan created');
+    try {
+      await savePlanAdmin({ ...planData, id: editingPlan.id });
+      toast.success(editingPlan.id ? 'Plan updated' : 'Plan created');
+    } catch (error) {
+      toast.error('Failed to save plan');
     }
 
     setShowPlanDialog(false);
@@ -467,11 +409,12 @@ export default function SuperAdminConsole() {
   }
 
   async function deletePlan(id: string) {
-    const { error } = await supabase.from('payment_plans').delete().eq('id', id);
-    if (error) toast.error('Failed to delete plan');
-    else {
+    try {
+      await deletePlanAdmin(id);
       toast.success('Plan deleted');
       fetchAllData();
+    } catch (err) {
+      toast.error('Failed to delete plan');
     }
   }
 
@@ -608,12 +551,12 @@ export default function SuperAdminConsole() {
                       <AreaChart data={engagementData}>
                         <defs>
                           <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.2}/>
-                            <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
                           </linearGradient>
                           <linearGradient id="colorLessons" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
@@ -708,7 +651,7 @@ export default function SuperAdminConsole() {
                       size="sm"
                       className="bg-sky-500 hover:bg-sky-600 text-white"
                       onClick={() => {
-                        setEditingCourse({ is_common: true, published: false, all_grades: true });
+                        setEditingCourse({ published: false, all_grades: true });
                         setShowCourseDialog(true);
                       }}
                     >
@@ -722,11 +665,10 @@ export default function SuperAdminConsole() {
                       key={course.id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className={`p-3 rounded-xl cursor-pointer transition-all ${
-                        selectedCourse?.id === course.id
-                          ? 'bg-sky-50 border-2 border-sky-500'
-                          : 'bg-stone-50 hover:bg-stone-100 border-2 border-transparent'
-                      }`}
+                      className={`p-3 rounded-xl cursor-pointer transition-all ${selectedCourse?.id === course.id
+                        ? 'bg-sky-50 border-2 border-sky-500'
+                        : 'bg-stone-50 hover:bg-stone-100 border-2 border-transparent'
+                        }`}
                       onClick={() => selectCourse(course)}
                     >
                       <div className="flex items-center gap-3">
@@ -868,9 +810,8 @@ export default function SuperAdminConsole() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
                 >
-                  <Card className={`bg-white border-stone-200 shadow-sm relative overflow-hidden hover:shadow-lg transition-shadow ${
-                    index === 1 ? 'ring-2 ring-sky-500' : ''
-                  }`}>
+                  <Card className={`bg-white border-stone-200 shadow-sm relative overflow-hidden hover:shadow-lg transition-shadow ${index === 1 ? 'ring-2 ring-sky-500' : ''
+                    }`}>
                     {index === 1 && (
                       <div className="absolute top-0 right-0 bg-sky-500 text-white text-xs px-3 py-1 rounded-bl-lg font-semibold">
                         POPULAR
@@ -878,12 +819,11 @@ export default function SuperAdminConsole() {
                     )}
                     <CardHeader>
                       <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                          index === 0 ? 'bg-stone-100' : index === 1 ? 'bg-sky-100' : 'bg-amber-100'
-                        }`}>
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${index === 0 ? 'bg-stone-100' : index === 1 ? 'bg-sky-100' : 'bg-amber-100'
+                          }`}>
                           {index === 0 ? <Shield className="text-stone-500" size={24} /> :
-                           index === 1 ? <Gem className="text-sky-600" size={24} /> :
-                           <Crown className="text-amber-600" size={24} />}
+                            index === 1 ? <Gem className="text-sky-600" size={24} /> :
+                              <Crown className="text-amber-600" size={24} />}
                         </div>
                         <div>
                           <CardTitle className="text-slate-800">{plan.name}</CardTitle>
@@ -1203,214 +1143,218 @@ export default function SuperAdminConsole() {
               {editingLesson?.id ? 'Update lesson details' : 'Add a new lesson to the course'}
             </DialogDescription>
           </DialogHeader>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="space-y-2">
+              <Label className="text-slate-700">Title</Label>
+              <Input
+                value={editingLesson?.title || ''}
+                onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })}
+                className="bg-stone-50 border-stone-200"
+                placeholder="Lesson title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-700">Content Type</Label>
+              <Select
+                value={editingLesson?.content_type || 'video'}
+                onValueChange={(value) => setEditingLesson({ ...editingLesson, content_type: value, mcq_questions: value === 'mcq' ? (editingLesson?.mcq_questions || [{ question: '', options: ['', '', '', ''], correct_answer: 0 }]) : undefined })}
+              >
+                <SelectTrigger className="bg-stone-50 border-stone-200 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-stone-200">
+                  <SelectItem value="video">Video (Upload)</SelectItem>
+                  <SelectItem value="youtube">YouTube Video</SelectItem>
+                  <SelectItem value="ppt">PowerPoint/Slides (Upload)</SelectItem>
+                  <SelectItem value="mcq">Quiz (MCQ)</SelectItem>
+                  <SelectItem value="article">Article</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {editingLesson?.content_type === 'youtube' && (
               <div className="space-y-2">
-                <Label className="text-slate-700">Title</Label>
+                <Label className="text-slate-700">YouTube URL</Label>
                 <Input
-                  value={editingLesson?.title || ''}
-                  onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })}
+                  value={editingLesson?.content_url || ''}
+                  onChange={(e) => setEditingLesson({ ...editingLesson, content_url: e.target.value })}
                   className="bg-stone-50 border-stone-200"
-                  placeholder="Lesson title"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                />
+              </div>
+            )}
+
+            {(editingLesson?.content_type === 'video' || editingLesson?.content_type === 'ppt') && (
+              <div className="space-y-2">
+                <Label className="text-slate-700">{editingLesson?.content_type === 'video' ? 'Video File' : 'PPT/Slides File'}</Label>
+                <div className="flex items-center gap-3">
+                  <label className="flex-1">
+                    <input
+                      type="file"
+                      accept={editingLesson?.content_type === 'video' ? 'video/*' : '.ppt,.pptx,.pdf'}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        const toastId = toast.loading('Uploading file...');
+                        try {
+                          const formData = new FormData();
+                          formData.append('file', file);
+
+                          const response = await fetch('/api/upload', {
+                            method: 'POST',
+                            body: formData,
+                          });
+
+                          if (!response.ok) throw new Error('Upload failed');
+                          const { url, path } = await response.json();
+
+                          setEditingLesson({ ...editingLesson, content_url: url, file_path: path });
+                          toast.success('File uploaded successfully', { id: toastId });
+                        } catch (error) {
+                          console.error('Upload Error:', error);
+                          toast.error('Failed to upload file', { id: toastId });
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-stone-50 border border-stone-200 cursor-pointer hover:bg-stone-100 transition-colors">
+                      <Upload size={18} className="text-sky-500" />
+                      <span className="text-sm text-slate-600">
+                        {editingLesson?.file_path ? 'Change file' : 'Choose file to upload'}
+                      </span>
+                    </div>
+                  </label>
+                </div>
+                {editingLesson?.content_url && (
+                  <p className="text-xs text-emerald-600 flex items-center gap-1">
+                    <CheckCircle2 size={12} />
+                    File uploaded
+                  </p>
+                )}
+              </div>
+            )}
+
+            {editingLesson?.content_type === 'mcq' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-slate-700">Questions</Label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-stone-200 text-slate-600 hover:bg-stone-50"
+                    onClick={() => {
+                      const questions = editingLesson?.mcq_questions || [];
+                      setEditingLesson({
+                        ...editingLesson,
+                        mcq_questions: [...questions, { question: '', options: ['', '', '', ''], correct_answer: 0 }]
+                      });
+                    }}
+                  >
+                    <Plus size={14} className="mr-1" />Add Question
+                  </Button>
+                </div>
+
+                {(editingLesson?.mcq_questions || []).map((q, qIndex) => (
+                  <div key={qIndex} className="p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-sky-600">Question {qIndex + 1}</span>
+                      {(editingLesson?.mcq_questions?.length || 0) > 1 && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="w-6 h-6 text-red-500 hover:text-red-600"
+                          onClick={() => {
+                            const questions = [...(editingLesson?.mcq_questions || [])];
+                            questions.splice(qIndex, 1);
+                            setEditingLesson({ ...editingLesson, mcq_questions: questions });
+                          }}
+                        >
+                          <Trash2 size={12} />
+                        </Button>
+                      )}
+                    </div>
+
+                    <Input
+                      value={q.question}
+                      onChange={(e) => {
+                        const questions = [...(editingLesson?.mcq_questions || [])];
+                        questions[qIndex].question = e.target.value;
+                        setEditingLesson({ ...editingLesson, mcq_questions: questions });
+                      }}
+                      className="bg-white border-stone-200"
+                      placeholder="Enter question text"
+                    />
+
+                    <div className="space-y-2">
+                      <span className="text-xs text-slate-500">Options (select the correct answer)</span>
+                      {q.options.map((opt, optIndex) => (
+                        <div key={optIndex} className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const questions = [...(editingLesson?.mcq_questions || [])];
+                              questions[qIndex].correct_answer = optIndex;
+                              setEditingLesson({ ...editingLesson, mcq_questions: questions });
+                            }}
+                            className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${q.correct_answer === optIndex
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-stone-200 text-slate-400 hover:bg-stone-300'
+                              }`}
+                          >
+                            {q.correct_answer === optIndex && <Check size={14} />}
+                          </button>
+                          <Input
+                            value={opt}
+                            onChange={(e) => {
+                              const questions = [...(editingLesson?.mcq_questions || [])];
+                              questions[qIndex].options[optIndex] = e.target.value;
+                              setEditingLesson({ ...editingLesson, mcq_questions: questions });
+                            }}
+                            className="flex-1 bg-white border-stone-200"
+                            placeholder={`Option ${optIndex + 1}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {editingLesson?.content_type === 'article' && (
+              <div className="space-y-2">
+                <Label className="text-slate-700">Article Content URL (or paste external link)</Label>
+                <Input
+                  value={editingLesson?.content_url || ''}
+                  onChange={(e) => setEditingLesson({ ...editingLesson, content_url: e.target.value })}
+                  className="bg-stone-50 border-stone-200"
+                  placeholder="https://..."
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-slate-700">XP Reward</Label>
+                <Input
+                  type="number"
+                  value={editingLesson?.xp_reward || 100}
+                  onChange={(e) => setEditingLesson({ ...editingLesson, xp_reward: parseInt(e.target.value) })}
+                  className="bg-stone-50 border-stone-200"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-700">Content Type</Label>
-                <Select
-                  value={editingLesson?.content_type || 'video'}
-                  onValueChange={(value) => setEditingLesson({ ...editingLesson, content_type: value, mcq_questions: value === 'mcq' ? (editingLesson?.mcq_questions || [{ question: '', options: ['', '', '', ''], correct_answer: 0 }]) : undefined })}
-                >
-                  <SelectTrigger className="bg-stone-50 border-stone-200 w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-stone-200">
-                    <SelectItem value="video">Video (Upload)</SelectItem>
-                    <SelectItem value="youtube">YouTube Video</SelectItem>
-                    <SelectItem value="ppt">PowerPoint/Slides (Upload)</SelectItem>
-                    <SelectItem value="mcq">Quiz (MCQ)</SelectItem>
-                    <SelectItem value="article">Article</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {editingLesson?.content_type === 'youtube' && (
-                <div className="space-y-2">
-                  <Label className="text-slate-700">YouTube URL</Label>
-                  <Input
-                    value={editingLesson?.content_url || ''}
-                    onChange={(e) => setEditingLesson({ ...editingLesson, content_url: e.target.value })}
-                    className="bg-stone-50 border-stone-200"
-                    placeholder="https://www.youtube.com/watch?v=..."
-                  />
-                </div>
-              )}
-
-              {(editingLesson?.content_type === 'video' || editingLesson?.content_type === 'ppt') && (
-                <div className="space-y-2">
-                  <Label className="text-slate-700">{editingLesson?.content_type === 'video' ? 'Video File' : 'PPT/Slides File'}</Label>
-                  <div className="flex items-center gap-3">
-                    <label className="flex-1">
-                      <input
-                        type="file"
-                        accept={editingLesson?.content_type === 'video' ? 'video/*' : '.ppt,.pptx,.pdf'}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const fileExt = file.name.split('.').pop();
-                          const fileName = `${Date.now()}.${fileExt}`;
-                          const filePath = `lessons/${fileName}`;
-                          
-                          toast.loading('Uploading file...');
-                          const { error } = await supabase.storage.from('content').upload(filePath, file);
-                          toast.dismiss();
-                          
-                          if (error) {
-                            toast.error('Upload failed: ' + error.message);
-                          } else {
-                            const { data: urlData } = supabase.storage.from('content').getPublicUrl(filePath);
-                            setEditingLesson({ ...editingLesson, content_url: urlData.publicUrl, file_path: filePath });
-                            toast.success('File uploaded successfully');
-                          }
-                        }}
-                        className="hidden"
-                      />
-                      <div className="flex items-center gap-2 p-3 rounded-lg bg-stone-50 border border-stone-200 cursor-pointer hover:bg-stone-100 transition-colors">
-                        <Upload size={18} className="text-sky-500" />
-                        <span className="text-sm text-slate-600">
-                          {editingLesson?.file_path ? 'Change file' : 'Choose file to upload'}
-                        </span>
-                      </div>
-                    </label>
-                  </div>
-                  {editingLesson?.content_url && (
-                    <p className="text-xs text-emerald-600 flex items-center gap-1">
-                      <CheckCircle2 size={12} />
-                      File uploaded
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {editingLesson?.content_type === 'mcq' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-slate-700">Questions</Label>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-stone-200 text-slate-600 hover:bg-stone-50"
-                      onClick={() => {
-                        const questions = editingLesson?.mcq_questions || [];
-                        setEditingLesson({
-                          ...editingLesson,
-                          mcq_questions: [...questions, { question: '', options: ['', '', '', ''], correct_answer: 0 }]
-                        });
-                      }}
-                    >
-                      <Plus size={14} className="mr-1" />Add Question
-                    </Button>
-                  </div>
-                  
-                  {(editingLesson?.mcq_questions || []).map((q, qIndex) => (
-                    <div key={qIndex} className="p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-sky-600">Question {qIndex + 1}</span>
-                        {(editingLesson?.mcq_questions?.length || 0) > 1 && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="w-6 h-6 text-red-500 hover:text-red-600"
-                            onClick={() => {
-                              const questions = [...(editingLesson?.mcq_questions || [])];
-                              questions.splice(qIndex, 1);
-                              setEditingLesson({ ...editingLesson, mcq_questions: questions });
-                            }}
-                          >
-                            <Trash2 size={12} />
-                          </Button>
-                        )}
-                      </div>
-                      
-                      <Input
-                        value={q.question}
-                        onChange={(e) => {
-                          const questions = [...(editingLesson?.mcq_questions || [])];
-                          questions[qIndex].question = e.target.value;
-                          setEditingLesson({ ...editingLesson, mcq_questions: questions });
-                        }}
-                        className="bg-white border-stone-200"
-                        placeholder="Enter question text"
-                      />
-                      
-                      <div className="space-y-2">
-                        <span className="text-xs text-slate-500">Options (select the correct answer)</span>
-                        {q.options.map((opt, optIndex) => (
-                          <div key={optIndex} className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const questions = [...(editingLesson?.mcq_questions || [])];
-                                questions[qIndex].correct_answer = optIndex;
-                                setEditingLesson({ ...editingLesson, mcq_questions: questions });
-                              }}
-                              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
-                                q.correct_answer === optIndex
-                                  ? 'bg-emerald-500 text-white'
-                                  : 'bg-stone-200 text-slate-400 hover:bg-stone-300'
-                              }`}
-                            >
-                              {q.correct_answer === optIndex && <Check size={14} />}
-                            </button>
-                            <Input
-                              value={opt}
-                              onChange={(e) => {
-                                const questions = [...(editingLesson?.mcq_questions || [])];
-                                questions[qIndex].options[optIndex] = e.target.value;
-                                setEditingLesson({ ...editingLesson, mcq_questions: questions });
-                              }}
-                              className="flex-1 bg-white border-stone-200"
-                              placeholder={`Option ${optIndex + 1}`}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {editingLesson?.content_type === 'article' && (
-                <div className="space-y-2">
-                  <Label className="text-slate-700">Article Content URL (or paste external link)</Label>
-                  <Input
-                    value={editingLesson?.content_url || ''}
-                    onChange={(e) => setEditingLesson({ ...editingLesson, content_url: e.target.value })}
-                    className="bg-stone-50 border-stone-200"
-                    placeholder="https://..."
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-slate-700">XP Reward</Label>
-                  <Input
-                    type="number"
-                    value={editingLesson?.xp_reward || 100}
-                    onChange={(e) => setEditingLesson({ ...editingLesson, xp_reward: parseInt(e.target.value) })}
-                    className="bg-stone-50 border-stone-200"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-slate-700">Duration (min)</Label>
-                  <Input
-                    type="number"
-                    value={editingLesson?.duration || 10}
-                    onChange={(e) => setEditingLesson({ ...editingLesson, duration: parseInt(e.target.value) })}
-                    className="bg-stone-50 border-stone-200"
-                  />
-                </div>
+                <Label className="text-slate-700">Duration (min)</Label>
+                <Input
+                  type="number"
+                  value={editingLesson?.duration || 10}
+                  onChange={(e) => setEditingLesson({ ...editingLesson, duration: parseInt(e.target.value) })}
+                  className="bg-stone-50 border-stone-200"
+                />
               </div>
             </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowLessonDialog(false)} className="border-stone-200 text-slate-600">
               Cancel
@@ -1586,20 +1530,20 @@ function SortableLessonItem({ lesson, index, onEdit, onDelete }: { lesson: Lesso
   };
 
   const Icon = lesson.content_type === 'video' ? Video :
-               lesson.content_type === 'youtube' ? Youtube :
-               lesson.content_type === 'ppt' ? Presentation :
-               lesson.content_type === 'mcq' ? ListChecks :
-               FileText;
+    lesson.content_type === 'youtube' ? Youtube :
+      lesson.content_type === 'ppt' ? Presentation :
+        lesson.content_type === 'mcq' ? ListChecks :
+          FileText;
 
   const iconBg = lesson.content_type === 'video' ? 'bg-blue-100 text-blue-600' :
-                 lesson.content_type === 'youtube' ? 'bg-red-100 text-red-600' :
-                 lesson.content_type === 'ppt' ? 'bg-amber-100 text-amber-600' :
-                 lesson.content_type === 'mcq' ? 'bg-orange-100 text-orange-600' :
-                 'bg-purple-100 text-purple-600';
+    lesson.content_type === 'youtube' ? 'bg-red-100 text-red-600' :
+      lesson.content_type === 'ppt' ? 'bg-amber-100 text-amber-600' :
+        lesson.content_type === 'mcq' ? 'bg-orange-100 text-orange-600' :
+          'bg-purple-100 text-purple-600';
 
   const typeLabel = lesson.content_type === 'youtube' ? 'YouTube' :
-                    lesson.content_type === 'ppt' ? 'Slides' :
-                    lesson.content_type.toUpperCase();
+    lesson.content_type === 'ppt' ? 'Slides' :
+      lesson.content_type.toUpperCase();
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>

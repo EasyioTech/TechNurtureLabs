@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, use } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '@/lib/supabase';
+import { getCourseDetailsData } from '@/app/course-actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,61 +45,14 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
 
   useEffect(() => {
     async function fetchData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) setUserId(user.id);
-
-      const [courseRes, lessonsRes] = await Promise.all([
-        supabase.from('courses').select('*').eq('id', courseId).single(),
-        supabase.from('lessons').select('*').eq('course_id', courseId).order('sequence_index', { ascending: true })
-      ]);
-
-      if (courseRes.data) setCourse(courseRes.data);
-      
-      if (lessonsRes.data && user) {
-        const { data: progressData } = await supabase
-          .from('progress_tracking')
-          .select('lesson_id, status')
-          .eq('user_id', user.id)
-          .in('lesson_id', lessonsRes.data.map(l => l.id));
-
-        const progressMap = new Map(progressData?.map(p => [p.lesson_id, p.status]) || []);
-        
-        let foundIncomplete = false;
-        const formatted = lessonsRes.data.map((l, i) => {
-          const status = progressMap.get(l.id);
-          let lessonStatus: 'locked' | 'available' | 'completed';
-          
-          if (status === 'completed') {
-            lessonStatus = 'completed';
-          } else if (!foundIncomplete) {
-            lessonStatus = 'available';
-            foundIncomplete = true;
-          } else {
-            lessonStatus = 'locked';
-          }
-          
-          return {
-            ...l,
-            xp_reward: l.xp_reward || 50,
-            status: lessonStatus
-          };
-        });
-        setLessons(formatted as Lesson[]);
-      } else if (lessonsRes.data) {
-        const formatted = lessonsRes.data.map((l, i) => ({
-          ...l,
-          xp_reward: l.xp_reward || 50,
-          status: i === 0 ? 'available' : 'locked' as 'locked' | 'available' | 'completed'
-        }));
-        setLessons(formatted as Lesson[]);
+      try {
+        const data = await getCourseDetailsData(courseId);
+        setCourse(data.course as any);
+        setLessons(data.lessons as any);
+        setEnrolledCount(data.enrolledCount);
+      } catch (err) {
+        console.error(err);
       }
-
-      const { count } = await supabase
-        .from('progress_tracking')
-        .select('user_id', { count: 'exact', head: true })
-        .in('lesson_id', lessonsRes.data?.map(l => l.id) || []);
-      
-      setEnrolledCount(count || 0);
       setLoading(false);
     }
     fetchData();
@@ -156,8 +109,8 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
             >
               <Card className="bg-white/80 backdrop-blur-xl border-slate-200/60 shadow-xl overflow-hidden">
                 <div className="h-64 relative overflow-hidden">
-                  <img 
-                    src={course?.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800'} 
+                  <img
+                    src={course?.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800'}
                     alt={course?.title}
                     className="w-full h-full object-cover"
                   />
@@ -279,7 +232,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
                       <span className="font-bold">Keep Going!</span>
                     </div>
                     <p className="text-sm text-white/80 mb-4">
-                      {progress === 100 
+                      {progress === 100
                         ? "Congratulations! You've completed this course!"
                         : `Complete ${lessons.length - completedCount} more lessons to finish this course and earn a completion badge!`}
                     </p>
@@ -363,9 +316,9 @@ function LessonRow({ lesson, index }: { lesson: Lesson; index: number }) {
   const isCompleted = lesson.status === 'completed';
   const isAvailable = lesson.status === 'available';
 
-  const Icon = lesson.content_type === 'video' ? Play : 
-               lesson.content_type === 'mcq' ? Trophy : 
-               FileText;
+  const Icon = lesson.content_type === 'video' ? Play :
+    lesson.content_type === 'mcq' ? Trophy :
+      FileText;
 
   const typeLabels: Record<string, string> = {
     video: 'Video',
@@ -376,23 +329,23 @@ function LessonRow({ lesson, index }: { lesson: Lesson; index: number }) {
   const content = (
     <div className={`
       flex items-center gap-4 p-4 rounded-xl border transition-all
-      ${isCompleted 
-        ? 'bg-emerald-50 border-emerald-200' 
-        : isLocked 
-          ? 'bg-slate-50 border-slate-200 opacity-60' 
+      ${isCompleted
+        ? 'bg-emerald-50 border-emerald-200'
+        : isLocked
+          ? 'bg-slate-50 border-slate-200 opacity-60'
           : 'bg-white border-violet-200 hover:border-violet-300 hover:shadow-md cursor-pointer'}
     `}>
       <div className={`
         w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
-        ${isCompleted 
-          ? 'bg-emerald-500 text-white' 
-          : isLocked 
-            ? 'bg-slate-200 text-slate-400' 
+        ${isCompleted
+          ? 'bg-emerald-500 text-white'
+          : isLocked
+            ? 'bg-slate-200 text-slate-400'
             : 'bg-violet-100 text-violet-600'}
       `}>
-        {isCompleted ? <CheckCircle2 size={24} /> : 
-         isLocked ? <Lock size={20} /> : 
-         <Icon size={22} fill={lesson.content_type === 'video' ? 'currentColor' : 'none'} />}
+        {isCompleted ? <CheckCircle2 size={24} /> :
+          isLocked ? <Lock size={20} /> :
+            <Icon size={22} fill={lesson.content_type === 'video' ? 'currentColor' : 'none'} />}
       </div>
 
       <div className="flex-1 min-w-0">
@@ -447,7 +400,7 @@ function ProgressRow({ icon: Icon, label, value, progress, color }: { icon: any;
         <span className="text-sm font-bold text-slate-700">{value}</span>
       </div>
       <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-        <motion.div 
+        <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.8, ease: 'easeOut' }}

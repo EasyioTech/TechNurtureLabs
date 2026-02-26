@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { supabase } from '@/lib/supabase';
+import { fetchSchoolAdminCourseData } from '@/app/school-admin-actions';
+import { useAuth } from '@/components/providers/auth-provider';
 import {
   ArrowLeft, BookOpen, Users, Clock, Star, Trophy, Flame,
   Play, FileText, Video, ListChecks, Sparkles, BarChart3,
@@ -55,30 +56,15 @@ export default function SchoolAdminCourseView() {
     totalXpEarned: 0
   });
   const [loading, setLoading] = useState(true);
-  const [adminProfile, setAdminProfile] = useState<any>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    async function getAdminData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        if (profile) {
-          setAdminProfile(profile);
-          if (courseId) fetchCourseData(profile.school_id);
-        } else {
-          setLoading(false);
-        }
-      } else {
-        setLoading(false);
-      }
+    if (user && user.role === 'school_admin' && user.school_id) {
+      if (courseId) fetchCourseData(user.school_id);
+    } else if (user) {
+      setLoading(false);
     }
-    getAdminData();
-  }, [courseId]);
+  }, [courseId, user]);
 
   async function fetchCourseData(schoolId: string | null) {
     if (!schoolId) {
@@ -87,83 +73,65 @@ export default function SchoolAdminCourseView() {
     }
     setLoading(true);
 
-    const { data: courseData } = await supabase
-      .from('courses')
-      .select('*')
-      .eq('id', courseId)
-      .single();
+    try {
+      const data = await fetchSchoolAdminCourseData(schoolId, courseId as string);
 
-    if (courseData) setCourse(courseData);
+      if (data.course) setCourse(data.course as any);
+      setLessons(data.lessonsData as any[]);
 
-    const { data: lessonsData } = await supabase
-      .from('lessons')
-      .select('id, title, sequence_index, content_type, duration, xp_reward')
-      .eq('course_id', courseId)
-      .order('sequence_index');
+      const studentsData = data.studentsData;
+      const progressData = data.progressData;
 
-    setLessons(lessonsData || []);
+      if (studentsData && data.lessonsData) {
+        const progressByStudent = new Map<string, { completed: number; scores: number[]; lastActivity: string | null }>();
 
-    const { data: studentsData } = await supabase
-      .from('profiles')
-      .select('id, full_name, total_xp')
-      .eq('school_id', schoolId)
-      .eq('role', 'student');
+        (progressData || []).forEach(p => {
+          if (!progressByStudent.has(p.user_id)) {
+            progressByStudent.set(p.user_id, { completed: 0, scores: [], lastActivity: null });
+          }
+          const entry = progressByStudent.get(p.user_id)!;
+          if (p.status === 'completed') entry.completed++;
+          if (p.score != null) entry.scores.push(p.score);
+          if (!entry.lastActivity || (p.updated_at && p.updated_at > entry.lastActivity)) {
+            entry.lastActivity = p.updated_at;
+          }
+        });
 
-    if (studentsData && lessonsData) {
-      const lessonIds = lessonsData.map(l => l.id);
-      
-      const { data: progressData } = await supabase
-        .from('progress_tracking')
-        .select('user_id, lesson_id, status, score, updated_at')
-        .in('lesson_id', lessonIds);
+        const studentProgressList: StudentProgress[] = studentsData
+          .filter(s => progressByStudent.has(s.id))
+          .map(s => {
+            const prog = progressByStudent.get(s.id)!;
+            return {
+              student_id: s.id,
+              student_name: s.full_name,
+              lessons_completed: prog.completed,
+              total_xp: s.total_xp || 0,
+              avg_score: prog.scores.length > 0
+                ? Math.round(prog.scores.reduce((a, b) => a + b, 0) / prog.scores.length)
+                : 0,
+              last_activity: prog.lastActivity
+            };
+          })
+          .sort((a, b) => b.lessons_completed - a.lessons_completed);
 
-      const progressByStudent = new Map<string, { completed: number; scores: number[]; lastActivity: string | null }>();
-      
-      (progressData || []).forEach(p => {
-        if (!progressByStudent.has(p.user_id)) {
-          progressByStudent.set(p.user_id, { completed: 0, scores: [], lastActivity: null });
-        }
-        const entry = progressByStudent.get(p.user_id)!;
-        if (p.status === 'completed') entry.completed++;
-        if (p.score != null) entry.scores.push(p.score);
-        if (!entry.lastActivity || (p.updated_at && p.updated_at > entry.lastActivity)) {
-          entry.lastActivity = p.updated_at;
-        }
-      });
+        setStudentProgress(studentProgressList);
 
-      const studentProgressList: StudentProgress[] = studentsData
-        .filter(s => progressByStudent.has(s.id))
-        .map(s => {
-          const prog = progressByStudent.get(s.id)!;
-          return {
-            student_id: s.id,
-            student_name: s.full_name,
-            lessons_completed: prog.completed,
-            total_xp: s.total_xp || 0,
-            avg_score: prog.scores.length > 0 
-              ? Math.round(prog.scores.reduce((a, b) => a + b, 0) / prog.scores.length) 
-              : 0,
-            last_activity: prog.lastActivity
-          };
-        })
-        .sort((a, b) => b.lessons_completed - a.lessons_completed);
+        const totalEnrolled = studentProgressList.length;
+        const totalLessons = lessonsData.length;
+        const avgCompletion = totalEnrolled > 0 && totalLessons > 0
+          ? Math.round((studentProgressList.reduce((a, s) => a + s.lessons_completed, 0) / (totalEnrolled * totalLessons)) * 100)
+          : 0;
+        const allScores = studentProgressList.flatMap(s => s.avg_score > 0 ? [s.avg_score] : []);
+        const avgScore = allScores.length > 0
+          ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length)
+          : 0;
+        const totalXpEarned = studentProgressList.reduce((a, s) => a + s.total_xp, 0);
 
-      setStudentProgress(studentProgressList);
-
-      const totalEnrolled = studentProgressList.length;
-      const totalLessons = lessonsData.length;
-      const avgCompletion = totalEnrolled > 0 && totalLessons > 0
-        ? Math.round((studentProgressList.reduce((a, s) => a + s.lessons_completed, 0) / (totalEnrolled * totalLessons)) * 100)
-        : 0;
-      const allScores = studentProgressList.flatMap(s => s.avg_score > 0 ? [s.avg_score] : []);
-      const avgScore = allScores.length > 0 
-        ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) 
-        : 0;
-      const totalXpEarned = studentProgressList.reduce((a, s) => a + s.total_xp, 0);
-
-      setStats({ totalEnrolled, avgCompletion, avgScore, totalXpEarned });
+        setStats({ totalEnrolled, avgCompletion, avgScore, totalXpEarned });
+      }
+    } catch (e) {
+      console.error(e);
     }
-
     setLoading(false);
   }
 
@@ -215,7 +183,7 @@ export default function SchoolAdminCourseView() {
       </header>
 
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-8">
-        <motion.section 
+        <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
@@ -242,7 +210,7 @@ export default function SchoolAdminCourseView() {
             </div>
             <CardContent className="p-6">
               <p className="text-slate-600 mb-6">{course.description || 'No description available'}</p>
-              
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard icon={Users} label="Students Enrolled" value={stats.totalEnrolled} color="violet" />
                 <StatCard icon={Target} label="Avg Completion" value={`${stats.avgCompletion}%`} color="emerald" />
@@ -254,7 +222,7 @@ export default function SchoolAdminCourseView() {
         </motion.section>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <motion.section 
+          <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
@@ -297,7 +265,7 @@ export default function SchoolAdminCourseView() {
             </Card>
           </motion.section>
 
-          <motion.section 
+          <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -327,8 +295,8 @@ export default function SchoolAdminCourseView() {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {studentProgress.slice(0, 10).map((student, i) => {
-                          const progressPercent = lessons.length > 0 
-                            ? Math.round((student.lessons_completed / lessons.length) * 100) 
+                          const progressPercent = lessons.length > 0
+                            ? Math.round((student.lessons_completed / lessons.length) * 100)
                             : 0;
                           return (
                             <tr key={student.student_id} className="hover:bg-slate-50/50">
@@ -358,8 +326,8 @@ export default function SchoolAdminCourseView() {
                                 </div>
                               </td>
                               <td className="p-3 text-sm text-slate-500">
-                                {student.last_activity 
-                                  ? new Date(student.last_activity).toLocaleDateString() 
+                                {student.last_activity
+                                  ? new Date(student.last_activity).toLocaleDateString()
                                   : '-'}
                               </td>
                             </tr>

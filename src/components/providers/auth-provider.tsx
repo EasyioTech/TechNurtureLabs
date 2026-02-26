@@ -1,14 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
-import { User, Session } from '@supabase/supabase-js';
 
 type UserProfile = {
   id: string;
   full_name: string;
   email: string;
-  role: 'student' | 'school_admin' | 'super_admin';
+  role: 'student' | 'school_admin' | 'super_admin' | 'admin';
   school_id: string | null;
   grade: number | null;
   total_xp: number;
@@ -17,10 +15,16 @@ type UserProfile = {
   avatar_style: string | null;
 };
 
+// We mock Supabase's user shape for legacy component compatibility
+type MockUser = {
+  id: string;
+  email: string;
+};
+
 type AuthContextType = {
-  user: User | null;
+  user: MockUser | null;
   profile: UserProfile | null;
-  session: Session | null;
+  session: any | null; // Placeholder for legacy session checks
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -31,36 +35,40 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   session: null,
   loading: true,
-  signOut: async () => {},
-  refreshProfile: async () => {},
+  signOut: async () => { },
+  refreshProfile: async () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<MockUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, full_name, email, role, school_id, grade, total_xp, level, current_streak, avatar_style')
-      .eq('id', userId)
-      .single();
-
-    if (data) {
-      setProfile(data as UserProfile);
+  const fetchProfile = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        setProfile(data.user);
+        setUser({ id: data.user.id, email: data.user.email });
+        setSession({ user: { id: data.user.id } });
+      } else {
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+      }
+    } catch (e) {
+      console.error(e);
     }
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (user?.id) {
-      await fetchProfile(user.id);
-    }
-  }, [user?.id, fetchProfile]);
+    await fetchProfile();
+  }, [fetchProfile]);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    await fetch('/api/auth/logout', { method: 'POST' });
     setUser(null);
     setProfile(null);
     setSession(null);
@@ -68,36 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const initAuth = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
-      if (currentSession) {
-        setSession(currentSession);
-        setUser(currentSession.user);
-        await fetchProfile(currentSession.user.id);
-      }
-      
-      setLoading(false);
-    };
-
-    initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-
-        if (event === 'SIGNED_IN' && newSession?.user) {
-          await fetchProfile(newSession.user.id);
-        } else if (event === 'SIGNED_OUT') {
-          setProfile(null);
-        }
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    fetchProfile().finally(() => setLoading(false));
   }, [fetchProfile]);
 
   return (

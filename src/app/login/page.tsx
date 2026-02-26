@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { LogIn, ArrowLeft, Loader2, Sparkles, GraduationCap, Eye, EyeOff, Zap, Trophy, Wand2 } from 'lucide-react';
 
@@ -34,33 +33,26 @@ export default function StudentLoginPage() {
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role: 'student' })
+      });
+      const data = await res.json();
 
-    setLoading(false);
+      setLoading(false);
 
-    if (error) {
-      toast.error('Login failed: ' + error.message);
-      return;
-    }
-
-    if (data.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
-
-      if (profile?.role !== 'student') {
-        toast.error('Access denied. This login is for students only.');
-        await supabase.auth.signOut();
+      if (!res.ok) {
+        toast.error('Login failed: ' + (data.error || 'Unknown error'));
         return;
       }
 
       toast.success('Welcome back!');
       router.push('/student');
+    } catch (err: any) {
+      setLoading(false);
+      toast.error('Login failed: ' + err.message);
     }
   };
 
@@ -73,8 +65,8 @@ export default function StudentLoginPage() {
 
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/20 to-teal-900/30" />
-        <img 
-          src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1200&q=80" 
+        <img
+          src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1200&q=80"
           alt="Students"
           className="w-full h-full object-cover opacity-40"
         />
@@ -85,7 +77,7 @@ export default function StudentLoginPage() {
             </div>
             <span className="text-2xl font-black">EduQuest</span>
           </div>
-          
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -99,7 +91,7 @@ export default function StudentLoginPage() {
             <p className="text-white/60 text-lg max-w-md mb-8">
               Pick up where you left off. Your courses, achievements, and progress are waiting for you.
             </p>
-            
+
             <div className="flex gap-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
@@ -205,22 +197,22 @@ export default function StudentLoginPage() {
                     Sign In
                   </>
                 )}
-</Button>
-              </form>
+              </Button>
+            </form>
 
-              <div className="mt-4">
-                <Button
-                  type="button"
-                  onClick={fillDemoCredentials}
-                  variant="outline"
-                  className="w-full border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200"
-                >
-                  <Wand2 size={16} className="mr-2" />
-                  Use Demo Credentials
-                </Button>
-              </div>
+            <div className="mt-4">
+              <Button
+                type="button"
+                onClick={fillDemoCredentials}
+                variant="outline"
+                className="w-full border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200"
+              >
+                <Wand2 size={16} className="mr-2" />
+                Use Demo Credentials
+              </Button>
+            </div>
 
-              <div className="mt-8 pt-8 border-t border-white/10">
+            <div className="mt-8 pt-8 border-t border-white/10">
               <p className="text-center text-white/50 text-sm">
                 Don&apos;t have an account?{' '}
                 <Link href="/register/student" className="text-emerald-400 hover:text-emerald-300 font-semibold">
