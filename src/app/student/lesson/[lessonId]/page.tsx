@@ -21,7 +21,7 @@ type Question = {
 type Lesson = {
   id: string;
   title: string;
-  content_type: 'video' | 'ppt' | 'mcq';
+  content_type: 'video' | 'youtube' | 'ppt' | 'mcq';
   content_url: string;
   duration: number;
   quiz_data: { questions: Question[] };
@@ -149,48 +149,65 @@ export default function LessonPlayerPage() {
       <main className="max-w-5xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-black mb-8">{lesson.title}</h1>
 
-        {lesson.content_type === 'video' && (
-          <div className="space-y-6">
-            <div className="aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-zinc-800">
-              {lesson.content_url?.includes('youtube.com') ? (
-                <iframe
-                  src={lesson.content_url}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              ) : (
-                <video
-                  ref={videoRef}
-                  src={lesson.content_url || 'https://www.w3schools.com/html/mov_bbb.mp4'}
-                  controls
-                  className="w-full h-full"
-                  onTimeUpdate={handleVideoTimeUpdate}
-                />
-              )}
-            </div>
-            {lesson.content_url?.includes('youtube.com') ? (
-              <div className="space-y-4">
-                <p className="text-sm text-zinc-400">Watch the video above, then mark as complete when finished.</p>
-                {!lessonComplete && (
-                  <Button onClick={() => completeLesson()} className="bg-emerald-500 hover:bg-emerald-600">
-                    <CheckCircle2 size={18} className="mr-2" />
-                    Mark as Complete
-                  </Button>
+        {(lesson.content_type === 'video' || lesson.content_type === 'youtube') && (() => {
+          const isYouTube = lesson.content_type === 'youtube' || lesson.content_url?.includes('youtube.com') || lesson.content_url?.includes('youtu.be');
+
+          const getEmbedUrl = (url: string) => {
+            if (!url) return '';
+            // Convert youtube.com/watch?v=ID to youtube.com/embed/ID
+            const watchMatch = url.match(/[?&]v=([^&]+)/);
+            if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}`;
+            // Convert youtu.be/ID to youtube.com/embed/ID
+            const shortMatch = url.match(/youtu\.be\/([^?&]+)/);
+            if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}`;
+            // Already an embed URL or other format
+            if (url.includes('/embed/')) return url;
+            return url;
+          };
+
+          return (
+            <div className="space-y-6">
+              <div className="aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-zinc-800">
+                {isYouTube ? (
+                  <iframe
+                    src={getEmbedUrl(lesson.content_url)}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    ref={videoRef}
+                    src={lesson.content_url || 'https://www.w3schools.com/html/mov_bbb.mp4'}
+                    controls
+                    className="w-full h-full"
+                    onTimeUpdate={handleVideoTimeUpdate}
+                  />
                 )}
               </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm text-zinc-400">
-                  <span>Watch Progress</span>
-                  <span>{Math.round(videoProgress)}%</span>
+              {isYouTube ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-zinc-400">Watch the video above, then mark as complete when finished.</p>
+                  {!lessonComplete && (
+                    <Button onClick={() => completeLesson()} className="bg-emerald-500 hover:bg-emerald-600">
+                      <CheckCircle2 size={18} className="mr-2" />
+                      Mark as Complete
+                    </Button>
+                  )}
                 </div>
-                <Progress value={videoProgress} className="h-2" />
-                <p className="text-xs text-zinc-500">Complete 90% of the video to unlock the next lesson</p>
-              </div>
-            )}
-          </div>
-        )}
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm text-zinc-400">
+                    <span>Watch Progress</span>
+                    <span>{Math.round(videoProgress)}%</span>
+                  </div>
+                  <Progress value={videoProgress} className="h-2" />
+                  <p className="text-xs text-zinc-500">Complete 90% of the video to unlock the next lesson</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {lesson.content_type === 'ppt' && (
           <div className="space-y-6">

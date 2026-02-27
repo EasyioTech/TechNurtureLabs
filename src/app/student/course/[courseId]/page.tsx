@@ -18,7 +18,7 @@ type Lesson = {
   id: string;
   title: string;
   sequence_index: number;
-  content_type: 'video' | 'mcq' | 'ppt';
+  content_type: 'video' | 'youtube' | 'mcq' | 'ppt';
   duration: number;
   xp_reward: number;
   status: 'locked' | 'available' | 'completed';
@@ -316,12 +316,13 @@ function LessonRow({ lesson, index }: { lesson: Lesson; index: number }) {
   const isCompleted = lesson.status === 'completed';
   const isAvailable = lesson.status === 'available';
 
-  const Icon = lesson.content_type === 'video' ? Play :
+  const Icon = (lesson.content_type === 'video' || lesson.content_type === 'youtube') ? Play :
     lesson.content_type === 'mcq' ? Trophy :
       FileText;
 
   const typeLabels: Record<string, string> = {
     video: 'Video',
+    youtube: 'YouTube',
     mcq: 'Quiz',
     ppt: 'Slides'
   };
