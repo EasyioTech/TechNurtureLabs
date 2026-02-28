@@ -26,3 +26,21 @@
 - **Database Migrations**: Drizzle Kit.
 - **Validation**: Zod.
 - **Testing**: (Inferred) React Testing Library or Playwright.
+
+### 🛠️ Development Setup
+
+```bash
+# One-time setup (starts infra, pushes schema, seeds data)
+npm run setup
+
+# Individual commands
+npm run infra:up    # Start DB & Redis
+npm run db:push     # Sync schema
+npm run db:seed     # Manually seed data
+npm run dev         # Next.js dev server
+```
+
+### 🗄️ Database Management
+- **ORM:** Drizzle ORM (PostgreSQL)
+- **Inspection:** `npm run db:studio`
+- **Seeding:** `seed.sql` + `npm run db:seed`
