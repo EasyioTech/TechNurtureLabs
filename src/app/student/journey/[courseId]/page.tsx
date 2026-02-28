@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, use } from 'react';
 import { motion } from 'framer-motion';
-import { getCourseJourneyData } from '@/app/course-actions';
+import { getCourseJourneyData } from '@/modules/learning/actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -376,8 +376,8 @@ function LessonCard({ lesson, index, align }: { lesson: Lesson; index: number; a
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-2">
           <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isCompleted ? 'bg-emerald-100 text-emerald-700' :
-              isLocked ? 'bg-slate-200 text-slate-500' :
-                'bg-violet-100 text-violet-700'
+            isLocked ? 'bg-slate-200 text-slate-500' :
+              'bg-violet-100 text-violet-700'
             }`}>
             {typeLabels[lesson.content_type] || 'Lesson'}
           </span>

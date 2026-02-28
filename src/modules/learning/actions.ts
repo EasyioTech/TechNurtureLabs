@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { profiles, courses, lessons, progressTracking, dailyChallenges, userDailyChallenges, achievements, userAchievements } from '@/db/schema';
-import { eq, and, gt, inArray, lte } from 'drizzle-orm';
+import { eq, and, gt, inArray, lte, asc } from 'drizzle-orm';
 
 export async function getCourseDetailsData(courseId: string) {
     const session = await verifySession();
@@ -65,7 +65,7 @@ export async function getCourseDetailsData(courseId: string) {
 }
 
 export async function getCourseJourneyData(courseId: string) {
-    return await getCourseDetailsData(courseId); // Logic is identical for journey vs course details
+    return await getCourseDetailsData(courseId);
 }
 
 export async function getLessonData(lessonId: string) {
@@ -149,17 +149,70 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
         }
     }
 
-    // Similar logic for quizzes
-    if (quizScore !== undefined) {
-        // simplified for brevity: grant XP straight if quiz is completed
-        const scorePrcnt = quizScore;
-        if (scorePrcnt >= 80) {
-            // you could grant 80% score challenges here
-        }
-    }
-
     await db.update(profiles).set({
         total_xp: newXp,
         total_lessons_completed: newLessonsCompleted
     }).where(eq(profiles.id, userId));
+}
+
+export async function getLessonsByCourse(courseId: string) {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+
+    const courseLessons = await db.query.lessons.findMany({
+        where: eq(lessons.course_id, courseId),
+        orderBy: (lessons, { asc }) => [asc(lessons.sequence_index)]
+    });
+
+    return courseLessons;
+}
+
+export async function saveVideoProgress(lessonId: string, position: number) {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+
+    const existing = await db.query.progressTracking.findFirst({
+        where: and(
+            eq(progressTracking.user_id, session.userId),
+            eq(progressTracking.lesson_id, lessonId)
+        )
+    });
+
+    if (existing) {
+        await db.update(progressTracking)
+            .set({ last_position: position.toString(), status: existing.status === 'completed' ? 'completed' : 'locked', updated_at: new Date() })
+            .where(and(eq(progressTracking.user_id, session.userId), eq(progressTracking.lesson_id, lessonId)));
+    } else {
+        await db.insert(progressTracking).values({
+            user_id: session.userId,
+            lesson_id: lessonId,
+            last_position: position.toString(),
+            status: 'locked'
+        });
+    }
+}
+
+export async function markLessonComplete(lessonId: string) {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+
+    const existing = await db.query.progressTracking.findFirst({
+        where: and(
+            eq(progressTracking.user_id, session.userId),
+            eq(progressTracking.lesson_id, lessonId)
+        )
+    });
+
+    if (existing) {
+        await db.update(progressTracking)
+            .set({ status: 'completed', completed_at: new Date(), updated_at: new Date() })
+            .where(and(eq(progressTracking.user_id, session.userId), eq(progressTracking.lesson_id, lessonId)));
+    } else {
+        await db.insert(progressTracking).values({
+            user_id: session.userId,
+            lesson_id: lessonId,
+            status: 'completed',
+            completed_at: new Date()
+        });
+    }
 }

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
 import { useAuth } from '@/components/providers/auth-provider';
-import { getStudentDashboardData } from '@/app/student-actions';
+import { getStudentDashboardData } from '@/modules/student/actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,50 +15,11 @@ import {
   ChevronRight, Sparkles, Award,
   Play, GraduationCap, Medal, Crown, Calendar, Bell, LogOut
 } from 'lucide-react';
-
-type Course = {
-  id: string;
-  title: string;
-  description: string;
-  thumbnail: string;
-  totalLessons: number;
-  completedLessons: number;
-  grade?: number | null;
-  all_grades?: boolean;
-};
-
-type UserProfile = {
-  id: string;
-  full_name: string;
-  grade: number | null;
-  total_xp: number;
-  level: number;
-  current_streak: number;
-  total_lessons_completed: number;
-  total_learning_time_minutes: number;
-  longest_streak: number;
-};
-
-type DailyChallenge = {
-  id: string;
-  title: string;
-  challenge_type: string;
-  target_value: number;
-  xp_reward: number;
-  icon: string;
-  current_progress: number;
-  is_completed: boolean;
-};
-
-type Achievement = {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  category: string;
-  unlocked: boolean;
-  unlocked_at?: string;
-};
+import { StatPill, QuickStatCard } from '@/modules/student/components/stat-pill';
+import { ChallengeCard } from '@/modules/student/components/challenge-card';
+import { CourseCard } from '@/modules/student/components/course-card';
+import { AchievementBadge } from '@/modules/student/components/achievement-badge';
+import { Course, UserProfile, DailyChallenge, Achievement } from '@/modules/student/types';
 
 export default function StudentDashboard() {
   const { signOut } = useAuth();
@@ -518,149 +479,4 @@ export default function StudentDashboard() {
   );
 }
 
-function StatPill({ icon: Icon, value, label, color, pulse }: any) {
-  const colors: any = {
-    orange: 'bg-orange-100 text-orange-600 border-orange-200',
-    amber: 'bg-amber-100 text-amber-600 border-amber-200',
-    sky: 'bg-sky-100 text-sky-600 border-sky-200',
-  };
 
-  return (
-    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${colors[color]} shadow-sm`}>
-      <motion.div animate={pulse ? { scale: [1, 1.2, 1] } : {}} transition={{ duration: 1.5, repeat: Infinity }}>
-        <Icon size={16} fill="currentColor" />
-      </motion.div>
-      <span className="font-bold text-sm">{value}</span>
-      <span className="text-xs opacity-70 hidden sm:inline">{label}</span>
-    </div>
-  );
-}
-
-function QuickStatCard({ icon: Icon, value, label, gradient, bgColor }: any) {
-  return (
-    <Card className={`${bgColor} border-0 shadow-lg hover:shadow-xl transition-all group`}>
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center group-hover:scale-110 transition-transform shadow-md`}>
-          <Icon size={20} className="text-white" />
-        </div>
-        <div>
-          <p className="text-2xl font-black text-slate-800">{value}</p>
-          <p className="text-xs text-slate-500 font-medium">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ChallengeCard({ title, progress, total, reward, icon: Icon, unit = '', color }: any) {
-  const percentage = (progress / total) * 100;
-  const isComplete = progress >= total;
-
-  const colors: any = {
-    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', progress: 'from-emerald-400 to-teal-500', icon: 'from-emerald-400 to-teal-500', text: 'text-emerald-600' },
-    amber: { bg: 'bg-amber-50', border: 'border-amber-200', progress: 'from-amber-400 to-orange-500', icon: 'from-amber-400 to-orange-500', text: 'text-amber-600' },
-    sky: { bg: 'bg-sky-50', border: 'border-sky-200', progress: 'from-sky-400 to-blue-500', icon: 'from-sky-400 to-blue-500', text: 'text-sky-600' },
-  };
-
-  const c = colors[color] || colors.emerald;
-
-  return (
-    <Card className={`${isComplete ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200'} shadow-lg hover:shadow-xl transition-all`}>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between mb-4">
-          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${c.icon} flex items-center justify-center shadow-md`}>
-            <Icon size={20} className="text-white" />
-          </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-600">
-            <Star size={12} fill="currentColor" />
-            <span className="text-xs font-bold">+{reward}</span>
-          </div>
-        </div>
-        <h4 className="font-bold text-slate-800 mb-3">{title}</h4>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500">{progress}{unit} / {total}{unit}</span>
-            <span className={`font-semibold ${isComplete ? 'text-emerald-600' : c.text}`}>
-              {isComplete ? 'Complete!' : `${Math.round(percentage)}%`}
-            </span>
-          </div>
-          <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${percentage}%` }}
-              transition={{ duration: 0.5 }}
-              className={`h-full rounded-full bg-gradient-to-r ${isComplete ? 'from-emerald-400 to-teal-500' : c.progress}`}
-            />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function CourseCard({ course }: { course: Course }) {
-  const progress = course.totalLessons > 0
-    ? (course.completedLessons / course.totalLessons) * 100
-    : 0;
-
-  return (
-    <Link href={`/student/course/${course.id}`}>
-      <Card className="bg-white border-stone-200 hover:border-sky-300 shadow-sm hover:shadow-md transition-all group overflow-hidden cursor-pointer">
-        <div className="relative h-44 overflow-hidden">
-          <img
-            src={course.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400'}
-            alt={course.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
-          <div className="absolute bottom-3 left-3 right-3">
-            <span className="px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[11px] font-bold text-slate-700 shadow-sm">
-              {course.totalLessons} Lessons
-            </span>
-          </div>
-        </div>
-        <CardContent className="p-5">
-          <h4 className="font-bold text-lg mb-2 text-slate-800 group-hover:text-sky-600 transition-colors">
-            {course.title}
-          </h4>
-          <p className="text-sm text-slate-500 mb-4 line-clamp-2">
-            {course.description || 'Master the fundamentals with interactive lessons and quizzes.'}
-          </p>
-
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">{course.completedLessons} of {course.totalLessons} complete</span>
-              <span className="font-semibold text-sky-600">{Math.round(progress)}%</span>
-            </div>
-            <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-sky-500 rounded-full transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-
-          <Button
-            className="w-full mt-5 bg-sky-500 hover:bg-sky-600 border-0 shadow-lg shadow-sky-200 text-white font-semibold"
-          >
-            <Play size={16} className="mr-2" />
-            {progress > 0 ? 'Continue' : 'Start'} Learning
-          </Button>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
-function AchievementBadge({ title, description, unlocked, locked }: any) {
-  return (
-    <div className={`flex-shrink-0 w-36 text-center p-4 rounded-2xl ${locked ? 'opacity-50' : 'bg-white border border-stone-200 shadow-sm'}`}>
-      <div className={`w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center shadow-md ${unlocked ? 'bg-amber-500' : 'bg-stone-200'
-        }`}>
-        <Trophy size={28} className={unlocked ? 'text-white' : 'text-slate-400'} />
-      </div>
-      <p className="text-sm font-bold text-slate-800 truncate">{title}</p>
-      <p className="text-xs text-slate-500 truncate mt-0.5">{description}</p>
-    </div>
-  );
-}

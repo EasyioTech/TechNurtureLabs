@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { fetchSchoolAdminCourseData } from '@/app/school-admin-actions';
+import { fetchSchoolAdminCourseData } from '@/modules/school-admin/actions';
 import { useAuth } from '@/components/providers/auth-provider';
 import {
   ArrowLeft, BookOpen, Users, Clock, Star, Trophy, Flame,
@@ -117,9 +117,9 @@ export default function SchoolAdminCourseView() {
         setStudentProgress(studentProgressList);
 
         const totalEnrolled = studentProgressList.length;
-        const totalLessons = lessonsData.length;
-        const avgCompletion = totalEnrolled > 0 && totalLessons > 0
-          ? Math.round((studentProgressList.reduce((a, s) => a + s.lessons_completed, 0) / (totalEnrolled * totalLessons)) * 100)
+        const totalLessonsCount = (data.lessonsData as any[]).length;
+        const avgCompletion = totalEnrolled > 0 && totalLessonsCount > 0
+          ? Math.round((studentProgressList.reduce((a, s) => a + s.lessons_completed, 0) / (totalEnrolled * totalLessonsCount)) * 100)
           : 0;
         const allScores = studentProgressList.flatMap(s => s.avg_score > 0 ? [s.avg_score] : []);
         const avgScore = allScores.length > 0
@@ -128,6 +128,7 @@ export default function SchoolAdminCourseView() {
         const totalXpEarned = studentProgressList.reduce((a, s) => a + s.total_xp, 0);
 
         setStats({ totalEnrolled, avgCompletion, avgScore, totalXpEarned });
+
       }
     } catch (e) {
       console.error(e);

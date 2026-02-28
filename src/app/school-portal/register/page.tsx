@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { registerSchool } from '@/app/register-actions';
+import { registerSchool } from '@/modules/auth/register-actions';
 import { toast } from 'sonner';
 import { School, ArrowLeft, Building, MapPin, Users, CheckCircle2, Loader2, Sparkles, Globe, Shield, BarChart3 } from 'lucide-react';
 
@@ -300,8 +300,8 @@ export default function SchoolRegistrationPage() {
                           type="button"
                           onClick={() => handleGradeToggle(grade)}
                           className={`p-3 rounded-lg border text-sm font-bold transition-all ${formData.grades_available.includes(grade)
-                              ? 'bg-blue-500 border-blue-400 text-white'
-                              : 'bg-white/5 border-white/10 text-white/50 hover:border-white/30'
+                            ? 'bg-blue-500 border-blue-400 text-white'
+                            : 'bg-white/5 border-white/10 text-white/50 hover:border-white/30'
                             }`}
                         >
                           {grade}

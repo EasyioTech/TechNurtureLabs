@@ -29,12 +29,11 @@ export async function registerStudent(formData: any) {
         full_name: formData.full_name,
         school_id: formData.school_id,
         grade: parseInt(formData.grade),
-        gender: formData.gender,
         role: 'student',
         total_xp: 0,
         level: 1,
         current_streak: 0,
-    }).returning();
+    } as any).returning();
 
     return newUser;
 }
@@ -54,7 +53,7 @@ export async function registerSchool(formData: any) {
         contact_phone: formData.contact_phone,
         principal_name: formData.principal_name,
         is_approved: false
-    }).returning();
+    } as any).returning();
 
     return newSchool;
 }

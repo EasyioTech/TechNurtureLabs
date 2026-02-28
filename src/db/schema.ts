@@ -71,6 +71,7 @@ export const paymentPlans = pgTable('payment_plans', {
 
 export const courses = pgTable('courses', {
     id: uuid('id').defaultRandom().primaryKey(),
+    school_id: uuid('school_id').references(() => schools.id), // Added for multi-tenancy
     title: text('title').notNull(),
     description: text('description'),
     thumbnail: text('thumbnail'),
@@ -83,6 +84,7 @@ export const courses = pgTable('courses', {
 export const lessons = pgTable('lessons', {
     id: uuid('id').defaultRandom().primaryKey(),
     course_id: uuid('course_id').references(() => courses.id).notNull(),
+    school_id: uuid('school_id').references(() => schools.id), // Added for multi-tenancy
     title: text('title').notNull(),
     sequence_index: integer('sequence_index').notNull(),
     content_type: text('content_type').notNull(), // 'video', 'mcq', 'ppt'

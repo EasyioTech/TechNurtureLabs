@@ -2,21 +2,26 @@
 
 import { db } from '@/lib/db';
 import { profiles, courses, classes, lessons, progressTracking, schools } from '@/db/schema';
-import { eq, asc, desc, inArray } from 'drizzle-orm';
+import { eq, asc, desc, inArray, and } from 'drizzle-orm';
 
 export async function getSchoolAdminDashboardData(schoolId: string) {
     const students = await db.query.profiles.findMany({
         where: (p, { and, eq }) => and(eq(p.school_id, schoolId), eq(p.role, 'student'))
     });
+
+    // Courses Data - now filtered by school_id
     const coursesData = await db.query.courses.findMany({
-        // @ts-ignore Since courses don't have school_id in schema, I am fetching all published. Wait, admin page had eq('school_id', schoolId).
-        // Let's assume courses has a school_id or we just return all published for now if school_id isn't in course schema.
+        where: eq(courses.school_id, schoolId)
     });
+
     const classesData = await db.query.classes.findMany({
         where: eq(classes.school_id, schoolId),
         orderBy: [asc(classes.level_index)]
     });
-    const lessonsData = await db.query.lessons.findMany();
+
+    const lessonsData = await db.query.lessons.findMany({
+        where: eq(lessons.school_id, schoolId)
+    });
 
     const studentIds = students.map(s => s.id);
     const progressData = studentIds.length > 0 ? await db.query.progressTracking.findMany({
@@ -50,11 +55,11 @@ export async function promoteStudentsAction(schoolId: string) {
 
 export async function fetchSchoolAdminCourseData(schoolId: string, courseId: string) {
     const course = await db.query.courses.findFirst({
-        where: eq(courses.id, courseId)
+        where: and(eq(courses.id, courseId), eq(courses.school_id, schoolId))
     });
 
     const lessonsData = await db.query.lessons.findMany({
-        where: eq(lessons.course_id, courseId),
+        where: and(eq(lessons.course_id, courseId), eq(lessons.school_id, schoolId)),
         orderBy: [asc(lessons.sequence_index)]
     });
 

@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { courses, lessons, paymentPlans } from '@/db/schema';
+import { courses, lessons, paymentPlans, profiles, schools, progressTracking } from '@/db/schema';
 import { eq, asc, desc } from 'drizzle-orm';
 
 export async function fetchAllAdminData() {
@@ -38,6 +38,7 @@ export async function saveCourseAdmin(courseData: any) {
             published: courseData.published,
             grade: courseData.all_grades ? null : courseData.grade,
             all_grades: courseData.all_grades,
+            school_id: courseData.school_id || null,
         }).where(eq(courses.id, courseData.id)).returning();
         return updated;
     } else {
@@ -48,6 +49,7 @@ export async function saveCourseAdmin(courseData: any) {
             published: courseData.published ?? false,
             grade: courseData.all_grades ? null : courseData.grade,
             all_grades: courseData.all_grades ?? true,
+            school_id: courseData.school_id || null,
         }).returning();
         return created;
     }
@@ -65,6 +67,7 @@ export async function saveLessonAdmin(lessonData: any) {
             content_url: lessonData.content_url,
             xp_reward: lessonData.xp_reward,
             duration: lessonData.duration,
+            school_id: lessonData.school_id || null,
         }).where(eq(lessons.id, lessonData.id)).returning();
         return updated;
     } else {
@@ -76,6 +79,7 @@ export async function saveLessonAdmin(lessonData: any) {
             xp_reward: lessonData.xp_reward || 100,
             duration: lessonData.duration || 10,
             sequence_index: lessonData.sequence_index || 0,
+            school_id: lessonData.school_id || null,
         }).returning();
         return created;
     }

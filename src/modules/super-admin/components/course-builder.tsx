@@ -16,7 +16,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { fetchCourseLessons, saveLessonOrderAdmin } from '@/app/admin-actions';
+import { fetchCourseLessons, saveLessonOrderAdmin } from '@/modules/super-admin/actions';
 import { LessonItem } from './lesson-item';
 import { Button } from '@/components/ui/button';
 import { Plus, Save } from 'lucide-react';

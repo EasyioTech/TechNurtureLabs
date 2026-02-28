@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getStudentProfileData, updateStudentBio, updateStudentAvatar } from '@/app/profile-actions';
+import { getStudentProfileData, updateStudentBio, updateStudentAvatar } from '@/modules/student/profile-actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -383,8 +383,8 @@ export default function StudentProfile() {
                     <CardContent className="p-5">
                       <div className="flex items-start gap-4">
                         <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-md ${achievement.unlocked
-                            ? 'bg-gradient-to-br from-amber-400 to-orange-500'
-                            : 'bg-slate-200'
+                          ? 'bg-gradient-to-br from-amber-400 to-orange-500'
+                          : 'bg-slate-200'
                           }`}>
                           <IconComponent size={24} className={achievement.unlocked ? 'text-white' : 'text-slate-400'} />
                         </div>
@@ -455,8 +455,8 @@ export default function StudentProfile() {
                       key={gradient.id}
                       onClick={() => setSelectedGradient(gradient.id)}
                       className={`w-full aspect-square rounded-xl bg-gradient-to-br ${gradient.from} ${gradient.to} transition-all ${selectedGradient === gradient.id
-                          ? 'ring-4 ring-violet-400 ring-offset-2 scale-110'
-                          : 'hover:scale-105'
+                        ? 'ring-4 ring-violet-400 ring-offset-2 scale-110'
+                        : 'hover:scale-105'
                         }`}
                     />
                   ))}
@@ -471,8 +471,8 @@ export default function StudentProfile() {
                       key={item.id}
                       onClick={() => setSelectedIcon(item.id)}
                       className={`w-full aspect-square rounded-xl bg-slate-100 flex items-center justify-center transition-all ${selectedIcon === item.id
-                          ? 'ring-4 ring-violet-400 ring-offset-2 bg-violet-100 scale-110'
-                          : 'hover:bg-slate-200 hover:scale-105'
+                        ? 'ring-4 ring-violet-400 ring-offset-2 bg-violet-100 scale-110'
+                        : 'hover:bg-slate-200 hover:scale-105'
                         }`}
                     >
                       <item.icon size={24} className={selectedIcon === item.id ? 'text-violet-600' : 'text-slate-600'} />

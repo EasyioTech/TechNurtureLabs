@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, use } from 'react';
 import { motion } from 'framer-motion';
-import { getCourseDetailsData } from '@/app/course-actions';
+import { getCourseDetailsData } from '@/modules/learning/actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

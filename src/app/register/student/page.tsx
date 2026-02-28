@@ -27,7 +27,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { fetchApprovedSchools, registerStudent } from '@/app/register-actions';
+import { fetchApprovedSchools, registerStudent } from '@/modules/auth/register-actions';
 import { toast } from 'sonner';
 import { GraduationCap, ArrowLeft, User, School, Loader2, Sparkles, Eye, EyeOff, Check, Zap, Trophy, ChevronsUpDown, Search } from 'lucide-react';
 

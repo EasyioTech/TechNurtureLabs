@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { profiles, courses, lessons, progressTracking, dailyChallenges, userDailyChallenges, achievements, userAchievements } from '@/db/schema';
-import { eq, and, gt, inArray } from 'drizzle-orm';
+import { eq, and, gt, inArray, asc, desc } from 'drizzle-orm';
 
 export type DashboardData = {
     profile: any;
