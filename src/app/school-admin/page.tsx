@@ -92,7 +92,7 @@ export default function SchoolAdminDashboard() {
     const formattedStudents: Student[] = studentsData.map(s => {
       // Calculate real progress for this student
       const studentCompletedLessons = progressData.filter(p =>
-        p.user_id === s.id && p.status === 'completed'
+        p.user_id === s.id && p.completed_at !== null
       ).length;
       const totalSchoolLessons = lessonsData.filter(l =>
         coursesData.some(c => c.id === l.course_id)
@@ -139,7 +139,7 @@ export default function SchoolAdminDashboard() {
     }));
 
     // Format recent activities from real progress data
-    const relevantProgress = progressData.filter(p => schoolStudentIds.has(p.user_id) && p.status === 'completed');
+    const relevantProgress = progressData.filter(p => schoolStudentIds.has(p.user_id) && p.completed_at !== null);
 
     const activities: RecentActivity[] = relevantProgress.slice(0, 6).map((p, i) => {
       const studentName = studentMap.get(p.user_id) || 'Unknown Student';
@@ -201,7 +201,7 @@ export default function SchoolAdminDashboard() {
       const completedLessonsForClass = progressData.filter(p =>
         classStudentIds.has(p.user_id) &&
         schoolLessonIds.has(p.lesson_id) &&
-        p.status === 'completed'
+        p.completed_at !== null
       );
 
       // Calculate progress: (completed lessons) / (total lessons * student count)
@@ -286,7 +286,7 @@ export default function SchoolAdminDashboard() {
                 <School className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-xl font-black text-slate-800">EduQuest Admin</h1>
+                <h1 className="text-xl font-black text-slate-800">TechNurture Labs Admin</h1>
                 <p className="text-sm text-slate-500">Manage students, courses & settings</p>
               </div>
             </div>
@@ -593,7 +593,7 @@ export default function SchoolAdminDashboard() {
                         <School size={20} />
                       </div>
                       <div>
-                        <p className="font-bold" style={{ color: primaryColor }}>EduQuest</p>
+                        <p className="font-bold" style={{ color: primaryColor }}>TechNurture Labs</p>
                         <p className="text-xs text-slate-500">Learning Platform</p>
                       </div>
                     </div>

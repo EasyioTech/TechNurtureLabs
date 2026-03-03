@@ -1,133 +1,169 @@
 'use client';
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Building, CheckCircle2, CreditCard, IndianRupee } from 'lucide-react';
-import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Building2, CheckCircle2, CreditCard, IndianRupee, Edit, Mail, MapPin, ArrowUpRight } from 'lucide-react';
 import { Stats, SchoolInfo } from '../../types';
+import { useAdminTheme, t } from '../../theme-context';
 
 interface SchoolsTabProps {
     stats: Stats;
     schoolsList: SchoolInfo[];
     onToggleStatus: (schoolId: string, isActive: boolean) => void;
+    onSaveSchool: (data: Partial<SchoolInfo>) => void;
+    showEditDialog: boolean;
+    setShowEditDialog: (v: boolean) => void;
+    editingSchool: Partial<SchoolInfo> | null;
+    setEditingSchool: (s: Partial<SchoolInfo> | null) => void;
 }
 
-export function SchoolsTab({ stats, schoolsList, onToggleStatus }: SchoolsTabProps) {
+export function SchoolsTab({
+    stats, schoolsList, onToggleStatus, onSaveSchool,
+    showEditDialog, setShowEditDialog, editingSchool, setEditingSchool
+}: SchoolsTabProps) {
+    const { isDark } = useAdminTheme();
+
+    function openEdit(school: SchoolInfo) { setEditingSchool({ ...school }); setShowEditDialog(true); }
+    function handleSave() { if (editingSchool) { onSaveSchool(editingSchool); } }
+
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-800">Schools Management</h2>
-                    <p className="text-slate-500">Monitor and manage registered schools</p>
-                </div>
-                <Badge className="bg-sky-100 text-sky-600 border-0 text-sm px-3 py-1">
-                    {schoolsList.length} registered
-                </Badge>
+        <div className="space-y-4">
+            {/* Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {[
+                    { value: stats.activeSchools.toString(), label: 'Active Schools', icon: Building2, badge: `of ${stats.totalSchools}`, theme: 'sky' },
+                    { value: stats.activeSubscriptions.toString(), label: 'Active Subs', icon: CheckCircle2, badge: 'subscribed', theme: 'emerald' },
+                    { value: `₹${stats.totalRevenue.toLocaleString('en-IN')}`, label: 'Total Revenue', icon: IndianRupee, badge: 'all-time', theme: 'amber' },
+                ].map((item, i) => {
+                    const themes = {
+                        sky: isDark ? 'bg-sky-400/10 text-sky-400 border-sky-400/20' : 'bg-sky-50 text-sky-600 border-sky-100',
+                        emerald: isDark ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100',
+                        amber: isDark ? 'bg-amber-400/10 text-amber-400 border-amber-400/20' : 'bg-amber-50 text-amber-600 border-amber-100',
+                    };
+                    const activeTheme = themes[item.theme as keyof typeof themes];
+
+                    return (
+                        <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                            className={`rounded-[24px] border p-6 transition-all duration-300 shadow-lg shadow-black/5 flex flex-col justify-between group ${t.card(isDark)} ${t.cardHover(isDark)} border-transparent hover:border-lime-400/20`}>
+                            <div className="flex justify-between items-start mb-4">
+                                <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>{item.label}</p>
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${activeTheme}`}>
+                                    <item.icon size={14} />
+                                </div>
+                            </div>
+                            <div>
+                                <p className={`text-3xl font-[900] tracking-tighter ${t.textPrimary(isDark)}`}>{item.value}</p>
+                                <span className={`inline-flex items-center gap-1 text-[10px] font-black mt-3 px-2.5 py-1 rounded-full ${t.accentBadge(isDark)}`}>
+                                    <ArrowUpRight size={10} />{item.badge}
+                                </span>
+                            </div>
+                        </motion.div>
+                    );
+                })}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card className="bg-white border-stone-200 shadow-sm p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                            <CheckCircle2 className="text-emerald-600" size={20} />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold text-slate-800">{stats.activeSchools}</p>
-                            <p className="text-xs text-slate-500">Active Schools</p>
-                        </div>
+            {/* School List */}
+            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+                className={`rounded-[24px] border overflow-hidden transition-all duration-300 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
+                <div className={`px-6 py-5 border-b ${t.border(isDark)} flex items-center justify-between`}>
+                    <div>
+                        <h3 className={`text-lg font-black tracking-tight ${t.textPrimary(isDark)}`}>Institution Registry</h3>
+                        <p className={`text-[12px] font-medium ${t.textMuted(isDark)}`}>Management of registered academic organizations.</p>
                     </div>
-                </Card>
-                <Card className="bg-white border-stone-200 shadow-sm p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center">
-                            <CreditCard className="text-sky-600" size={20} />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold text-slate-800">{stats.activeSubscriptions}</p>
-                            <p className="text-xs text-slate-500">Active Subscriptions</p>
-                        </div>
-                    </div>
-                </Card>
-                <Card className="bg-white border-stone-200 shadow-sm p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                            <IndianRupee className="text-amber-600" size={20} />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold text-slate-800">₹{stats.totalRevenue.toLocaleString()}</p>
-                            <p className="text-xs text-slate-500">Total Revenue</p>
-                        </div>
-                    </div>
-                </Card>
-            </div>
-
-            <Card className="bg-white border-stone-200 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead className="bg-stone-50 text-slate-500 font-medium">
-                            <tr>
-                                <th className="px-4 py-3 text-left">School</th>
-                                <th className="px-4 py-3 text-left">Location</th>
-                                <th className="px-4 py-3 text-center">Students</th>
-                                <th className="px-4 py-3 text-center">Plan</th>
-                                <th className="px-4 py-3 text-center">Subscription</th>
-                                <th className="px-4 py-3 text-center">Status</th>
-                                <th className="px-4 py-3 text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-stone-100">
-                            {schoolsList.map(school => (
-                                <tr key={school.id} className="hover:bg-sky-50/30 transition-colors">
-                                    <td className="px-4 py-3">
-                                        <div>
-                                            <p className="font-semibold text-slate-700">{school.name}</p>
-                                            <p className="text-xs text-slate-400">{school.email}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-500">
-                                        {[school.city, school.state].filter(Boolean).join(', ') || '—'}
-                                    </td>
-                                    <td className="px-4 py-3 text-center font-bold text-slate-700">{school.student_count}</td>
-                                    <td className="px-4 py-3 text-center">
-                                        <Badge className="bg-sky-50 text-sky-600 border-0">{school.plan_name || 'No Plan'}</Badge>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <Badge className={
-                                            school.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-600 border-0' :
-                                                school.subscription_status === 'trialing' ? 'bg-amber-100 text-amber-600 border-0' :
-                                                    'bg-stone-100 text-stone-500 border-0'
-                                        }>
-                                            {school.subscription_status || 'None'}
-                                        </Badge>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <Badge className={school.is_active ? 'bg-emerald-100 text-emerald-600 border-0' : 'bg-red-100 text-red-600 border-0'}>
-                                            {school.is_active ? 'Active' : 'Inactive'}
-                                        </Badge>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <Switch
-                                            checked={school.is_active}
-                                            onCheckedChange={(val) => onToggleStatus(school.id, val)}
-                                        />
-                                    </td>
-                                </tr>
-                            ))}
-                            {schoolsList.length === 0 && (
-                                <tr>
-                                    <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
-                                        <Building size={48} className="mx-auto mb-4 opacity-50" />
-                                        <p>No schools registered yet</p>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                    <Badge className={`text-[10px] font-black px-3 py-1 rounded-full ${isDark ? 'bg-white/[0.08] text-white' : 'bg-slate-900 text-white'}`}>{schoolsList.length} TOTAL</Badge>
                 </div>
-            </Card>
+                <div className={t.divider(isDark)}>
+                    {schoolsList.map((school, i) => (
+                        <motion.div key={school.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.22 + i * 0.04 }}
+                            className={`px-6 py-4 flex items-center gap-4 transition-all group ${t.cardHover(isDark)}`}>
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[14px] font-black flex-shrink-0 transition-transform
+                                ${isDark ? 'bg-lime-400/10 text-lime-400 border border-lime-400/20' : 'bg-slate-100 text-slate-900 border border-slate-200'}`}>
+                                {school.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>{school.name}</p>
+                                <div className="flex items-center gap-3 mt-1">
+                                    <span className={`text-[10px] font-bold flex items-center gap-1 ${t.textMuted(isDark)}`}><Mail size={10} />{school.email}</span>
+                                    {school.city && <span className={`text-[10px] font-bold flex items-center gap-1 ${t.textMuted(isDark)}`}><MapPin size={10} />{school.city}</span>}
+                                </div>
+                            </div>
+                            <div className="hidden lg:flex flex-col items-end mr-6">
+                                <p className={`text-[10px] font-black tracking-widest uppercase mb-1 ${t.textMuted(isDark)}`}>Students</p>
+                                <p className={`text-[12px] font-black ${t.textSecondary(isDark)}`}>{(school.student_count || 0).toLocaleString()}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Badge className={`text-[9px] font-black px-2 py-0.5 rounded-md ${school.plan_name ? t.accentSoft(isDark) : (isDark ? 'bg-white/[0.04] text-slate-500' : 'bg-slate-100 text-slate-400')}`}>
+                                    {school.plan_name ? school.plan_name.toUpperCase() : 'NO PLAN'}
+                                </Badge>
+                                <Badge className={`text-[9px] font-black px-2 py-0.5 rounded-md ${school.is_active ? t.live(isDark) : t.danger(isDark)}`}>
+                                    {school.is_active ? 'ACTIVE' : 'INACTIVE'}
+                                </Badge>
+                            </div>
+                            <Button variant="ghost" size="icon" className={`w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-slate-500 hover:text-lime-400 hover:bg-white/[0.06]' : 'text-slate-300 hover:text-slate-800 hover:bg-slate-100'}`}
+                                onClick={() => openEdit(school)}>
+                                <Edit size={14} />
+                            </Button>
+                            <Switch checked={school.is_active} onCheckedChange={(val) => onToggleStatus(school.id, val)} className="data-[state=checked]:bg-lime-400" />
+                        </motion.div>
+                    ))}
+                    {schoolsList.length === 0 && (
+                        <div className="py-14 text-center">
+                            <Building2 size={28} className={`mx-auto mb-2 ${t.textMuted(isDark)}`} />
+                            <p className={`text-[11px] ${t.textMuted(isDark)}`}>No schools registered</p>
+                        </div>
+                    )}
+                </div>
+            </motion.div>
+
+            {/* Edit Dialog */}
+            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+                <DialogContent className={`sm:max-w-[540px] rounded-[24px] border overflow-y-auto max-h-[90vh] shadow-2xl p-6 ${t.card(isDark)}`}>
+                    <DialogHeader className="mb-4">
+                        <DialogTitle className={`text-xl font-[1000] tracking-tight ${t.textPrimary(isDark)}`}>
+                            {editingSchool?.id ? 'EDIT INSTITUTION DETAILS' : 'ESTABLISH NEW INSTITUTION'}
+                        </DialogTitle>
+                    </DialogHeader>
+                    {editingSchool && (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Name</Label><Input value={editingSchool.name} onChange={e => setEditingSchool({ ...editingSchool, name: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Email</Label><Input value={editingSchool.email} onChange={e => setEditingSchool({ ...editingSchool, email: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Phone</Label><Input value={editingSchool.phone || ''} onChange={e => setEditingSchool({ ...editingSchool, phone: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Website</Label><Input value={editingSchool.website || ''} onChange={e => setEditingSchool({ ...editingSchool, website: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                            </div>
+                            <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Address</Label><Input value={editingSchool.address || ''} onChange={e => setEditingSchool({ ...editingSchool, address: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>City</Label><Input value={editingSchool.city || ''} onChange={e => setEditingSchool({ ...editingSchool, city: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>State</Label><Input value={editingSchool.state || ''} onChange={e => setEditingSchool({ ...editingSchool, state: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Pincode</Label><Input value={editingSchool.pincode || ''} onChange={e => setEditingSchool({ ...editingSchool, pincode: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Country</Label><Input value={editingSchool.country || 'IN'} onChange={e => setEditingSchool({ ...editingSchool, country: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Logo URL</Label><Input value={editingSchool.logo_url || ''} onChange={e => setEditingSchool({ ...editingSchool, logo_url: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                            </div>
+                            <div className="space-y-3 pt-2">
+                                <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${isDark ? 'bg-white/[0.02] border-white/10' : 'bg-slate-50 border-slate-200'}`}><Label className={`text-xs font-bold leading-normal ${t.textSecondary(isDark)}`}>Data Processing Consent</Label><Switch checked={editingSchool.data_processing_consent} onCheckedChange={v => setEditingSchool({ ...editingSchool, data_processing_consent: v })} className="data-[state=checked]:bg-lime-400" /></div>
+                                <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${isDark ? 'bg-white/[0.02] border-white/10' : 'bg-slate-50 border-slate-200'}`}><Label className={`text-xs font-bold leading-normal ${t.textSecondary(isDark)}`}>Guardian Consent</Label><Switch checked={editingSchool.minor_data_guardian_consent} onCheckedChange={v => setEditingSchool({ ...editingSchool, minor_data_guardian_consent: v })} className="data-[state=checked]:bg-lime-400" /></div>
+                                <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${(editingSchool.is_active ?? true) ? (isDark ? 'border-lime-400/30 bg-lime-400/5' : 'border-emerald-200 bg-emerald-50') : (isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50')}`}><Label className={`text-xs font-bold leading-normal ${((editingSchool.is_active ?? true) && isDark) ? 'text-lime-400' : t.textPrimary(isDark)}`}>Active Institution</Label><Switch checked={editingSchool.is_active} onCheckedChange={v => setEditingSchool({ ...editingSchool, is_active: v })} className="data-[state=checked]:bg-lime-400" /></div>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter className={`pt-6 border-t mt-6 ${t.border(isDark)}`}>
+                        <Button variant="ghost" onClick={() => setShowEditDialog(false)} className={`rounded-full h-11 px-7 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white hover:text-white' : 'hover:bg-slate-200 text-slate-700'}`}>ABORT</Button>
+                        <Button className={`rounded-full h-11 px-9 font-black text-sm shadow-xl transition-all border-0 ${t.btnPrimary(isDark)} ${isDark ? 'shadow-lime-400/20' : 'shadow-slate-900/20'}`} onClick={handleSave}>
+                            {editingSchool?.id ? 'COMMIT UPDATE' : 'ESTABLISH INSTITUTION'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

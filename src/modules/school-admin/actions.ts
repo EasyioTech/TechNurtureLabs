@@ -9,6 +9,18 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
         where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student'))
     });
 
+    const studentIds = students.map(s => s.id);
+
+    // Fetch academic records to get grade/class info
+    const academicRecords = studentIds.length > 0 ? await db.query.studentAcademicRecords.findMany({
+        where: and(inArray(studentAcademicRecords.user_id, studentIds), eq(studentAcademicRecords.school_id, schoolId)),
+    }) : [];
+
+    const studentGradeMap = new Map<string, string>();
+    academicRecords.forEach(r => {
+        studentGradeMap.set(r.user_id, r.grade_id);
+    });
+
     // Courses: find via enrollments for this school
     const schoolEnrollments = await db.query.enrollments.findMany({
         where: eq(enrollments.school_id, schoolId),
@@ -48,7 +60,6 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
     }) : [];
 
     // Progress data for students
-    const studentIds = students.map(s => s.id);
     const progressData = studentIds.length > 0 ? await db.select().from(lessonProgress).where(
         inArray(lessonProgress.user_id, studentIds)
     ) : [];
@@ -58,6 +69,9 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
             ...s,
             full_name: `${s.first_name} ${s.last_name}`,
             total_xp: Number(s.cumulative_xp),
+            current_streak: s.current_streak || 0,
+            level: Math.floor(Number(s.cumulative_xp) / 1000) + 1,
+            class_id: studentGradeMap.get(s.id) || '',
         })),
         coursesData,
         classesData: gradesData,

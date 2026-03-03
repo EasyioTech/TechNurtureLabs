@@ -20,7 +20,7 @@ export function StatCard({ icon: Icon, label, value, change, trend, gradient }: 
             <Card className="bg-white border-stone-200 shadow-sm hover:shadow-md transition-all">
                 <CardContent className="p-5">
                     <div className="flex items-start justify-between">
-                        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg`}>
+                        <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg`}>
                             <Icon className="text-white" size={20} />
                         </div>
                         <div className={`flex items-center gap-1 text-sm font-medium ${trend === 'up' ? 'text-emerald-600' : 'text-red-500'}`}>
@@ -56,7 +56,7 @@ export function MiniStatCard({ icon: Icon, label, value, color }: MiniStatCardPr
     return (
         <Card className="bg-white border-stone-200 shadow-sm">
             <CardContent className="p-4 flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${colors[color]} flex items-center justify-center`}>
+                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${colors[color]} flex items-center justify-center`}>
                     <Icon className="text-white" size={18} />
                 </div>
                 <div>

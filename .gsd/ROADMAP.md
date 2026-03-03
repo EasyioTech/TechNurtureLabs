@@ -29,4 +29,10 @@
 - [ ] Address Drizzle Schema mismatched typing.
 
 ## Phase 6: Storage Integration
-- [ ] Execute `PLAN-6.1-r2-upload.md` to setup Cloudflare R2 / Local fallback uploads.
+- [x] Execute `PLAN-6.1-r2-upload.md` to setup Cloudflare R2 / Local fallback uploads.
+
+## Phase 7: Super Admin DB Integration
+- [x] Execute `PLAN-7.0-super-admin-db.md` for end-to-end dashboard connectivity.
+- [x] Implement `createSchoolAdmin` for Add Institution action.
+- [x] Verify `Stats` logic in `useAdminData.ts` and `actions.ts`.
+- [ ] Final UI/DB verification and manual audit.

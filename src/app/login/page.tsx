@@ -75,7 +75,7 @@ export default function StudentLoginPage() {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
               <Sparkles className="text-white" size={24} />
             </div>
-            <span className="text-2xl font-black">EduQuest</span>
+            <span className="text-2xl font-black">TechNurture Labs</span>
           </div>
 
           <motion.div
@@ -131,7 +131,7 @@ export default function StudentLoginPage() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                 <GraduationCap className="text-white" size={20} />
               </div>
-              <span className="text-xl font-black">EduQuest</span>
+              <span className="text-xl font-black">TechNurture Labs</span>
             </div>
 
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-4">

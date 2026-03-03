@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments } from '@/db/schema';
+import { users, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseGradeMapping } from '@/db/schema';
 import { eq, and, gt, inArray, asc, desc, isNotNull } from 'drizzle-orm';
 
 export type DashboardData = {
@@ -115,15 +115,42 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     const usersWithMoreXp = await db.select().from(users).where(and(gt(users.cumulative_xp, Number(profile.cumulative_xp) || 0), eq(users.role, 'student')));
     stats.rank = usersWithMoreXp.length + 1;
 
-    // Courses via enrollments
+    // 1. Get student's current grade
+    const currentRecord = await db.query.studentAcademicRecords.findFirst({
+        where: eq(studentAcademicRecords.user_id, userId),
+        orderBy: [desc(studentAcademicRecords.created_at)]
+    });
+
+    const gradeId = currentRecord?.grade_id;
+
+    // 2. Fetch courses via enrollments
     const userEnrollments = await db.query.enrollments.findMany({
         where: and(eq(enrollments.user_id, userId), eq(enrollments.is_active, true)),
         with: { course: true }
     });
 
+    // 3. Fetch courses mapped to the student's grade (for auto-show)
+    let gradeMappedCourses: any[] = [];
+    if (gradeId) {
+        const mappings = await db.query.courseGradeMapping.findMany({
+            where: eq(courseGradeMapping.grade_id, gradeId),
+            with: { course: true }
+        });
+        gradeMappedCourses = mappings.map(m => m.course).filter(Boolean);
+    }
+
+    // Combine and deduplicate
+    const enrollmentCourseIds = new Set(userEnrollments.map(e => e.course_id));
+    const allRelevantCourses = [...userEnrollments.map(e => ({ ...e.course, isEnrolled: true }))];
+
+    gradeMappedCourses.forEach(c => {
+        if (!enrollmentCourseIds.has(c.id)) {
+            allRelevantCourses.push({ ...c, isEnrolled: false });
+        }
+    });
+
     const coursesWithProgress = await Promise.all(
-        userEnrollments.map(async (enrollment) => {
-            const course = enrollment.course;
+        allRelevantCourses.map(async (course) => {
             if (!course) return null;
 
             const courseLessons = await db.query.lessons.findMany({

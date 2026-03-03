@@ -139,7 +139,7 @@ export default function StudentDashboard() {
                 <GraduationCap className="text-white" size={20} />
               </div>
               <div className="hidden sm:block">
-                <h1 className="font-black text-xl text-slate-800">EduQuest</h1>
+                <h1 className="font-black text-xl text-slate-800">TechNurture Labs</h1>
                 <p className="text-sm text-slate-500">Student Portal</p>
               </div>
             </div>

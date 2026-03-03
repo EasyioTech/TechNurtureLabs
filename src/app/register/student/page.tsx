@@ -134,7 +134,7 @@ export default function StudentRegistrationPage() {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
               <Sparkles className="text-white" size={24} />
             </div>
-            <span className="text-2xl font-black">EduQuest</span>
+            <span className="text-2xl font-black">TechNurture Labs</span>
           </div>
 
           <motion.div
@@ -145,10 +145,10 @@ export default function StudentRegistrationPage() {
             <h2 className="text-4xl font-black mb-4 leading-tight">
               Start your
               <br />
-              learning journey
+              learning adventure
             </h2>
             <p className="text-white/60 text-lg max-w-md mb-8">
-              Join thousands of students earning XP, unlocking achievements, and mastering new skills every day.
+              Join thousands of students on TechNurture Labs. Earn XP, collect badges, and master new skills.
             </p>
 
             <div className="flex gap-6">
@@ -190,7 +190,7 @@ export default function StudentRegistrationPage() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                 <Sparkles className="text-white" size={20} />
               </div>
-              <span className="text-xl font-black">EduQuest</span>
+              <span className="text-xl font-black">TechNurture Labs</span>
             </div>
 
             <h1 className="text-3xl font-black mb-2">Create your account</h1>

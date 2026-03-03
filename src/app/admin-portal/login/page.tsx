@@ -18,7 +18,7 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   const fillDemoCredentials = () => {
-    setEmail('admin@eduquest.com');
+    setEmail('admin@technurture.com');
     setPassword('admin123');
     toast.success('Demo credentials filled!');
   };
@@ -84,7 +84,7 @@ export default function AdminLoginPage() {
 
           <div className="text-center mb-8">
             <h1 className="text-2xl font-black mb-2">Super Admin Login</h1>
-            <p className="text-white/50 text-sm">Access the EduQuest administration console</p>
+            <p className="text-white/50 text-sm">Access the TechNurture Labs administration console</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -95,7 +95,7 @@ export default function AdminLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-white/5 border-white/10 h-12 text-white placeholder:text-white/30 focus:border-violet-500 focus:ring-violet-500/20"
-                placeholder="admin@eduquest.com"
+                placeholder="admin@technurture.com"
                 required
               />
             </div>

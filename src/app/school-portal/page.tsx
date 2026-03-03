@@ -3,8 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
-  School, ArrowRight, BarChart3, Users, BookOpen, 
+import {
+  School, ArrowRight, BarChart3, Users, BookOpen,
   Sparkles, Globe, Shield, Check, ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ export default function SchoolPortalLanding() {
                 <School className="text-white" size={20} />
               </div>
               <div>
-                <span className="text-xl font-black tracking-tight">EduQuest</span>
+                <span className="text-xl font-black tracking-tight">TechNurture Labs</span>
                 <span className="text-xs text-cyan-400 block -mt-1">for Schools</span>
               </div>
             </div>
@@ -57,7 +57,7 @@ export default function SchoolPortalLanding() {
                 <School size={16} className="text-blue-400" />
                 <span className="text-sm text-blue-300">School Administration Portal</span>
               </div>
-              
+
               <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.9] mb-6">
                 Transform your
                 <br />
@@ -65,9 +65,9 @@ export default function SchoolPortalLanding() {
                   school&apos;s learning
                 </span>
               </h1>
-              
+
               <p className="text-lg md:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
-                Join EduQuest and bring gamified learning to your students. 
+                Join TechNurture Labs and bring gamified learning to your students.
                 Track progress, manage courses, and watch engagement soar.
               </p>
             </motion.div>
@@ -98,19 +98,19 @@ export default function SchoolPortalLanding() {
       <section className="relative z-10 py-20 bg-white/[0.02] border-y border-white/5">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <FeatureCard 
+            <FeatureCard
               icon={BarChart3}
               title="Real-time Analytics"
               description="Track student progress, engagement metrics, and learning outcomes with powerful dashboards"
               gradient="from-blue-500 to-cyan-600"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={Users}
               title="Student Management"
               description="Easily manage student enrollment, track performance, and identify students who need support"
               gradient="from-cyan-500 to-teal-600"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={BookOpen}
               title="Course Administration"
               description="Access common courses or request custom content tailored to your curriculum"
@@ -123,7 +123,7 @@ export default function SchoolPortalLanding() {
       <section className="relative z-10 py-20">
         <div className="max-w-4xl mx-auto px-6">
           <div className="text-center mb-12">
-            <span className="text-sm font-bold text-cyan-400 uppercase tracking-wider">Why EduQuest?</span>
+            <span className="text-sm font-bold text-cyan-400 uppercase tracking-wider">Why TechNurture Labs?</span>
             <h2 className="text-3xl md:text-4xl font-black mt-4">
               Built for schools, loved by students
             </h2>
@@ -189,9 +189,9 @@ export default function SchoolPortalLanding() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
                 <School className="text-white" size={16} />
               </div>
-              <span className="font-bold">EduQuest for Schools</span>
+              <span className="font-bold">TechNurture Labs for Schools</span>
             </div>
-            <p className="text-sm text-white/30">© 2025 EduQuest. All rights reserved.</p>
+            <p className="text-sm text-white/30">© 2025 TechNurture Labs. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -23,7 +23,7 @@ export default function StudentRegistrationSuccess() {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
             <Sparkles className="text-white" size={20} />
           </div>
-          <span className="text-xl font-black">EduQuest</span>
+          <span className="text-xl font-black">TechNurture Labs</span>
         </div>
 
         <motion.div

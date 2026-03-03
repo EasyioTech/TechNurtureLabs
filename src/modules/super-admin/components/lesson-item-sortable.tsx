@@ -3,16 +3,11 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Video, Youtube, Presentation, ListChecks, FileText, Edit, Trash2 } from 'lucide-react';
+import { GripVertical, Play, MonitorPlay, FileText, HelpCircle, Edit, Trash2, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-interface Lesson {
-    id: string;
-    title: string;
-    content_type: string;
-    duration: number;
-    xp_reward: number;
-}
+import { Badge } from '@/components/ui/badge';
+import { Lesson } from '../types';
+import { useAdminTheme, t } from '../theme-context';
 
 interface SortableLessonItemProps {
     lesson: Lesson;
@@ -21,63 +16,72 @@ interface SortableLessonItemProps {
     onDelete: () => void;
 }
 
+const CONTENT_TYPES = [
+    { id: 'video', label: 'Video', icon: Play },
+    { id: 'ppt', label: 'Slides', icon: MonitorPlay },
+    { id: 'pdf', label: 'Document', icon: FileText },
+    { id: 'quiz', label: 'Quiz', icon: HelpCircle },
+];
+
 export function SortableLessonItem({ lesson, index, onEdit, onDelete }: SortableLessonItemProps) {
+    const { isDark } = useAdminTheme();
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
         zIndex: isDragging ? 50 : 0,
-        opacity: isDragging ? 0.5 : 1,
     };
 
-    const Icon = lesson.content_type === 'video' ? Video :
-        lesson.content_type === 'youtube' ? Youtube :
-            lesson.content_type === 'ppt' ? Presentation :
-                lesson.content_type === 'mcq' ? ListChecks :
-                    FileText;
-
-    const iconBg = lesson.content_type === 'video' ? 'bg-blue-100 text-blue-600' :
-        lesson.content_type === 'youtube' ? 'bg-red-100 text-red-600' :
-            lesson.content_type === 'ppt' ? 'bg-amber-100 text-amber-600' :
-                lesson.content_type === 'mcq' ? 'bg-orange-100 text-orange-600' :
-                    'bg-purple-100 text-purple-600';
-
-    const typeLabel = lesson.content_type === 'youtube' ? 'YouTube' :
-        lesson.content_type === 'ppt' ? 'Slides' :
-            lesson.content_type.toUpperCase();
+    const typeConfig = CONTENT_TYPES.find(t => t.id === lesson.content_type) || CONTENT_TYPES[0];
+    const Icon = typeConfig.icon;
 
     return (
         <div ref={setNodeRef} style={style} {...attributes}>
-            <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 hover:border-stone-300 transition-colors flex items-center gap-4">
-                <div {...listeners} className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600">
+            <div className={`p-4 rounded-2xl border transition-all duration-300 flex items-center gap-4 group
+                ${isDragging ? (isDark ? 'bg-white/[0.08] border-lime-400/50' : 'bg-slate-100 border-slate-400') : (t.card(isDark) + ' ' + t.cardHover(isDark))}`}>
+
+                <div {...listeners} className={`cursor-grab active:cursor-grabbing p-1 rounded-lg transition-colors
+                    ${isDark ? 'text-slate-600 hover:text-lime-400 hover:bg-white/[0.05]' : 'text-slate-300 hover:text-slate-900 hover:bg-slate-100'}`}>
                     <GripVertical size={20} />
                 </div>
 
-                <div className="w-6 h-6 rounded-full bg-sky-500 flex items-center justify-center text-xs font-bold text-white">
-                    {index + 1}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-[1000] flex-shrink-0 shadow-inner
+                    ${isDark ? 'bg-white/[0.05] text-white/40' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>
+                    {String(index + 1).padStart(2, '0')}
                 </div>
 
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconBg}`}>
-                    <Icon size={20} />
+                <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-transform shadow-lg shadow-black/5
+                    ${isDark ? 'bg-lime-400/10 text-lime-400' : 'bg-slate-900 text-white'}`}>
+                    <Icon size={18} className={isDark ? 'drop-shadow-[0_0_8px_rgba(163,230,53,0.4)]' : ''} />
                 </div>
 
-                <div className="flex-1">
-                    <p className="font-semibold text-slate-800">{lesson.title}</p>
-                    <div className="flex items-center gap-3 text-xs text-slate-500">
-                        <span>{typeLabel}</span>
-                        <span>•</span>
-                        <span>{lesson.duration} min</span>
-                        <span>•</span>
-                        <span className="text-amber-600">{lesson.xp_reward} XP</span>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        <p className={`font-black text-sm tracking-tight truncate ${t.textPrimary(isDark)}`}>{lesson.title}</p>
+                        <Badge className={`text-[8px] font-black px-1.5 py-0 rounded-md ${lesson.is_published ?? true ? (isDark ? 'bg-emerald-400/10 text-emerald-400' : 'bg-emerald-100 text-emerald-700') : (isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-100 text-slate-500')}`}>
+                            {lesson.is_published ?? true ? 'LIVE' : 'DRAFT'}
+                        </Badge>
+                    </div>
+
+                    <div className="flex items-center gap-3 mt-1">
+                        <Badge className={`text-[9px] font-black px-1.5 h-4 tracking-tighter ${isDark ? 'bg-white/[0.04] text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
+                            {typeConfig.label.toUpperCase()}
+                        </Badge>
+                        <span className={`text-[10px] font-bold flex items-center gap-1 ${t.textMuted(isDark)}`}>
+                            <Clock size={10} />{lesson.duration || lesson.duration_minutes || 0}m
+                        </span>
+                        <span className={`text-[10px] font-black flex items-center gap-1 ${isDark ? 'text-violet-400/80' : 'text-violet-600/80'}`}>
+                            <Zap size={10} fill="currentColor" />{lesson.xp_reward} XP
+                        </span>
                     </div>
                 </div>
 
-                <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="w-8 h-8 text-slate-400 hover:text-slate-700" onClick={onEdit}>
+                <div className="flex gap-2">
+                    <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-slate-600 hover:text-lime-400 hover:bg-white/[0.06]' : 'text-slate-300 hover:text-slate-900 hover:bg-slate-100'}`} onClick={onEdit}>
                         <Edit size={14} />
                     </Button>
-                    <Button variant="ghost" size="icon" className="w-8 h-8 text-slate-400 hover:text-red-500" onClick={onDelete}>
+                    <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-slate-600 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-300 hover:text-rose-600 hover:bg-rose-100'}`} onClick={onDelete}>
                         <Trash2 size={14} />
                     </Button>
                 </div>

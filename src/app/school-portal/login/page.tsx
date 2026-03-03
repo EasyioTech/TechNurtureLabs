@@ -81,7 +81,7 @@ export default function SchoolLoginPage() {
                 <School className="text-white" size={24} />
               </div>
               <div>
-                <span className="text-2xl font-black">EduQuest</span>
+                <span className="text-2xl font-black">TechNurture Labs</span>
                 <span className="text-xs text-cyan-400 block">for Schools</span>
               </div>
             </div>
@@ -113,7 +113,7 @@ export default function SchoolLoginPage() {
                 <School className="text-white" size={20} />
               </div>
               <div>
-                <span className="text-xl font-black">EduQuest</span>
+                <span className="text-xl font-black">TechNurture Labs</span>
                 <span className="text-xs text-cyan-400 block">for Schools</span>
               </div>
             </div>

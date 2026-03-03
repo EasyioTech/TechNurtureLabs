@@ -1,24 +1,21 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, PieChart as PieChartIcon, TrendingUp } from 'lucide-react';
 import {
-    ResponsiveContainer,
-    AreaChart,
-    Area,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    PieChart,
-    Pie,
-    Cell,
-    BarChart,
-    Bar,
+    ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
+    CartesianGrid, Tooltip, PieChart, Pie, Cell, BarChart, Bar,
 } from 'recharts';
+import { useAdminTheme, t } from '../theme-context';
 
-const CHART_COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#6366f1', '#ef4444', '#8b5cf6'];
+const CHART_COLORS = [
+    '#a3e635', // Lime 400 (Primary)
+    '#38bdf8', // Sky 400
+    '#818cf8', // Indigo 400
+    '#fbbf24', // Amber 400
+    '#34d399', // Emerald 400
+    '#f87171', // Red 400
+];
 
 interface EngagementChartsProps {
     engagementData: any[];
@@ -27,110 +24,118 @@ interface EngagementChartsProps {
 }
 
 export function EngagementCharts({ engagementData, planDistribution, revenueData }: EngagementChartsProps) {
+    const { isDark } = useAdminTheme();
+    const grid = isDark ? 'rgba(255,255,255,0.03)' : '#f1f5f9';
+    const axis = isDark ? '#475569' : '#94a3b8';
+    const ttBg = isDark ? '#0f172a' : '#fff';
+    const ttBorder = isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0';
+    const ttColor = isDark ? '#fff' : '#334155';
+    const areaStroke = isDark ? '#a3e635' : '#0f172a';
+    const barFill = isDark ? '#a3e635' : '#0f172a';
+
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2 bg-white border-stone-200 shadow-sm hover:shadow-md transition-shadow">
-                    <CardHeader>
-                        <CardTitle className="text-slate-800 flex items-center gap-2">
-                            <Activity className="text-sky-500" size={20} />
-                            Platform Engagement
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={engagementData}>
-                                    <defs>
-                                        <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorLessons" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-                                    <XAxis dataKey="name" stroke="#78716c" axisLine={false} tickLine={false} />
-                                    <YAxis stroke="#78716c" axisLine={false} tickLine={false} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7e5e4', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Area type="monotone" dataKey="students" stroke="#0ea5e9" fill="url(#colorStudents)" strokeWidth={2} />
-                                    <Area type="monotone" dataKey="lessons" stroke="#10b981" fill="url(#colorLessons)" strokeWidth={2} />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                <div className={`lg:col-span-2 rounded-[24px] border p-7 transition-all duration-500 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-900 text-white'}`}>
+                                <Activity size={16} />
+                            </div>
+                            <div>
+                                <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>PLATFORM ENGAGEMENT</h3>
+                                <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Active student sessions and lesson completion rates.</p>
+                            </div>
                         </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-white border-stone-200 shadow-sm hover:shadow-md transition-shadow">
-                    <CardHeader>
-                        <CardTitle className="text-slate-800 flex items-center gap-2">
-                            <PieChartIcon className="text-emerald-500" size={20} />
-                            Plan Distribution
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[200px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={planDistribution}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={50}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {planDistribution.map((_, index) => (
-                                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7e5e4', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="flex justify-center gap-4 mt-4 text-center flex-wrap">
-                            {planDistribution.map((item, i) => (
-                                <div key={item.name} className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
-                                    <span className="text-sm text-slate-600">{item.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <Card className="bg-white border-stone-200 shadow-sm hover:shadow-md transition-shadow">
-                <CardHeader>
-                    <CardTitle className="text-slate-800 flex items-center gap-2">
-                        <TrendingUp className="text-emerald-500" size={20} />
-                        Revenue Growth
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="h-[250px]">
+                    </div>
+                    <div className="h-[280px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={revenueData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-                                <XAxis dataKey="month" stroke="#78716c" axisLine={false} tickLine={false} />
-                                <YAxis stroke="#78716c" axisLine={false} tickLine={false} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7e5e4', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    formatter={(value) => [`₹${value}`, 'Revenue']}
-                                />
-                                <Bar dataKey="revenue" fill="#10b981" radius={[8, 8, 0, 0]} />
-                            </BarChart>
+                            <AreaChart data={engagementData}>
+                                <defs>
+                                    <linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor={areaStroke} stopOpacity={0.15} />
+                                        <stop offset="95%" stopColor={areaStroke} stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="grad2" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.1} />
+                                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
+                                <XAxis dataKey="name" stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />
+                                <YAxis stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />
+                                <Tooltip contentStyle={{ backgroundColor: ttBg, border: `1px solid ${ttBorder}`, borderRadius: '12px', color: ttColor, fontSize: '11px', fontWeight: 800, filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.1))' }} />
+                                <Area type="monotone" dataKey="students" stroke={areaStroke} fill="url(#grad1)" strokeWidth={3} dot={false} />
+                                <Area type="monotone" dataKey="lessons" stroke={isDark ? '#0ea5e9' : '#475569'} fill="url(#grad2)" strokeWidth={2} dot={false} />
+                            </AreaChart>
                         </ResponsiveContainer>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+
+                <div className={`rounded-[24px] border p-7 transition-all duration-500 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-900 text-white'}`}>
+                            <PieChartIcon size={16} />
+                        </div>
+                        <div>
+                            <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>PLAN DISTRIBUTION</h3>
+                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Overview of active subscription tiers.</p>
+                        </div>
+                    </div>
+                    <div className="h-[200px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie data={planDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={2} dataKey="value" strokeWidth={0}>
+                                    {planDistribution.map((_, i) => (
+                                        <Cell key={`cell-${i}`} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip contentStyle={{ backgroundColor: ttBg, border: `1px solid ${ttBorder}`, borderRadius: '12px', fontSize: '11px', fontWeight: 800 }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="flex flex-col gap-2 mt-4">
+                        {planDistribution.map((item, i) => (
+                            <div key={item.name} className="flex items-center justify-between p-2 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-white/[0.02] hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                                    <span className={`text-[11px] font-black uppercase tracking-tighter ${t.textPrimary(isDark)}`}>{item.name}</span>
+                                </div>
+                                <span className={`text-[11px] font-black ${t.textMuted(isDark)}`}>{item.value}%</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className={`rounded-[24px] border p-7 transition-all duration-500 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-900 text-white'}`}>
+                            <TrendingUp size={16} />
+                        </div>
+                        <div>
+                            <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>REVENUE PERFORMANCE</h3>
+                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Monthly financial growth metrics (INR).</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="h-[240px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={revenueData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
+                            <XAxis dataKey="month" stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />
+                            <YAxis stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />
+                            <Tooltip
+                                cursor={{ fill: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' }}
+                                contentStyle={{ backgroundColor: ttBg, border: `1px solid ${ttBorder}`, borderRadius: '12px', color: ttColor, fontSize: '11px', fontWeight: 800 }}
+                                formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Revenue']}
+                            />
+                            <Bar dataKey="revenue" fill={barFill} radius={[8, 8, 0, 0]} barSize={24} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
         </div>
     );
 }

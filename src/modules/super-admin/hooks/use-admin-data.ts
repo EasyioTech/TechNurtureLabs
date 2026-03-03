@@ -13,23 +13,18 @@ import {
     savePlanAdmin,
     deletePlanAdmin,
     toggleSchoolStatus as toggleSchoolStatusAction,
+    saveSchoolAdmin,
 } from '../actions';
 import {
     Course, Lesson, PaymentPlan, Stats, UserMetric, CourseMetric, SchoolInfo,
 } from '../types';
 
 const DEFAULT_STATS: Stats = {
-    totalStudents: 0,
-    activeStudents: 0,
-    totalSchools: 0,
-    activeSchools: 0,
-    totalCourses: 0,
-    totalLessons: 0,
-    totalXp: 0,
-    avgCompletion: 0,
-    totalRevenue: 0,
-    activeSubscriptions: 0,
-    totalEnrollments: 0,
+    totalStudents: 0, activeStudents: 0,
+    totalSchools: 0, activeSchools: 0,
+    totalCourses: 0, publishedCourses: 0,
+    totalLessons: 0, totalXp: 0, avgCompletion: 0,
+    totalRevenue: 0, activeSubscriptions: 0, totalEnrollments: 0,
 };
 
 export function useAdminData() {
@@ -42,23 +37,27 @@ export function useAdminData() {
     const [schoolsList, setSchoolsList] = useState<SchoolInfo[]>([]);
     const [userMetrics, setUserMetrics] = useState<UserMetric[]>([]);
     const [courseMetrics, setCourseMetrics] = useState<CourseMetric[]>([]);
+    const [grades, setGrades] = useState<any[]>([]);
+    const [courseGradeMappings, setCourseGradeMappings] = useState<any[]>([]);
 
     // Dialog state
     const [showCourseDialog, setShowCourseDialog] = useState(false);
     const [showLessonDialog, setShowLessonDialog] = useState(false);
     const [showPlanDialog, setShowPlanDialog] = useState(false);
+    const [showSchoolDialog, setShowSchoolDialog] = useState(false);
     const [editingCourse, setEditingCourse] = useState<Partial<Course> | null>(null);
     const [editingLesson, setEditingLesson] = useState<Partial<Lesson> | null>(null);
     const [editingPlan, setEditingPlan] = useState<Partial<PaymentPlan> | null>(null);
+    const [editingSchoolItem, setEditingSchoolItem] = useState<Partial<SchoolInfo> | null>(null);
 
-    useEffect(() => { fetchAllData(); }, []);
+    useEffect(() => { fetchAllData(true); }, []);
 
-    async function fetchAllData() {
-        setLoading(true);
+    async function fetchAllData(isInitial = false) {
+        if (isInitial) setLoading(true);
         const data = await fetchAllAdminData();
 
         const students = data.students || [];
-        const schools = data.schools || [];
+        const schoolsRaw = data.schools || [];
         const coursesData = data.courses || [];
         const lessonsData = data.lessons || [];
         const plansData = data.plans || [];
@@ -66,6 +65,7 @@ export function useAdminData() {
         const enrollmentsData = data.enrollments || [];
         const subscriptionsData = data.subscriptions || [];
         const transactionsData = data.transactions || [];
+        const courseProgressData = data.courseProgress || [];
 
         const getUserLastActivity = (studentId: string) => {
             const userProgress = progressData.filter(p => p.user_id === studentId);
@@ -92,9 +92,10 @@ export function useAdminData() {
         setStats({
             totalStudents: students.length,
             activeStudents: activeCount,
-            totalSchools: schools.length,
-            activeSchools: schools.filter(s => s.is_active).length,
+            totalSchools: schoolsRaw.length,
+            activeSchools: schoolsRaw.filter(s => s.is_active).length,
             totalCourses: coursesData.length,
+            publishedCourses: coursesData.filter(c => c.is_published).length,
             totalLessons: lessonsData.length,
             totalXp: students.reduce((a, s) => a + (s.total_xp || 0), 0),
             avgCompletion,
@@ -106,20 +107,35 @@ export function useAdminData() {
         setCourses(coursesData.map(c => {
             const courseLessonIds = lessonsData.filter(l => l.course_id === c.id).map(l => l.id);
             const enrolledUsers = new Set(enrollmentsData.filter(e => e.course_id === c.id).map(e => e.user_id));
-            return { ...c, lesson_count: courseLessonIds.length, enrolled_count: enrolledUsers.size };
+            return {
+                ...c,
+                lesson_count: courseLessonIds.length,
+                enrolled_count: enrolledUsers.size,
+                total_lessons: c.total_lessons || courseLessonIds.length,
+                total_xp: c.total_xp || 0,
+            };
         }));
 
-        setPaymentPlans(plansData.map(p => ({
-            ...p, price: Number(p.price), features: Array.isArray(p.features) ? p.features : [],
+        setPaymentPlans(plansData.map((p: any) => ({
+            ...p,
+            price: Number(p.price),
+            description: p.description || '',
+            features: Array.isArray(p.features) ? p.features : [],
+            trial_days: p.trial_days || 0,
+            currency: p.currency || 'INR',
         })));
 
-        setSchoolsList(schools.map(s => {
+        setSchoolsList(schoolsRaw.map(s => {
             const sub = subscriptionsData.find(sub => sub.school_id === s.id);
             const plan = sub ? plansData.find(p => p.id === sub.plan_id) : null;
             return {
                 id: s.id, name: s.name, slug: s.slug, email: s.email,
-                phone: s.phone, city: s.city, state: s.state,
+                phone: s.phone, address: s.address, city: s.city, state: s.state,
+                country: s.country || 'IN', pincode: s.pincode,
+                logo_url: s.logo_url, website: s.website,
                 is_active: s.is_active, created_at: s.created_at,
+                data_processing_consent: s.data_processing_consent,
+                minor_data_guardian_consent: s.minor_data_guardian_consent,
                 subscription_status: sub?.status || null,
                 plan_name: plan?.name || null,
                 student_count: students.filter(st => st.school_id === s.id).length,
@@ -127,13 +143,14 @@ export function useAdminData() {
         }));
 
         setUserMetrics(students.slice(0, 50).map(s => {
-            const school = schools.find(sch => sch.id === s.school_id);
+            const school = schoolsRaw.find(sch => sch.id === s.school_id);
             const userProgress = progressData.filter(p => p.user_id === s.id);
             return {
-                id: s.id, full_name: s.full_name,
+                id: s.id, full_name: s.full_name, email: s.email,
                 school_name: school?.name || 'Unassigned',
                 total_xp: s.total_xp || 0, level: s.level || 1,
                 current_streak: s.current_streak || 0,
+                longest_streak: s.longest_streak || 0,
                 lessons_completed: userProgress.filter(p => p.completed_at != null).length,
                 last_activity: getUserLastActivity(s.id) ? new Date(getUserLastActivity(s.id)!).toISOString() : null,
             };
@@ -141,17 +158,24 @@ export function useAdminData() {
 
         setCourseMetrics(coursesData.map(c => {
             const courseLessons = lessonsData.filter(l => l.course_id === c.id);
-            const courseProgress = progressData.filter(p => courseLessons.some(l => l.id === p.lesson_id));
+            const courseProgressEntry = courseProgressData.filter(cp => cp.course_id === c.id);
             const uniqueEnrolled = new Set(enrollmentsData.filter(e => e.course_id === c.id).map(e => e.user_id));
-            const completed = courseProgress.filter(p => p.completed_at != null).length;
-            const xpValues = courseProgress.map(p => p.xp_earned || 0);
+            const completed = courseProgressEntry.filter(cp => cp.completed_at != null).length;
+            const totalTimeSecs = courseProgressEntry.reduce((sum, cp) => sum + (cp.total_time_secs || 0), 0);
+            const totalXpEarned = courseProgressEntry.reduce((sum, cp) => sum + (cp.total_xp_earned || 0), 0);
             return {
-                id: c.id, title: c.title, lesson_count: courseLessons.length,
+                id: c.id, title: c.title,
+                is_published: c.is_published,
+                lesson_count: courseLessons.length,
                 enrolled_count: uniqueEnrolled.size,
-                completion_rate: courseProgress.length > 0 ? Math.round((completed / courseProgress.length) * 100) : 0,
-                avg_xp: xpValues.length > 0 ? Math.round(xpValues.reduce((a, b) => a + b, 0) / xpValues.length) : 0,
+                completion_rate: courseProgressEntry.length > 0 ? Math.round((completed / courseProgressEntry.length) * 100) : 0,
+                avg_xp: courseProgressEntry.length > 0 ? Math.round(totalXpEarned / courseProgressEntry.length) : 0,
+                total_time_mins: Math.round(totalTimeSecs / 60),
             };
         }));
+
+        setGrades(data.grades || []);
+        setCourseGradeMappings(data.courseGradeMappings || []);
 
         setLoading(false);
     }
@@ -193,6 +217,7 @@ export function useAdminData() {
             toast.success(editingLesson.id ? 'Lesson updated' : 'Lesson created');
         } catch { toast.error('Failed to save lesson'); }
         setShowLessonDialog(false); setEditingLesson(null); selectCourse(selectedCourse);
+        fetchAllData();
     }
 
     async function deleteLesson(id: string) {
@@ -200,6 +225,7 @@ export function useAdminData() {
             await deleteLessonAdmin(id);
             toast.success('Lesson deleted');
             if (selectedCourse) selectCourse(selectedCourse);
+            fetchAllData();
         } catch { toast.error('Failed to delete lesson'); }
     }
 
@@ -220,7 +246,9 @@ export function useAdminData() {
                 id: editingPlan.id, name: editingPlan.name,
                 description: editingPlan.description || '', price: editingPlan.price || 0,
                 billing_cycle: editingPlan.billing_cycle || 'monthly',
+                currency: editingPlan.currency || 'INR',
                 features: editingPlan.features || [], max_students: editingPlan.max_students,
+                trial_days: editingPlan.trial_days || 0,
                 is_active: editingPlan.is_active ?? true,
             });
             toast.success(editingPlan.id ? 'Plan updated' : 'Plan created');
@@ -233,7 +261,7 @@ export function useAdminData() {
         catch { toast.error('Failed to delete plan'); }
     }
 
-    // School toggle
+    // School CRUD
     async function toggleSchoolStatus(schoolId: string, isActive: boolean) {
         try {
             await toggleSchoolStatusAction(schoolId, isActive);
@@ -242,16 +270,30 @@ export function useAdminData() {
         } catch { toast.error('Failed to update school status'); }
     }
 
+    async function saveSchool(schoolData: Partial<SchoolInfo>) {
+        try {
+            if (!schoolData.name || !schoolData.email) {
+                toast.error('Name and Email are required');
+                return;
+            }
+            await saveSchoolAdmin(schoolData);
+            toast.success(schoolData.id ? 'Institution updated' : 'Institution created');
+            setShowSchoolDialog(false);
+            setEditingSchoolItem(null);
+            fetchAllData();
+        } catch { toast.error('Failed to save institution'); }
+    }
+
     return {
         loading, stats, courses, selectedCourse, lessons, setLessons,
         paymentPlans, schoolsList, userMetrics, courseMetrics,
-        // Dialog state
+        grades, courseGradeMappings,
         showCourseDialog, setShowCourseDialog, editingCourse, setEditingCourse,
         showLessonDialog, setShowLessonDialog, editingLesson, setEditingLesson,
         showPlanDialog, setShowPlanDialog, editingPlan, setEditingPlan,
-        // Handlers
+        showSchoolDialog, setShowSchoolDialog, editingSchoolItem, setEditingSchoolItem,
         fetchAllData, selectCourse, saveCourse, deleteCourse,
         saveLesson, deleteLesson, saveLessonOrder,
-        savePlan, deletePlan, toggleSchoolStatus,
+        savePlan, deletePlan, toggleSchoolStatus, saveSchool,
     };
 }

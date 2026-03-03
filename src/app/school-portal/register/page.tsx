@@ -127,7 +127,7 @@ export default function SchoolRegistrationPage() {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
               <Sparkles className="text-white" size={24} />
             </div>
-            <span className="text-2xl font-black">EduQuest</span>
+            <span className="text-2xl font-black">TechNurture Labs</span>
           </div>
 
           <motion.div
@@ -141,7 +141,7 @@ export default function SchoolRegistrationPage() {
               school&apos;s learning
             </h2>
             <p className="text-white/60 text-lg max-w-md mb-8">
-              Join hundreds of schools using EduQuest to deliver engaging, gamified education to their students.
+              Join hundreds of schools using TechNurture Labs to deliver engaging, gamified education to their students.
             </p>
 
             <div className="grid grid-cols-3 gap-4">
@@ -180,11 +180,11 @@ export default function SchoolRegistrationPage() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
                 <Sparkles className="text-white" size={20} />
               </div>
-              <span className="text-xl font-black">EduQuest</span>
+              <span className="text-xl font-black">TechNurture Labs</span>
             </div>
 
             <h1 className="text-3xl font-black mb-2">Register Your School</h1>
-            <p className="text-white/50 mb-8">Get started with EduQuest for your institution</p>
+            <p className="text-white/50 mb-8">Get started with TechNurture Labs for your institution</p>
 
             <div className="flex gap-2 mb-8">
               <div className={`flex-1 h-1.5 rounded-full ${step >= 1 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-white/10'}`} />

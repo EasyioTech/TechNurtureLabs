@@ -1,155 +1,240 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
-    Users, BookOpen, BarChart3, CreditCard, Target,
-    Crown, RefreshCw, Settings, LogOut, Sparkles, Building,
+    LayoutGrid, BookOpen, CreditCard, Users, BarChart3,
+    Building2, Bell, Search, Sun, Moon, Filter, LogOut, Plus,
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useAdminData } from '../hooks/use-admin-data';
+import { AdminThemeProvider, useAdminTheme, t } from '../theme-context';
 import { MetricTables } from './metric-tables';
 import { OverviewTab } from './tabs/overview-tab';
 import { CourseBuilderTab } from './tabs/course-builder-tab';
 import { PaymentPlansTab } from './tabs/payment-plans-tab';
 import { SchoolsTab } from './tabs/schools-tab';
 
-export function SuperAdminDashboard() {
+const NAV_ITEMS = [
+    { id: 'overview', label: 'DASHBOARD' },
+    { id: 'courses', label: 'COURSES' },
+    { id: 'plans', label: 'PLANS' },
+    { id: 'schools', label: 'SCHOOLS' },
+    { id: 'users', label: 'STUDENTS' },
+    { id: 'courseMetrics', label: 'REPORTS' },
+];
+
+const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
+    overview: { title: 'Health Overview', subtitle: 'Global performance metrics and administrative status.' },
+    courses: { title: 'Course Management', subtitle: 'Orchestrate curriculum and content distribution.' },
+    plans: { title: 'Subscription Tiers', subtitle: 'Define and manage commercial service levels.' },
+    schools: { title: 'Institution Directory', subtitle: 'Comprehensive database of registered academic partners.' },
+    users: { title: 'Student Directory', subtitle: 'Engagement monitoring and performance tracking.' },
+    courseMetrics: { title: 'Course Analytics', subtitle: 'Performance insights and curriculum effectiveness data.' },
+};
+
+function DashboardContent() {
     const { signOut } = useAuth();
-    const [activeTab, setActiveTab] = useState('overview');
+    const { isDark, toggle } = useAdminTheme();
+    const [activePage, setActivePage] = useState('overview');
     const data = useAdminData();
 
     if (data.loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-stone-50">
-                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
-                    <Sparkles className="w-10 h-10 text-sky-500" />
-                </motion.div>
+            <div className={`min-h-screen flex items-center justify-center ${t.pageBg(isDark)}`}>
+                <div className="flex flex-col items-center gap-6">
+                    <motion.div
+                        className={`w-16 h-16 rounded-3xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'} flex items-center justify-center border ${t.border(isDark)}`}
+                        animate={{ rotate: [0, 90, 180, 270, 360] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                    >
+                        <LayoutGrid className={isDark ? 'text-lime-400' : 'text-slate-800'} size={24} />
+                    </motion.div>
+                    <p className={`text-xs font-bold tracking-[0.2em] uppercase ${t.textMuted(isDark)} animate-pulse`}>Initializing System</p>
+                </div>
             </div>
         );
     }
 
-    return (
-        <div className="min-h-screen bg-stone-50 text-slate-900">
-            <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-sky-100/40 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-emerald-100/40 rounded-full blur-3xl" />
-            </div>
+    const page = PAGE_TITLES[activePage] || PAGE_TITLES.overview;
 
-            {/* Header */}
-            <header className="relative z-50 border-b border-stone-200 bg-white/80 backdrop-blur-xl sticky top-0">
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-sky-500 flex items-center justify-center shadow-lg shadow-sky-200">
-                                <Crown className="text-white" size={24} />
+    return (
+        <div className={`min-h-screen ${t.pageBg(isDark)} transition-colors duration-500 font-sans selection:bg-lime-400 selection:text-slate-900`}>
+            {/* ── Navigation ── */}
+            <header className={`sticky top-0 z-50 ${t.headerBg(isDark)} backdrop-blur-md transition-all duration-300`}>
+                <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
+                    <div className="flex items-center justify-between h-20">
+                        {/* Logo + Tabs */}
+                        <div className="flex items-center gap-10">
+                            <div className="flex items-center gap-3 group cursor-pointer">
+                                <div className={`w-10 h-10 rounded-full ${isDark ? 'bg-lime-400' : 'bg-slate-900'} flex items-center justify-center ring-4 ring-transparent group-hover:ring-lime-400/20 transition-all flex-shrink-0`}>
+                                    <LayoutGrid className={isDark ? 'text-slate-900' : 'text-white'} size={18} />
+                                </div>
+                                <span className={`text-xl font-black tracking-tighter ${t.textPrimary(isDark)} whitespace-nowrap`}>TechNurture Labs</span>
                             </div>
-                            <div>
-                                <h1 className="text-xl font-black text-slate-800">Super Admin Console</h1>
-                                <p className="text-sm text-slate-500">Manage the entire LMS platform</p>
-                            </div>
+
+                            <nav className={`hidden md:flex items-center ${isDark ? 'bg-slate-900/50' : 'bg-slate-100/50'} rounded-full p-1.5`}>
+                                {NAV_ITEMS.map(item => {
+                                    const isActive = activePage === item.id;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => setActivePage(item.id)}
+                                            className={`relative px-5 py-2.5 rounded-full text-[11px] font-bold tracking-wider cursor-pointer transition-all duration-300
+                                                ${isActive ? '' : t.navInactive(isDark)}`}
+                                        >
+                                            {isActive && (
+                                                <motion.div
+                                                    layoutId="nav-pill-active"
+                                                    className={`absolute inset-0 rounded-full ${isDark ? 'bg-lime-400 text-slate-900' : 'bg-slate-900 text-white shadow-lg'}`}
+                                                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                                />
+                                            )}
+                                            <span className={`relative z-10 transition-colors duration-300 ${isActive ? (isDark ? 'text-slate-900' : 'text-white') : ''}`}>
+                                                {item.label}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </nav>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-800 hover:bg-stone-100" onClick={data.fetchAllData}>
-                                <RefreshCw size={20} />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-800 hover:bg-stone-100">
-                                <Settings size={20} />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-800 hover:bg-stone-100" onClick={() => signOut()} title="Logout">
-                                <LogOut size={20} />
-                            </Button>
-                            <Avatar className="w-10 h-10 border-2 border-sky-200">
-                                <AvatarFallback className="bg-sky-100 text-sky-600 font-bold">SA</AvatarFallback>
+
+                        {/* Right side */}
+                        <div className="flex items-center gap-4">
+                            <div className={`hidden lg:flex items-center rounded-full px-5 py-2.5 gap-3 min-w-[280px] border transition-all duration-300 focus-within:ring-2 focus-within:ring-lime-400/30 focus-within:border-lime-400/30 ${t.border(isDark)} ${isDark ? 'bg-white/[0.04] focus-within:bg-white/[0.06]' : 'bg-white shadow-sm focus-within:shadow-md'}`}>
+                                <Search size={16} className={`transition-colors ${isDark ? 'text-slate-600 group-focus-within:text-lime-400' : 'text-slate-400'}`} />
+                                <input type="text" placeholder="Search insights..." className={`bg-transparent text-[13px] font-black outline-none flex-1 placeholder:font-bold ${t.textPrimary(isDark)}`} />
+                                <span className={`text-[10px] font-[1000] px-2 py-0.5 rounded-md border ${isDark ? 'border-white/10 text-slate-600' : 'border-slate-100 text-slate-300'}`}>/</span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all relative border group ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] hover:border-lime-400/20' : 'hover:bg-slate-50 hover:shadow-md'}`}>
+                                    <Bell size={20} className={`transition-all group-hover:rotate-12 ${t.textSecondary(isDark)}`} />
+                                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-lime-400 rounded-full ring-4 ring-white dark:ring-[#0f1219] shadow-[0_0_10px_rgba(163,230,53,0.6)]" />
+                                </button>
+
+                                <button
+                                    onClick={toggle}
+                                    className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all border group ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] text-slate-400 hover:text-lime-400 hover:border-lime-400/20' : 'hover:bg-slate-50 text-slate-500 hover:text-amber-500 hover:shadow-md'}`}
+                                >
+                                    {isDark ? <Sun size={20} /> : <Moon size={20} />}
+                                </button>
+                            </div>
+
+                            <Avatar className={`w-11 h-11 cursor-pointer border-2 transition-all ${isDark ? 'border-white/10 hover:border-lime-400/50' : 'border-slate-200 shadow-lg'}`} onClick={() => signOut()}>
+                                <AvatarFallback className={`text-xs font-[1000] ${isDark ? 'bg-lime-400 text-slate-900' : 'bg-slate-900 text-white'}`}>SA</AvatarFallback>
                             </Avatar>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Main Content */}
-            <main className="relative z-10 max-w-7xl mx-auto px-6 py-8">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                    <TabsList className="bg-white border border-stone-200 p-1.5 rounded-2xl shadow-sm">
-                        <TabsTrigger value="overview" className="rounded-xl px-5 py-2.5 data-[state=active]:bg-sky-500 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-600 font-medium transition-all">
-                            <BarChart3 size={16} className="mr-2" />Overview
-                        </TabsTrigger>
-                        <TabsTrigger value="courses" className="rounded-xl px-5 py-2.5 data-[state=active]:bg-sky-500 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-600 font-medium transition-all">
-                            <BookOpen size={16} className="mr-2" />Course Builder
-                        </TabsTrigger>
-                        <TabsTrigger value="plans" className="rounded-xl px-5 py-2.5 data-[state=active]:bg-sky-500 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-600 font-medium transition-all">
-                            <CreditCard size={16} className="mr-2" />Payment Plans
-                        </TabsTrigger>
-                        <TabsTrigger value="users" className="rounded-xl px-5 py-2.5 data-[state=active]:bg-sky-500 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-600 font-medium transition-all">
-                            <Users size={16} className="mr-2" />User Metrics
-                        </TabsTrigger>
-                        <TabsTrigger value="courseMetrics" className="rounded-xl px-5 py-2.5 data-[state=active]:bg-sky-500 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-600 font-medium transition-all">
-                            <Target size={16} className="mr-2" />Course Metrics
-                        </TabsTrigger>
-                        <TabsTrigger value="schools" className="rounded-xl px-5 py-2.5 data-[state=active]:bg-sky-500 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-600 font-medium transition-all">
-                            <Building size={16} className="mr-2" />Schools
-                        </TabsTrigger>
-                    </TabsList>
+            {/* ── Content ── */}
+            <main className="max-w-[1440px] mx-auto px-6 lg:px-10 py-10">
+                {/* Page Header */}
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-12">
+                    <div>
+                        <motion.h1
+                            key={`t-${activePage}`}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className={`text-4xl lg:text-5xl font-[900] tracking-tighter ${t.textPrimary(isDark)}`}
+                        >
+                            {page.title}
+                        </motion.h1>
+                        <motion.p
+                            key={`s-${activePage}`}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.1 }}
+                            className={`text-[12px] mt-2.5 font-black uppercase tracking-[0.22em] ${t.textMuted(isDark)}`}
+                        >
+                            {page.subtitle}
+                        </motion.p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Button variant="outline" size="lg"
+                            className={`rounded-full gap-2.5 h-12 px-7 text-sm font-bold border-2 transition-all ${t.btnOutline(isDark)}`}>
+                            <Filter size={16} />Filter View
+                        </Button>
+                        <Button size="lg"
+                            className={`rounded-full gap-2.5 h-12 px-7 text-sm font-black shadow-xl transition-all
+                                ${isDark ? 'shadow-lime-400/20' : 'shadow-slate-900/20'} ${t.btnPrimary(isDark)}`}
+                            onClick={() => {
+                                if (activePage === 'courses') {
+                                    data.setEditingCourse({ published: false });
+                                    data.setShowCourseDialog(true);
+                                } else if (activePage === 'plans') {
+                                    data.setEditingPlan({ billing_cycle: 'monthly', features: [], is_active: true, trial_days: 0 });
+                                    data.setShowPlanDialog(true);
+                                } else if (activePage === 'schools') {
+                                    data.setEditingSchoolItem({ name: '', email: '', is_active: true, data_processing_consent: true, minor_data_guardian_consent: true });
+                                    data.setShowSchoolDialog(true);
+                                }
+                            }}>
+                            <Plus size={20} strokeWidth={3} />
+                            {activePage === 'courses' ? 'NEW COURSE' :
+                                activePage === 'plans' ? 'UPDATE TIERS' :
+                                    activePage === 'schools' ? 'ADD INSTITUTION' :
+                                        'QUICK ACTION'}
+                        </Button>
+                    </div>
+                </div>
 
-                    <TabsContent value="overview" className="space-y-6">
-                        <OverviewTab stats={data.stats} paymentPlans={data.paymentPlans} />
-                    </TabsContent>
-
-                    <TabsContent value="courses" className="space-y-6">
-                        <CourseBuilderTab
-                            courses={data.courses}
-                            selectedCourse={data.selectedCourse}
-                            lessons={data.lessons}
-                            setLessons={data.setLessons}
-                            onSelectCourse={data.selectCourse}
-                            onSaveCourse={data.saveCourse}
-                            onDeleteCourse={data.deleteCourse}
-                            onSaveLesson={data.saveLesson}
-                            onDeleteLesson={data.deleteLesson}
-                            onSaveLessonOrder={data.saveLessonOrder}
-                            showCourseDialog={data.showCourseDialog}
-                            setShowCourseDialog={data.setShowCourseDialog}
-                            editingCourse={data.editingCourse}
-                            setEditingCourse={data.setEditingCourse}
-                            showLessonDialog={data.showLessonDialog}
-                            setShowLessonDialog={data.setShowLessonDialog}
-                            editingLesson={data.editingLesson}
-                            setEditingLesson={data.setEditingLesson}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="plans" className="space-y-6">
-                        <PaymentPlansTab
-                            paymentPlans={data.paymentPlans}
-                            onSavePlan={data.savePlan}
-                            onDeletePlan={data.deletePlan}
-                            showPlanDialog={data.showPlanDialog}
-                            setShowPlanDialog={data.setShowPlanDialog}
-                            editingPlan={data.editingPlan}
-                            setEditingPlan={data.setEditingPlan}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="users" className="pt-6">
-                        <MetricTables userMetrics={data.userMetrics} courseMetrics={[]} />
-                    </TabsContent>
-
-                    <TabsContent value="courseMetrics" className="pt-6">
-                        <MetricTables userMetrics={[]} courseMetrics={data.courseMetrics} />
-                    </TabsContent>
-
-                    <TabsContent value="schools" className="space-y-6">
-                        <SchoolsTab
-                            stats={data.stats}
-                            schoolsList={data.schoolsList}
-                            onToggleStatus={data.toggleSchoolStatus}
-                        />
-                    </TabsContent>
-                </Tabs>
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={activePage}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3, ease: 'circOut' }}
+                    >
+                        {activePage === 'overview' && <OverviewTab stats={data.stats} paymentPlans={data.paymentPlans} schoolsList={data.schoolsList} />}
+                        {activePage === 'courses' && (
+                            <CourseBuilderTab
+                                courses={data.courses} selectedCourse={data.selectedCourse}
+                                lessons={data.lessons} setLessons={data.setLessons}
+                                onSelectCourse={data.selectCourse} onSaveCourse={data.saveCourse}
+                                onDeleteCourse={data.deleteCourse} onSaveLesson={data.saveLesson}
+                                onDeleteLesson={data.deleteLesson} onSaveLessonOrder={data.saveLessonOrder}
+                                showCourseDialog={data.showCourseDialog} setShowCourseDialog={data.setShowCourseDialog}
+                                editingCourse={data.editingCourse} setEditingCourse={data.setEditingCourse}
+                                showLessonDialog={data.showLessonDialog} setShowLessonDialog={data.setShowLessonDialog}
+                                editingLesson={data.editingLesson} setEditingLesson={data.setEditingLesson}
+                                grades={data.grades}
+                                courseGradeMappings={data.courseGradeMappings}
+                            />
+                        )}
+                        {activePage === 'plans' && (
+                            <PaymentPlansTab
+                                paymentPlans={data.paymentPlans} onSavePlan={data.savePlan}
+                                onDeletePlan={data.deletePlan} showPlanDialog={data.showPlanDialog}
+                                setShowPlanDialog={data.setShowPlanDialog} editingPlan={data.editingPlan}
+                                setEditingPlan={data.setEditingPlan}
+                            />
+                        )}
+                        {activePage === 'schools' && (
+                            <SchoolsTab stats={data.stats} schoolsList={data.schoolsList}
+                                onToggleStatus={data.toggleSchoolStatus} onSaveSchool={data.saveSchool}
+                                showEditDialog={data.showSchoolDialog} setShowEditDialog={data.setShowSchoolDialog}
+                                editingSchool={data.editingSchoolItem as any} setEditingSchool={data.setEditingSchoolItem as any}
+                            />
+                        )}
+                        {activePage === 'users' && <MetricTables userMetrics={data.userMetrics} courseMetrics={[]} />}
+                        {activePage === 'courseMetrics' && <MetricTables userMetrics={[]} courseMetrics={data.courseMetrics} />}
+                    </motion.div>
+                </AnimatePresence>
             </main>
         </div>
+    );
+}
+
+export function SuperAdminDashboard() {
+    return (
+        <AdminThemeProvider>
+            <DashboardContent />
+        </AdminThemeProvider>
     );
 }
