@@ -99,8 +99,9 @@ export function PaymentPlanDialog({
                                 </SelectTrigger>
                                 <SelectContent className="bg-white">
                                     <SelectItem value="monthly">Monthly</SelectItem>
-                                    <SelectItem value="yearly">Yearly</SelectItem>
-                                    <SelectItem value="one-time">One-time</SelectItem>
+                                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                                    <SelectItem value="semi_annual">Semi-Annual</SelectItem>
+                                    <SelectItem value="annual">Annual</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

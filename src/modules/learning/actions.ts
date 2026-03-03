@@ -2,8 +2,8 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { profiles, courses, lessons, progressTracking, dailyChallenges, userDailyChallenges, achievements, userAchievements } from '@/db/schema';
-import { eq, and, gt, inArray, lte, asc } from 'drizzle-orm';
+import { users, courses, lessons, lessonProgress, enrollments, xpEvents } from '@/db/schema';
+import { eq, and, inArray, asc, isNotNull } from 'drizzle-orm';
 
 export async function getCourseDetailsData(courseId: string) {
     const session = await verifySession();
@@ -18,28 +18,32 @@ export async function getCourseDetailsData(courseId: string) {
 
     const courseLessons = await db.query.lessons.findMany({
         where: eq(lessons.course_id, courseId),
-        orderBy: (lessons, { asc }) => [asc(lessons.sequence_index)]
+        orderBy: (lessons, { asc }) => [asc(lessons.sequence_order)]
     });
 
     let formattedLessons = courseLessons.map((l, i) => ({
         ...l,
+        // Backward-compatible aliases
+        sequence_index: l.sequence_order,
+        duration: l.duration_minutes || 10,
         xp_reward: l.xp_reward || 50,
         status: (i === 0 ? 'available' : 'locked') as 'locked' | 'available' | 'completed'
     }));
 
-    const enrolledCountData = await db.select({ user_id: progressTracking.user_id }).from(progressTracking).where(inArray(progressTracking.lesson_id, courseLessons.map(l => l.id)));
-    const uniqueUsers = new Set(enrolledCountData.map(d => d.user_id));
-    const enrolledCount = uniqueUsers.size;
+    // Enrolled count from enrollments table
+    const enrollmentData = await db.select().from(enrollments).where(eq(enrollments.course_id, courseId));
+    const enrolledCount = enrollmentData.length;
 
     if (courseLessons.length > 0) {
-        const progressData = await db.query.progressTracking.findMany({
-            where: and(
-                eq(progressTracking.user_id, userId),
-                inArray(progressTracking.lesson_id, courseLessons.map(l => l.id))
+        const lessonIds = courseLessons.map(l => l.id);
+        const progressData = await db.select().from(lessonProgress).where(
+            and(
+                eq(lessonProgress.user_id, userId),
+                inArray(lessonProgress.lesson_id, lessonIds)
             )
-        });
+        );
 
-        const progressMap = new Map(progressData.map(p => [p.lesson_id, p.status]));
+        const progressMap = new Map(progressData.map(p => [p.lesson_id, p.completed_at ? 'completed' : 'in_progress']));
 
         let foundIncomplete = false;
         formattedLessons = courseLessons.map((l, i) => {
@@ -55,13 +59,23 @@ export async function getCourseDetailsData(courseId: string) {
 
             return {
                 ...l,
+                sequence_index: l.sequence_order,
+                duration: l.duration_minutes || 10,
                 xp_reward: l.xp_reward || 50,
                 status: lessonStatus
             };
         });
     }
 
-    return { course, lessons: formattedLessons, enrolledCount };
+    return {
+        course: {
+            ...course,
+            thumbnail: course.thumbnail_url,
+            published: course.is_published,
+        },
+        lessons: formattedLessons,
+        enrolledCount
+    };
 }
 
 export async function getCourseJourneyData(courseId: string) {
@@ -75,7 +89,14 @@ export async function getLessonData(lessonId: string) {
     const lesson = await db.query.lessons.findFirst({
         where: eq(lessons.id, lessonId)
     });
-    return lesson;
+
+    if (!lesson) return null;
+
+    return {
+        ...lesson,
+        sequence_index: lesson.sequence_order,
+        duration: lesson.duration_minutes || 10,
+    };
 }
 
 export async function completeLessonAndReward(lessonId: string, quizScore?: number, isPerfect?: boolean) {
@@ -83,76 +104,71 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
 
-    const existingProfile = await db.query.profiles.findFirst({ where: eq(profiles.id, userId) });
-    if (!existingProfile) return;
+    const existingUser = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!existingUser) return;
 
-    const existingProgress = await db.query.progressTracking.findFirst({
-        where: and(
-            eq(progressTracking.user_id, userId),
-            eq(progressTracking.lesson_id, lessonId),
-            eq(progressTracking.status, 'completed')
-        )
-    });
-
-    if (existingProgress) return;
-
-    await db.insert(progressTracking).values({
-        user_id: userId,
-        lesson_id: lessonId,
-        status: 'completed',
-        completed_at: new Date()
-    }).onConflictDoUpdate({
-        target: [progressTracking.user_id, progressTracking.lesson_id],
-        set: { status: 'completed', completed_at: new Date() }
-    });
-
+    // Find enrollment for this lesson's course
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
-    const xpToAdd = lesson?.xp_reward || 50;
+    if (!lesson) return;
 
-    let newLessonsCompleted = (existingProfile.total_lessons_completed || 0) + 1;
-    let newXp = (existingProfile.total_xp || 0) + xpToAdd;
-
-    const today = new Date().toISOString().split('T')[0];
-
-    const lessonChallenges = await db.query.dailyChallenges.findMany({
-        where: and(eq(dailyChallenges.is_active, true), eq(dailyChallenges.challenge_type, 'lessons_completed'))
+    const enrollment = await db.query.enrollments.findFirst({
+        where: and(eq(enrollments.user_id, userId), eq(enrollments.course_id, lesson.course_id))
     });
+    if (!enrollment) return;
 
-    for (const challenge of lessonChallenges) {
-        const userChallenge = await db.query.userDailyChallenges.findFirst({
-            where: and(
-                eq(userDailyChallenges.user_id, userId),
-                eq(userDailyChallenges.challenge_id, challenge.id),
-                eq(userDailyChallenges.challenge_date, today)
-            )
-        });
+    // Check if already completed
+    const existingProgress = await db.select().from(lessonProgress).where(
+        and(
+            eq(lessonProgress.user_id, userId),
+            eq(lessonProgress.lesson_id, lessonId),
+            isNotNull(lessonProgress.completed_at)
+        )
+    );
 
-        if (userChallenge?.is_completed) continue;
+    if (existingProgress.length > 0) return;
 
-        const newProgress = (userChallenge?.current_progress || 0) + 1;
-        const isNowComplete = newProgress >= challenge.target_value;
+    // Upsert lesson progress
+    const existing = await db.select().from(lessonProgress).where(
+        and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId))
+    );
 
-        await db.insert(userDailyChallenges).values({
+    if (existing.length > 0) {
+        await db.update(lessonProgress).set({
+            completed_at: new Date(),
+            progress_pct: '100',
+            xp_earned: lesson.xp_reward || 50,
+        }).where(and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId)));
+    } else {
+        await db.insert(lessonProgress).values({
             user_id: userId,
-            challenge_id: challenge.id,
-            challenge_date: today,
-            current_progress: newProgress,
-            is_completed: isNowComplete,
-            updated_at: new Date()
-        }).onConflictDoUpdate({
-            target: [userDailyChallenges.user_id, userDailyChallenges.challenge_id, userDailyChallenges.challenge_date],
-            set: { current_progress: newProgress, is_completed: isNowComplete, updated_at: new Date() }
+            lesson_id: lessonId,
+            enrollment_id: enrollment.id,
+            completed_at: new Date(),
+            progress_pct: '100',
+            xp_earned: lesson.xp_reward || 50,
         });
-
-        if (isNowComplete) {
-            newXp += challenge.xp_reward;
-        }
     }
 
-    await db.update(profiles).set({
-        total_xp: newXp,
-        total_lessons_completed: newLessonsCompleted
-    }).where(eq(profiles.id, userId));
+    const xpToAdd = lesson.xp_reward || 50;
+
+    // Record XP event
+    if (existingUser.school_id) {
+        await db.insert(xpEvents).values({
+            user_id: userId,
+            school_id: existingUser.school_id,
+            source: 'lesson_completion',
+            xp_amount: xpToAdd,
+            reference_type: 'lesson',
+            reference_id: lessonId,
+        });
+    }
+
+    // Update cumulative XP on user
+    let newXp = (Number(existingUser.cumulative_xp) || 0) + xpToAdd;
+
+    await db.update(users).set({
+        cumulative_xp: newXp,
+    }).where(eq(users.id, userId));
 }
 
 export async function getLessonsByCourse(courseId: string) {
@@ -161,33 +177,46 @@ export async function getLessonsByCourse(courseId: string) {
 
     const courseLessons = await db.query.lessons.findMany({
         where: eq(lessons.course_id, courseId),
-        orderBy: (lessons, { asc }) => [asc(lessons.sequence_index)]
+        orderBy: (lessons, { asc }) => [asc(lessons.sequence_order)]
     });
 
-    return courseLessons;
+    return courseLessons.map(l => ({
+        ...l,
+        sequence_index: l.sequence_order,
+        duration: l.duration_minutes || 10,
+    }));
 }
 
 export async function saveVideoProgress(lessonId: string, position: number) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
 
-    const existing = await db.query.progressTracking.findFirst({
-        where: and(
-            eq(progressTracking.user_id, session.userId),
-            eq(progressTracking.lesson_id, lessonId)
+    const existing = await db.select().from(lessonProgress).where(
+        and(
+            eq(lessonProgress.user_id, session.userId),
+            eq(lessonProgress.lesson_id, lessonId)
         )
-    });
+    );
 
-    if (existing) {
-        await db.update(progressTracking)
-            .set({ last_position: position.toString(), status: existing.status === 'completed' ? 'completed' : 'locked', updated_at: new Date() })
-            .where(and(eq(progressTracking.user_id, session.userId), eq(progressTracking.lesson_id, lessonId)));
+    if (existing.length > 0) {
+        await db.update(lessonProgress)
+            .set({ progress_pct: position.toString(), time_spent_secs: Math.round(position) })
+            .where(and(eq(lessonProgress.user_id, session.userId), eq(lessonProgress.lesson_id, lessonId)));
     } else {
-        await db.insert(progressTracking).values({
+        // Need enrollment to create progress
+        const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
+        if (!lesson) return;
+
+        const enrollment = await db.query.enrollments.findFirst({
+            where: and(eq(enrollments.user_id, session.userId), eq(enrollments.course_id, lesson.course_id))
+        });
+        if (!enrollment) return;
+
+        await db.insert(lessonProgress).values({
             user_id: session.userId,
             lesson_id: lessonId,
-            last_position: position.toString(),
-            status: 'locked'
+            enrollment_id: enrollment.id,
+            progress_pct: position.toString(),
         });
     }
 }
@@ -196,23 +225,32 @@ export async function markLessonComplete(lessonId: string) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
 
-    const existing = await db.query.progressTracking.findFirst({
-        where: and(
-            eq(progressTracking.user_id, session.userId),
-            eq(progressTracking.lesson_id, lessonId)
+    const existing = await db.select().from(lessonProgress).where(
+        and(
+            eq(lessonProgress.user_id, session.userId),
+            eq(lessonProgress.lesson_id, lessonId)
         )
-    });
+    );
 
-    if (existing) {
-        await db.update(progressTracking)
-            .set({ status: 'completed', completed_at: new Date(), updated_at: new Date() })
-            .where(and(eq(progressTracking.user_id, session.userId), eq(progressTracking.lesson_id, lessonId)));
+    if (existing.length > 0) {
+        await db.update(lessonProgress)
+            .set({ completed_at: new Date(), progress_pct: '100' })
+            .where(and(eq(lessonProgress.user_id, session.userId), eq(lessonProgress.lesson_id, lessonId)));
     } else {
-        await db.insert(progressTracking).values({
+        const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
+        if (!lesson) return;
+
+        const enrollment = await db.query.enrollments.findFirst({
+            where: and(eq(enrollments.user_id, session.userId), eq(enrollments.course_id, lesson.course_id))
+        });
+        if (!enrollment) return;
+
+        await db.insert(lessonProgress).values({
             user_id: session.userId,
             lesson_id: lessonId,
-            status: 'completed',
-            completed_at: new Date()
+            enrollment_id: enrollment.id,
+            completed_at: new Date(),
+            progress_pct: '100',
         });
     }
 }

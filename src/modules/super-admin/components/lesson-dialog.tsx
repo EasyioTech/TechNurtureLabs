@@ -60,9 +60,9 @@ export function LessonDialog({
                                 </SelectTrigger>
                                 <SelectContent className="bg-white">
                                     <SelectItem value="video">Video</SelectItem>
-                                    <SelectItem value="reading">Reading</SelectItem>
+                                    <SelectItem value="ppt">Presentation (PPT)</SelectItem>
+                                    <SelectItem value="pdf">PDF Document</SelectItem>
                                     <SelectItem value="quiz">Interactive Quiz</SelectItem>
-                                    <SelectItem value="project">Project Work</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

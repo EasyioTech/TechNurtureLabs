@@ -1,76 +1,143 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { profiles, courses, classes, lessons, progressTracking, schools } from '@/db/schema';
+import { users, courses, grades, schoolGradeMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions } from '@/db/schema';
 import { eq, asc, desc, inArray, and } from 'drizzle-orm';
 
 export async function getSchoolAdminDashboardData(schoolId: string) {
-    const students = await db.query.profiles.findMany({
-        where: (p, { and, eq }) => and(eq(p.school_id, schoolId), eq(p.role, 'student'))
+    const students = await db.query.users.findMany({
+        where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student'))
     });
 
-    // Courses Data - now filtered by school_id
-    const coursesData = await db.query.courses.findMany({
-        where: eq(courses.school_id, schoolId)
+    // Courses: find via enrollments for this school
+    const schoolEnrollments = await db.query.enrollments.findMany({
+        where: eq(enrollments.school_id, schoolId),
+        with: { course: true }
     });
 
-    const classesData = await db.query.classes.findMany({
-        where: eq(classes.school_id, schoolId),
-        orderBy: [asc(classes.level_index)]
+    const uniqueCourseMap = new Map<string, any>();
+    schoolEnrollments.forEach(e => {
+        if (e.course && !uniqueCourseMap.has(e.course.id)) {
+            uniqueCourseMap.set(e.course.id, {
+                ...e.course,
+                thumbnail: e.course.thumbnail_url,
+                published: e.course.is_published,
+            });
+        }
+    });
+    const coursesData = Array.from(uniqueCourseMap.values());
+
+    // Grades for this school
+    const gradeMapping = await db.query.schoolGradeMapping.findMany({
+        where: eq(schoolGradeMapping.school_id, schoolId),
+        with: { grade: true } as any
     });
 
-    const lessonsData = await db.query.lessons.findMany({
-        where: eq(lessons.school_id, schoolId)
-    });
+    const gradesData = gradeMapping.map((gm: any) => ({
+        id: gm.grade_id,
+        name: gm.grade?.name || '',
+        level_index: gm.grade?.level || 0,
+        school_id: schoolId,
+        created_at: gm.created_at,
+    }));
 
-    const studentIds = students.map(s => s.id);
-    const progressData = studentIds.length > 0 ? await db.query.progressTracking.findMany({
-        where: inArray(progressTracking.user_id, studentIds),
-        orderBy: [desc(progressTracking.completed_at)]
+    // Lessons for school's courses
+    const courseIds = coursesData.map(c => c.id);
+    const lessonsData = courseIds.length > 0 ? await db.query.lessons.findMany({
+        where: inArray(lessons.course_id, courseIds)
     }) : [];
 
-    return { students, coursesData, classesData, lessonsData, progressData };
+    // Progress data for students
+    const studentIds = students.map(s => s.id);
+    const progressData = studentIds.length > 0 ? await db.select().from(lessonProgress).where(
+        inArray(lessonProgress.user_id, studentIds)
+    ) : [];
+
+    return {
+        students: students.map(s => ({
+            ...s,
+            full_name: `${s.first_name} ${s.last_name}`,
+            total_xp: Number(s.cumulative_xp),
+        })),
+        coursesData,
+        classesData: gradesData,
+        lessonsData: lessonsData.map(l => ({
+            ...l,
+            sequence_index: l.sequence_order,
+            duration: l.duration_minutes || 10,
+        })),
+        progressData
+    };
 }
 
 export async function updateSchoolBranding(schoolId: string, primaryColor: string) {
+    // Logo/branding is now stored in logo_url; primary_color not in schema
+    // For now, update the school's website field as a placeholder
     await db.update(schools).set({
-        branding_config: { primary_color: primaryColor }
+        website: primaryColor
     }).where(eq(schools.id, schoolId));
 }
 
 export async function promoteStudentsAction(schoolId: string) {
-    // Simplistic promotion logic
-    const schoolStudents = await db.query.profiles.findMany({
-        where: (p, { and, eq }) => and(eq(p.school_id, schoolId), eq(p.role, 'student'))
+    // Get current session
+    const currentSession = await db.query.academicSessions.findFirst({
+        where: and(eq(academicSessions.school_id, schoolId), eq(academicSessions.is_current, true))
+    });
+    if (!currentSession) return;
+
+    // Get all student academic records for current session
+    const records = await db.query.studentAcademicRecords.findMany({
+        where: and(
+            eq(studentAcademicRecords.school_id, schoolId),
+            eq(studentAcademicRecords.session_id, currentSession.id),
+            eq(studentAcademicRecords.is_promoted, false)
+        )
     });
 
-    for (const student of schoolStudents) {
-        if (student.grade) {
-            await db.update(profiles).set({
-                grade: student.grade + 1
-            }).where(eq(profiles.id, student.id));
-        }
+    // Mark all as promoted
+    for (const record of records) {
+        await db.update(studentAcademicRecords).set({
+            is_promoted: true,
+            promoted_at: new Date(),
+        }).where(eq(studentAcademicRecords.id, record.id));
     }
 }
 
 export async function fetchSchoolAdminCourseData(schoolId: string, courseId: string) {
     const course = await db.query.courses.findFirst({
-        where: and(eq(courses.id, courseId), eq(courses.school_id, schoolId))
+        where: eq(courses.id, courseId)
     });
 
     const lessonsData = await db.query.lessons.findMany({
-        where: and(eq(lessons.course_id, courseId), eq(lessons.school_id, schoolId)),
-        orderBy: [asc(lessons.sequence_index)]
+        where: eq(lessons.course_id, courseId),
+        orderBy: [asc(lessons.sequence_order)]
     });
 
-    const studentsData = await db.query.profiles.findMany({
-        where: (p, { and, eq }) => and(eq(p.school_id, schoolId), eq(p.role, 'student'))
+    const studentsData = await db.query.users.findMany({
+        where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student'))
     });
 
     const lessonIds = lessonsData.map(l => l.id);
-    const progressData = lessonIds.length > 0 ? await db.query.progressTracking.findMany({
-        where: inArray(progressTracking.lesson_id, lessonIds)
-    }) : [];
+    const progressData = lessonIds.length > 0 ? await db.select().from(lessonProgress).where(
+        inArray(lessonProgress.lesson_id, lessonIds)
+    ) : [];
 
-    return { course, lessonsData, studentsData, progressData };
+    return {
+        course: course ? {
+            ...course,
+            thumbnail: course.thumbnail_url,
+            published: course.is_published,
+        } : null,
+        lessonsData: lessonsData.map(l => ({
+            ...l,
+            sequence_index: l.sequence_order,
+            duration: l.duration_minutes || 10,
+        })),
+        studentsData: studentsData.map(s => ({
+            ...s,
+            full_name: `${s.first_name} ${s.last_name}`,
+            total_xp: Number(s.cumulative_xp),
+        })),
+        progressData
+    };
 }

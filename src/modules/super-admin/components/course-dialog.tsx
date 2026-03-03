@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Course } from '../types';
 
 interface CourseDialogProps {
@@ -44,7 +43,7 @@ export function CourseDialog({
                         <Label htmlFor="title">Course Title</Label>
                         <Input
                             id="title"
-                            placeholder="e.g. Master React in 30 Days"
+                            placeholder="e.g. Introduction to Robotics"
                             value={editingCourse?.title || ''}
                             onChange={(e) => setEditingCourse({ ...editingCourse, title: e.target.value })}
                             className="rounded-xl"
@@ -60,38 +59,15 @@ export function CourseDialog({
                             className="rounded-xl min-h-[100px]"
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="grade">Grade Level</Label>
-                            <Select
-                                value={editingCourse?.all_grades ? 'all' : (editingCourse?.grade?.toString() || '1')}
-                                onValueChange={(val) => setEditingCourse({
-                                    ...editingCourse,
-                                    all_grades: val === 'all',
-                                    grade: val === 'all' ? null : parseInt(val)
-                                })}
-                            >
-                                <SelectTrigger className="rounded-xl">
-                                    <SelectValue placeholder="Select grade" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white">
-                                    <SelectItem value="all">All Grades</SelectItem>
-                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
-                                        <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="thumbnail">Thumbnail URL</Label>
-                            <Input
-                                id="thumbnail"
-                                placeholder="https://..."
-                                value={editingCourse?.thumbnail || ''}
-                                onChange={(e) => setEditingCourse({ ...editingCourse, thumbnail: e.target.value })}
-                                className="rounded-xl"
-                            />
-                        </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="thumbnail">Thumbnail URL</Label>
+                        <Input
+                            id="thumbnail"
+                            placeholder="https://..."
+                            value={editingCourse?.thumbnail || ''}
+                            onChange={(e) => setEditingCourse({ ...editingCourse, thumbnail: e.target.value })}
+                            className="rounded-xl"
+                        />
                     </div>
                     <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100">
                         <div className="space-y-0.5">

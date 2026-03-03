@@ -73,7 +73,7 @@ export function MetricTables({ userMetrics, courseMetrics }: MetricTablesProps) 
                                 <th className="px-4 py-3 text-left">Course</th>
                                 <th className="px-4 py-3 text-right">Enrolled</th>
                                 <th className="px-4 py-3 text-right">Completion</th>
-                                <th className="px-4 py-3 text-right">Avg Score</th>
+                                <th className="px-4 py-3 text-right">Avg XP</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-stone-100">
@@ -84,7 +84,7 @@ export function MetricTables({ userMetrics, courseMetrics }: MetricTablesProps) 
                                     <td className="px-4 py-3 text-right font-bold text-emerald-600">{c.completion_rate}%</td>
                                     <td className="px-4 py-3 text-right">
                                         <Badge variant="outline" className="bg-sky-50 text-sky-600 border-sky-100">
-                                            {c.avg_score}%
+                                            {c.avg_xp}
                                         </Badge>
                                     </td>
                                 </tr>

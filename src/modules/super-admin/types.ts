@@ -1,14 +1,17 @@
 export type Course = {
     id: string;
     title: string;
+    slug?: string;
     description: string | null;
     thumbnail: string | null;
+    thumbnail_url?: string | null;
     published: boolean;
+    is_published?: boolean;
     created_at: Date | string;
     lesson_count?: number;
     enrolled_count?: number;
-    grade?: number | null;
-    all_grades?: boolean;
+    total_xp?: number;
+    created_by?: string;
 };
 
 export type MCQQuestion = {
@@ -22,12 +25,15 @@ export type Lesson = {
     course_id: string;
     title: string;
     sequence_index: number;
+    sequence_order?: number;
     content_type: string;
     content_url: string;
     xp_reward: number;
     duration: number;
+    duration_minutes?: number;
     mcq_questions?: MCQQuestion[];
     file_path?: string;
+    is_published?: boolean;
 };
 
 export type PaymentPlan = {
@@ -38,19 +44,37 @@ export type PaymentPlan = {
     billing_cycle: string;
     features: string[];
     max_students: number | null;
-    max_courses: number | null;
+    trial_days?: number;
     is_active: boolean;
+};
+
+export type SchoolInfo = {
+    id: string;
+    name: string;
+    slug: string;
+    email: string;
+    phone: string | null;
+    city: string | null;
+    state: string | null;
+    is_active: boolean;
+    created_at: Date | string;
+    subscription_status?: string | null;
+    plan_name?: string | null;
+    student_count?: number;
 };
 
 export type Stats = {
     totalStudents: number;
     activeStudents: number;
     totalSchools: number;
+    activeSchools: number;
     totalCourses: number;
     totalLessons: number;
     totalXp: number;
     avgCompletion: number;
-    monthlyRevenue: number;
+    totalRevenue: number;
+    activeSubscriptions: number;
+    totalEnrollments: number;
 };
 
 export type UserMetric = {
@@ -70,5 +94,5 @@ export type CourseMetric = {
     lesson_count: number;
     enrolled_count: number;
     completion_rate: number;
-    avg_score: number;
+    avg_xp: number;
 };

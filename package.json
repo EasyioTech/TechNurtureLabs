@@ -10,7 +10,7 @@
         "infra:up": "docker-compose up -d db redis",
         "infra:down": "docker-compose stop",
         "db:push": "drizzle-kit push",
-        "db:seed": "tsx scripts/seed.ts",
+        "db:seed": "npx tsx scripts/seed.ts",
         "db:studio": "drizzle-kit studio",
         "setup": "npm run infra:up && npm run db:push && npm run db:seed"
     },
@@ -80,6 +80,7 @@
         "react-fast-marquee": "^1.6.5",
         "react-hook-form": "^7.60.0",
         "react-intersection-observer": "^10.0.0",
+        "react-is": "^19.2.4",
         "react-resizable-panels": "^3.0.3",
         "react-responsive-masonry": "^2.7.1",
         "react-syntax-highlighter": "^16.1.0",

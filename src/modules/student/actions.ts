@@ -2,8 +2,8 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { profiles, courses, lessons, progressTracking, dailyChallenges, userDailyChallenges, achievements, userAchievements } from '@/db/schema';
-import { eq, and, gt, inArray, asc, desc } from 'drizzle-orm';
+import { users, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments } from '@/db/schema';
+import { eq, and, gt, inArray, asc, desc, isNotNull } from 'drizzle-orm';
 
 export type DashboardData = {
     profile: any;
@@ -26,57 +26,61 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
 
     const userId = session.userId;
 
-    const profile = await db.query.profiles.findFirst({
-        where: eq(profiles.id, userId)
+    const profile = await db.query.users.findFirst({
+        where: eq(users.id, userId)
     });
 
     if (!profile) throw new Error('User not found');
 
-    const studentGrade = profile.grade;
+    // Count completed lessons for this user
+    const completedLessons = await db.select().from(lessonProgress)
+        .where(and(eq(lessonProgress.user_id, userId), isNotNull(lessonProgress.completed_at)));
+
     const stats = {
-        xp: profile.total_xp || 0,
+        xp: Number(profile.cumulative_xp) || 0,
         streak: profile.current_streak || 0,
-        level: profile.level || 1,
-        lessonsCompleted: profile.total_lessons_completed || 0,
-        totalTime: Math.round((profile.total_learning_time_minutes || 0) / 60),
+        level: Math.floor((Number(profile.cumulative_xp) || 0) / 500) + 1,
+        lessonsCompleted: completedLessons.length,
+        totalTime: 0,
         rank: 0
     };
 
     // Daily Challenges
     const today = new Date().toISOString().split('T')[0];
     const allChallenges = await db.query.dailyChallenges.findMany({
-        where: eq(dailyChallenges.is_active, true),
+        where: eq(dailyChallenges.status, 'active'),
         limit: 3
     });
 
     let formattedChallenges: any[] = [];
     if (allChallenges.length > 0) {
-        const userChallenges = await db.query.userDailyChallenges.findMany({
-            where: and(
-                eq(userDailyChallenges.user_id, userId),
-                eq(userDailyChallenges.challenge_date, today)
-            )
+        const userChallengesData = await db.query.userDailyChallenges.findMany({
+            where: eq(userDailyChallenges.user_id, userId)
         });
 
-        const challengeProgressMap = new Map(
-            userChallenges.map(uc => [uc.challenge_id, uc])
+        const challengeMap = new Map(
+            userChallengesData.map(uc => [uc.challenge_id, uc])
         );
 
-        formattedChallenges = allChallenges.map(c => ({
-            id: c.id,
-            title: c.title,
-            challenge_type: c.challenge_type,
-            target_value: c.target_value,
-            xp_reward: c.xp_reward,
-            icon: c.icon,
-            current_progress: challengeProgressMap.get(c.id)?.current_progress || 0,
-            is_completed: challengeProgressMap.get(c.id)?.is_completed || false
-        }));
+        formattedChallenges = allChallenges.map(c => {
+            const uc = challengeMap.get(c.id);
+            const criteria = c.criteria as any;
+            return {
+                id: c.id,
+                title: c.title,
+                challenge_type: criteria?.type || 'unknown',
+                target_value: criteria?.target || 1,
+                xp_reward: c.xp_reward,
+                icon: criteria?.icon || 'zap',
+                current_progress: uc ? (uc.xp_earned || 0) : 0,
+                is_completed: !!uc?.completed_at
+            };
+        });
     }
 
     // Achievements
     const allAchvs = await db.query.achievements.findMany({
-        where: eq(achievements.is_hidden, false),
+        where: eq(achievements.is_active, true),
         limit: 10
     });
 
@@ -87,15 +91,15 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         });
 
         const unlockedMap = new Map(
-            userAchvs.map(ua => [ua.achievement_id, ua.unlocked_at])
+            userAchvs.map(ua => [ua.achievement_id, ua.earned_at])
         );
 
         formattedAchievements = allAchvs.map(a => ({
             id: a.id,
             name: a.name,
             description: a.description,
-            icon: a.icon,
-            category: a.category,
+            icon: a.icon_url || '',
+            category: a.tier,
             unlocked: unlockedMap.has(a.id),
             unlocked_at: unlockedMap.get(a.id)
         }));
@@ -107,55 +111,61 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         });
     }
 
-    // Class Rank (count of profiles with more xp)
-    const usersWithMoreXp = await db.select().from(profiles).where(and(gt(profiles.total_xp, profile.total_xp || 0), eq(profiles.role, 'student')));
+    // Class Rank (count of users with more xp)
+    const usersWithMoreXp = await db.select().from(users).where(and(gt(users.cumulative_xp, Number(profile.cumulative_xp) || 0), eq(users.role, 'student')));
     stats.rank = usersWithMoreXp.length + 1;
 
-    // Courses
-    const allCourses = await db.query.courses.findMany({
-        where: eq(courses.published, true)
-    });
-
-    const filteredCourses = allCourses.filter(course => {
-        if (course.all_grades === true) return true;
-        if (!studentGrade) return true;
-        if (course.grade === studentGrade) return true;
-        return false;
+    // Courses via enrollments
+    const userEnrollments = await db.query.enrollments.findMany({
+        where: and(eq(enrollments.user_id, userId), eq(enrollments.is_active, true)),
+        with: { course: true }
     });
 
     const coursesWithProgress = await Promise.all(
-        filteredCourses.map(async (course) => {
+        userEnrollments.map(async (enrollment) => {
+            const course = enrollment.course;
+            if (!course) return null;
+
             const courseLessons = await db.query.lessons.findMany({
                 where: eq(lessons.course_id, course.id)
             });
             const totalLessons = courseLessons.length;
 
-            let completedLessons = 0;
+            let completedCount = 0;
             if (totalLessons > 0) {
                 const lessonIds = courseLessons.map(l => l.id);
-                const userProgress = await db.query.progressTracking.findMany({
-                    where: and(
-                        eq(progressTracking.user_id, userId),
-                        eq(progressTracking.status, 'completed'),
-                        inArray(progressTracking.lesson_id, lessonIds)
+                const userProgress = await db.select().from(lessonProgress).where(
+                    and(
+                        eq(lessonProgress.user_id, userId),
+                        inArray(lessonProgress.lesson_id, lessonIds),
+                        isNotNull(lessonProgress.completed_at)
                     )
-                });
-                completedLessons = userProgress.length;
+                );
+                completedCount = userProgress.length;
             }
 
             return {
                 ...course,
+                // Backward-compatible aliases
+                thumbnail: course.thumbnail_url,
+                published: course.is_published,
                 totalLessons,
-                completedLessons
+                completedLessons: completedCount
             };
         })
     );
 
     return {
-        profile,
+        profile: {
+            ...profile,
+            // Backward-compatible aliases
+            full_name: `${profile.first_name} ${profile.last_name}`,
+            total_xp: Number(profile.cumulative_xp),
+            level: stats.level,
+        },
         stats,
         dailyChallenges: formattedChallenges,
         achievements: formattedAchievements,
-        courses: coursesWithProgress
+        courses: coursesWithProgress.filter(Boolean)
     };
 }
