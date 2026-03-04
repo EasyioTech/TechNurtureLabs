@@ -17,11 +17,7 @@ export default function SchoolLoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const fillDemoCredentials = () => {
-    setEmail('school@demo.com');
-    setPassword('school123');
-    toast.success('Demo credentials filled!');
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,18 +174,6 @@ export default function SchoolLoginPage() {
                 )}
               </Button>
             </form>
-
-            <div className="mt-4">
-              <Button
-                type="button"
-                onClick={fillDemoCredentials}
-                variant="outline"
-                className="w-full border-blue-500/30 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200"
-              >
-                <Wand2 size={16} className="mr-2" />
-                Use Demo Credentials
-              </Button>
-            </div>
 
             <div className="mt-8 pt-8 border-t border-white/10">
               <p className="text-center text-white/50 text-sm">

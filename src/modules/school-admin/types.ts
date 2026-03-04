@@ -1,53 +1,52 @@
-export type Student = {
+// School Admin Types
+
+export type SchoolStats = {
+    totalStudents: number;
+    activeStudents: number;   // active in last 7 days
+    avgXp: number;
+    totalXp: number;
+    enrolledCourses: number;
+    totalLessonsCompleted: number;
+    totalQuizzesTaken: number;
+    avgCompletionRate: number;
+    planName: string | null;
+    subscriptionStatus: string | null;
+    planExpiry: string | null;
+};
+
+export type SchoolStudentMetric = {
     id: string;
     full_name: string;
+    email: string;
     total_xp: number;
-    current_streak: number;
     level: number;
-    class_id: string;
-    class_name?: string;
-    last_activity_date: string | null;
-    progress?: number;
-    status: 'active' | 'inactive' | 'graduating';
+    current_streak: number;
+    longest_streak: number;
+    lessons_completed: number;
+    is_active: boolean;
+    last_active_at: string | null;
+    grade_name?: string;
 };
 
-export type Course = {
+export type SchoolCourseMetric = {
     id: string;
     title: string;
-    description: string;
-    thumbnail: string;
-    published: boolean;
+    thumbnail_url: string | null;
+    is_published: boolean;
     lesson_count: number;
     enrolled_count: number;
+    completion_rate: number;
+    avg_xp: number;
+    total_time_mins: number;
 };
 
-export type ClassData = {
+export type SchoolLeaderboardEntry = {
+    rank: number;
     id: string;
-    name: string;
-    level_index: number;
-    student_count: number;
-};
-
-export type StatsData = {
-    totalStudents: number;
-    activeStudents: number;
-    totalCourses: number;
-    totalLessons: number;
-    avgProgress: number;
-    totalXpEarned: number;
-};
-
-export type RecentActivity = {
-    id: string;
-    action: string;
-    user: string;
-    time: string;
-    icon: any;
-    color: string;
-};
-
-export type ClassProgressData = {
-    name: string;
-    progress: number;
-    studentCount: number;
+    full_name: string;
+    email: string;
+    total_xp: number;
+    level: number;
+    current_streak: number;
+    lessons_completed: number;
 };

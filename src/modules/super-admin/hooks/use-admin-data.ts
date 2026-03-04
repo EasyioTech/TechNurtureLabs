@@ -14,7 +14,11 @@ import {
     deletePlanAdmin,
     toggleSchoolStatus as toggleSchoolStatusAction,
     saveSchoolAdmin,
+    deleteQuizAdmin,
+    assignPlanToSchool,
 } from '../actions';
+
+export const USER_METRICS_PAGE_SIZE = 25;
 import {
     Course, Lesson, PaymentPlan, Stats, UserMetric, CourseMetric, SchoolInfo,
 } from '../types';
@@ -39,6 +43,8 @@ export function useAdminData() {
     const [courseMetrics, setCourseMetrics] = useState<CourseMetric[]>([]);
     const [grades, setGrades] = useState<any[]>([]);
     const [courseGradeMappings, setCourseGradeMappings] = useState<any[]>([]);
+    // Pagination
+    const [userMetricsPage, setUserMetricsPage] = useState(0);
 
     // Dialog state
     const [showCourseDialog, setShowCourseDialog] = useState(false);
@@ -142,7 +148,8 @@ export function useAdminData() {
             };
         }));
 
-        setUserMetrics(students.slice(0, 50).map(s => {
+        setUserMetricsPage(0); // reset to page 1 on data refresh
+        setUserMetrics(students.map(s => {
             const school = schoolsRaw.find(sch => sch.id === s.school_id);
             const userProgress = progressData.filter(p => p.user_id === s.id);
             return {
@@ -261,6 +268,16 @@ export function useAdminData() {
         catch { toast.error('Failed to delete plan'); }
     }
 
+    // Quiz
+    async function deleteQuiz(quizId: string) {
+        try {
+            await deleteQuizAdmin(quizId);
+            toast.success('Quiz deleted');
+            if (selectedCourse) selectCourse(selectedCourse);
+            fetchAllData();
+        } catch { toast.error('Failed to delete quiz'); }
+    }
+
     // School CRUD
     async function toggleSchoolStatus(schoolId: string, isActive: boolean) {
         try {
@@ -268,6 +285,14 @@ export function useAdminData() {
             toast.success(`School ${isActive ? 'activated' : 'deactivated'}`);
             fetchAllData();
         } catch { toast.error('Failed to update school status'); }
+    }
+
+    async function assignPlan(schoolId: string, planId: string, billingMonths: number = 12) {
+        try {
+            await assignPlanToSchool(schoolId, planId, billingMonths);
+            toast.success('Plan assigned successfully');
+            fetchAllData();
+        } catch { toast.error('Failed to assign plan'); }
     }
 
     async function saveSchool(schoolData: Partial<SchoolInfo>) {
@@ -288,12 +313,13 @@ export function useAdminData() {
         loading, stats, courses, selectedCourse, lessons, setLessons,
         paymentPlans, schoolsList, userMetrics, courseMetrics,
         grades, courseGradeMappings,
+        userMetricsPage, setUserMetricsPage,
         showCourseDialog, setShowCourseDialog, editingCourse, setEditingCourse,
         showLessonDialog, setShowLessonDialog, editingLesson, setEditingLesson,
         showPlanDialog, setShowPlanDialog, editingPlan, setEditingPlan,
         showSchoolDialog, setShowSchoolDialog, editingSchoolItem, setEditingSchoolItem,
         fetchAllData, selectCourse, saveCourse, deleteCourse,
-        saveLesson, deleteLesson, saveLessonOrder,
-        savePlan, deletePlan, toggleSchoolStatus, saveSchool,
+        saveLesson, deleteLesson, saveLessonOrder, deleteQuiz,
+        savePlan, deletePlan, toggleSchoolStatus, saveSchool, assignPlan,
     };
 }

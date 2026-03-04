@@ -601,8 +601,10 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
     enrollments: many(enrollments),
 }));
 
-export const lessonsRelations = relations(lessons, ({ one }) => ({
+export const lessonsRelations = relations(lessons, ({ one, many }) => ({
     course: one(courses, { fields: [lessons.course_id], references: [courses.id] }),
+    quiz: one(quizzes, { fields: [lessons.id], references: [quizzes.lesson_id] }),
+    progress: many(lessonProgress),
 }));
 
 export const enrollmentsRelations = relations(enrollments, ({ one, many }) => ({
@@ -658,3 +660,26 @@ export const studentAcademicRecordsRelations = relations(studentAcademicRecords,
     session: one(academicSessions, { fields: [studentAcademicRecords.session_id], references: [academicSessions.id] }),
     grade: one(grades, { fields: [studentAcademicRecords.grade_id], references: [grades.id] }),
 }));
+
+export const courseGradeMappingRelations = relations(courseGradeMapping, ({ one }) => ({
+    course: one(courses, { fields: [courseGradeMapping.course_id], references: [courses.id] }),
+    grade: one(grades, { fields: [courseGradeMapping.grade_id], references: [grades.id] }),
+}));
+
+export const quizzesRelations = relations(quizzes, ({ one, many }) => ({
+    lesson: one(lessons, { fields: [quizzes.lesson_id], references: [lessons.id] }),
+    course: one(courses, { fields: [quizzes.course_id], references: [courses.id] }),
+    questions: many(quizQuestions),
+    attempts: many(quizAttempts),
+}));
+
+export const quizQuestionsRelations = relations(quizQuestions, ({ one }) => ({
+    quiz: one(quizzes, { fields: [quizQuestions.quiz_id], references: [quizzes.id] }),
+}));
+
+export const quizAttemptsRelations = relations(quizAttempts, ({ one }) => ({
+    user: one(users, { fields: [quizAttempts.user_id], references: [users.id] }),
+    quiz: one(quizzes, { fields: [quizAttempts.quiz_id], references: [quizzes.id] }),
+    enrollment: one(enrollments, { fields: [quizAttempts.enrollment_id], references: [enrollments.id] }),
+}));
+

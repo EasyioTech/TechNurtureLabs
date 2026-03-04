@@ -11,14 +11,15 @@ import Link from 'next/link';
 import {
   ArrowLeft, Play, CheckCircle2, Lock, Trophy, FileText,
   Star, Clock, Zap, Users, BookOpen, Award, Target,
-  ChevronRight, Sparkles, GraduationCap, BarChart2, Calendar
+  ChevronRight, Sparkles, GraduationCap, BarChart2, Calendar,
+  MonitorPlay, HelpCircle
 } from 'lucide-react';
 
 type Lesson = {
   id: string;
   title: string;
   sequence_index: number;
-  content_type: 'video' | 'youtube' | 'mcq' | 'ppt';
+  content_type: 'video' | 'ppt' | 'pdf' | 'quiz';
   duration: number;
   xp_reward: number;
   status: 'locked' | 'available' | 'completed';
@@ -316,15 +317,17 @@ function LessonRow({ lesson, index }: { lesson: Lesson; index: number }) {
   const isCompleted = lesson.status === 'completed';
   const isAvailable = lesson.status === 'available';
 
-  const Icon = (lesson.content_type === 'video' || lesson.content_type === 'youtube') ? Play :
-    lesson.content_type === 'mcq' ? Trophy :
-      FileText;
+  const Icon =
+    lesson.content_type === 'video' ? Play :
+      lesson.content_type === 'quiz' ? HelpCircle :
+        lesson.content_type === 'ppt' ? MonitorPlay :
+          FileText; // pdf
 
   const typeLabels: Record<string, string> = {
     video: 'Video',
-    youtube: 'YouTube',
-    mcq: 'Quiz',
-    ppt: 'Slides'
+    ppt: 'Slides',
+    pdf: 'Document',
+    quiz: 'Assessment',
   };
 
   const content = (

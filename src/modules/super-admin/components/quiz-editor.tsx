@@ -5,10 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, Check, X, GripVertical, Settings2, Info } from 'lucide-react';
+import {
+    Plus, Trash2, Check, X, Settings2, Info,
+    ChevronLeft, LayoutDashboard, Target, Clock,
+    Trophy, Sparkles, Save, Layout, ListOrdered,
+    MonitorPlay, HelpCircle, GripVertical
+} from 'lucide-react';
 import { useAdminTheme, t } from '../theme-context';
 import { fetchQuizAdmin, saveQuizAdmin } from '../actions';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Question {
     id?: string;
@@ -34,16 +40,18 @@ interface Quiz {
     questions: Question[];
 }
 
-interface QuizEditorProps {
+interface QuizBuilderProps {
     lessonId: string;
     courseId: string;
-    isDark: boolean;
+    onClose: () => void;
 }
 
-export function QuizEditor({ lessonId, courseId, isDark }: QuizEditorProps) {
+export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
+    const { isDark } = useAdminTheme();
     const [quiz, setQuiz] = React.useState<Quiz | null>(null);
     const [loading, setLoading] = React.useState(true);
     const [saving, setSaving] = React.useState(false);
+    const [activeTab, setActiveTab] = React.useState<'questions' | 'settings'>('questions');
 
     React.useEffect(() => {
         async function load() {
@@ -57,15 +65,15 @@ export function QuizEditor({ lessonId, courseId, isDark }: QuizEditorProps) {
                         questions: (data.questions || []).map((q: any) => ({
                             ...q,
                             options: Array.isArray(q.options) ? q.options : [],
-                            correct_answer: q.correct_answer || (q.question_type === 'mcq' ? 0 : false)
+                            correct_answer: q.correct_answer || 0
                         }))
                     } as any);
                 } else {
                     setQuiz({
                         lesson_id: lessonId,
                         course_id: courseId,
-                        title: 'Lesson Knowledge Check',
-                        description: '',
+                        title: 'Lesson Assessment',
+                        description: 'Test your knowledge on this lesson.',
                         time_limit_secs: 0,
                         pass_percentage: 60,
                         max_attempts: 3,
@@ -76,6 +84,7 @@ export function QuizEditor({ lessonId, courseId, isDark }: QuizEditorProps) {
                 }
             } catch (err) {
                 console.error('Failed to load quiz:', err);
+                toast.error('Failed to load assessment');
             } finally {
                 setLoading(false);
             }
@@ -92,10 +101,13 @@ export function QuizEditor({ lessonId, courseId, isDark }: QuizEditorProps) {
                 ...saved,
                 pass_percentage: Number(saved.pass_percentage)
             } as any);
-            toast.success('Quiz architecture synchronized successfully');
+            toast.success('Assessment saved', {
+                description: 'Your changes are now live for students.',
+                icon: <Sparkles className="text-lime-400" size={16} />
+            });
         } catch (err) {
             console.error('Save failed:', err);
-            toast.error('Failed to save quiz configurations');
+            toast.error('Failed to save assessment');
         } finally {
             setSaving(false);
         }
@@ -110,13 +122,17 @@ export function QuizEditor({ lessonId, courseId, isDark }: QuizEditorProps) {
                 {
                     question_text: '',
                     question_type: 'mcq',
-                    options: ['Option A', 'Option B', 'Option C', 'Option D'],
+                    options: ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
                     correct_answer: 0,
                     explanation: '',
                     points: 1
                 }
             ]
         });
+        setTimeout(() => {
+            const container = document.getElementById('questions-canvas');
+            if (container) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }, 100);
     };
 
     const deleteQuestion = (index: number) => {
@@ -134,190 +150,330 @@ export function QuizEditor({ lessonId, courseId, isDark }: QuizEditorProps) {
     };
 
     if (loading) return (
-        <div className="py-20 flex flex-col items-center justify-center gap-4">
-            <div className="w-10 h-10 border-4 border-lime-400 border-t-transparent rounded-full animate-spin" />
-            <p className={`text-xs font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Initializing Quiz Engine...</p>
+        <div className="fixed inset-0 z-[200] bg-[#0f1219] flex flex-col items-center justify-center gap-6">
+            <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-12 h-12 border-4 border-lime-400 border-t-transparent rounded-full shadow-[0_0_20px_rgba(163,230,53,0.2)]"
+            />
+            <div className="text-center space-y-2">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-lime-400 animate-pulse">Loading Assessment</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Preparing your workspace...</p>
+            </div>
         </div>
     );
 
     if (!quiz) return null;
 
+    const totalPoints = quiz.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Quiz Settings */}
-            <div className={`p-6 rounded-[32px] border-2 space-y-6 ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-slate-50'}`}>
-                <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-lime-400 text-slate-900' : 'bg-slate-900 text-white'}`}>
-                        <Settings2 size={18} />
-                    </div>
-                    <div>
-                        <h4 className={`text-sm font-black uppercase tracking-tight ${t.textPrimary(isDark)}`}>Quiz Configuration</h4>
-                        <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Define assessment parameters and rewards.</p>
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-[#0A0C10] flex flex-col font-sans select-none overflow-hidden"
+        >
+            {/* ─── Top Header ────────────────────────────────────────────────── */}
+            <header className="min-h-[72px] md:h-20 border-b border-white/5 flex flex-col md:flex-row items-center justify-between px-4 md:px-8 py-3 md:py-0 bg-[#0D0F14]/80 backdrop-blur-xl gap-4 md:gap-0 shrink-0">
+                <div className="flex items-center gap-3 md:gap-6 w-full md:w-auto">
+                    <button
+                        onClick={onClose}
+                        className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center hover:bg-white/5 transition-colors text-slate-400 hover:text-white shrink-0"
+                    >
+                        <ChevronLeft size={20} className="md:hidden" />
+                        <ChevronLeft size={24} className="hidden md:block" />
+                    </button>
+                    <div className="h-6 md:h-8 w-[1px] bg-white/5" />
+                    <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 md:gap-2 overflow-hidden">
+                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-lime-400/60 bg-lime-400/5 px-2 py-0.5 rounded-full border border-lime-400/10 shrink-0">QUIZ BUILDER</span>
+                            <span className="text-[9px] md:text-[10px] font-bold text-slate-500 shrink-0">•</span>
+                            <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{quiz.questions.length} Questions</span>
+                        </div>
+                        <h1 className="text-sm md:text-lg font-black text-white tracking-tight leading-none mt-1 truncate">
+                            {quiz.title}
+                        </h1>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="space-y-1.5">
-                        <Label className={`text-[10px] font-black uppercase tracking-wider ${t.textSecondary(isDark)} pl-1`}>Time Limit (Sec)</Label>
-                        <Input
-                            type="number"
-                            value={quiz.time_limit_secs}
-                            onChange={(e) => setQuiz({ ...quiz, time_limit_secs: parseInt(e.target.value) || 0 })}
-                            className={`rounded-full h-10 border-2 font-black text-xs ${isDark ? 'bg-transparent border-white/5 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
-                        />
+                <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end">
+                    <div className="flex p-0.5 md:p-1 bg-white/[0.03] rounded-full border border-white/5">
+                        <button
+                            onClick={() => setActiveTab('questions')}
+                            className={`px-3 md:px-6 py-1.5 md:py-2 rounded-full text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'questions' ? 'bg-lime-400 text-slate-900 shadow-xl shadow-lime-400/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            <span className="flex items-center gap-1.5 md:gap-2"><ListOrdered size={12} className="md:size-3.5" /> Questions</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('settings')}
+                            className={`px-3 md:px-6 py-1.5 md:py-2 rounded-full text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'settings' ? 'bg-lime-400 text-slate-900 shadow-xl shadow-lime-400/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            <span className="flex items-center gap-1.5 md:gap-2"><Settings2 size={12} className="md:size-3.5" /> Settings</span>
+                        </button>
                     </div>
-                    <div className="space-y-1.5">
-                        <Label className={`text-[10px] font-black uppercase tracking-wider ${t.textSecondary(isDark)} pl-1`}>Pass Score (%)</Label>
-                        <Input
-                            type="number"
-                            value={quiz.pass_percentage}
-                            onChange={(e) => setQuiz({ ...quiz, pass_percentage: parseInt(e.target.value) || 60 })}
-                            className={`rounded-full h-10 border-2 font-black text-xs ${isDark ? 'bg-transparent border-white/5 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className={`text-[10px] font-black uppercase tracking-wider ${t.textSecondary(isDark)} pl-1`}>Max Attempts</Label>
-                        <Input
-                            type="number"
-                            value={quiz.max_attempts}
-                            onChange={(e) => setQuiz({ ...quiz, max_attempts: parseInt(e.target.value) || 3 })}
-                            className={`rounded-full h-10 border-2 font-black text-xs ${isDark ? 'bg-transparent border-white/5 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className={`text-[10px] font-black uppercase tracking-wider ${t.textSecondary(isDark)} pl-1`}>XP Reward</Label>
-                        <Input
-                            type="number"
-                            value={quiz.xp_reward}
-                            onChange={(e) => setQuiz({ ...quiz, xp_reward: parseInt(e.target.value) || 20 })}
-                            className={`rounded-full h-10 border-2 font-black text-xs ${isDark ? 'bg-transparent border-white/5 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
-                        />
-                    </div>
+
+                    <Button
+                        disabled={saving}
+                        onClick={handleSave}
+                        className="rounded-full h-9 md:h-11 px-4 md:px-8 bg-lime-400 text-slate-900 hover:bg-lime-500 font-black text-[10px] md:text-xs gap-2 shadow-lg transition-all active:scale-95 shrink-0"
+                    >
+                        {saving ? (
+                            <div className="w-3.5 h-3.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <Save size={14} strokeWidth={3} className="md:size-4" />
+                        )}
+                        <span>{saving ? 'SAVING...' : 'SAVE CHANGES'}</span>
+                    </Button>
                 </div>
+            </header>
+
+            {/* ─── Main Content Area ────────────────────────────────────────── */}
+            <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                {/* Sidebar Stats - responsive handling */}
+                <aside className="hidden lg:block w-72 xl:w-80 border-r border-white/5 p-8 space-y-8 bg-[#0D0F14]/50 overflow-y-auto shrink-0">
+                    <div className="space-y-6">
+                        <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Assessment Overview</h3>
+
+                        <div className="grid grid-cols-1 gap-4">
+                            <StatCard icon={Sparkles} color="text-violet-400" label="XP Points" value={quiz.xp_reward} sub="Points per lesson" />
+                            <StatCard icon={Target} color="text-sky-400" label="Passing Score" value={`${quiz.pass_percentage}%`} sub="Min requirements" />
+                            <StatCard icon={Clock} color="text-emerald-400" label="Time Limit" value={quiz.time_limit_secs === 0 ? 'Unlimited' : `${Math.floor(quiz.time_limit_secs / 60)}m`} sub="Session duration" />
+                        </div>
+                    </div>
+
+                    <div className="h-[2px] w-full bg-white/5" />
+
+                    <div className="space-y-6">
+                        <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Summary</h3>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Total Points</span>
+                                <span className="text-[11px] font-black text-white bg-white/5 px-2 py-1 rounded-lg border border-white/10">{totalPoints} PTS</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Difficulty</span>
+                                <span className="text-[11px] font-black text-white tracking-widest uppercase">{quiz.questions.length > 5 ? 'Advanced' : 'Intermediate'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                {/* Question Canvas */}
+                <div id="questions-canvas" className="flex-1 bg-black/20 overflow-y-auto p-4 md:p-8 lg:p-12 custom-scrollbar relative">
+                    <AnimatePresence mode="wait">
+                        {activeTab === 'questions' ? (
+                            <motion.div
+                                key="questions"
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -15 }}
+                                className="max-w-4xl mx-auto space-y-6 md:space-y-12 pb-32"
+                            >
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sm:mb-8">
+                                    <div>
+                                        <h2 className="text-xl md:text-3xl font-black text-white tracking-tighter">Assessment Questions</h2>
+                                        <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Design your assessment logic here.</p>
+                                    </div>
+                                    <Button
+                                        onClick={addQuestion}
+                                        className="w-full sm:w-auto rounded-full bg-white text-slate-900 hover:bg-slate-200 font-black text-[10px] md:text-[11px] uppercase tracking-widest h-10 md:h-11 px-6 gap-2"
+                                    >
+                                        <Plus size={16} strokeWidth={3} /> Add Question
+                                    </Button>
+                                </div>
+
+                                {quiz.questions.map((q, idx) => (
+                                    <QuestionCard
+                                        key={idx}
+                                        idx={idx}
+                                        q={q}
+                                        onUpdate={(updates: Partial<Question>) => updateQuestion(idx, updates)}
+                                        onDelete={() => deleteQuestion(idx)}
+                                    />
+                                ))}
+
+                                {quiz.questions.length === 0 && (
+                                    <div className="py-20 md:py-32 flex flex-col items-center justify-center text-center gap-6">
+                                        <div className="w-16 h-16 md:w-24 md:h-24 rounded-[32px] md:rounded-[40px] bg-white/[0.02] border border-white/5 flex items-center justify-center text-slate-700">
+                                            <HelpCircle size={32} className="md:size-12" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg md:text-xl font-black text-white">No Questions Yet</h3>
+                                            <p className="text-[10px] md:text-sm font-bold text-slate-500 uppercase tracking-widest mt-2 px-6">Add your first question to get started.</p>
+                                        </div>
+                                        <Button
+                                            onClick={addQuestion}
+                                            className="rounded-full bg-lime-400 text-slate-900 hover:bg-lime-500 font-black h-11 md:h-12 px-8 md:px-10 shadow-2xl"
+                                        >
+                                            ADD FIRST QUESTION
+                                        </Button>
+                                    </div>
+                                )}
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="settings"
+                                initial={{ opacity: 0, scale: 0.98 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.98 }}
+                                className="max-w-2xl mx-auto space-y-6 md:space-y-10"
+                            >
+                                <div className="mb-6 md:mb-12 text-center md:text-left">
+                                    <h2 className="text-xl md:text-3xl font-black text-white tracking-tighter">Quiz Settings</h2>
+                                    <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Configure how this quiz behaves for students.</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-6 md:gap-8 p-6 md:p-10 rounded-[32px] md:rounded-[40px] bg-[#11141B]/50 border border-white/5">
+                                    <div className="space-y-3">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Quiz Title</Label>
+                                        <Input
+                                            value={quiz.title}
+                                            onChange={(e) => setQuiz({ ...quiz, title: e.target.value })}
+                                            className="h-14 md:h-16 rounded-2xl bg-black/30 border-white/5 px-6 font-black text-white focus:border-lime-400/30 transition-all"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                                        <SettingsField label="Time Limit (Seconds)" value={quiz.time_limit_secs} onChange={(v: number) => setQuiz({ ...quiz, time_limit_secs: v })} />
+                                        <SettingsField label="Min Passing Score (%)" value={quiz.pass_percentage} onChange={(v: number) => setQuiz({ ...quiz, pass_percentage: v })} />
+                                        <SettingsField label="Maximum Attempts" value={quiz.max_attempts} onChange={(v: number) => setQuiz({ ...quiz, max_attempts: v })} />
+                                        <SettingsField label="Rewards (XP)" value={quiz.xp_reward} onChange={(v: number) => setQuiz({ ...quiz, xp_reward: v })} />
+                                    </div>
+
+                                    <div className="mt-4 flex items-center justify-between p-6 md:p-8 rounded-[24px] md:rounded-[32px] bg-white/[0.02] border border-white/10 group">
+                                        <div className="space-y-1 flex-1 pr-4">
+                                            <h4 className="text-[11px] font-black text-white uppercase tracking-widest">Publish Assessment</h4>
+                                            <p className="text-[9px] md:text-[10px] font-medium text-slate-500 leading-tight">Enable visibility of this assessment for enrolled students.</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setQuiz({ ...quiz, is_published: !quiz.is_published })}
+                                            className={`w-12 h-7 md:w-14 md:h-8 rounded-full p-1 transition-all shrink-0 ${quiz.is_published ? 'bg-lime-400 shadow-[0_0_15px_rgba(163,230,53,0.3)]' : 'bg-slate-800'}`}
+                                        >
+                                            <div className={`w-5 h-5 md:w-6 md:h-6 rounded-full bg-white shadow-sm transition-all ${quiz.is_published ? 'translate-x-5 md:translate-x-6' : 'translate-x-0'}`} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </main>
+
+            <style jsx global>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+                @media (min-width: 768px) { .custom-scrollbar::-webkit-scrollbar { width: 6px; } }
+            `}</style>
+        </motion.div>
+    );
+}
+
+// ─── Subcomponents ──────────────────────────────────────────────────
+
+function StatCard({ icon: Icon, color, label, value, sub }: any) {
+    return (
+        <div className="p-4 rounded-2xl md:rounded-3xl bg-white/[0.02] border border-white/5 space-y-2">
+            <div className={`flex items-center gap-2 ${color} mb-1`}>
+                <Icon size={14} />
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-80">{label}</span>
+            </div>
+            <div className="text-xl md:text-2xl font-black text-white">{value}</div>
+            <p className="text-[10px] text-slate-500 font-bold uppercase leading-tight">{sub}</p>
+        </div>
+    );
+}
+
+function SettingsField({ label, value, onChange }: any) {
+    return (
+        <div className="space-y-2.5">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">{label}</Label>
+            <Input
+                type="number"
+                value={value}
+                onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+                className="h-12 md:h-14 rounded-xl md:rounded-2xl bg-black/20 border-white/5 px-4 md:px-6 font-bold text-white focus:border-lime-400/30 transition-all"
+            />
+        </div>
+    );
+}
+
+function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
+    return (
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="group relative p-6 md:p-10 rounded-[32px] md:rounded-[48px] bg-[#11141B] border border-white/5 hover:border-white/10 transition-all shadow-2xl"
+        >
+            <div className="absolute -left-3 md:-left-4 top-8 md:top-10 w-7 h-7 md:w-8 md:h-8 rounded-lg md:rounded-xl bg-lime-400 text-slate-900 flex items-center justify-center font-black text-xs md:text-sm shadow-xl shadow-lime-400/20 z-10">
+                {idx + 1}
             </div>
 
-            {/* Questions List */}
-            <div className="space-y-6">
-                <div className="flex items-center justify-between px-2">
-                    <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5 text-lime-400' : 'bg-slate-100 text-slate-900'}`}>
-                            <Info size={14} />
-                        </div>
-                        <h4 className={`text-sm font-black uppercase tracking-tight ${t.textPrimary(isDark)}`}>Assessing Content ({quiz.questions.length})</h4>
+            <div className="flex justify-between items-start mb-6 md:mb-10 pl-4 md:pl-6">
+                <div className="space-y-1">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-600">Question Type</Label>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-full uppercase tracking-widest">Multiple Choice</span>
                     </div>
-                    <Button
-                        onClick={addQuestion}
-                        className={`rounded-full h-9 px-4 text-[10px] font-black gap-2 ${isDark ? 'bg-lime-400 text-slate-900 hover:bg-lime-500 shadow-lg shadow-lime-400/20' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
-                    >
-                        <Plus size={14} strokeWidth={3} /> ADD QUESTION
-                    </Button>
+                </div>
+                <button
+                    onClick={onDelete}
+                    className="w-9 h-9 md:w-10 md:h-10 rounded-full border border-red-500/20 text-red-500/40 hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-all sm:opacity-0 group-hover:opacity-100"
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+
+            <div className="space-y-8 md:space-y-10 pl-4 md:pl-6">
+                <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Question Text</Label>
+                    <Textarea
+                        value={q.question_text}
+                        onChange={(e) => onUpdate({ question_text: e.target.value })}
+                        placeholder="Define the question context..."
+                        className="bg-black/30 border-white/5 rounded-2xl md:rounded-[32px] min-h-[100px] md:min-h-[120px] p-5 md:p-6 text-sm md:text-base font-medium text-white placeholder:text-slate-700 focus:border-lime-400/30 transition-all resize-none"
+                    />
                 </div>
 
                 <div className="space-y-6">
-                    {quiz.questions.map((q, qIdx) => (
-                        <div key={qIdx} className={`p-6 rounded-[32px] border-2 transition-all ${isDark ? 'bg-white/[0.01] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                            <div className="flex gap-4">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
-                                        {qIdx + 1}
-                                    </div>
-                                    <div className={`w-[1px] h-full ${isDark ? 'bg-white/5' : 'bg-slate-50'}`} />
-                                    <button
-                                        onClick={() => deleteQuestion(qIdx)}
-                                        className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-
-                                <div className="flex-1 space-y-6">
-                                    <div className="space-y-1.5">
-                                        <Label className={`text-[10px] font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Question Fragment</Label>
-                                        <Textarea
-                                            value={q.question_text}
-                                            onChange={(e) => updateQuestion(qIdx, { question_text: e.target.value })}
-                                            placeholder="What is the primary function of...?"
-                                            className={`rounded-2xl min-h-[80px] border-2 font-medium text-sm transition-all focus:border-lime-400/50 ${isDark ? 'bg-transparent border-white/5 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <Label className={`text-[10px] font-black uppercase tracking-wider ${t.textSecondary(isDark)} pl-1`}>Interaction Options</Label>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {q.options.map((opt, oIdx) => (
-                                                <div key={oIdx} className="group relative">
-                                                    <Input
-                                                        value={opt}
-                                                        onChange={(e) => {
-                                                            const newOpts = [...q.options];
-                                                            newOpts[oIdx] = e.target.value;
-                                                            updateQuestion(qIdx, { options: newOpts });
-                                                        }}
-                                                        className={`rounded-full h-11 pl-12 pr-4 border-2 font-bold text-xs transition-all ${q.correct_answer === oIdx
-                                                            ? (isDark ? 'border-lime-400 bg-lime-400/5 text-white' : 'border-slate-900 bg-slate-50 text-slate-900')
-                                                            : (isDark ? 'bg-transparent border-white/5 text-slate-300' : 'bg-white border-slate-200 text-slate-500')}`}
-                                                    />
-                                                    <button
-                                                        onClick={() => updateQuestion(qIdx, { correct_answer: oIdx })}
-                                                        className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center transition-all ${q.correct_answer === oIdx
-                                                            ? (isDark ? 'bg-lime-400 text-slate-900' : 'bg-slate-900 text-white')
-                                                            : (isDark ? 'bg-white/5 text-transparent border border-white/20 hover:text-slate-400' : 'bg-slate-100 text-transparent border border-slate-200 hover:text-slate-400')}`}
-                                                    >
-                                                        <Check size={10} strokeWidth={4} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <Label className={`text-[10px] font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Conceptual Explanation (Optional)</Label>
-                                        <Input
-                                            value={q.explanation}
-                                            onChange={(e) => updateQuestion(qIdx, { explanation: e.target.value })}
-                                            placeholder="Provide context for the correct solution..."
-                                            className={`rounded-full h-10 border-2 font-medium text-xs ${isDark ? 'bg-transparent border-white/5 text-white placeholder:text-slate-600' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {quiz.questions.length === 0 && (
-                    <div className={`p-10 rounded-[32px] border-2 border-dashed flex flex-col items-center justify-center text-center gap-3 ${t.border(isDark)}`}>
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5 text-slate-600' : 'bg-slate-50 text-slate-300'}`}>
-                            <Plus size={24} />
-                        </div>
-                        <p className={`text-xs font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>Zero Question Logic Fragments</p>
+                    <div className="flex items-center justify-between mb-2 px-1">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Answer Options</Label>
                     </div>
-                )}
-            </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                        {q.options.map((opt: string, oIdx: number) => (
+                            <div key={oIdx} className="relative group/opt">
+                                <Input
+                                    value={opt}
+                                    onChange={(e) => {
+                                        const newOpts = [...q.options];
+                                        newOpts[oIdx] = e.target.value;
+                                        onUpdate({ options: newOpts });
+                                    }}
+                                    className={`h-14 md:h-16 pl-14 md:pl-16 pr-6 rounded-full font-bold text-xs md:text-sm bg-black/20 border-white/5 text-white transition-all ${q.correct_answer === oIdx ? 'border-lime-400/50 bg-lime-400/10 shadow-[0_0_15px_rgba(163,230,53,0.05)]' : 'hover:border-white/10'}`}
+                                />
+                                <button
+                                    onClick={() => onUpdate({ correct_answer: oIdx })}
+                                    className={`absolute left-3.5 md:left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${q.correct_answer === oIdx ? 'bg-lime-400 text-slate-900 shadow-lg shadow-lime-400/30' : 'bg-white/5 text-transparent border border-white/10 hover:text-slate-500'}`}
+                                >
+                                    <Check size={14} strokeWidth={4} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
 
-            {/* Global Actions */}
-            <div className={`sticky bottom-2 p-4 rounded-[40px] border-2 shadow-2xl backdrop-blur-md flex items-center justify-between z-10 ${isDark ? 'bg-[#0f1219]/90 border-white/10' : 'bg-white/90 border-slate-200'}`}>
-                <div className="flex items-center gap-3 px-4">
-                    <div className={`w-2 h-2 rounded-full animate-pulse ${quiz.questions.length > 0 ? 'bg-lime-400' : 'bg-orange-400'}`} />
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
-                        {quiz.questions.length > 0 ? 'Engine Ready for Deployment' : 'Incomplete Logic Mapping'}
-                    </span>
-                </div>
-                <div className="flex gap-3">
-                    <Button
-                        disabled={saving || quiz.questions.length === 0}
-                        onClick={handleSave}
-                        className={`rounded-full h-11 px-8 text-xs font-black gap-2 transition-all active:scale-95 ${isDark ? 'bg-lime-400 text-slate-900 hover:bg-lime-500 shadow-xl shadow-lime-400/30' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
-                    >
-                        {saving ? (
-                            <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                            <Check size={16} strokeWidth={3} />
-                        )}
-                        {saving ? 'SYNCHRONIZING...' : 'SAVE ASSESSMENT'}
-                    </Button>
+                <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Explanation (Optional)</Label>
+                    <Input
+                        value={q.explanation}
+                        onChange={(e) => onUpdate({ explanation: e.target.value })}
+                        placeholder="Provide an explanation for the correct answer..."
+                        className="bg-white/[0.03] border-white/5 h-12 md:h-14 rounded-full px-5 md:px-6 text-[13px] font-medium text-slate-400 placeholder:text-slate-700"
+                    />
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }

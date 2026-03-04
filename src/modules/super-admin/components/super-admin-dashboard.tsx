@@ -27,18 +27,19 @@ const NAV_ITEMS = [
 ];
 
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
-    overview: { title: 'Health Overview', subtitle: 'Global performance metrics and administrative status.' },
-    courses: { title: 'Course Management', subtitle: 'Orchestrate curriculum and content distribution.' },
-    plans: { title: 'Subscription Tiers', subtitle: 'Define and manage commercial service levels.' },
-    schools: { title: 'Institution Directory', subtitle: 'Comprehensive database of registered academic partners.' },
-    users: { title: 'Student Directory', subtitle: 'Engagement monitoring and performance tracking.' },
-    courseMetrics: { title: 'Course Analytics', subtitle: 'Performance insights and curriculum effectiveness data.' },
+    overview: { title: 'Platform Overview', subtitle: 'Monitor platform performance and system health.' },
+    courses: { title: 'Course Management', subtitle: 'Create and manage courses and learning content.' },
+    plans: { title: 'Pricing Plans', subtitle: 'Manage subscription plans and pricing levels.' },
+    schools: { title: 'Schools & Partners', subtitle: 'View and manage all registered school accounts.' },
+    users: { title: 'Student Management', subtitle: 'Track student progress and overall engagement.' },
+    courseMetrics: { title: 'Performance Reports', subtitle: 'Analyze course effectiveness and student success.' },
 };
 
 function DashboardContent() {
     const { signOut } = useAuth();
     const { isDark, toggle } = useAdminTheme();
     const [activePage, setActivePage] = useState('overview');
+    const [searchQuery, setSearchQuery] = useState('');
     const data = useAdminData();
 
     if (data.loading) {
@@ -46,13 +47,13 @@ function DashboardContent() {
             <div className={`min-h-screen flex items-center justify-center ${t.pageBg(isDark)}`}>
                 <div className="flex flex-col items-center gap-6">
                     <motion.div
-                        className={`w-16 h-16 rounded-3xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'} flex items-center justify-center border ${t.border(isDark)}`}
+                        className={`w-16 h-16 rounded-3xl ${isDark ? 'bg-white/[0.04]' : 'bg-neutral-100'} flex items-center justify-center border ${t.border(isDark)}`}
                         animate={{ rotate: [0, 90, 180, 270, 360] }}
                         transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
                     >
-                        <LayoutGrid className={isDark ? 'text-lime-400' : 'text-slate-800'} size={24} />
+                        <LayoutGrid className={isDark ? 'text-lime-400' : 'text-[#262626]'} size={24} />
                     </motion.div>
-                    <p className={`text-xs font-bold tracking-[0.2em] uppercase ${t.textMuted(isDark)} animate-pulse`}>Initializing System</p>
+                    <p className={`text-xs font-bold tracking-[0.2em] uppercase ${t.textMuted(isDark)} animate-pulse`}>Loading Dashboard</p>
                 </div>
             </div>
         );
@@ -69,13 +70,13 @@ function DashboardContent() {
                         {/* Logo + Tabs */}
                         <div className="flex items-center gap-10">
                             <div className="flex items-center gap-3 group cursor-pointer">
-                                <div className={`w-10 h-10 rounded-full ${isDark ? 'bg-lime-400' : 'bg-slate-900'} flex items-center justify-center ring-4 ring-transparent group-hover:ring-lime-400/20 transition-all flex-shrink-0`}>
+                                <div className={`w-10 h-10 rounded-full ${isDark ? 'bg-lime-400' : 'bg-[#262626]'} flex items-center justify-center ring-4 ring-transparent group-hover:ring-lime-400/20 transition-all flex-shrink-0`}>
                                     <LayoutGrid className={isDark ? 'text-slate-900' : 'text-white'} size={18} />
                                 </div>
                                 <span className={`text-xl font-black tracking-tighter ${t.textPrimary(isDark)} whitespace-nowrap`}>TechNurture Labs</span>
                             </div>
 
-                            <nav className={`hidden md:flex items-center ${isDark ? 'bg-slate-900/50' : 'bg-slate-100/50'} rounded-full p-1.5`}>
+                            <nav className={`hidden md:flex items-center ${isDark ? 'bg-neutral-900/50' : 'bg-neutral-100/80'} rounded-full p-1.5`}>
                                 {NAV_ITEMS.map(item => {
                                     const isActive = activePage === item.id;
                                     return (
@@ -88,7 +89,7 @@ function DashboardContent() {
                                             {isActive && (
                                                 <motion.div
                                                     layoutId="nav-pill-active"
-                                                    className={`absolute inset-0 rounded-full ${isDark ? 'bg-lime-400 text-slate-900' : 'bg-slate-900 text-white shadow-lg'}`}
+                                                    className={`absolute inset-0 rounded-full ${isDark ? 'bg-lime-400 text-slate-900' : 'bg-[#262626] text-white shadow-lg'}`}
                                                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                                                 />
                                             )}
@@ -104,27 +105,35 @@ function DashboardContent() {
                         {/* Right side */}
                         <div className="flex items-center gap-4">
                             <div className={`hidden lg:flex items-center rounded-full px-5 py-2.5 gap-3 min-w-[280px] border transition-all duration-300 focus-within:ring-2 focus-within:ring-lime-400/30 focus-within:border-lime-400/30 ${t.border(isDark)} ${isDark ? 'bg-white/[0.04] focus-within:bg-white/[0.06]' : 'bg-white shadow-sm focus-within:shadow-md'}`}>
-                                <Search size={16} className={`transition-colors ${isDark ? 'text-slate-600 group-focus-within:text-lime-400' : 'text-slate-400'}`} />
-                                <input type="text" placeholder="Search insights..." className={`bg-transparent text-[13px] font-black outline-none flex-1 placeholder:font-bold ${t.textPrimary(isDark)}`} />
-                                <span className={`text-[10px] font-[1000] px-2 py-0.5 rounded-md border ${isDark ? 'border-white/10 text-slate-600' : 'border-slate-100 text-slate-300'}`}>/</span>
+                                <Search size={16} className={`transition-colors ${isDark ? 'text-slate-600 group-focus-within:text-lime-400' : 'text-neutral-400'}`} />
+                                <input
+                                    type="text"
+                                    placeholder="Search dashboard..."
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className={`bg-transparent text-[13px] font-black outline-none flex-1 placeholder:font-bold ${t.textPrimary(isDark)}`}
+                                />
+                                {searchQuery && (
+                                    <button onClick={() => setSearchQuery('')} className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${isDark ? 'border-white/10 text-slate-600 hover:text-white' : 'border-neutral-200 text-neutral-400 hover:text-slate-900'}`}>✕</button>
+                                )}
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <button className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all relative border group ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] hover:border-lime-400/20' : 'hover:bg-slate-50 hover:shadow-md'}`}>
+                                <button className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all relative border group ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] hover:border-lime-400/20' : 'hover:bg-neutral-50 hover:shadow-md'}`}>
                                     <Bell size={20} className={`transition-all group-hover:rotate-12 ${t.textSecondary(isDark)}`} />
                                     <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-lime-400 rounded-full ring-4 ring-white dark:ring-[#0f1219] shadow-[0_0_10px_rgba(163,230,53,0.6)]" />
                                 </button>
 
                                 <button
                                     onClick={toggle}
-                                    className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all border group ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] text-slate-400 hover:text-lime-400 hover:border-lime-400/20' : 'hover:bg-slate-50 text-slate-500 hover:text-amber-500 hover:shadow-md'}`}
+                                    className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all border group ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] text-slate-400 hover:text-lime-400 hover:border-lime-400/20' : 'hover:bg-neutral-50 text-neutral-500 hover:text-amber-500 hover:shadow-md'}`}
                                 >
                                     {isDark ? <Sun size={20} /> : <Moon size={20} />}
                                 </button>
                             </div>
 
-                            <Avatar className={`w-11 h-11 cursor-pointer border-2 transition-all ${isDark ? 'border-white/10 hover:border-lime-400/50' : 'border-slate-200 shadow-lg'}`} onClick={() => signOut()}>
-                                <AvatarFallback className={`text-xs font-[1000] ${isDark ? 'bg-lime-400 text-slate-900' : 'bg-slate-900 text-white'}`}>SA</AvatarFallback>
+                            <Avatar className={`w-11 h-11 cursor-pointer border-2 transition-all ${isDark ? 'border-white/10 hover:border-lime-400/50' : 'border-neutral-200/50 shadow-lg'}`} onClick={() => signOut()}>
+                                <AvatarFallback className={`text-xs font-[1000] ${isDark ? 'bg-lime-400 text-slate-900' : 'bg-[#171717] text-white'}`}>SA</AvatarFallback>
                             </Avatar>
                         </div>
                     </div>
@@ -161,7 +170,7 @@ function DashboardContent() {
                         </Button>
                         <Button size="lg"
                             className={`rounded-full gap-2.5 h-12 px-7 text-sm font-black shadow-xl transition-all
-                                ${isDark ? 'shadow-lime-400/20' : 'shadow-slate-900/20'} ${t.btnPrimary(isDark)}`}
+                                ${isDark ? 'shadow-lime-400/20' : 'shadow-black/5'} ${t.btnPrimary(isDark)}`}
                             onClick={() => {
                                 if (activePage === 'courses') {
                                     data.setEditingCourse({ published: false });
@@ -216,13 +225,21 @@ function DashboardContent() {
                             />
                         )}
                         {activePage === 'schools' && (
-                            <SchoolsTab stats={data.stats} schoolsList={data.schoolsList}
-                                onToggleStatus={data.toggleSchoolStatus} onSaveSchool={data.saveSchool}
-                                showEditDialog={data.showSchoolDialog} setShowEditDialog={data.setShowSchoolDialog}
-                                editingSchool={data.editingSchoolItem as any} setEditingSchool={data.setEditingSchoolItem as any}
+                            <SchoolsTab
+                                stats={data.stats}
+                                schoolsList={data.schoolsList}
+                                paymentPlans={data.paymentPlans}
+                                onToggleStatus={data.toggleSchoolStatus}
+                                onSaveSchool={data.saveSchool}
+                                onAssignPlan={data.assignPlan}
+                                showEditDialog={data.showSchoolDialog}
+                                setShowEditDialog={data.setShowSchoolDialog}
+                                editingSchool={data.editingSchoolItem as any}
+                                setEditingSchool={data.setEditingSchoolItem as any}
+                                searchQuery={searchQuery}
                             />
                         )}
-                        {activePage === 'users' && <MetricTables userMetrics={data.userMetrics} courseMetrics={[]} />}
+                        {activePage === 'users' && <MetricTables userMetrics={data.userMetrics} courseMetrics={[]} page={data.userMetricsPage} setPage={data.setUserMetricsPage} />}
                         {activePage === 'courseMetrics' && <MetricTables userMetrics={[]} courseMetrics={data.courseMetrics} />}
                     </motion.div>
                 </AnimatePresence>

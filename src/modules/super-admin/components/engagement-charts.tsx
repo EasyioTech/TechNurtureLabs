@@ -25,13 +25,13 @@ interface EngagementChartsProps {
 
 export function EngagementCharts({ engagementData, planDistribution, revenueData }: EngagementChartsProps) {
     const { isDark } = useAdminTheme();
-    const grid = isDark ? 'rgba(255,255,255,0.03)' : '#f1f5f9';
-    const axis = isDark ? '#475569' : '#94a3b8';
+    const grid = isDark ? 'rgba(255,255,255,0.03)' : '#f5f5f5';
+    const axis = isDark ? '#475569' : '#a3a3a3';
     const ttBg = isDark ? '#0f172a' : '#fff';
-    const ttBorder = isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0';
-    const ttColor = isDark ? '#fff' : '#334155';
-    const areaStroke = isDark ? '#a3e635' : '#0f172a';
-    const barFill = isDark ? '#a3e635' : '#0f172a';
+    const ttBorder = isDark ? 'rgba(255,255,255,0.08)' : '#e5e5e5';
+    const ttColor = isDark ? '#fff' : '#171717';
+    const areaStroke = isDark ? '#a3e635' : '#171717';
+    const barFill = isDark ? '#a3e635' : '#171717';
 
     return (
         <div className="space-y-6">
@@ -39,12 +39,12 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                 <div className={`lg:col-span-2 rounded-[24px] border p-7 transition-all duration-500 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
                     <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-900 text-white'}`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-[#171717] text-white'}`}>
                                 <Activity size={16} />
                             </div>
                             <div>
-                                <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>PLATFORM ENGAGEMENT</h3>
-                                <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Active student sessions and lesson completion rates.</p>
+                                <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>User Activity</h3>
+                                <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Monitor student engagement and lesson completion trends.</p>
                             </div>
                         </div>
                     </div>
@@ -74,12 +74,12 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
 
                 <div className={`rounded-[24px] border p-7 transition-all duration-500 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
                     <div className="flex items-center gap-3 mb-8">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-900 text-white'}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-[#171717] text-white'}`}>
                             <PieChartIcon size={16} />
                         </div>
                         <div>
-                            <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>PLAN DISTRIBUTION</h3>
-                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Overview of active subscription tiers.</p>
+                            <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>Subscription Breakdown</h3>
+                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Distribution of schools across pricing plans.</p>
                         </div>
                     </div>
                     <div className="h-[200px]">
@@ -96,7 +96,7 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                     </div>
                     <div className="flex flex-col gap-2 mt-4">
                         {planDistribution.map((item, i) => (
-                            <div key={item.name} className="flex items-center justify-between p-2 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-white/[0.02] hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                            <div key={item.name} className="flex items-center justify-between p-2 rounded-xl border border-transparent hover:border-neutral-100 dark:hover:border-white/[0.02] hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors">
                                 <div className="flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
                                     <span className={`text-[11px] font-black uppercase tracking-tighter ${t.textPrimary(isDark)}`}>{item.name}</span>
@@ -111,12 +111,12 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
             <div className={`rounded-[24px] border p-7 transition-all duration-500 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-900 text-white'}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-[#171717] text-white'}`}>
                             <TrendingUp size={16} />
                         </div>
                         <div>
-                            <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>REVENUE PERFORMANCE</h3>
-                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Monthly financial growth metrics (INR).</p>
+                            <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>Revenue Performance</h3>
+                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Track monthly revenue growth and transactions.</p>
                         </div>
                     </div>
                 </div>

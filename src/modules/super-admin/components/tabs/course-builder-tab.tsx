@@ -89,11 +89,11 @@ export function CourseBuilderTab({
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
                     className={`rounded-[24px] border overflow-hidden transition-all duration-500 shadow-xl shadow-black/5 flex flex-col h-[700px] ${t.card(isDark)}`}>
                     <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${t.border(isDark)}`}>
-                        <h3 className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>CURRICULUMS</h3>
+                        <h3 className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>All Courses</h3>
                         <Button size="sm"
                             className={`rounded-full text-[10px] font-black h-8 px-4 border-0 ${t.btnPrimary(isDark)}`}
                             onClick={() => { setEditingCourse({ published: false }); setShowCourseDialog(true); }}>
-                            <Plus size={14} className="mr-1.5" />NEW CURRICULUM
+                            <Plus size={14} className="mr-1.5" />Create Course
                         </Button>
                     </div>
 
@@ -102,8 +102,8 @@ export function CourseBuilderTab({
                             <div className={`w-16 h-16 rounded-3xl mx-auto mb-6 flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-50'} border-2 border-dashed ${t.border(isDark)}`}>
                                 <BookOpen size={28} className={isDark ? 'text-slate-700' : 'text-slate-300'} />
                             </div>
-                            <p className={`text-sm font-black tracking-tight ${t.textPrimary(isDark)}`}>NO COURSES FOUND</p>
-                            <p className={`text-[12px] mt-1 font-medium ${t.textMuted(isDark)}`}>Create a new course to get started.</p>
+                            <p className={`text-sm font-black tracking-tight ${t.textPrimary(isDark)}`}>No Courses Yet</p>
+                            <p className={`text-[12px] mt-1 font-medium ${t.textMuted(isDark)}`}>Create your first course to begin building your curriculum.</p>
                         </div>
                     ) : (
                         <div className="p-3 space-y-2 overflow-y-auto flex-1">
@@ -169,15 +169,15 @@ export function CourseBuilderTab({
                     <div className={`flex items-center justify-between px-6 py-5 border-b flex-shrink-0 ${t.border(isDark)}`}>
                         <div>
                             <h3 className={`font-black text-lg tracking-tight ${t.textPrimary(isDark)}`}>
-                                {selectedCourse ? selectedCourse.title.toUpperCase() : 'LESSONS'}
+                                {selectedCourse ? selectedCourse.title : 'Course Lessons'}
                             </h3>
-                            {selectedCourse && <p className={`text-[12px] font-medium mt-0.5 ${t.textMuted(isDark)}`}>Manage lessons • {lessons.length} items</p>}
+                            {selectedCourse && <p className={`text-[12px] font-medium mt-0.5 ${t.textMuted(isDark)}`}>{lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'} in this course</p>}
                         </div>
                         {selectedCourse && (
                             <div className="flex gap-3">
                                 <Button variant="outline" size="sm" className={`rounded-full h-9 px-5 text-[11px] font-black border-2 ${t.btnOutline(isDark)}`}
                                     onClick={() => { setEditingLesson({ content_type: 'video', xp_reward: 10, duration: 10, is_published: true }); setShowLessonDialog(true); }}>
-                                    <Plus size={14} className="mr-1.5" />NEW LESSON
+                                    <Plus size={14} className="mr-1.5" />Add Lesson
                                 </Button>
                                 {lessons.length > 1 && (
                                     <Button size="sm" className={`rounded-full h-9 px-5 text-[11px] font-black shadow-lg shadow-lime-400/20 border-0 ${t.btnPrimary(isDark)}`} onClick={onSaveLessonOrder}>
@@ -206,8 +206,8 @@ export function CourseBuilderTab({
                                         <div className={`w-16 h-16 rounded-3xl mx-auto mb-6 flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-50'} border-2 border-dashed ${t.border(isDark)}`}>
                                             <Layers size={28} className={isDark ? 'text-slate-700' : 'text-slate-200'} />
                                         </div>
-                                        <p className={`text-sm font-black tracking-tight ${t.textPrimary(isDark)}`}>NO LESSONS FOUND</p>
-                                        <p className={`text-[12px] mt-1 font-medium ${t.textMuted(isDark)}`}>Add lessons, videos, or documents to this course.</p>
+                                        <p className={`text-sm font-black tracking-tight ${t.textPrimary(isDark)}`}>No Lessons Yet</p>
+                                        <p className={`text-[12px] mt-1 font-medium ${t.textMuted(isDark)}`}>Add your first lesson, video, or document to this course.</p>
                                         <Button variant="outline" size="sm" className={`mt-6 rounded-full h-9 px-5 text-[11px] font-black border-2 ${t.btnOutline(isDark)}`}
                                             onClick={() => { setEditingLesson({ content_type: 'video', xp_reward: 10, duration: 10, is_published: true }); setShowLessonDialog(true); }}>
                                             <Plus size={14} className="mr-1.5" />Add First Lesson
@@ -221,8 +221,8 @@ export function CourseBuilderTab({
                                     <div className={`w-16 h-16 rounded-3xl mx-auto mb-6 flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-50'} border-2 border-dashed ${t.border(isDark)}`}>
                                         <Layers size={28} className={isDark ? 'text-slate-700' : 'text-slate-200'} />
                                     </div>
-                                    <p className={`text-sm font-black tracking-tight ${t.textPrimary(isDark)}`}>NO COURSE SELECTED</p>
-                                    <p className={`text-[12px] mt-1 font-medium ${t.textMuted(isDark)}`}>Select a course from the left to begin editing.</p>
+                                    <p className={`text-sm font-black tracking-tight ${t.textPrimary(isDark)}`}>No Course Selected</p>
+                                    <p className={`text-[12px] mt-1 font-medium ${t.textMuted(isDark)}`}>Select a course from the list on the left to view and manage its content.</p>
                                 </div>
                             </div>
                         )}
@@ -241,7 +241,7 @@ export function CourseBuilderTab({
                             <AlertOctagon size={32} />
                         </div>
                         <h2 className={`text-xl font-[1000] tracking-tight mb-3 ${t.textPrimary(isDark)}`}>
-                            CONFIRM DELETION
+                            Confirm Deletion
                         </h2>
                         <p className={`text-sm font-medium leading-relaxed ${t.textMuted(isDark)}`}>
                             Are you sure you want to delete the {itemToDelete?.type} <span className={isDark ? 'text-white font-bold' : 'text-slate-900 font-bold'}>"{itemToDelete?.name}"</span>?

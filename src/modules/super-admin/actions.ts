@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { courses, lessons, paymentPlans, users, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, grades, courseGradeMapping, quizzes, quizQuestions } from '@/db/schema';
 import { eq, asc, desc, count, sql, and } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
+import { addMonths } from 'date-fns';
 
 export async function fetchAllAdminData() {
     const students = await db.query.users.findMany({ where: (u, { eq }) => eq(u.role, 'student') });
@@ -136,6 +137,10 @@ async function updateCourseTotals(courseId: string) {
 
 export async function deleteCourseAdmin(id: string) {
     await db.delete(courses).where(eq(courses.id, id));
+}
+
+export async function fetchLessonAdmin(id: string) {
+    return await db.query.lessons.findFirst({ where: eq(lessons.id, id) });
 }
 
 export async function saveLessonAdmin(lessonData: any) {
@@ -334,4 +339,40 @@ export async function saveQuizAdmin(quizData: any) {
     }
 
     return await fetchQuizAdmin(quizData.lesson_id);
+}
+
+export async function deleteQuizAdmin(quizId: string) {
+    // quiz_questions cascade via FK — only need to delete the quiz
+    await db.delete(quizzes).where(eq(quizzes.id, quizId));
+}
+
+export async function assignPlanToSchool(schoolId: string, planId: string, billingMonths: number = 12) {
+    const now = new Date();
+    const periodEnd = addMonths(now, billingMonths);
+
+    // Check if subscription already exists for this school
+    const existing = await db.query.schoolSubscriptions.findFirst({
+        where: eq(schoolSubscriptions.school_id, schoolId),
+    });
+
+    if (existing) {
+        const [updated] = await db.update(schoolSubscriptions).set({
+            plan_id: planId,
+            status: 'active',
+            current_period_start: now,
+            current_period_end: periodEnd,
+            updated_at: now,
+        }).where(eq(schoolSubscriptions.id, existing.id)).returning();
+        return updated;
+    } else {
+        const [created] = await db.insert(schoolSubscriptions).values({
+            school_id: schoolId,
+            plan_id: planId,
+            status: 'active',
+            current_period_start: now,
+            current_period_end: periodEnd,
+            auto_renew: true,
+        } as any).returning();
+        return created;
+    }
 }

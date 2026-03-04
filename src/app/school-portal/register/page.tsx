@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -15,9 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { registerSchool } from '@/modules/auth/register-actions';
+import { registerSchool, fetchActivePaymentPlans } from '@/modules/auth/register-actions';
 import { toast } from 'sonner';
-import { School, ArrowLeft, Building, MapPin, Users, CheckCircle2, Loader2, Sparkles, Globe, Shield, BarChart3 } from 'lucide-react';
+import { School, ArrowLeft, Building, MapPin, Users, CheckCircle2, Loader2, Sparkles, Globe, Shield, BarChart3, CreditCard, Check, Eye, EyeOff } from 'lucide-react';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -42,6 +42,8 @@ const ALL_GRADES = Array.from({ length: 12 }, (_, i) => i + 1);
 export default function SchoolRegistrationPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [paymentPlans, setPaymentPlans] = useState<any[]>([]);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
@@ -56,7 +58,27 @@ export default function SchoolRegistrationPage() {
     contact_email: '',
     contact_phone: '',
     principal_name: '',
+    password: '',
+    plan_id: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        const plans = await fetchActivePaymentPlans();
+        setPaymentPlans(plans);
+        if (plans.length > 0) {
+          setFormData(prev => ({ ...prev, plan_id: plans[0].id }));
+        }
+      } catch (error) {
+        console.error('Failed to load payment plans', error);
+      } finally {
+        setPlansLoading(false);
+      }
+    };
+    loadPlans();
+  }, []);
 
   const handleGradeToggle = (grade: number) => {
     setFormData(prev => ({
@@ -92,12 +114,17 @@ export default function SchoolRegistrationPage() {
       return;
     }
 
+    if (!formData.plan_id && paymentPlans.length > 0) {
+      toast.error('Please select a payment plan');
+      return;
+    }
+
     setLoading(true);
 
     try {
       await registerSchool(formData);
       toast.success('School registered successfully!');
-      router.push('/register/school/success');
+      router.push('/school-portal/login?registered=true');
     } catch (error: any) {
       toast.error('Registration failed: ' + error.message);
     } finally {
@@ -107,6 +134,7 @@ export default function SchoolRegistrationPage() {
 
   const canProceedStep1 = formData.name && formData.udise_code && formData.state && formData.district;
   const canProceedStep2 = formData.school_type && formData.grades_available.length > 0;
+  const canProceedStep3 = formData.principal_name && formData.contact_email && formData.contact_phone && formData.password;
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white flex">
@@ -190,6 +218,9 @@ export default function SchoolRegistrationPage() {
               <div className={`flex-1 h-1.5 rounded-full ${step >= 1 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-white/10'}`} />
               <div className={`flex-1 h-1.5 rounded-full ${step >= 2 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-white/10'}`} />
               <div className={`flex-1 h-1.5 rounded-full ${step >= 3 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-white/10'}`} />
+              {paymentPlans.length > 0 && (
+                <div className={`flex-1 h-1.5 rounded-full ${step >= 4 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-white/10'}`} />
+              )}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -355,7 +386,7 @@ export default function SchoolRegistrationPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-white/70 text-sm">Principal Name</Label>
+                    <Label className="text-white/70 text-sm">Principal Name *</Label>
                     <Input
                       value={formData.principal_name}
                       onChange={(e) => setFormData({ ...formData, principal_name: e.target.value })}
@@ -365,7 +396,7 @@ export default function SchoolRegistrationPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-white/70 text-sm">Contact Email</Label>
+                    <Label className="text-white/70 text-sm">Contact Email *</Label>
                     <Input
                       type="email"
                       value={formData.contact_email}
@@ -376,13 +407,33 @@ export default function SchoolRegistrationPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-white/70 text-sm">Contact Phone</Label>
+                    <Label className="text-white/70 text-sm">Contact Phone *</Label>
                     <Input
                       value={formData.contact_phone}
                       onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
                       className="bg-white/5 border-white/10 h-12 text-white placeholder:text-white/30"
                       placeholder="+91 XXXXX XXXXX"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-white/70 text-sm">Admin Password *</Label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="bg-white/5 border-white/10 h-12 text-white placeholder:text-white/30 pr-12"
+                        placeholder="Create a password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -395,10 +446,117 @@ export default function SchoolRegistrationPage() {
                     />
                   </div>
 
+                  {paymentPlans.length > 0 ? (
+                    <Button
+                      type="button"
+                      onClick={() => setStep(4)}
+                      disabled={!canProceedStep3}
+                      className="w-full h-12 text-base font-bold rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 shadow-lg shadow-blue-500/25"
+                    >
+                      Choose Plan
+                      <ArrowLeft size={18} className="ml-2 rotate-180" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={loading || !canProceedStep3}
+                      className="w-full h-12 text-base font-bold rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 shadow-lg shadow-blue-500/25"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 animate-spin" size={20} />
+                          Registering...
+                        </>
+                      ) : (
+                        <>
+                          <School size={18} className="mr-2" />
+                          Register School
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </motion.div>
+              )}
+
+              {step === 4 && paymentPlans.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="space-y-5"
+                >
+                  <button type="button" onClick={() => setStep(3)} className="text-sm text-white/50 hover:text-white flex items-center gap-1 mb-2">
+                    <ArrowLeft size={14} /> Back
+                  </button>
+
+                  <div className="flex items-center gap-2 text-rose-400 text-sm font-semibold mb-4">
+                    <CreditCard size={16} />
+                    Choose Your Plan
+                  </div>
+
+                  {plansLoading ? (
+                    <div className="py-8 flex justify-center text-white/50">
+                      <Loader2 className="animate-spin" size={24} />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {paymentPlans.map((plan) => (
+                        <div
+                          key={plan.id}
+                          onClick={() => setFormData({ ...formData, plan_id: plan.id })}
+                          className={`relative p-5 rounded-2xl border cursor-pointer transition-all ${formData.plan_id === plan.id
+                            ? 'bg-blue-500/10 border-blue-500'
+                            : 'bg-white/5 border-white/10 hover:border-white/30'
+                            }`}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h3 className="font-bold text-lg">{plan.name}</h3>
+                              <p className="text-sm text-white/60 mb-3">{plan.description}</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-black">
+                                {plan.currency === 'INR' ? '₹' : plan.currency}{Number(plan.price).toLocaleString()}
+                                <span className="text-sm text-white/50 font-normal">/{plan.billing_cycle === 'monthly' ? 'mo' : plan.billing_cycle === 'annual' ? 'yr' : 'cycle'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {plan.trial_days > 0 && (
+                            <div className="inline-block px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-full mb-4">
+                              {plan.trial_days}-Day Free Trial
+                            </div>
+                          )}
+
+                          {plan.features && Array.isArray(plan.features) && plan.features.length > 0 && (
+                            <div className="space-y-2 mt-4 pt-4 border-t border-white/10">
+                              {plan.features.slice(0, 3).map((feature: string, idx: number) => (
+                                <div key={idx} className="flex items-center gap-2 text-sm text-white/70">
+                                  <Check size={14} className="text-blue-400 flex-shrink-0" />
+                                  {feature}
+                                </div>
+                              ))}
+                              {plan.features.length > 3 && (
+                                <div className="text-xs text-white/40 italic ml-5">
+                                  + {plan.features.length - 3} more features
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {formData.plan_id === plan.id && (
+                            <div className="absolute -top-3 -right-3 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center border-4 border-[#0a0a0f]">
+                              <CheckCircle2 size={16} className="text-white" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
-                    disabled={loading}
-                    className="w-full h-12 text-base font-bold rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 shadow-lg shadow-blue-500/25"
+                    disabled={loading || !formData.plan_id}
+                    className="w-full h-12 text-base font-bold rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 shadow-lg shadow-blue-500/25 mt-6"
                   >
                     {loading ? (
                       <>
@@ -408,7 +566,7 @@ export default function SchoolRegistrationPage() {
                     ) : (
                       <>
                         <School size={18} className="mr-2" />
-                        Register School
+                        Complete Registration
                       </>
                     )}
                   </Button>

@@ -28,13 +28,13 @@ function StatCard({ label, value, badge, icon: Icon, extra, delay = 0 }: {
             className={`relative rounded-[24px] p-6 lg:p-7 border transition-all duration-500 overflow-hidden group ${t.card(isDark)} ${t.cardHover(isDark)}`}
         >
             <div className={`absolute -top-16 -right-16 w-40 h-40 rounded-full blur-3xl transition-all
-                ${isDark ? 'bg-lime-400/[0.04] group-hover:bg-lime-400/[0.08]' : 'bg-slate-400/[0.04] group-hover:bg-slate-400/[0.08]'}`} />
+                ${isDark ? 'bg-lime-400/[0.04] group-hover:bg-lime-400/[0.08]' : 'bg-neutral-400/[0.04] group-hover:bg-neutral-400/[0.08]'}`} />
 
             <div className="flex justify-between items-start mb-6">
                 <p className={`text-[12px] font-bold tracking-widest uppercase ${t.textMuted(isDark)}`}>{label}</p>
                 {Icon && (
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50'}`}>
-                        <Icon size={14} className={isDark ? 'text-lime-400' : 'text-slate-600'} />
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-neutral-50'}`}>
+                        <Icon size={14} className={isDark ? 'text-lime-400' : 'text-neutral-600'} />
                     </div>
                 )}
             </div>
@@ -117,11 +117,11 @@ export function OverviewTab({ stats, paymentPlans, schoolsList }: OverviewTabPro
 
     const completionBar = (
         <div className="flex items-center gap-2.5 h-10 px-1">
-            <div className={`flex-1 h-3 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-slate-100'}`}>
+            <div className={`flex-1 h-3 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'}`}>
                 <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${stats.avgCompletion}%` }}
-                    className={`h-full rounded-full ${isDark ? 'bg-lime-400 shadow-[0_0_10px_rgba(163,230,53,0.3)]' : 'bg-slate-900'}`} />
+                    className={`h-full rounded-full ${isDark ? 'bg-lime-400 shadow-[0_0_10px_rgba(163,230,53,0.3)]' : 'bg-[#262626]'}`} />
             </div>
             <span className={`text-[12px] font-black tracking-tighter ${t.textPrimary(isDark)}`}>{stats.avgCompletion}%</span>
         </div>

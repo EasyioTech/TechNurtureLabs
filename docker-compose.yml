@@ -12,7 +12,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/orchids
+      - DATABASE_URL=postgresql://postgres:admin@db:5432/orchids
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=super-secret-jwt-key
     depends_on:

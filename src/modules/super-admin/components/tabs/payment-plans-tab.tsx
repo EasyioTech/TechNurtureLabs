@@ -1,10 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Check, Users, Sparkles } from 'lucide-react';
+import {
+    AlertDialog, AlertDialogContent,
+} from '@/components/ui/alert-dialog';
+import { Plus, Edit, Trash2, Check, Users, Sparkles, AlertOctagon } from 'lucide-react';
 import { PaymentPlanDialog } from '../plan-dialog';
 import { PaymentPlan } from '../../types';
 import { useAdminTheme, t } from '../../theme-context';
@@ -24,6 +27,7 @@ export function PaymentPlansTab({
     showPlanDialog, setShowPlanDialog, editingPlan, setEditingPlan,
 }: PaymentPlansTabProps) {
     const { isDark } = useAdminTheme();
+    const [planToDelete, setPlanToDelete] = useState<{ id: string; name: string } | null>(null);
 
     return (
         <div className="space-y-6">
@@ -47,7 +51,7 @@ export function PaymentPlansTab({
 
                                 <div className="p-7 space-y-6">
                                     <div>
-                                        <p className={`text-[10px] font-black tracking-[0.2em] uppercase mb-1 ${t.textMuted(isDark)}`}>Subscription Plan</p>
+                                        <p className={`text-[10px] font-black tracking-[0.2em] uppercase mb-1 ${t.textMuted(isDark)}`}>Plan Details</p>
                                         <h3 className={`text-xl font-black tracking-tight ${t.textPrimary(isDark)}`}>{plan.name}</h3>
                                         <Badge className={`mt-2 text-[9px] font-black px-2 py-0.5 rounded-md ${plan.is_active ? t.live(isDark) : (isDark ? 'bg-white/[0.04] text-slate-500' : 'bg-slate-100 text-slate-400')}`}>
                                             {plan.is_active ? 'ACTIVE' : 'INACTIVE'}
@@ -69,7 +73,7 @@ export function PaymentPlansTab({
                                     )}
 
                                     <div className="space-y-3.5">
-                                        <p className={`text-[10px] font-black tracking-widest uppercase mb-4 ${t.textMuted(isDark)}`}>Included Infrastructure</p>
+                                        <p className={`text-[10px] font-black tracking-widest uppercase mb-4 ${t.textMuted(isDark)}`}>Features & Benefits</p>
                                         {plan.features.map((feature, i) => (
                                             <div key={i} className="flex items-center gap-3">
                                                 <div className={`w-5 h-5 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/[0.05]' : 'bg-slate-100'} border ${t.border(isDark)}`}>
@@ -91,10 +95,10 @@ export function PaymentPlansTab({
                                     <div className={`flex gap-3 pt-6 border-t ${t.border(isDark)}`}>
                                         <Button variant="outline" className={`flex-1 rounded-full text-[11px] h-9 font-black border-2 transition-all ${t.btnOutline(isDark)}`}
                                             onClick={() => { setEditingPlan(plan); setShowPlanDialog(true); }}>
-                                            <Edit size={14} className="mr-2" />EDIT PLAN
+                                            <Edit size={14} className="mr-2" />Edit Plan
                                         </Button>
                                         <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full transition-colors ${isDark ? 'text-slate-600 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-300 hover:text-rose-600 hover:bg-rose-100'}`}
-                                            onClick={() => onDeletePlan(plan.id)}>
+                                            onClick={() => setPlanToDelete({ id: plan.id, name: plan.name })}>
                                             <Trash2 size={16} />
                                         </Button>
                                     </div>
@@ -106,6 +110,33 @@ export function PaymentPlansTab({
             </div>
 
             <PaymentPlanDialog open={showPlanDialog} onOpenChange={setShowPlanDialog} editingPlan={editingPlan} setEditingPlan={setEditingPlan} onSave={onSavePlan} />
+
+            {/* Delete Confirmation */}
+            <AlertDialog open={!!planToDelete} onOpenChange={(open) => !open && setPlanToDelete(null)}>
+                <AlertDialogContent className={`w-[90vw] max-w-[420px] rounded-[24px] border-0 shadow-2xl p-0 overflow-hidden ${isDark ? 'bg-[#0f1219]' : 'bg-white'}`}>
+                    <div className="p-8 pb-6 flex flex-col items-center text-center">
+                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-6 shadow-xl ${isDark ? 'bg-rose-500/10 text-rose-500 shadow-rose-500/10' : 'bg-rose-50 text-rose-500'}`}>
+                            <AlertOctagon size={32} />
+                        </div>
+                        <h2 className={`text-xl font-[1000] tracking-tight mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>Delete Plan?</h2>
+                        <p className={`text-sm font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Are you sure you want to delete the plan <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>"{planToDelete?.name}"</span>?
+                            <br /><br />
+                            Schools with active subscriptions on this plan will be blocked from deletion.
+                        </p>
+                    </div>
+                    <div className={`px-8 py-5 flex items-center gap-3 border-t ${isDark ? 'border-white/10 bg-[#0f1219]' : 'border-slate-100 bg-slate-50'}`}>
+                        <Button variant="ghost" onClick={() => setPlanToDelete(null)}
+                            className={`flex-1 rounded-full h-11 font-bold text-sm ${isDark ? 'bg-white/5 hover:bg-white/10 text-white' : 'hover:bg-slate-200 text-slate-700 bg-slate-100'}`}>
+                            Cancel
+                        </Button>
+                        <Button onClick={() => { if (planToDelete) { onDeletePlan(planToDelete.id); setPlanToDelete(null); } }}
+                            className="flex-1 rounded-full h-11 font-black text-sm bg-rose-500 hover:bg-rose-600 text-white border-0 shadow-xl shadow-rose-500/20">
+                            Delete Plan
+                        </Button>
+                    </div>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
