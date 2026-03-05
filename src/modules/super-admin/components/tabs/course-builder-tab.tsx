@@ -140,7 +140,7 @@ export function CourseBuilderTab({
                                                     </p>
                                                 </div>
                                             </div>
-                                            <Badge className={`text-[9px] font-black px-2 py-0.5 rounded-md ${course.published || course.is_published ? (isSelected && !isDark ? 'bg-emerald-400/20 text-emerald-200' : t.live(isDark)) : (isSelected && !isDark ? 'bg-white/10 text-white/60' : t.draft(isDark))}`}>
+                                            <Badge className={`text-[9px] font-black px-2 py-0.5 rounded-md ${course.published || course.is_published ? (isSelected && !isDark ? 'bg-white/20 text-white' : t.live(isDark)) : (isSelected && !isDark ? 'bg-white/10 text-white/60' : t.draft(isDark))}`}>
                                                 {(course.published || course.is_published) ? 'LIVE' : 'DRAFT'}
                                             </Badge>
                                         </div>

@@ -59,7 +59,7 @@ export function SortableLessonItem({ lesson, index, onEdit, onDelete }: Sortable
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                         <p className={`font-black text-sm tracking-tight truncate ${t.textPrimary(isDark)}`}>{lesson.title}</p>
-                        <Badge className={`text-[8px] font-black px-1.5 py-0 rounded-md ${lesson.is_published ?? true ? (isDark ? 'bg-emerald-400/10 text-emerald-400' : 'bg-emerald-100 text-emerald-700') : (isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-100 text-slate-500')}`}>
+                        <Badge className={`text-[8px] font-black px-1.5 py-0 rounded-md ${lesson.is_published ?? true ? t.live(isDark) : t.draft(isDark)}`}>
                             {lesson.is_published ?? true ? 'LIVE' : 'DRAFT'}
                         </Badge>
                     </div>

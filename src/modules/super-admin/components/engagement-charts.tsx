@@ -24,14 +24,14 @@ interface EngagementChartsProps {
 }
 
 export function EngagementCharts({ engagementData, planDistribution, revenueData }: EngagementChartsProps) {
-    const { isDark } = useAdminTheme();
+    const { isDark, accent } = useAdminTheme();
     const grid = isDark ? 'rgba(255,255,255,0.03)' : '#f5f5f5';
     const axis = isDark ? '#475569' : '#a3a3a3';
     const ttBg = isDark ? '#0f172a' : '#fff';
     const ttBorder = isDark ? 'rgba(255,255,255,0.08)' : '#e5e5e5';
     const ttColor = isDark ? '#fff' : '#171717';
-    const areaStroke = isDark ? '#a3e635' : '#171717';
-    const barFill = isDark ? '#a3e635' : '#171717';
+    const areaStroke = isDark ? accent.swatchDark : accent.swatchLight;
+    const barFill = isDark ? accent.swatchDark : accent.swatchLight;
 
     return (
         <div className="space-y-6">
