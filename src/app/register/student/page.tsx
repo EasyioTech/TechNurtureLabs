@@ -27,16 +27,16 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { fetchApprovedSchools, registerStudent } from '@/app/register-actions';
+import { fetchApprovedSchools, registerStudent } from '@/modules/auth/register-actions';
 import { toast } from 'sonner';
 import { GraduationCap, ArrowLeft, User, School, Loader2, Sparkles, Eye, EyeOff, Check, Zap, Trophy, ChevronsUpDown, Search } from 'lucide-react';
 
 type SchoolOption = {
   id: string;
   name: string;
-  district: string;
+  city: string;
   state: string;
-  grades_available: number[];
+  grades_available: { id: string; name: string; level: number }[];
 };
 
 export default function StudentRegistrationPage() {
@@ -101,11 +101,16 @@ export default function StudentRegistrationPage() {
     setLoading(true);
 
     try {
-      await registerStudent(formData);
-      toast.success('Registration successful!');
-      router.push('/login');
+      const result = await registerStudent(formData);
+
+      if (result.success) {
+        toast.success('Registration successful!');
+        router.push('/login');
+      } else {
+        toast.error(result.error || 'Registration failed');
+      }
     } catch (err: any) {
-      toast.error(err.message || 'Registration failed');
+      toast.error('A network error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -134,7 +139,7 @@ export default function StudentRegistrationPage() {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
               <Sparkles className="text-white" size={24} />
             </div>
-            <span className="text-2xl font-black">EduQuest</span>
+            <span className="text-2xl font-black">TechNurture Labs</span>
           </div>
 
           <motion.div
@@ -145,10 +150,10 @@ export default function StudentRegistrationPage() {
             <h2 className="text-4xl font-black mb-4 leading-tight">
               Start your
               <br />
-              learning journey
+              learning adventure
             </h2>
             <p className="text-white/60 text-lg max-w-md mb-8">
-              Join thousands of students earning XP, unlocking achievements, and mastering new skills every day.
+              Join thousands of students on TechNurture Labs. Earn XP, collect badges, and master new skills.
             </p>
 
             <div className="flex gap-6">
@@ -190,7 +195,7 @@ export default function StudentRegistrationPage() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                 <Sparkles className="text-white" size={20} />
               </div>
-              <span className="text-xl font-black">EduQuest</span>
+              <span className="text-xl font-black">TechNurture Labs</span>
             </div>
 
             <h1 className="text-3xl font-black mb-2">Create your account</h1>
@@ -256,7 +261,7 @@ export default function StudentRegistrationPage() {
                             className="w-full bg-white/5 border border-white/10 h-12 text-white px-4 rounded-xl flex items-center justify-between"
                           >
                             <span className={selectedSchool ? "text-white" : "text-white/30"}>
-                              {selectedSchool ? `${selectedSchool.name} - ${selectedSchool.district}` : "Select your school"}
+                              {selectedSchool ? `${selectedSchool.name} - ${selectedSchool.city || 'Location'}` : "Select your school"}
                             </span>
                             <ChevronsUpDown size={16} className="text-white/40" />
                           </button>
@@ -270,7 +275,7 @@ export default function StudentRegistrationPage() {
                                 {schools.map((school) => (
                                   <CommandItem
                                     key={school.id}
-                                    value={`${school.name} ${school.district}`}
+                                    value={`${school.name} ${school.city}`}
                                     onSelect={() => {
                                       handleSchoolChange(school.id);
                                       setSchoolSearchOpen(false);
@@ -281,7 +286,7 @@ export default function StudentRegistrationPage() {
                                       size={16}
                                       className={formData.school_id === school.id ? "opacity-100" : "opacity-0"}
                                     />
-                                    {school.name} - {school.district}
+                                    {school.name} - {school.city}
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
@@ -295,21 +300,27 @@ export default function StudentRegistrationPage() {
                   {selectedSchool && (
                     <div className="space-y-2">
                       <Label className="text-white/70 text-sm">Select Your Class</Label>
-                      <Select
-                        value={formData.grade}
-                        onValueChange={(value) => setFormData({ ...formData, grade: value })}
-                      >
-                        <SelectTrigger className="w-full bg-white/5 border-white/10 h-12 text-white px-4 rounded-xl">
-                          <SelectValue placeholder="Select your class" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-white/10">
-                          {availableGrades.map((grade) => (
-                            <SelectItem key={grade} value={grade.toString()}>
-                              Class {grade}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {availableGrades.length === 0 ? (
+                        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm">
+                          This school hasn't listed any classes yet. Please contact your school or register another school.
+                        </div>
+                      ) : (
+                        <Select
+                          value={formData.grade}
+                          onValueChange={(value) => setFormData({ ...formData, grade: value })}
+                        >
+                          <SelectTrigger className="w-full bg-white/5 border-white/10 h-12 text-white px-4 rounded-xl">
+                            <SelectValue placeholder="Select your class" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-900 border-white/10">
+                            {availableGrades.map((grade) => (
+                              <SelectItem key={grade.id} value={grade.id}>
+                                {grade.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                   )}
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { profiles } from '@/db/schema';
+import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Email, password, and role are required' }, { status: 400 });
         }
 
-        const user = await db.query.profiles.findFirst({
-            where: eq(profiles.email, email.toLowerCase())
+        const user = await db.query.users.findFirst({
+            where: eq(users.email, email.toLowerCase())
         });
 
         if (!user || user.role !== role) {

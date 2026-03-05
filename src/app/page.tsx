@@ -3,8 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
-  GraduationCap, School, ArrowRight, Zap, Trophy, Users, 
+import {
+  GraduationCap, School, ArrowRight, Zap, Trophy, Users,
   BookOpen, Sparkles, Play, Star, ChevronRight, Check,
   Globe, Shield, BarChart3, Gamepad2
 } from 'lucide-react';
@@ -26,7 +26,7 @@ export default function Home() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                 <Sparkles className="text-white" size={20} />
               </div>
-              <span className="text-xl font-black tracking-tight">EduQuest</span>
+              <span className="text-xl font-black tracking-tight">TechNurture Labs</span>
             </div>
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-sm text-white/60 hover:text-white transition-colors">Features</a>
@@ -64,7 +64,7 @@ export default function Home() {
                 </span>
                 <span className="text-sm text-white/70">Now enrolling schools across India</span>
               </div>
-              
+
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.9] mb-6">
                 Learning that
                 <br />
@@ -72,31 +72,31 @@ export default function Home() {
                   feels like play
                 </span>
               </h1>
-              
+
               <p className="text-lg md:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
-                Transform your school with gamified learning experiences. XP, streaks, 
+                Transform your school with gamified learning experiences. XP, streaks,
                 achievements, and interactive journeys that keep students engaged.
               </p>
             </motion.div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
-              >
-                <Link href="/register/student">
-                  <Button size="lg" className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-8 h-14 text-lg rounded-2xl shadow-lg shadow-emerald-500/25 w-full sm:w-auto">
-                    <GraduationCap className="mr-2" size={20} />
-                    Start Learning Now
-                  </Button>
-                </Link>
-                <Link href="/login">
-                  <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10 font-bold px-8 h-14 text-lg rounded-2xl w-full sm:w-auto">
-                    Already have an account?
-                  </Button>
-                </Link>
-              </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
+            >
+              <Link href="/register/student">
+                <Button size="lg" className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-8 h-14 text-lg rounded-2xl shadow-lg shadow-emerald-500/25 w-full sm:w-auto">
+                  <GraduationCap className="mr-2" size={20} />
+                  Start Learning Now
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10 font-bold px-8 h-14 text-lg rounded-2xl w-full sm:w-auto">
+                  Already have an account?
+                </Button>
+              </Link>
+            </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 40 }}
@@ -107,8 +107,8 @@ export default function Home() {
               <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent z-10 pointer-events-none" />
               <div className="relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-sm p-2 shadow-2xl">
                 <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800">
-                  <img 
-                    src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1200&q=80" 
+                  <img
+                    src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1200&q=80"
                     alt="Students learning"
                     className="w-full h-[400px] md:h-[500px] object-cover opacity-80"
                   />
@@ -123,7 +123,7 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="absolute -left-4 top-1/4 hidden lg:block">
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
@@ -142,7 +142,7 @@ export default function Home() {
                   </div>
                 </motion.div>
               </div>
-              
+
               <div className="absolute -right-4 bottom-1/4 hidden lg:block">
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
@@ -195,37 +195,37 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FeatureCard 
+            <FeatureCard
               icon={Gamepad2}
               title="Gamified Learning"
               description="XP points, streaks, badges, and leaderboards that make learning addictive"
               gradient="from-violet-500 to-purple-600"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={BookOpen}
               title="Interactive Courses"
               description="Video lessons, quizzes, and hands-on activities designed for engagement"
               gradient="from-cyan-500 to-blue-600"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={BarChart3}
               title="Progress Analytics"
               description="Real-time insights into student performance and learning patterns"
               gradient="from-emerald-500 to-teal-600"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={Globe}
               title="Multi-tenant Platform"
               description="White-labeled solution for schools with custom branding"
               gradient="from-amber-500 to-orange-600"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={Shield}
               title="Secure & Private"
               description="Enterprise-grade security with data privacy compliance"
               gradient="from-rose-500 to-pink-600"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={Users}
               title="Collaborative Tools"
               description="Group projects, discussions, and peer learning features"
@@ -245,17 +245,17 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <StepCard 
+            <StepCard
               number="01"
               title="Register Your School"
               description="Sign up with your school details and UDISE code. Our team will verify and approve within 24 hours."
             />
-            <StepCard 
+            <StepCard
               number="02"
               title="Onboard Students"
               description="Students can register with their school code and start their learning journey immediately."
             />
-            <StepCard 
+            <StepCard
               number="03"
               title="Track & Grow"
               description="Monitor progress with detailed analytics while students earn XP and unlock achievements."
@@ -273,7 +273,7 @@ export default function Home() {
             className="relative rounded-3xl bg-gradient-to-br from-violet-600 to-purple-700 p-12 md:p-16 text-center overflow-hidden"
           >
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRoLTJ2LTRoMnY0em0wLTZ2LTRoMnY0aC0yem0tNiAydi0yaDR2MmgtNHptMC00di0yaDR2MmgtNHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
-            
+
             <div className="relative z-10">
               <h2 className="text-3xl md:text-5xl font-black mb-6">
                 Ready to transform
@@ -281,21 +281,21 @@ export default function Home() {
                 your school?
               </h2>
               <p className="text-white/70 text-lg mb-10 max-w-xl mx-auto">
-                Join hundreds of schools already using EduQuest to make learning fun and effective.
+                Join hundreds of schools already using TechNurture Labs to make learning fun and effective.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <Link href="/register/student">
-                    <Button size="lg" className="bg-white text-purple-700 hover:bg-white/90 font-bold px-8 h-14 text-lg rounded-2xl w-full sm:w-auto">
-                      Start Learning
-                      <ArrowRight className="ml-2" size={20} />
-                    </Button>
-                  </Link>
-                  <Link href="/login">
-                    <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 font-bold px-8 h-14 text-lg rounded-2xl w-full sm:w-auto">
-                      Sign In
-                    </Button>
-                  </Link>
-                </div>
+                <Link href="/register/student">
+                  <Button size="lg" className="bg-white text-purple-700 hover:bg-white/90 font-bold px-8 h-14 text-lg rounded-2xl w-full sm:w-auto">
+                    Start Learning
+                    <ArrowRight className="ml-2" size={20} />
+                  </Button>
+                </Link>
+                <Link href="/login">
+                  <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 font-bold px-8 h-14 text-lg rounded-2xl w-full sm:w-auto">
+                    Sign In
+                  </Button>
+                </Link>
+              </div>
             </div>
           </motion.div>
         </div>
@@ -308,14 +308,14 @@ export default function Home() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                 <Sparkles className="text-white" size={20} />
               </div>
-              <span className="text-xl font-black tracking-tight">EduQuest</span>
+              <span className="text-xl font-black tracking-tight">TechNurture Labs</span>
             </div>
             <div className="flex items-center gap-8 text-sm text-white/50">
               <a href="#" className="hover:text-white transition-colors">Privacy</a>
               <a href="#" className="hover:text-white transition-colors">Terms</a>
               <a href="#" className="hover:text-white transition-colors">Support</a>
             </div>
-            <p className="text-sm text-white/30">© 2025 EduQuest. All rights reserved.</p>
+            <p className="text-sm text-white/30">© 2025 TechNurture Labs. All rights reserved.</p>
           </div>
         </div>
       </footer>

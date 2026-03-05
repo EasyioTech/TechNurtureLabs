@@ -9,13 +9,25 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --legacy-peer-deps
 
-# ----------------------------
 # Stage 2: Build the application
-# ----------------------------
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Dummy env vars to prevent crashes during static analysis / build
+# These are NOT real credentials — real values are injected at runtime via docker-compose
+ENV DATABASE_URL="postgresql://placeholder:5432/db"
+ENV REDIS_URL="redis://placeholder:6379"
+ENV JWT_SECRET="build-time-placeholder"
+ENV CLOUDFLARE_ACCOUNT_ID="build-placeholder"
+ENV CLOUDFLARE_ACCESS_KEY_ID="build-placeholder"
+ENV CLOUDFLARE_SECRET_ACCESS_KEY="build-placeholder"
+ENV CLOUDFLARE_BUCKET_NAME="build-placeholder"
+ENV CLOUDFLARE_PUBLIC_DOMAIN=""
+ENV NEXT_PUBLIC_APP_URL="http://localhost:3000"
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_SKIP_TYPECHECK=1
 
 RUN npm run build
 
@@ -38,6 +50,9 @@ RUN chown nextjs:nodejs .next
 # Copy standalone output
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Create local_storage directory for fallback uploads
+RUN mkdir -p /app/local_storage && chown nextjs:nodejs /app/local_storage
 
 USER nextjs
 

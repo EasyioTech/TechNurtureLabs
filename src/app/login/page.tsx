@@ -17,12 +17,6 @@ export default function StudentLoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const fillDemoCredentials = () => {
-    setEmail('student@demo.com');
-    setPassword('student123');
-    toast.success('Demo credentials filled!');
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -75,7 +69,7 @@ export default function StudentLoginPage() {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
               <Sparkles className="text-white" size={24} />
             </div>
-            <span className="text-2xl font-black">EduQuest</span>
+            <span className="text-2xl font-black">TechNurture Labs</span>
           </div>
 
           <motion.div
@@ -131,7 +125,7 @@ export default function StudentLoginPage() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                 <GraduationCap className="text-white" size={20} />
               </div>
-              <span className="text-xl font-black">EduQuest</span>
+              <span className="text-xl font-black">TechNurture Labs</span>
             </div>
 
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-4">
@@ -199,18 +193,6 @@ export default function StudentLoginPage() {
                 )}
               </Button>
             </form>
-
-            <div className="mt-4">
-              <Button
-                type="button"
-                onClick={fillDemoCredentials}
-                variant="outline"
-                className="w-full border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200"
-              >
-                <Wand2 size={16} className="mr-2" />
-                Use Demo Credentials
-              </Button>
-            </div>
 
             <div className="mt-8 pt-8 border-t border-white/10">
               <p className="text-center text-white/50 text-sm">

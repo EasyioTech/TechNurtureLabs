@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, use } from 'react';
-import { motion } from 'framer-motion';
-import { getCourseDetailsData } from '@/app/course-actions';
+import { getCourseDetailsData } from '@/modules/learning/actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,14 +10,15 @@ import Link from 'next/link';
 import {
   ArrowLeft, Play, CheckCircle2, Lock, Trophy, FileText,
   Star, Clock, Zap, Users, BookOpen, Award, Target,
-  ChevronRight, Sparkles, GraduationCap, BarChart2, Calendar
+  ChevronRight, Sparkles, GraduationCap, BarChart2, Calendar,
+  MonitorPlay, HelpCircle
 } from 'lucide-react';
 
 type Lesson = {
   id: string;
   title: string;
   sequence_index: number;
-  content_type: 'video' | 'youtube' | 'mcq' | 'ppt';
+  content_type: 'video' | 'ppt' | 'pdf' | 'quiz';
   duration: number;
   xp_reward: number;
   status: 'locked' | 'available' | 'completed';
@@ -67,34 +67,26 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-sky-50">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
-          <Sparkles className="w-8 h-8 text-violet-500" />
-        </motion.div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Sparkles className="w-8 h-8 text-indigo-600 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-indigo-50">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-violet-200/30 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-indigo-200/30 rounded-full blur-3xl" />
-      </div>
-
-      <header className="relative z-50 border-b border-slate-200/60 bg-white/70 backdrop-blur-xl sticky top-0">
+    <div className="min-h-screen bg-slate-50">
+      <header className="relative z-50 border-b border-slate-200 bg-white sticky top-0 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
             <Link href="/student">
-              <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900 hover:bg-slate-100">
-                <ArrowLeft size={18} className="mr-2" />
-                Back
+              <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 -ml-3">
+                <ArrowLeft size={16} className="mr-2" />
+                Back to Dashboard
               </Button>
             </Link>
-            <div className="h-6 w-px bg-slate-200" />
+            <div className="h-4 w-px bg-slate-200" />
             <div>
-              <h1 className="font-bold text-lg text-slate-800">Course Details</h1>
-              <p className="text-xs text-slate-500">{lessons.length} lessons</p>
+              <h1 className="font-semibold text-sm text-slate-800">Course Details</h1>
             </div>
           </div>
         </div>
@@ -103,37 +95,34 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
       <main className="relative z-10 max-w-6xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card className="bg-white/80 backdrop-blur-xl border-slate-200/60 shadow-xl overflow-hidden">
-                <div className="h-64 relative overflow-hidden">
+            <div>
+              <Card className="bg-white border-slate-200 shadow-sm overflow-hidden">
+                <div className="h-64 relative overflow-hidden bg-slate-100">
                   <img
                     src={course?.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800'}
                     alt={course?.title}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent" />
                   <div className="absolute bottom-6 left-6 right-6">
                     <div className="flex items-center gap-2 mb-3">
-                      <Badge className="bg-violet-500 text-white border-0">
+                      <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white border-0">
                         {course?.all_grades ? 'All Grades' : `Grade ${course?.grade}`}
                       </Badge>
                       {progress === 100 && (
-                        <Badge className="bg-emerald-500 text-white border-0">
+                        <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-0">
                           <CheckCircle2 size={12} className="mr-1" /> Completed
                         </Badge>
                       )}
                     </div>
-                    <h1 className="text-3xl font-black text-white mb-2">{course?.title}</h1>
-                    <p className="text-white/80 line-clamp-2">{course?.description}</p>
+                    <h1 className="text-3xl font-bold text-white mb-2">{course?.title}</h1>
+                    <p className="text-white/90 line-clamp-2 text-sm">{course?.description}</p>
                   </div>
                 </div>
 
                 <CardContent className="p-6">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <StatBox icon={BookOpen} label="Lessons" value={lessons.length} color="violet" />
+                    <StatBox icon={BookOpen} label="Lessons" value={lessons.length} color="indigo" />
                     <StatBox icon={Clock} label="Duration" value={`${totalDuration}m`} color="sky" />
                     <StatBox icon={Star} label="Total XP" value={totalXP} color="amber" />
                     <StatBox icon={Users} label="Students" value={enrolledCount} color="emerald" />
@@ -141,48 +130,44 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
 
                   <div className="space-y-2 mb-6">
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">Your Progress</span>
-                      <span className="font-bold text-violet-600">{Math.round(progress)}%</span>
+                      <span className="text-slate-600 font-medium">Your Progress</span>
+                      <span className="font-bold text-indigo-600">{Math.round(progress)}%</span>
                     </div>
-                    <Progress value={progress} className="h-3" />
+                    <Progress value={progress} className="h-2 bg-slate-100 [&>div]:bg-indigo-600" />
                     <p className="text-xs text-slate-500">{completedCount} of {lessons.length} lessons completed • {earnedXP} XP earned</p>
                   </div>
 
                   {nextLesson ? (
                     <Link href={`/student/lesson/${nextLesson.id}`}>
-                      <Button className="w-full bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white border-0 shadow-lg shadow-violet-200 h-12 text-base">
+                      <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white border-0 h-12 text-base">
                         {completedCount > 0 ? 'Continue Learning' : 'Start Course'}
-                        <ChevronRight size={20} className="ml-2" />
+                        <ChevronRight size={18} className="ml-2" />
                       </Button>
                     </Link>
                   ) : progress === 100 ? (
                     <Link href={`/student/journey/${courseId}`}>
-                      <Button className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white border-0 shadow-lg shadow-emerald-200 h-12 text-base">
-                        <Trophy size={20} className="mr-2" />
+                      <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white border-0 h-12 text-base">
+                        <Trophy size={18} className="mr-2" />
                         Review Course
                       </Button>
                     </Link>
                   ) : null}
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <Card className="bg-white/80 backdrop-blur-xl border-slate-200/60 shadow-xl">
+            <div>
+              <Card className="bg-white border-slate-200 shadow-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                      <BookOpen className="text-violet-500" size={22} />
+                    <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <BookOpen className="text-slate-400" size={20} />
                       Course Content
                     </h2>
                     <Link href={`/student/journey/${courseId}`}>
-                      <Button variant="outline" size="sm">
-                        View Journey Map
-                        <ChevronRight size={16} className="ml-1" />
+                      <Button variant="outline" size="sm" className="text-slate-600">
+                        View Map
+                        <ChevronRight size={14} className="ml-1" />
                       </Button>
                     </Link>
                   </div>
@@ -194,97 +179,84 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
           </div>
 
           <div className="space-y-6">
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card className="bg-white/80 backdrop-blur-xl border-slate-200/60 shadow-lg">
+            <div>
+              <Card className="bg-white border-slate-200 shadow-sm">
                 <CardContent className="p-5">
-                  <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <Target size={18} className="text-violet-500" />
+                  <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Target size={18} className="text-slate-400" />
                     Your Progress
                   </h4>
                   <div className="space-y-4">
-                    <ProgressRow icon={BookOpen} label="Lessons" value={`${completedCount}/${lessons.length}`} progress={progress} color="violet" />
+                    <ProgressRow icon={BookOpen} label="Lessons" value={`${completedCount}/${lessons.length}`} progress={progress} color="indigo" />
                     <ProgressRow icon={Star} label="XP Earned" value={`${earnedXP}/${totalXP}`} progress={(earnedXP / totalXP) * 100 || 0} color="amber" />
-                    <ProgressRow icon={Trophy} label="Quizzes" value="0/0" progress={0} color="emerald" />
+                    <ProgressRow icon={HelpCircle} label="Quizzes" value="0/0" progress={0} color="emerald" />
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Card className="bg-gradient-to-br from-violet-500 to-indigo-600 border-0 shadow-xl shadow-violet-200/50 text-white overflow-hidden">
-                <CardContent className="p-5 relative">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+            <div>
+              <Card className="bg-indigo-50 border-indigo-100 shadow-sm overflow-hidden">
+                <CardContent className="p-5">
                   <div className="relative">
                     <div className="flex items-center gap-2 mb-3">
-                      <Zap size={20} className="text-amber-300" />
-                      <span className="font-bold">Keep Going!</span>
+                      <Zap size={18} className="text-indigo-600" />
+                      <span className="font-bold text-indigo-900">Keep Going!</span>
                     </div>
-                    <p className="text-sm text-white/80 mb-4">
+                    <p className="text-sm text-indigo-800 mb-4">
                       {progress === 100
                         ? "Congratulations! You've completed this course!"
                         : `Complete ${lessons.length - completedCount} more lessons to finish this course and earn a completion badge!`}
                     </p>
                     <div className="flex items-center gap-2">
-                      <div className="flex -space-x-2">
+                      <div className="flex -space-x-1.5">
                         {[...Array(3)].map((_, i) => (
-                          <div key={i} className="w-8 h-8 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center">
-                            <Award size={14} className="text-amber-300" />
+                          <div key={i} className="w-6 h-6 rounded-full bg-white border border-indigo-200 flex items-center justify-center">
+                            <Award size={10} className="text-amber-500" />
                           </div>
                         ))}
                       </div>
-                      <span className="text-xs text-white/70">Completion rewards</span>
+                      <span className="text-xs text-indigo-700 font-medium">Rewards available</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Card className="bg-white/80 backdrop-blur-xl border-slate-200/60 shadow-lg">
+            <div>
+              <Card className="bg-white border-slate-200 shadow-sm">
                 <CardContent className="p-5">
-                  <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <BarChart2 size={18} className="text-sky-500" />
+                  <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <BarChart2 size={18} className="text-slate-400" />
                     Course Info
                   </h4>
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between">
                       <span className="text-slate-500">Grade Level</span>
-                      <span className="font-medium text-slate-700">{course?.all_grades ? 'All Grades' : `Grade ${course?.grade}`}</span>
+                      <span className="font-medium text-slate-900">{course?.all_grades ? 'All Grades' : `Grade ${course?.grade}`}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Total Duration</span>
-                      <span className="font-medium text-slate-700">{totalDuration} minutes</span>
+                      <span className="font-medium text-slate-900">{totalDuration} minutes</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">XP Available</span>
-                      <span className="font-medium text-slate-700">{totalXP} XP</span>
+                      <span className="font-medium text-slate-900">{totalXP} XP</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Status</span>
-                      <Badge className={progress === 100 ? 'bg-emerald-100 text-emerald-700' : progress > 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}>
+                      <Badge variant="outline" className={`border-0 font-medium ${progress === 100 ? 'bg-emerald-50 text-emerald-700' : progress > 0 ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
                         {progress === 100 ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started'}
                       </Badge>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
           </div>
         </div>
       </main>
@@ -294,19 +266,19 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
 
 function StatBox({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) {
   const colors: Record<string, string> = {
-    violet: 'bg-violet-100 text-violet-600',
-    sky: 'bg-sky-100 text-sky-600',
-    amber: 'bg-amber-100 text-amber-600',
-    emerald: 'bg-emerald-100 text-emerald-600',
+    indigo: 'bg-indigo-50 text-indigo-600',
+    sky: 'bg-sky-50 text-sky-600',
+    amber: 'bg-amber-50 text-amber-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
   };
 
   return (
-    <div className="text-center p-3 rounded-xl bg-slate-50 border border-slate-100">
-      <div className={`w-10 h-10 rounded-lg mx-auto mb-2 flex items-center justify-center ${colors[color]}`}>
-        <Icon size={20} />
+    <div className="text-center p-3 rounded-lg bg-slate-50 border border-slate-100">
+      <div className={`w-8 h-8 rounded-md mx-auto mb-2 flex items-center justify-center ${colors[color]}`}>
+        <Icon size={16} />
       </div>
-      <p className="text-lg font-bold text-slate-800">{value}</p>
-      <p className="text-xs text-slate-500">{label}</p>
+      <p className="text-lg font-bold text-slate-900">{value}</p>
+      <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mt-0.5">{label}</p>
     </div>
   );
 }
@@ -316,61 +288,63 @@ function LessonRow({ lesson, index }: { lesson: Lesson; index: number }) {
   const isCompleted = lesson.status === 'completed';
   const isAvailable = lesson.status === 'available';
 
-  const Icon = (lesson.content_type === 'video' || lesson.content_type === 'youtube') ? Play :
-    lesson.content_type === 'mcq' ? Trophy :
-      FileText;
+  const Icon =
+    lesson.content_type === 'video' ? Play :
+      lesson.content_type === 'quiz' ? HelpCircle :
+        lesson.content_type === 'ppt' ? MonitorPlay :
+          FileText; // pdf
 
   const typeLabels: Record<string, string> = {
     video: 'Video',
-    youtube: 'YouTube',
-    mcq: 'Quiz',
-    ppt: 'Slides'
+    ppt: 'Slides',
+    pdf: 'Document',
+    quiz: 'Assessment',
   };
 
   const content = (
     <div className={`
-      flex items-center gap-4 p-4 rounded-xl border transition-all
+      flex items-center gap-4 p-3 rounded-lg border transition-colors
       ${isCompleted
-        ? 'bg-emerald-50 border-emerald-200'
+        ? 'bg-slate-50/50 border-slate-200'
         : isLocked
-          ? 'bg-slate-50 border-slate-200 opacity-60'
-          : 'bg-white border-violet-200 hover:border-violet-300 hover:shadow-md cursor-pointer'}
+          ? 'bg-slate-50/30 border-slate-100 opacity-70'
+          : 'bg-white border-indigo-100 hover:border-indigo-300 hover:shadow-sm cursor-pointer'}
     `}>
       <div className={`
-        w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
+        w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0
         ${isCompleted
-          ? 'bg-emerald-500 text-white'
+          ? 'bg-emerald-50 text-emerald-600'
           : isLocked
-            ? 'bg-slate-200 text-slate-400'
-            : 'bg-violet-100 text-violet-600'}
+            ? 'bg-slate-100 text-slate-400'
+            : 'bg-indigo-50 text-indigo-600'}
       `}>
-        {isCompleted ? <CheckCircle2 size={24} /> :
-          isLocked ? <Lock size={20} /> :
-            <Icon size={22} fill={lesson.content_type === 'video' ? 'currentColor' : 'none'} />}
+        {isCompleted ? <CheckCircle2 size={18} /> :
+          isLocked ? <Lock size={16} /> :
+            <Icon size={18} fill={lesson.content_type === 'video' ? 'currentColor' : 'none'} />}
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-medium text-slate-400">Lesson {index + 1}</span>
-          <Badge variant="outline" className="text-[10px] h-5">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Lesson {index + 1}</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-slate-100 text-slate-600 font-medium">
             {typeLabels[lesson.content_type]}
-          </Badge>
+          </span>
         </div>
-        <h4 className={`font-semibold truncate ${isLocked ? 'text-slate-400' : 'text-slate-800'}`}>
+        <h4 className={`font-semibold text-sm truncate ${isLocked ? 'text-slate-500' : 'text-slate-900'}`}>
           {lesson.title}
         </h4>
       </div>
 
       <div className="flex items-center gap-4 flex-shrink-0">
-        <div className="text-right">
-          <div className="flex items-center gap-1 text-amber-500 text-sm">
-            <Star size={14} fill="currentColor" />
-            <span className="font-bold">{lesson.xp_reward}</span>
+        <div className="text-right hidden sm:block">
+          <div className="flex items-center justify-end gap-1 text-amber-600 text-[11px] font-semibold">
+            <Star size={10} fill="currentColor" />
+            <span>{lesson.xp_reward}</span>
           </div>
-          <span className="text-xs text-slate-400">{lesson.duration || 10} min</span>
+          <span className="text-[10px] text-slate-400">{lesson.duration || 10} min</span>
         </div>
-        {isAvailable && <ChevronRight size={20} className="text-violet-400" />}
-        {isCompleted && <CheckCircle2 size={20} className="text-emerald-500" />}
+        {isAvailable && <ChevronRight size={16} className="text-indigo-400" />}
+        {isCompleted && <CheckCircle2 size={16} className="text-emerald-500" />}
       </div>
     </div>
   );
@@ -385,27 +359,26 @@ function LessonRow({ lesson, index }: { lesson: Lesson; index: number }) {
 }
 
 function ProgressRow({ icon: Icon, label, value, progress, color }: { icon: any; label: string; value: string; progress: number; color: string }) {
-  const colors: Record<string, string> = {
-    violet: 'bg-violet-500',
+  const colorMap: Record<string, string> = {
+    indigo: 'bg-indigo-500',
     amber: 'bg-amber-500',
     emerald: 'bg-emerald-500',
   };
+  const colorClass = colorMap[color] || 'bg-slate-500';
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Icon size={16} className="text-slate-400" />
-          <span className="text-sm text-slate-600">{label}</span>
+          <Icon size={14} className="text-slate-400" />
+          <span className="text-xs font-semibold text-slate-600">{label}</span>
         </div>
-        <span className="text-sm font-bold text-slate-700">{value}</span>
+        <span className="text-xs font-bold text-slate-900">{value}</span>
       </div>
-      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
-          className={`h-full rounded-full ${colors[color]}`}
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-[width] duration-500 ease-out ${colorClass}`}
+          style={{ width: `${progress}%` }}
         />
       </div>
     </div>

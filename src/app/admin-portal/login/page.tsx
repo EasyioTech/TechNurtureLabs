@@ -17,11 +17,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const fillDemoCredentials = () => {
-    setEmail('admin@eduquest.com');
-    setPassword('admin123');
-    toast.success('Demo credentials filled!');
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +80,7 @@ export default function AdminLoginPage() {
 
           <div className="text-center mb-8">
             <h1 className="text-2xl font-black mb-2">Super Admin Login</h1>
-            <p className="text-white/50 text-sm">Access the EduQuest administration console</p>
+            <p className="text-white/50 text-sm">Access the TechNurture Labs administration console</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -95,7 +91,7 @@ export default function AdminLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-white/5 border-white/10 h-12 text-white placeholder:text-white/30 focus:border-violet-500 focus:ring-violet-500/20"
-                placeholder="admin@eduquest.com"
+                placeholder="admin@technurture.com"
                 required
               />
             </div>
@@ -141,18 +137,9 @@ export default function AdminLoginPage() {
           </form>
 
           <div className="mt-6 p-4 rounded-lg bg-violet-500/10 border border-violet-500/20">
-            <p className="text-xs text-violet-300 text-center mb-3">
+            <p className="text-xs text-violet-300 text-center mb-0">
               This login is monitored. Unauthorized access attempts will be logged.
             </p>
-            <Button
-              type="button"
-              onClick={fillDemoCredentials}
-              variant="outline"
-              className="w-full border-violet-500/30 text-violet-300 hover:bg-violet-500/20 hover:text-violet-200"
-            >
-              <Wand2 size={16} className="mr-2" />
-              Use Demo Credentials
-            </Button>
           </div>
         </div>
       </motion.div>

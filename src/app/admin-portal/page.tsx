@@ -3,8 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
-  Shield, ArrowRight, BarChart3, Users, Settings, 
+import {
+  Shield, ArrowRight, BarChart3, Users, Settings,
   Crown, Lock, Database
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ export default function AdminPortalLanding() {
                 <Crown className="text-white" size={20} />
               </div>
               <div>
-                <span className="text-xl font-black tracking-tight">EduQuest</span>
+                <span className="text-xl font-black tracking-tight">TechNurture Labs</span>
                 <span className="text-xs text-violet-400 block -mt-1">Admin Portal</span>
               </div>
             </div>
@@ -53,17 +53,17 @@ export default function AdminPortalLanding() {
                 <Shield size={16} className="text-violet-400" />
                 <span className="text-sm text-violet-300">System Administration</span>
               </div>
-              
+
               <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.9] mb-6">
-                EduQuest
+                TechNurture Labs
                 <br />
                 <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                   Super Admin
                 </span>
               </h1>
-              
+
               <p className="text-lg md:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
-                Manage the entire EduQuest platform. Schools, courses, users, 
+                Manage the entire TechNurture Labs platform. Schools, courses, users,
                 payments, and analytics - all in one place.
               </p>
             </motion.div>
@@ -88,19 +88,19 @@ export default function AdminPortalLanding() {
       <section className="relative z-10 py-20 bg-white/[0.02] border-y border-white/5">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <FeatureCard 
+            <FeatureCard
               icon={BarChart3}
               title="Platform Analytics"
               description="Monitor platform-wide metrics, user engagement, and revenue in real-time"
               gradient="from-violet-500 to-purple-600"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={Users}
               title="School & User Management"
               description="Approve schools, manage users, and oversee the entire platform ecosystem"
               gradient="from-purple-500 to-pink-600"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={Database}
               title="Course & Content Control"
               description="Create and manage common courses, lessons, and educational content"
@@ -118,7 +118,7 @@ export default function AdminPortalLanding() {
             </div>
             <h3 className="text-xl font-bold mb-2">Authorized Access Only</h3>
             <p className="text-white/50 text-sm mb-6">
-              This portal is restricted to EduQuest system administrators.
+              This portal is restricted to TechNurture Labs system administrators.
               Unauthorized access attempts are logged and monitored.
             </p>
             <Link href="/admin-portal/login">
@@ -138,9 +138,9 @@ export default function AdminPortalLanding() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                 <Crown className="text-white" size={16} />
               </div>
-              <span className="font-bold">EduQuest Admin</span>
+              <span className="font-bold">TechNurture Labs Admin</span>
             </div>
-            <p className="text-sm text-white/30">© 2025 EduQuest. All rights reserved.</p>
+            <p className="text-sm text-white/30">© 2025 TechNurture Labs. All rights reserved.</p>
           </div>
         </div>
       </footer>

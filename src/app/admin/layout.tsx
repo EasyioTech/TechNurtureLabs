@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles } from 'lucide-react';
+import { AdminThemeProvider } from '@/modules/super-admin/theme-context';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { user, loading } = useAuth();
@@ -30,5 +31,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return null;
     }
 
-    return <>{children}</>;
+    return <AdminThemeProvider>{children}</AdminThemeProvider>;
 }

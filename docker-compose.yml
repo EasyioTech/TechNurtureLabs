@@ -12,15 +12,23 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/orchids
+      - DATABASE_URL=postgresql://postgres:admin@db:5432/orchids
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=super-secret-jwt-key
+      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-change-in-production}
+      # Cloudflare R2 — leave empty to use local fallback storage
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID:-}
+      - CLOUDFLARE_ACCESS_KEY_ID=${CLOUDFLARE_ACCESS_KEY_ID:-}
+      - CLOUDFLARE_SECRET_ACCESS_KEY=${CLOUDFLARE_SECRET_ACCESS_KEY:-}
+      - CLOUDFLARE_BUCKET_NAME=${CLOUDFLARE_BUCKET_NAME:-}
+      - CLOUDFLARE_PUBLIC_DOMAIN=${CLOUDFLARE_PUBLIC_DOMAIN:-}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
+      # Local fallback storage — used when R2 is not configured or fails
       - storage_data:/app/local_storage
 
   # ----------------------------
@@ -28,18 +36,18 @@ services:
   # seed.sql is auto-executed on first DB init
   # ----------------------------
   db:
-    image: postgres:15-alpine
+    image: postgres:15
     container_name: LMS_postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: admin
       POSTGRES_DB: orchids
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./seed.sql:/docker-entrypoint-initdb.d/seed.sql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d orchids" ]
       interval: 5s

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { adminUsers } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { users } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 
@@ -16,8 +16,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const admin = await db.query.adminUsers.findFirst({
-      where: eq(adminUsers.email, email.toLowerCase())
+    const admin = await db.query.users.findFirst({
+      where: and(
+        eq(users.email, email.toLowerCase()),
+        eq(users.role, 'super_admin')
+      )
     });
 
     if (!admin || !admin.is_active) {
@@ -36,7 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await db.update(adminUsers).set({ last_login: new Date() }).where(eq(adminUsers.id, admin.id));
+    await db.update(users).set({ last_active_at: new Date() }).where(eq(users.id, admin.id));
     await createSession({ userId: admin.id, role: 'admin' });
 
     const { password_hash, ...adminData } = admin;

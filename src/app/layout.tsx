@@ -6,7 +6,7 @@ import Script from "next/script";
 import { AuthProvider } from "@/components/providers/auth-provider";
 
 export const metadata: Metadata = {
-  title: "EduQuest - Immersive Learning Platform",
+  title: "TechNurture Labs - Immersive Learning Platform",
   description: "Next-gen immersive LMS",
 };
 
