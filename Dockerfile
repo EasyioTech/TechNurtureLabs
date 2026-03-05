@@ -6,8 +6,9 @@ FROM node:20-slim AS base
 FROM base AS deps
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --legacy-peer-deps
+COPY package.json package-lock.json ./
+# Use CI for deterministic builds
+RUN npm ci --legacy-peer-deps
 
 # Stage 2: Build the application
 FROM base AS builder
