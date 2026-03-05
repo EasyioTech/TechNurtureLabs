@@ -53,7 +53,7 @@ export function CourseBuilderTab({
     showLessonDialog, setShowLessonDialog, editingLesson, setEditingLesson,
     grades, courseGradeMappings,
 }: CourseBuilderTabProps) {
-    const { isDark } = useAdminTheme();
+    const { isDark, accent } = useAdminTheme();
     const [itemToDelete, setItemToDelete] = useState<{ type: 'course' | 'lesson', id: string, name: string } | null>(null);
 
     const sensors = useSensors(
@@ -91,7 +91,7 @@ export function CourseBuilderTab({
                     <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${t.border(isDark)}`}>
                         <h3 className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>All Courses</h3>
                         <Button size="sm"
-                            className={`rounded-full text-[10px] font-black h-8 px-4 border-0 ${t.btnPrimary(isDark)}`}
+                            className={`rounded-full text-[10px] font-black h-8 px-4 border-0 ${t.btnPrimary(isDark, accent)}`}
                             onClick={() => { setEditingCourse({ published: false }); setShowCourseDialog(true); }}>
                             <Plus size={14} className="mr-1.5" />Create Course
                         </Button>
@@ -117,14 +117,14 @@ export function CourseBuilderTab({
                                         transition={{ delay: i * 0.04 }}
                                         className={`w-full text-left p-4 rounded-2xl cursor-pointer transition-all duration-300 group
                                             ${isSelected
-                                                ? isDark ? 'bg-lime-400/10 ring-1 ring-lime-400/20 shadow-lg shadow-black/20' : 'bg-slate-900 text-white shadow-xl shadow-slate-900/20'
+                                                ? isDark ? `${accent.softDark.split(' ')[0]} ring-1 ring-${accent.name}-400/20 shadow-lg shadow-black/20` : `${accent.bg} text-white shadow-xl shadow-black/10`
                                                 : isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-slate-50 border-transparent hover:border-slate-200 border'}`}
                                         onClick={() => onSelectCourse(course)}
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-transform overflow-hidden
                                                 ${isSelected
-                                                    ? isDark ? 'bg-lime-400 text-slate-900' : 'bg-white text-slate-900 ring-2 ring-white/20'
+                                                    ? isDark ? `${accent.bg} text-slate-900` : 'bg-white text-slate-900 ring-2 ring-white/20'
                                                     : isDark ? 'bg-white/[0.05] text-slate-500 border border-white/5' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
                                                 {course.thumbnail || course.thumbnail_url ? (
                                                     <img src={course.thumbnail || course.thumbnail_url || ''} alt="" className="w-full h-full object-cover" />
@@ -133,7 +133,7 @@ export function CourseBuilderTab({
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className={`font-black text-sm tracking-tight truncate ${isSelected ? (isDark ? 'text-lime-400' : 'text-white') : t.textPrimary(isDark)}`}>{course.title}</p>
+                                                <p className={`font-black text-sm tracking-tight truncate ${isSelected ? (isDark ? accent.text : 'text-white') : t.textPrimary(isDark)}`}>{course.title}</p>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <p className={`text-[10px] font-bold ${isSelected ? (isDark ? 'text-white/60' : 'text-white/70') : t.textMuted(isDark)}`}>
                                                         {course.lesson_count} LESSONS • {course.enrolled_count || 0} ENROLLED
@@ -146,7 +146,7 @@ export function CourseBuilderTab({
                                         </div>
                                         {isSelected && (
                                             <div className="flex gap-2 mt-4 ml-14">
-                                                <Button variant="ghost" size="sm" className={`h-7 px-3 text-[10px] font-black rounded-lg transition-colors ${isDark ? 'text-lime-400 hover:bg-white/[0.1]' : (isSelected && !isDark ? 'text-white hover:bg-white/10' : 'text-slate-600 hover:bg-slate-100')}`}
+                                                <Button variant="ghost" size="sm" className={`h-7 px-3 text-[10px] font-black rounded-lg transition-colors ${isDark ? `${accent.text} hover:bg-white/[0.1]` : (isSelected && !isDark ? 'text-white hover:bg-white/10' : 'text-slate-600 hover:bg-slate-100')}`}
                                                     onClick={(e) => { e.stopPropagation(); setEditingCourse(course); setShowCourseDialog(true); }}>
                                                     <Edit size={12} className="mr-1.5" />EDIT
                                                 </Button>
@@ -180,7 +180,7 @@ export function CourseBuilderTab({
                                     <Plus size={14} className="mr-1.5" />Add Lesson
                                 </Button>
                                 {lessons.length > 1 && (
-                                    <Button size="sm" className={`rounded-full h-9 px-5 text-[11px] font-black shadow-lg shadow-lime-400/20 border-0 ${t.btnPrimary(isDark)}`} onClick={onSaveLessonOrder}>
+                                    <Button size="sm" className={`rounded-full h-9 px-5 text-[11px] font-black shadow-lg border-0 ${t.btnPrimary(isDark, accent)}`} style={t.glowStyle(isDark, accent)} onClick={onSaveLessonOrder}>
                                         <Save size={14} className="mr-1.5" />Save Order
                                     </Button>
                                 )}

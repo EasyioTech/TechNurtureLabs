@@ -25,6 +25,8 @@ CREATE TYPE achievement_tier AS ENUM ('bronze', 'silver', 'gold', 'platinum');
 CREATE TYPE challenge_status AS ENUM ('active', 'completed', 'expired');
 CREATE TYPE audit_action AS ENUM ('create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion');
 CREATE TYPE invoice_status AS ENUM ('draft', 'issued', 'paid', 'void', 'overdue');
+CREATE TYPE storage_type AS ENUM ('r2', 'local');
+CREATE TYPE asset_type AS ENUM ('video', 'image', 'document');
 
 -- ============================================================================
 -- 2. CORE TENANT TABLES
@@ -62,6 +64,7 @@ CREATE TABLE academic_sessions (
     is_current      BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at      TIMESTAMPTZ,
     CONSTRAINT chk_session_dates CHECK (end_date > start_date)
 );
 
@@ -250,6 +253,7 @@ CREATE TABLE courses (
     description     TEXT,
     thumbnail_url   TEXT,
     is_published    BOOLEAN NOT NULL DEFAULT FALSE,
+    all_grades     BOOLEAN NOT NULL DEFAULT FALSE,
     total_lessons   INT NOT NULL DEFAULT 0,
     total_xp        INT NOT NULL DEFAULT 0,
     created_by      UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -604,6 +608,28 @@ CREATE TABLE email_verification_tokens (
 );
 
 -- ============================================================================
+-- 11b. MEDIA LIBRARY (Cloudflare R2 / local fallback)
+-- ============================================================================
+
+CREATE TABLE media_assets (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    file_name       TEXT NOT NULL,          -- UUID-based storage key/filename
+    original_name   TEXT NOT NULL,          -- Original filename from the user
+    file_url        TEXT NOT NULL,          -- Public URL (R2 or /api/media/...)
+    file_path       TEXT NOT NULL,          -- Storage key (R2) or relative local path
+    mime_type       TEXT NOT NULL,
+    file_size       BIGINT NOT NULL DEFAULT 0,
+    storage_type    storage_type NOT NULL DEFAULT 'local',
+    asset_type      asset_type NOT NULL DEFAULT 'document',
+    uploaded_by     UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_media_asset_type ON media_assets (asset_type);
+CREATE INDEX idx_media_uploaded_by ON media_assets (uploaded_by);
+CREATE INDEX idx_media_created ON media_assets (created_at);
+
+-- ============================================================================
 -- 12. INDEXES
 -- ============================================================================
 
@@ -788,197 +814,47 @@ CREATE TRIGGER trg_xp_event_sync
     EXECUTE FUNCTION fn_sync_user_xp();
 
 -- ============================================================================
--- 15. DEMO SEED DATA
+-- 15. PRODUCTION SEED DATA
 -- ============================================================================
 
--- School
-INSERT INTO schools (id, name, slug, email, phone, city, state, country, pincode, data_processing_consent, minor_data_guardian_consent)
-VALUES (
-    'a0000000-0000-0000-0000-000000000001',
-    'Delhi Public School, Noida',
-    'dps-noida',
-    'admin@dpsnoida.edu.in',
-    '+919876543210',
-    'Noida',
-    'Uttar Pradesh',
-    'IN',
-    '201301',
-    TRUE,
-    TRUE
-);
-
--- Academic session
-INSERT INTO academic_sessions (id, school_id, name, start_date, end_date, is_current)
-VALUES (
-    'b0000000-0000-0000-0000-000000000001',
-    'a0000000-0000-0000-0000-000000000001',
-    '2025-26',
-    '2025-04-01',
-    '2026-03-31',
-    TRUE
-);
-
--- Payment plan
-INSERT INTO payment_plans (id, name, description, billing_cycle, price, max_students, trial_days)
-VALUES (
-    'c0000000-0000-0000-0000-000000000001',
-    'Starter Plan',
-    'Ideal for small schools up to 200 students',
-    'annual',
-    49999.00,
-    200,
-    14
-);
-
--- Subscription
-INSERT INTO school_subscriptions (id, school_id, plan_id, status, current_period_start, current_period_end, trial_start, trial_end)
-VALUES (
-    'd0000000-0000-0000-0000-000000000001',
-    'a0000000-0000-0000-0000-000000000001',
-    'c0000000-0000-0000-0000-000000000001',
-    'active',
-    '2025-04-01 00:00:00+05:30',
-    '2026-03-31 23:59:59+05:30',
-    '2025-04-01 00:00:00+05:30',
-    '2025-04-14 23:59:59+05:30'
-);
-
--- Super Admin user
+-- Super Admin user (Platform Owner)
+-- Default credentials: admin@technurture.com / admin123  (Change immediately in production!)
 INSERT INTO users (id, role, first_name, last_name, email, password_hash)
 VALUES (
     'e0000000-0000-0000-0000-000000000001',
     'super_admin',
     'Platform',
     'Admin',
-    'superadmin@eduquest.io',
-    crypt('SuperAdmin@2025!', gen_salt('bf', 12))
-);
+    'admin@technurture.com',
+    crypt('admin123', gen_salt('bf', 10))
+) ON CONFLICT (id) DO NOTHING;
 
--- School Admin user
-INSERT INTO users (id, school_id, role, first_name, last_name, email, password_hash, email_verified_at)
+-- Default payment plan (Required for school registration flow to work smoothly)
+INSERT INTO payment_plans (id, name, description, billing_cycle, price, max_students, trial_days)
 VALUES (
-    'e0000000-0000-0000-0000-000000000002',
-    'a0000000-0000-0000-0000-000000000001',
-    'school_admin',
-    'Ravi',
-    'Sharma',
-    'ravi.sharma@dpsnoida.edu.in',
-    crypt('SchoolAdmin@2025!', gen_salt('bf', 12)),
-    now()
-);
+    'c0000000-0000-0000-0000-000000000001',
+    'Starter Plan',
+    'Ideal for small schools to get started (up to 200 students)',
+    'annual',
+    49999.00,
+    200,
+    14
+) ON CONFLICT (id) DO NOTHING;
 
--- Grade
+-- Base Grades System
 INSERT INTO grades (id, name, level) VALUES
-    ('f0000000-0000-0000-0000-000000000001', 'Grade 6', 6);
-
--- School-Grade mapping
-INSERT INTO school_grade_mapping (school_id, grade_id)
-VALUES ('a0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001');
-
--- Student user
-INSERT INTO users (id, school_id, role, first_name, last_name, email, password_hash, date_of_birth, is_minor, guardian_name, guardian_email, guardian_consent, email_verified_at)
-VALUES (
-    'e0000000-0000-0000-0000-000000000003',
-    'a0000000-0000-0000-0000-000000000001',
-    'student',
-    'Ananya',
-    'Gupta',
-    'ananya.gupta@dpsnoida.edu.in',
-    crypt('Student@2025!', gen_salt('bf', 12)),
-    '2013-06-15',
-    TRUE,
-    'Priya Gupta',
-    'priya.gupta@gmail.com',
-    TRUE,
-    now()
-);
-
--- Student academic record
-INSERT INTO student_academic_records (user_id, school_id, session_id, grade_id, roll_number, section)
-VALUES (
-    'e0000000-0000-0000-0000-000000000003',
-    'a0000000-0000-0000-0000-000000000001',
-    'b0000000-0000-0000-0000-000000000001',
-    'f0000000-0000-0000-0000-000000000001',
-    '2025-0042',
-    'A'
-);
-
--- Course
-INSERT INTO courses (id, title, slug, description, is_published, total_lessons, total_xp, created_by)
-VALUES (
-    'aa000000-0000-0000-0000-000000000001',
-    'Mathematics — Grade 6',
-    'math-grade-6',
-    'Complete Grade 6 Mathematics curriculum covering fractions, geometry, algebra basics, and data handling.',
-    TRUE,
-    20,
-    500,
-    'e0000000-0000-0000-0000-000000000001'
-);
-
--- Course-Grade mapping
-INSERT INTO course_grade_mapping (course_id, grade_id)
-VALUES ('aa000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001');
-
--- Lesson
-INSERT INTO lessons (id, course_id, title, content_type, sequence_order, duration_minutes, xp_reward, is_published)
-VALUES (
-    'ab000000-0000-0000-0000-000000000001',
-    'aa000000-0000-0000-0000-000000000001',
-    'Introduction to Fractions',
-    'video',
-    1,
-    15,
-    25,
-    TRUE
-);
-
--- Enrollment
-INSERT INTO enrollments (id, user_id, course_id, school_id, session_id)
-VALUES (
-    'ac000000-0000-0000-0000-000000000001',
-    'e0000000-0000-0000-0000-000000000003',
-    'aa000000-0000-0000-0000-000000000001',
-    'a0000000-0000-0000-0000-000000000001',
-    'b0000000-0000-0000-0000-000000000001'
-);
-
--- Achievement
-INSERT INTO achievements (id, name, description, tier, xp_threshold)
-VALUES (
-    'ad000000-0000-0000-0000-000000000001',
-    'First Steps',
-    'Complete your first lesson',
-    'bronze',
-    25
-);
-
--- Payment transaction
-INSERT INTO payment_transactions (school_id, subscription_id, razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, status)
-VALUES (
-    'a0000000-0000-0000-0000-000000000001',
-    'd0000000-0000-0000-0000-000000000001',
-    'order_DemoRzp001',
-    'pay_DemoRzp001',
-    'sig_DemoRzp001',
-    49999.00,
-    'captured'
-);
-
--- Invoice
-INSERT INTO invoices (school_id, subscription_id, invoice_number, status, subtotal, tax_amount, total, billing_name, issued_at, paid_at)
-VALUES (
-    'a0000000-0000-0000-0000-000000000001',
-    'd0000000-0000-0000-0000-000000000001',
-    'INV-2025-0001',
-    'paid',
-    42372.03,
-    7626.97,
-    49999.00,
-    'Delhi Public School, Noida',
-    now(),
-    now()
-);
+    ('f0000000-0000-0000-0000-000000000001', 'Class 1', 1),
+    ('f0000000-0000-0000-0000-000000000002', 'Class 2', 2),
+    ('f0000000-0000-0000-0000-000000000003', 'Class 3', 3),
+    ('f0000000-0000-0000-0000-000000000004', 'Class 4', 4),
+    ('f0000000-0000-0000-0000-000000000005', 'Class 5', 5),
+    ('f0000000-0000-0000-0000-000000000006', 'Class 6', 6),
+    ('f0000000-0000-0000-0000-000000000007', 'Class 7', 7),
+    ('f0000000-0000-0000-0000-000000000008', 'Class 8', 8),
+    ('f0000000-0000-0000-0000-000000000009', 'Class 9', 9),
+    ('f0000000-0000-0000-0000-000000000010', 'Class 10', 10),
+    ('f0000000-0000-0000-0000-000000000011', 'Class 11', 11),
+    ('f0000000-0000-0000-0000-000000000012', 'Class 12', 12)
+ON CONFLICT (level) DO NOTHING;
 
 COMMIT;

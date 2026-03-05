@@ -12,6 +12,7 @@ export type Course = {
 export type UserProfile = {
     id: string;
     full_name: string;
+    email: string;
     grade: number | null;
     total_xp: number;
     level: number;

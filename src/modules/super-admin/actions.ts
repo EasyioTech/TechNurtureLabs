@@ -1,10 +1,11 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { courses, lessons, paymentPlans, users, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, grades, courseGradeMapping, quizzes, quizQuestions } from '@/db/schema';
+import { courses, lessons, paymentPlans, users, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, grades, courseGradeMapping, schoolGradeMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions } from '@/db/schema';
 import { eq, asc, desc, count, sql, and } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { addMonths } from 'date-fns';
+import bcrypt from 'bcryptjs';
 
 export async function fetchAllAdminData() {
     const students = await db.query.users.findMany({ where: (u, { eq }) => eq(u.role, 'student') });
@@ -14,6 +15,7 @@ export async function fetchAllAdminData() {
     const plansData = await db.query.paymentPlans.findMany({ orderBy: [asc(paymentPlans.price)] });
     const gradesData = await db.query.grades.findMany({ orderBy: [asc(grades.level)] });
     const courseGradeMappingsData = await db.query.courseGradeMapping.findMany();
+    const schoolGradeMappingsData = await db.query.schoolGradeMapping.findMany();
     const progressData = await db.select().from(lessonProgress);
     const enrollmentsData = await db.select().from(enrollments);
     const subscriptionsData = await db.select().from(schoolSubscriptions);
@@ -33,7 +35,10 @@ export async function fetchAllAdminData() {
             total_xp: Number(s.cumulative_xp),
             level: Math.floor((Number(s.cumulative_xp) || 0) / 500) + 1,
         })),
-        schools: schoolsData,
+        schools: schoolsData.map(s => ({
+            ...s,
+            gradeIds: schoolGradeMappingsData.filter(m => m.school_id === s.id).map(m => m.grade_id)
+        })),
         courses: coursesData.map(c => ({
             ...c,
             thumbnail: c.thumbnail_url,
@@ -240,44 +245,84 @@ export async function toggleSchoolStatus(schoolId: string, isActive: boolean) {
 }
 
 export async function saveSchoolAdmin(schoolData: any) {
-    const slug = schoolData.slug || schoolData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-
-    if (schoolData.id) {
-        const [updated] = await db.update(schools).set({
-            name: schoolData.name,
-            email: schoolData.email,
-            phone: schoolData.phone || null,
-            address: schoolData.address || null,
-            city: schoolData.city || null,
-            state: schoolData.state || null,
-            country: schoolData.country || 'IN',
-            pincode: schoolData.pincode || null,
-            logo_url: schoolData.logo_url || null,
-            website: schoolData.website || null,
-            is_active: schoolData.is_active ?? true,
-            data_processing_consent: schoolData.data_processing_consent ?? false,
-            minor_data_guardian_consent: schoolData.minor_data_guardian_consent ?? false,
-        }).where(eq(schools.id, schoolData.id)).returning();
-        return updated;
-    } else {
-        const [created] = await db.insert(schools).values({
-            name: schoolData.name,
-            slug: slug,
-            email: schoolData.email,
-            phone: schoolData.phone || null,
-            address: schoolData.address || null,
-            city: schoolData.city || null,
-            state: schoolData.state || null,
-            country: schoolData.country || 'IN',
-            pincode: schoolData.pincode || null,
-            logo_url: schoolData.logo_url || null,
-            website: schoolData.website || null,
-            is_active: schoolData.is_active ?? true,
-            data_processing_consent: schoolData.data_processing_consent ?? false,
-            minor_data_guardian_consent: schoolData.minor_data_guardian_consent ?? false,
-        } as any).returning();
-        return created;
+    if (!schoolData.name || !schoolData.email) {
+        throw new Error('Institution name and email are required.');
     }
+
+    const email = schoolData.email.toLowerCase().trim();
+    const slug = schoolData.slug || schoolData.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    return await db.transaction(async (tx) => {
+        let schoolId = schoolData.id;
+
+        if (schoolData.id) {
+            // Update School
+            await tx.update(schools).set({
+                name: schoolData.name,
+                email: email,
+                phone: schoolData.phone || null,
+                address: schoolData.address || null,
+                city: schoolData.city || null,
+                state: schoolData.state || null,
+                country: schoolData.country || 'IN',
+                pincode: schoolData.pincode || null,
+                logo_url: schoolData.logo_url || null,
+                website: schoolData.website || null,
+                is_active: schoolData.is_active ?? true,
+                data_processing_consent: schoolData.data_processing_consent ?? false,
+                minor_data_guardian_consent: schoolData.minor_data_guardian_consent ?? false,
+                updated_at: new Date(),
+            }).where(eq(schools.id, schoolData.id));
+        } else {
+            // Create School
+            const [created] = await tx.insert(schools).values({
+                name: schoolData.name,
+                slug: slug,
+                email: email,
+                phone: schoolData.phone || null,
+                address: schoolData.address || null,
+                city: schoolData.city || null,
+                state: schoolData.state || null,
+                country: schoolData.country || 'IN',
+                pincode: schoolData.pincode || null,
+                logo_url: schoolData.logo_url || null,
+                website: schoolData.website || null,
+                is_active: schoolData.is_active ?? true,
+                data_processing_consent: schoolData.data_processing_consent ?? false,
+                minor_data_guardian_consent: schoolData.minor_data_guardian_consent ?? false,
+            } as any).returning();
+            schoolId = created.id;
+
+            // Create Initial Academic Session for new schools
+            const startDate = new Date();
+            const endDate = new Date();
+            endDate.setFullYear(startDate.getFullYear() + 1);
+            await tx.insert(academicSessions).values({
+                name: `Session ${startDate.getFullYear()}-${startDate.getFullYear() + 1}`,
+                school_id: schoolId,
+                is_current: true,
+                start_date: startDate.toISOString().split('T')[0],
+                end_date: endDate.toISOString().split('T')[0]
+            } as any);
+        }
+
+        // Handle Grade Mappings
+        if (schoolData.gradeIds) {
+            await tx.delete(schoolGradeMapping).where(eq(schoolGradeMapping.school_id, schoolId));
+            if (schoolData.gradeIds.length > 0) {
+                await tx.insert(schoolGradeMapping).values(
+                    schoolData.gradeIds.map((gid: string) => ({
+                        school_id: schoolId,
+                        grade_id: gid,
+                        is_active: true
+                    }))
+                );
+            }
+        }
+
+        const updated = await tx.query.schools.findFirst({ where: eq(schools.id, schoolId) });
+        return updated;
+    });
 }
 
 export async function fetchQuizAdmin(lessonId: string) {
@@ -375,4 +420,221 @@ export async function assignPlanToSchool(schoolId: string, planId: string, billi
         } as any).returning();
         return created;
     }
+}
+
+export async function saveStudentAdmin(userData: any) {
+    const email = userData.email.toLowerCase().trim();
+
+    return await db.transaction(async (tx) => {
+        let userId = userData.id;
+
+        if (userData.id) {
+            // Update
+            const checkEmail = await tx.query.users.findFirst({
+                where: and(eq(users.email, email), sql`${users.id} != ${userData.id}`)
+            });
+            if (checkEmail) throw new Error("A user with this email already exists.");
+
+            const updateData: any = {
+                first_name: userData.first_name,
+                last_name: userData.last_name,
+                email: email,
+                school_id: userData.school_id,
+            };
+            if (userData.password) {
+                updateData.password_hash = await bcrypt.hash(userData.password, 10);
+            }
+
+            await tx.update(users).set(updateData).where(eq(users.id, userData.id));
+        } else {
+            // Create
+            const checkEmail = await tx.query.users.findFirst({ where: eq(users.email, email) });
+            if (checkEmail) throw new Error("A user with this email already exists.");
+
+            if (!userData.password) throw new Error("Password is required for new students.");
+            const hashedPassword = await bcrypt.hash(userData.password, 10);
+            const [created] = await tx.insert(users).values({
+                email: email,
+                password_hash: hashedPassword,
+                first_name: userData.first_name,
+                last_name: userData.last_name,
+                school_id: userData.school_id,
+                role: 'student',
+                cumulative_xp: 0,
+                current_streak: 0,
+                is_active: true,
+            } as any).returning();
+            userId = created.id;
+        }
+
+        // Handle session and academic record
+        if (userData.grade_id && userData.school_id) {
+            let session = await tx.query.academicSessions.findFirst({
+                where: and(
+                    eq(academicSessions.school_id, userData.school_id),
+                    eq(academicSessions.is_current, true)
+                )
+            });
+
+            if (!session) {
+                const startDate = new Date();
+                const endDate = new Date();
+                endDate.setFullYear(startDate.getFullYear() + 1);
+
+                const [newSession] = await tx.insert(academicSessions).values({
+                    name: `Session ${startDate.getFullYear()}-${startDate.getFullYear() + 1}`,
+                    school_id: userData.school_id,
+                    is_current: true,
+                    start_date: startDate.toISOString().split('T')[0],
+                    end_date: endDate.toISOString().split('T')[0]
+                } as any).returning();
+                session = newSession;
+            }
+
+            const existingRecord = await tx.query.studentAcademicRecords.findFirst({
+                where: and(
+                    eq(studentAcademicRecords.user_id, userId),
+                    eq(studentAcademicRecords.school_id, userData.school_id),
+                    eq(studentAcademicRecords.session_id, session.id)
+                )
+            });
+
+            if (existingRecord) {
+                await tx.update(studentAcademicRecords)
+                    .set({ grade_id: userData.grade_id })
+                    .where(eq(studentAcademicRecords.id, existingRecord.id));
+            } else {
+                await tx.insert(studentAcademicRecords).values({
+                    user_id: userId,
+                    school_id: userData.school_id,
+                    session_id: session.id,
+                    grade_id: userData.grade_id,
+                    is_promoted: false
+                } as any);
+            }
+        }
+
+        const updated = await tx.query.users.findFirst({ where: eq(users.id, userId) });
+        return {
+            ...updated,
+            full_name: `${updated?.first_name} ${updated?.last_name}`,
+            total_xp: Number(updated?.cumulative_xp),
+            level: Math.floor((Number(updated?.cumulative_xp) || 0) / 500) + 1,
+        } as any;
+    });
+}
+
+/**
+ * FETCH GLOBAL ENTITIES FOR REUSE
+ */
+
+export async function fetchGlobalLessons() {
+    const data = await db.query.lessons.findMany({
+        with: {
+            course: true
+        },
+        orderBy: [desc(lessons.created_at)]
+    });
+    return data.map(l => ({
+        ...l,
+        course_title: (l as any).course?.title || 'Unknown Course'
+    }));
+}
+
+export async function fetchGlobalQuizzes() {
+    const data = await db.query.quizzes.findMany({
+        with: {
+            course: true,
+            lesson: true
+        }
+    });
+    return data.map(q => ({
+        ...q,
+        course_title: (q as any).course?.title || 'Unknown Course',
+        lesson_title: (q as any).lesson?.title || 'Unknown Lesson'
+    }));
+}
+
+/**
+ * DEEP CLONING LOGIC
+ */
+
+export async function cloneQuizAction(quizId: string, targetLessonId: string, targetCourseId: string) {
+    return await db.transaction(async (tx) => {
+        const sourceQuiz = await tx.query.quizzes.findFirst({
+            where: eq(quizzes.id, quizId),
+            with: { questions: true }
+        });
+
+        if (!sourceQuiz) throw new Error("Source quiz not found");
+
+        // 1. Create New Quiz
+        const [clonedQuiz] = await tx.insert(quizzes).values({
+            lesson_id: targetLessonId,
+            course_id: targetCourseId,
+            title: `${sourceQuiz.title} (Copy)`,
+            description: sourceQuiz.description,
+            time_limit_secs: sourceQuiz.time_limit_secs,
+            pass_percentage: sourceQuiz.pass_percentage,
+            max_attempts: sourceQuiz.max_attempts,
+            xp_reward: sourceQuiz.xp_reward,
+            is_published: sourceQuiz.is_published,
+        } as any).returning();
+
+        // 2. Clone Questions
+        if (sourceQuiz.questions && sourceQuiz.questions.length > 0) {
+            await tx.insert(quizQuestions).values(
+                sourceQuiz.questions.map(q => ({
+                    quiz_id: clonedQuiz.id,
+                    question_text: q.question_text,
+                    question_type: q.question_type,
+                    options: q.options,
+                    correct_answer: q.correct_answer,
+                    explanation: q.explanation,
+                    points: q.points,
+                    sequence_order: q.sequence_order,
+                }))
+            );
+        }
+
+        return clonedQuiz;
+    });
+}
+
+export async function cloneLessonAction(lessonId: string, targetCourseId: string) {
+    return await db.transaction(async (tx) => {
+        const sourceLesson = await tx.query.lessons.findFirst({
+            where: eq(lessons.id, lessonId)
+        });
+
+        if (!sourceLesson) throw new Error("Source lesson not found");
+
+        const courseLessons = await tx.query.lessons.findMany({ where: eq(lessons.course_id, targetCourseId) });
+        const maxOrder = courseLessons.reduce((max, l) => Math.max(max, l.sequence_order), 0);
+
+        // 1. Clone Lesson
+        const [clonedLesson] = await tx.insert(lessons).values({
+            course_id: targetCourseId,
+            title: `${sourceLesson.title} (Copy)`,
+            description: sourceLesson.description,
+            content_type: sourceLesson.content_type,
+            content_url: sourceLesson.content_url,
+            xp_reward: sourceLesson.xp_reward,
+            duration_minutes: sourceLesson.duration_minutes,
+            sequence_order: maxOrder + 1,
+            is_published: sourceLesson.is_published,
+        } as any).returning();
+
+        // 2. If it has a quiz, clone that too
+        const sourceQuiz = await tx.query.quizzes.findFirst({
+            where: eq(quizzes.lesson_id, lessonId)
+        });
+
+        if (sourceQuiz) {
+            await cloneQuizAction(sourceQuiz.id, clonedLesson.id, targetCourseId);
+        }
+
+        await updateCourseTotals(targetCourseId);
+        return clonedLesson;
+    });
 }

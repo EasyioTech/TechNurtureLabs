@@ -33,7 +33,7 @@ export function PaymentPlanDialog({
     setEditingPlan,
     onSave
 }: PlanDialogProps) {
-    const { isDark } = useAdminTheme();
+    const { isDark, accent } = useAdminTheme();
 
     const addFeature = () => {
         const currentFeatures = editingPlan?.features || [];
@@ -67,7 +67,7 @@ export function PaymentPlanDialog({
                                 placeholder="Starter, Pro, etc."
                                 value={editingPlan?.name || ''}
                                 onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
-                                className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                             />
                         </div>
                         <div className="space-y-2">
@@ -77,7 +77,7 @@ export function PaymentPlanDialog({
                                 placeholder="0"
                                 value={editingPlan?.price || 0}
                                 onChange={(e) => setEditingPlan({ ...editingPlan, price: Number(e.target.value) })}
-                                className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                             />
                         </div>
                     </div>
@@ -87,7 +87,7 @@ export function PaymentPlanDialog({
                             placeholder="Short summary of the plan..."
                             value={editingPlan?.description || ''}
                             onChange={(e) => setEditingPlan({ ...editingPlan, description: e.target.value })}
-                            className={`rounded-2xl min-h-[80px] p-4 font-medium border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 resize-none ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                            className={`rounded-2xl min-h-[80px] p-4 font-medium border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 resize-none ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -115,7 +115,7 @@ export function PaymentPlanDialog({
                                 placeholder="Unlimited"
                                 value={editingPlan?.max_students || ''}
                                 onChange={(e) => setEditingPlan({ ...editingPlan, max_students: Number(e.target.value) || null })}
-                                className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                             />
                         </div>
                     </div>
@@ -127,7 +127,7 @@ export function PaymentPlanDialog({
                                 placeholder="0"
                                 value={editingPlan?.trial_days || 0}
                                 onChange={(e) => setEditingPlan({ ...editingPlan, trial_days: Number(e.target.value) })}
-                                className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                             />
                         </div>
                     </div>
@@ -146,7 +146,7 @@ export function PaymentPlanDialog({
                                         value={feature}
                                         onChange={(e) => updateFeature(idx, e.target.value)}
                                         placeholder={`Feature ${idx + 1}`}
-                                        className={`rounded-full px-5 h-10 text-sm font-medium border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                        className={`rounded-full px-5 h-10 text-sm font-medium border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                                     />
                                     <Button variant="ghost" size="icon" className={`h-10 w-10 shrink-0 rounded-full transition-colors ${isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-100'}`} onClick={() => removeFeature(idx)}>
                                         <X size={16} />
@@ -159,15 +159,15 @@ export function PaymentPlanDialog({
                         </div>
                     </div>
 
-                    <div className={`flex items-center justify-between p-5 rounded-[24px] border-2 transition-colors ${(editingPlan?.is_active ?? true) ? (isDark ? 'border-lime-400/30 bg-lime-400/5' : 'border-slate-300 bg-emerald-50') : t.border(isDark)}`}>
+                    <div className={`flex items-center justify-between p-5 rounded-[24px] border-2 transition-colors ${(editingPlan?.is_active ?? true) ? (isDark ? `border-${accent.name}-400/30 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-300/50 ${accent.softLight.split(' ')[0]}`) : t.border(isDark)}`}>
                         <div className="space-y-1">
-                            <Label className={`text-sm font-black ${((editingPlan?.is_active ?? true) && isDark) ? 'text-lime-400' : t.textPrimary(isDark)}`}>DEPLOYMENT STATUS</Label>
+                            <Label className={`text-sm font-black ${((editingPlan?.is_active ?? true) && isDark) ? accent.text : t.textPrimary(isDark)}`}>DEPLOYMENT STATUS</Label>
                             <p className={`text-[11px] font-bold ${t.textMuted(isDark)}`}>Active plans are visible for schools to purchase</p>
                         </div>
                         <Switch
                             checked={editingPlan?.is_active ?? true}
                             onCheckedChange={(val) => setEditingPlan({ ...editingPlan, is_active: val })}
-                            className="data-[state=checked]:bg-lime-400"
+                            className={`data-[state=checked]:${accent.bg}`}
                         />
                     </div>
                 </div>
@@ -177,7 +177,8 @@ export function PaymentPlanDialog({
                         ABORT
                     </Button>
                     <Button onClick={onSave} disabled={!editingPlan?.name?.trim()}
-                        className={`rounded-full h-11 px-9 font-black text-sm shadow-xl transition-all border-0 ${!editingPlan?.name?.trim() ? 'opacity-50 cursor-not-allowed' : ''} ${t.btnPrimary(isDark)} ${isDark ? 'shadow-lime-400/20' : 'shadow-slate-900/20'}`}>
+                        className={`rounded-full h-11 px-9 font-black text-sm shadow-xl transition-all border-0 ${!editingPlan?.name?.trim() ? 'opacity-50 cursor-not-allowed' : ''} ${t.btnPrimary(isDark, accent)}`}
+                        style={t.glowStyle(isDark, accent)}>
                         {editingPlan?.id ? 'COMMIT UPDATE' : 'INITIALISE PLAN'}
                     </Button>
                 </DialogFooter>

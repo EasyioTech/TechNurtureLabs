@@ -47,7 +47,7 @@ interface QuizBuilderProps {
 }
 
 export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
-    const { isDark } = useAdminTheme();
+    const { isDark, accent } = useAdminTheme();
     const [quiz, setQuiz] = React.useState<Quiz | null>(null);
     const [loading, setLoading] = React.useState(true);
     const [saving, setSaving] = React.useState(false);
@@ -103,7 +103,7 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
             } as any);
             toast.success('Assessment saved', {
                 description: 'Your changes are now live for students.',
-                icon: <Sparkles className="text-lime-400" size={16} />
+                icon: <Sparkles className={accent.text} size={16} />
             });
         } catch (err) {
             console.error('Save failed:', err);
@@ -154,10 +154,10 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
             <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-lime-400 border-t-transparent rounded-full shadow-[0_0_20px_rgba(163,230,53,0.2)]"
+                className={`w-12 h-12 border-4 ${accent.border} border-t-transparent rounded-full`}
             />
             <div className="text-center space-y-2">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-lime-400 animate-pulse">Loading Assessment</p>
+                <p className={`text-xs font-black uppercase tracking-[0.2em] ${accent.text} animate-pulse`}>Loading Assessment</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Preparing your workspace...</p>
             </div>
         </div>
@@ -187,7 +187,7 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                     <div className="h-6 md:h-8 w-[1px] bg-white/5" />
                     <div className="flex flex-col min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 md:gap-2 overflow-hidden">
-                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-lime-400/60 bg-lime-400/5 px-2 py-0.5 rounded-full border border-lime-400/10 shrink-0">QUIZ BUILDER</span>
+                            <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest ${accent.text} opacity-60 ${accent.softDark.split(' ')[0]} px-2 py-0.5 rounded-full border border-${accent.name}-400/10 shrink-0`}>QUIZ BUILDER</span>
                             <span className="text-[9px] md:text-[10px] font-bold text-slate-500 shrink-0">•</span>
                             <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{quiz.questions.length} Questions</span>
                         </div>
@@ -201,13 +201,13 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                     <div className="flex p-0.5 md:p-1 bg-white/[0.03] rounded-full border border-white/5">
                         <button
                             onClick={() => setActiveTab('questions')}
-                            className={`px-3 md:px-6 py-1.5 md:py-2 rounded-full text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'questions' ? 'bg-lime-400 text-slate-900 shadow-xl shadow-lime-400/20' : 'text-slate-500 hover:text-slate-300'}`}
+                            className={`px-3 md:px-6 py-1.5 md:py-2 rounded-full text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'questions' ? `${accent.bg} text-slate-900 shadow-xl` : 'text-slate-500 hover:text-slate-300'}`}
                         >
                             <span className="flex items-center gap-1.5 md:gap-2"><ListOrdered size={12} className="md:size-3.5" /> Questions</span>
                         </button>
                         <button
                             onClick={() => setActiveTab('settings')}
-                            className={`px-3 md:px-6 py-1.5 md:py-2 rounded-full text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'settings' ? 'bg-lime-400 text-slate-900 shadow-xl shadow-lime-400/20' : 'text-slate-500 hover:text-slate-300'}`}
+                            className={`px-3 md:px-6 py-1.5 md:py-2 rounded-full text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'settings' ? `${accent.bg} text-slate-900 shadow-xl` : 'text-slate-500 hover:text-slate-300'}`}
                         >
                             <span className="flex items-center gap-1.5 md:gap-2"><Settings2 size={12} className="md:size-3.5" /> Settings</span>
                         </button>
@@ -216,7 +216,8 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                     <Button
                         disabled={saving}
                         onClick={handleSave}
-                        className="rounded-full h-9 md:h-11 px-4 md:px-8 bg-lime-400 text-slate-900 hover:bg-lime-500 font-black text-[10px] md:text-xs gap-2 shadow-lg transition-all active:scale-95 shrink-0"
+                        className={`rounded-full h-9 md:h-11 px-4 md:px-8 ${accent.bg} text-slate-900 ${accent.bgHover} font-black text-[10px] md:text-xs gap-2 shadow-lg transition-all active:scale-95 shrink-0`}
+                        style={t.glowStyle(true, accent)}
                     >
                         {saving ? (
                             <div className="w-3.5 h-3.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
@@ -304,7 +305,7 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                                         </div>
                                         <Button
                                             onClick={addQuestion}
-                                            className="rounded-full bg-lime-400 text-slate-900 hover:bg-lime-500 font-black h-11 md:h-12 px-8 md:px-10 shadow-2xl"
+                                            className={`rounded-full ${accent.bg} text-slate-900 ${accent.bgHover} font-black h-11 md:h-12 px-8 md:px-10 shadow-2xl`}
                                         >
                                             ADD FIRST QUESTION
                                         </Button>
@@ -330,7 +331,7 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                                         <Input
                                             value={quiz.title}
                                             onChange={(e) => setQuiz({ ...quiz, title: e.target.value })}
-                                            className="h-14 md:h-16 rounded-2xl bg-black/30 border-white/5 px-6 font-black text-white focus:border-lime-400/30 transition-all"
+                                            className={`h-14 md:h-16 rounded-2xl bg-black/30 border-white/5 px-6 font-black text-white focus:border-${accent.name}-400/30 transition-all`}
                                         />
                                     </div>
 
@@ -348,7 +349,8 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                                         </div>
                                         <button
                                             onClick={() => setQuiz({ ...quiz, is_published: !quiz.is_published })}
-                                            className={`w-12 h-7 md:w-14 md:h-8 rounded-full p-1 transition-all shrink-0 ${quiz.is_published ? 'bg-lime-400 shadow-[0_0_15px_rgba(163,230,53,0.3)]' : 'bg-slate-800'}`}
+                                            className={`w-12 h-7 md:w-14 md:h-8 rounded-full p-1 transition-all shrink-0 ${quiz.is_published ? `${accent.bg}` : 'bg-slate-800'}`}
+                                            style={quiz.is_published ? t.glowStyle(true, accent) : {}}
                                         >
                                             <div className={`w-5 h-5 md:w-6 md:h-6 rounded-full bg-white shadow-sm transition-all ${quiz.is_published ? 'translate-x-5 md:translate-x-6' : 'translate-x-0'}`} />
                                         </button>
@@ -386,6 +388,7 @@ function StatCard({ icon: Icon, color, label, value, sub }: any) {
 }
 
 function SettingsField({ label, value, onChange }: any) {
+    const { accent } = useAdminTheme();
     return (
         <div className="space-y-2.5">
             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">{label}</Label>
@@ -393,13 +396,14 @@ function SettingsField({ label, value, onChange }: any) {
                 type="number"
                 value={value}
                 onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-                className="h-12 md:h-14 rounded-xl md:rounded-2xl bg-black/20 border-white/5 px-4 md:px-6 font-bold text-white focus:border-lime-400/30 transition-all"
+                className={`h-12 md:h-14 rounded-xl md:rounded-2xl bg-black/20 border-white/5 px-4 md:px-6 font-bold text-white focus:border-${accent.name}-400/30 transition-all`}
             />
         </div>
     );
 }
 
 function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
+    const { accent } = useAdminTheme();
     return (
         <motion.div
             layout
@@ -407,7 +411,8 @@ function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
             animate={{ opacity: 1, y: 0 }}
             className="group relative p-6 md:p-10 rounded-[32px] md:rounded-[48px] bg-[#11141B] border border-white/5 hover:border-white/10 transition-all shadow-2xl"
         >
-            <div className="absolute -left-3 md:-left-4 top-8 md:top-10 w-7 h-7 md:w-8 md:h-8 rounded-lg md:rounded-xl bg-lime-400 text-slate-900 flex items-center justify-center font-black text-xs md:text-sm shadow-xl shadow-lime-400/20 z-10">
+            <div className={`absolute -left-3 md:-left-4 top-8 md:top-10 w-7 h-7 md:w-8 md:h-8 rounded-lg md:rounded-xl ${accent.bg} text-slate-900 flex items-center justify-center font-black text-xs md:text-sm shadow-xl z-10`}
+                style={t.glowStyle(true, accent)}>
                 {idx + 1}
             </div>
 
@@ -433,7 +438,7 @@ function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
                         value={q.question_text}
                         onChange={(e) => onUpdate({ question_text: e.target.value })}
                         placeholder="Define the question context..."
-                        className="bg-black/30 border-white/5 rounded-2xl md:rounded-[32px] min-h-[100px] md:min-h-[120px] p-5 md:p-6 text-sm md:text-base font-medium text-white placeholder:text-slate-700 focus:border-lime-400/30 transition-all resize-none"
+                        className={`bg-black/30 border-white/5 rounded-2xl md:rounded-[32px] min-h-[100px] md:min-h-[120px] p-5 md:p-6 text-sm md:text-base font-medium text-white placeholder:text-slate-700 focus:border-${accent.name}-400/30 transition-all resize-none`}
                     />
                 </div>
 
@@ -451,11 +456,11 @@ function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
                                         newOpts[oIdx] = e.target.value;
                                         onUpdate({ options: newOpts });
                                     }}
-                                    className={`h-14 md:h-16 pl-14 md:pl-16 pr-6 rounded-full font-bold text-xs md:text-sm bg-black/20 border-white/5 text-white transition-all ${q.correct_answer === oIdx ? 'border-lime-400/50 bg-lime-400/10 shadow-[0_0_15px_rgba(163,230,53,0.05)]' : 'hover:border-white/10'}`}
+                                    className={`h-14 md:h-16 pl-14 md:pl-16 pr-6 rounded-full font-bold text-xs md:text-sm bg-black/20 border-white/5 text-white transition-all ${q.correct_answer === oIdx ? `border-${accent.name}-400/50 ${accent.softDark.split(' ')[0]}` : 'hover:border-white/10'}`}
                                 />
                                 <button
                                     onClick={() => onUpdate({ correct_answer: oIdx })}
-                                    className={`absolute left-3.5 md:left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${q.correct_answer === oIdx ? 'bg-lime-400 text-slate-900 shadow-lg shadow-lime-400/30' : 'bg-white/5 text-transparent border border-white/10 hover:text-slate-500'}`}
+                                    className={`absolute left-3.5 md:left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${q.correct_answer === oIdx ? `${accent.bg} text-slate-900 shadow-lg` : 'bg-white/5 text-transparent border border-white/10 hover:text-slate-500'}`}
                                 >
                                     <Check size={14} strokeWidth={4} />
                                 </button>

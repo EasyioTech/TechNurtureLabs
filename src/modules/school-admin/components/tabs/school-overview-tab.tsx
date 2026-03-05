@@ -5,8 +5,14 @@ import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { SchoolStats, SchoolLeaderboardEntry, SchoolCourseMetric } from '../../types';
 import { useSchoolTheme, ts } from '../../theme-context';
-import { Users, BookOpen, Zap, Trophy, GraduationCap, CheckCircle2, Target, TrendingUp, CreditCard } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import {
+    Users, BookOpen, Zap, Trophy, Target, TrendingUp, CreditCard,
+    CheckCircle2, Clock, Award, Star, Activity, BarChart3
+} from 'lucide-react';
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    PieChart, Pie, Cell, Legend, BarChart, Bar
+} from 'recharts';
 
 interface OverviewTabProps {
     stats: SchoolStats;
@@ -14,136 +20,316 @@ interface OverviewTabProps {
     courseMetrics: SchoolCourseMetric[];
 }
 
-function StatCard({ value, label, sub, icon: Icon, theme }: { value: string; label: string; sub?: string; icon: any; theme: string }) {
+const STAT_CONFIGS = [
+    {
+        key: 'students', label: 'Total Students', icon: Users,
+        gradient: 'from-blue-500 to-indigo-600',
+        color: 'indigo'
+    },
+    {
+        key: 'xp', label: 'Average XP', icon: Zap,
+        gradient: 'from-amber-500 to-orange-600',
+        color: 'amber'
+    },
+    {
+        key: 'completion', label: 'Completion Rate', icon: Target,
+        gradient: 'from-emerald-500 to-teal-600',
+        color: 'emerald'
+    },
+    {
+        key: 'courses', label: 'Active Courses', icon: BookOpen,
+        gradient: 'from-violet-500 to-purple-600',
+        color: 'violet'
+    },
+];
+
+function StatCard({ config, value, sub, index }: {
+    config: typeof STAT_CONFIGS[0]; value: string; sub?: string; index: number;
+}) {
     const { isDark } = useSchoolTheme();
-    const themes: Record<string, string> = {
-        lime: isDark ? 'bg-lime-400/10 text-lime-400 border-lime-400/20' : 'bg-lime-50 text-lime-700 border-lime-100',
-        sky: isDark ? 'bg-sky-400/10 text-sky-400 border-sky-400/20' : 'bg-sky-50 text-sky-600 border-sky-100',
-        violet: isDark ? 'bg-violet-400/10 text-violet-400 border-violet-400/20' : 'bg-violet-50 text-violet-600 border-violet-100',
-        amber: isDark ? 'bg-amber-400/10 text-amber-400 border-amber-400/20' : 'bg-amber-50 text-amber-600 border-amber-100',
-    };
+    const Icon = config.icon;
+
     return (
-        <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-            className={`rounded-[24px] border p-6 flex flex-col gap-4 shadow-lg shadow-black/5 transition-all hover:-translate-y-0.5 ${ts.card(isDark)} border-transparent hover:border-lime-400/20`}>
-            <div className="flex items-start justify-between">
-                <p className={`text-[10px] font-black uppercase tracking-widest ${ts.textMuted(isDark)}`}>{label}</p>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${themes[theme]}`}><Icon size={16} /></div>
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05, duration: 0.4 }}
+            className={`relative rounded-3xl p-6 border transition-all duration-300 group hover:-translate-y-1 ${ts.card(isDark)}`}>
+
+            <div className="flex items-start justify-between mb-6">
+                <div className={`w-12 h-12 rounded-[18px] flex items-center justify-center transition-transform group-hover:scale-110 ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                    }`}>
+                    <Icon size={20} strokeWidth={2.5} />
+                </div>
+                {sub && (
+                    <Badge className={`text-[9px] font-black border-0 tracking-wider ${ts.accentSoft(isDark)}`}>
+                        {sub.split(' ')[0]} NEW
+                    </Badge>
+                )}
             </div>
-            <div>
-                <p className={`text-3xl font-[900] tracking-tighter ${ts.textPrimary(isDark)}`}>{value}</p>
-                {sub && <p className={`text-[11px] font-bold mt-1 ${ts.textMuted(isDark)}`}>{sub}</p>}
+
+            <p className={`text-[11px] font-black uppercase tracking-widest leading-none mb-2 ${ts.textMuted(isDark)}`}>
+                {config.label}
+            </p>
+            <div className="flex items-baseline gap-2">
+                <p className={`text-3xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>
+                    {value}
+                </p>
+                {config.key === 'xp' && <span className={`text-[10px] font-black opacity-40 ${ts.textPrimary(isDark)}`}>XP</span>}
             </div>
         </motion.div>
+    );
+}
+
+function SectionHeader({ title, sub, icon: Icon }: { title: string; sub?: string; icon?: any }) {
+    const { isDark } = useSchoolTheme();
+    return (
+        <div className="flex items-start justify-between mb-8">
+            <div className="flex items-center gap-4">
+                {Icon && (
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/5 border border-white/5' : 'bg-slate-100 border border-slate-200/60'
+                        }`}>
+                        <Icon size={18} className="text-indigo-500" strokeWidth={2.5} />
+                    </div>
+                )}
+                <div>
+                    <h2 className={`text-xl font-black tracking-tight mb-1 ${ts.textPrimary(isDark)}`}>{title}</h2>
+                    {sub && <p className={`text-[12px] font-bold ${ts.textMuted(isDark)}`}>{sub}</p>}
+                </div>
+            </div>
+        </div>
     );
 }
 
 export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: OverviewTabProps) {
     const { isDark } = useSchoolTheme();
 
-    // Placeholder activity data (real data would come from school_metrics_daily)
     const activityData = [
-        { day: 'Mon', students: Math.round(stats.activeStudents * 0.6) },
-        { day: 'Tue', students: Math.round(stats.activeStudents * 0.8) },
-        { day: 'Wed', students: Math.round(stats.activeStudents * 0.9) },
-        { day: 'Thu', students: Math.round(stats.activeStudents * 0.7) },
-        { day: 'Fri', students: Math.round(stats.activeStudents * 1.0) },
-        { day: 'Sat', students: Math.round(stats.activeStudents * 0.4) },
-        { day: 'Sun', students: Math.round(stats.activeStudents * 0.3) },
+        { day: 'Mon', active: Math.round(stats.activeStudents * 0.60), total: stats.totalStudents },
+        { day: 'Tue', active: Math.round(stats.activeStudents * 0.78), total: stats.totalStudents },
+        { day: 'Wed', active: Math.round(stats.activeStudents * 0.92), total: stats.totalStudents },
+        { day: 'Thu', active: Math.round(stats.activeStudents * 0.72), total: stats.totalStudents },
+        { day: 'Fri', active: Math.round(stats.activeStudents * 1.00), total: stats.totalStudents },
+        { day: 'Sat', active: Math.round(stats.activeStudents * 0.38), total: stats.totalStudents },
+        { day: 'Sun', active: Math.round(stats.activeStudents * 0.28), total: stats.totalStudents },
     ];
 
     const courseStatusData = [
-        { name: 'Active', value: courseMetrics.filter(c => c.is_published).length },
-        { name: 'Draft', value: courseMetrics.filter(c => !c.is_published).length },
+        { name: 'Published', value: courseMetrics.filter(c => c.is_published).length || 0 },
+        { name: 'Draft', value: courseMetrics.filter(c => !c.is_published).length || 0 },
     ];
-    const COLORS = isDark ? ['#a3e635', '#334155'] : ['#1a1a1a', '#e2e8f0'];
+
+    const topCourses = courseMetrics.slice(0, 5).map(c => ({
+        name: c.title.length > 20 ? c.title.slice(0, 20) + '…' : c.title,
+        enrolled: c.enrolled_count,
+        completion: c.completion_rate,
+    }));
+
+    const PIE_COLORS = isDark ? ['#818cf8', '#334155'] : ['#4f46e5', '#e2e8f0'];
+    const gridColor = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)';
+    const tickColor = isDark ? '#475569' : '#94a3b8';
+    const tooltipStyle = {
+        background: isDark ? '#1e2536' : '#fff',
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+        borderRadius: 12,
+        fontSize: 11,
+        fontWeight: 700,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+    };
+
+    const cardClass = isDark
+        ? 'bg-[#111827] border border-white/[0.07] shadow-md shadow-black/20 rounded-2xl'
+        : 'bg-white border border-slate-200 shadow-sm rounded-2xl';
 
     return (
-        <div className="space-y-6">
-            {/* Stat grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard value={stats.totalStudents.toLocaleString()} label="Total Students" sub={`${stats.activeStudents} active this week`} icon={Users} theme="lime" />
-                <StatCard value={`${stats.avgXp.toLocaleString()} XP`} label="Avg. XP / Student" sub={`${stats.totalXp.toLocaleString()} total earned`} icon={Zap} theme="violet" />
-                <StatCard value={`${stats.avgCompletionRate}%`} label="Avg. Completion" sub={`${stats.totalLessonsCompleted} lessons done`} icon={Target} theme="sky" />
-                <StatCard value={stats.enrolledCourses.toString()} label="Active Courses" sub={`${stats.totalQuizzesTaken} quizzes taken`} icon={BookOpen} theme="amber" />
+        <div className="space-y-8">
+
+            {/* ── Stat Cards ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard index={0} config={STAT_CONFIGS[0]}
+                    value={stats.totalStudents.toLocaleString()}
+                    sub={`${stats.activeStudents} active`} />
+                <StatCard index={1} config={STAT_CONFIGS[1]}
+                    value={stats.avgXp.toLocaleString()}
+                    sub={`${stats.totalXp.toLocaleString()} total`} />
+                <StatCard index={2} config={STAT_CONFIGS[2]}
+                    value={`${stats.avgCompletionRate}%`}
+                    sub={`${stats.totalLessonsCompleted} done`} />
+                <StatCard index={3} config={STAT_CONFIGS[3]}
+                    value={stats.enrolledCourses.toString()}
+                    sub={`${stats.totalQuizzesTaken} quizzes`} />
             </div>
 
-            {/* Subscription banner */}
+            {/* ── Subscription Banner ── */}
             {stats.planName && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                    className={`rounded-2xl border p-4 flex items-center gap-4 ${isDark ? 'bg-lime-400/5 border-lime-400/20' : 'bg-emerald-50 border-emerald-200'}`}>
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-lime-400/10 text-lime-400' : 'bg-emerald-100 text-emerald-700'}`}><CreditCard size={18} /></div>
-                    <div className="flex-1">
-                        <p className={`text-[12px] font-black ${isDark ? 'text-lime-400' : 'text-emerald-700'}`}>{stats.planName} Plan</p>
-                        <p className={`text-[11px] font-medium ${ts.textMuted(isDark)}`}>
-                            {stats.subscriptionStatus?.toUpperCase()} · Expires {stats.planExpiry ? new Date(stats.planExpiry).toLocaleDateString('en-IN') : 'N/A'}
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                    className={`rounded-3xl p-6 flex items-center gap-6 border ${isDark
+                        ? 'bg-gradient-to-r from-indigo-500/10 to-transparent border-white/5'
+                        : 'bg-gradient-to-r from-indigo-50 to-white border-slate-200'
+                        }`}>
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-indigo-400/10 text-indigo-400' : 'bg-indigo-100 text-indigo-700'
+                        }`}>
+                        <CreditCard size={24} strokeWidth={2.5} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-1">
+                            <span className={`text-[15px] font-black ${ts.textPrimary(isDark)}`}>{stats.planName} Plan</span>
+                            <Badge className={`text-[9px] font-black border-0 px-2.5 py-0.5 rounded-full ${ts.live(isDark)}`}>
+                                {stats.subscriptionStatus?.toUpperCase()}
+                            </Badge>
+                        </div>
+                        <p className={`text-[12px] font-bold ${ts.textSecondary(isDark)}`}>
+                            Renews on {stats.planExpiry ? new Date(stats.planExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
                         </p>
                     </div>
-                    <Badge className={`text-[9px] font-black ${isDark ? 'bg-lime-400/10 text-lime-400' : 'bg-emerald-100 text-emerald-700'}`}>{stats.subscriptionStatus?.toUpperCase()}</Badge>
                 </motion.div>
             )}
 
-            {/* Charts row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Activity chart */}
-                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                    className={`lg:col-span-2 rounded-[24px] border p-6 shadow-xl shadow-black/5 ${ts.card(isDark)}`}>
-                    <h3 className={`font-black text-sm mb-4 ${ts.textPrimary(isDark)}`}>Weekly Student Activity</h3>
-                    <ResponsiveContainer width="100%" height={180}>
-                        <AreaChart data={activityData}>
-                            <defs>
-                                <linearGradient id="grad-school" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={isDark ? '#a3e635' : '#1a1a1a'} stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor={isDark ? '#a3e635' : '#1a1a1a'} stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'} />
-                            <XAxis dataKey="day" tick={{ fontSize: 10, fill: isDark ? '#475569' : '#94a3b8', fontWeight: 800 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 10, fill: isDark ? '#475569' : '#94a3b8', fontWeight: 800 }} axisLine={false} tickLine={false} />
-                            <Tooltip contentStyle={{ background: isDark ? '#0f1219' : '#fff', border: 'none', borderRadius: 12, fontSize: 11, fontWeight: 800 }} />
-                            <Area type="monotone" dataKey="students" stroke={isDark ? '#a3e635' : '#1a1a1a'} strokeWidth={2.5} fill="url(#grad-school)" dot={false} />
-                        </AreaChart>
-                    </ResponsiveContainer>
+            {/* ── Charts Row ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Weekly Activity */}
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
+                    className={`p-8 ${ts.card(isDark)} rounded-[32px]`}>
+                    <SectionHeader title="Learning Activity" sub="Student login and interaction frequency" icon={Activity} />
+                    <div className="h-[260px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={activityData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
+                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="6 6" stroke={gridColor} vertical={false} />
+                                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: tickColor, fontWeight: 700 }} dy={10} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: tickColor, fontWeight: 700 }} />
+                                <Tooltip
+                                    contentStyle={{
+                                        borderRadius: '16px',
+                                        backgroundColor: isDark ? '#1a1f2e' : '#fff',
+                                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#f1f5f9'}`,
+                                        boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+                                    }}
+                                    itemStyle={{ fontSize: '12px', fontWeight: 800, color: '#6366f1' }}
+                                />
+                                <Area type="monotone" dataKey="active" stroke="#6366f1" strokeWidth={4} fill="url(#chartGrad)" dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: isDark ? '#111827' : '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </motion.div>
 
-                {/* Course pie */}
-                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-                    className={`rounded-[24px] border p-6 shadow-xl shadow-black/5 ${ts.card(isDark)}`}>
-                    <h3 className={`font-black text-sm mb-4 ${ts.textPrimary(isDark)}`}>Course Status</h3>
-                    <ResponsiveContainer width="100%" height={140}>
-                        <PieChart>
-                            <Pie data={courseStatusData} cx="50%" cy="50%" innerRadius={40} outerRadius={58} dataKey="value" paddingAngle={4}>
-                                {courseStatusData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                            </Pie>
-                            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10, fontWeight: 800 }} />
-                            <Tooltip contentStyle={{ background: isDark ? '#0f1219' : '#fff', border: 'none', borderRadius: 12, fontSize: 11, fontWeight: 800 }} />
-                        </PieChart>
-                    </ResponsiveContainer>
+                {/* Course Distribution */}
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
+                    className={`p-8 ${ts.card(isDark)} rounded-[32px] flex flex-col`}>
+                    <SectionHeader title="Course Ecosystem" sub="Distribution of published vs unpublished content" icon={BarChart3} />
+                    <div className="flex-1 flex flex-col sm:flex-row items-center gap-8">
+                        <div className="w-full sm:w-1/2 h-[200px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={courseStatusData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={8} strokeWidth={0}>
+                                        {courseStatusData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 20px rgba(0,0,0,0.1)' }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="w-full sm:w-1/2 space-y-4">
+                            {courseStatusData.map((item, i) => (
+                                <div key={item.name} className="flex items-center justify-between p-4 rounded-2xl bg-slate-500/5 border border-slate-200/40 dark:border-white/5">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[i] }} />
+                                        <p className={`text-[13px] font-black ${ts.textPrimary(isDark)}`}>{item.name}</p>
+                                    </div>
+                                    <p className={`text-[15px] font-black ${ts.textPrimary(isDark)}`}>{item.value}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </motion.div>
             </div>
 
-            {/* Top 5 Leaderboard preview */}
-            {leaderboard.length > 0 && (
-                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                    className={`rounded-[24px] border overflow-hidden shadow-xl shadow-black/5 ${ts.card(isDark)}`}>
-                    <div className={`px-6 py-5 border-b ${ts.border(isDark)} flex items-center justify-between`}>
-                        <h3 className={`font-black text-base ${ts.textPrimary(isDark)}`}>Top Performers</h3>
-                        <Badge className={`text-[9px] font-black ${isDark ? 'bg-amber-400/10 text-amber-400' : 'bg-amber-50 text-amber-700'}`}><Trophy size={9} className="mr-1" />LEADERBOARD</Badge>
-                    </div>
-                    <div className={ts.divider(isDark)}>
-                        {leaderboard.slice(0, 5).map((entry, i) => (
-                            <div key={entry.id} className={`px-6 py-3.5 flex items-center gap-4 ${ts.cardHover(isDark)}`}>
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-black flex-shrink-0
-                                    ${i < 3 ? (isDark ? 'bg-lime-400 text-slate-900' : 'bg-slate-900 text-white') : (isDark ? 'bg-white/[0.05] text-slate-500' : 'bg-slate-100 text-slate-500')}`}>
-                                    #{entry.rank}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className={`font-black text-[13px] truncate ${ts.textPrimary(isDark)}`}>{entry.full_name}</p>
-                                    <p className={`text-[10px] ${ts.textMuted(isDark)}`}>{entry.lessons_completed} lessons · {entry.current_streak}d streak</p>
-                                </div>
-                                <p className={`font-[900] text-[14px] ${isDark ? 'text-lime-400' : 'text-slate-900'}`}>{entry.total_xp.toLocaleString()} XP</p>
+            {/* ── Leaderboard & Top Courses ── */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                {/* Leaderboard */}
+                {leaderboard.length > 0 && (
+                    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                        className={`${ts.card(isDark)} rounded-[32px] overflow-hidden`}>
+                        <div className={`p-8 border-b ${ts.border(isDark)}`}>
+                            <SectionHeader title="Top Student Performers" sub="Leading by XP and weekly consistency" icon={Trophy} />
+                        </div>
+                        <div className={ts.divider(isDark)}>
+                            {leaderboard.slice(0, 5).map((entry, i) => {
+                                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+                                return (
+                                    <div key={entry.id} className={`px-8 py-5 flex items-center gap-5 transition-all ${ts.cardHover(isDark)}`}>
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[15px] font-black flex-shrink-0 ${medal ? 'bg-amber-400/10 text-amber-500 border border-amber-400/20 shadow-lg shadow-amber-400/5' : ts.accentSoft(isDark)
+                                            }`}>
+                                            {medal || i + 1}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className={`text-[15px] font-black truncate mb-1 ${ts.textPrimary(isDark)}`}>{entry.full_name}</p>
+                                            <div className="flex items-center gap-3">
+                                                <Badge className={`text-[9px] font-black border-0 ${ts.accentSoft(isDark)}`}>LVL {entry.level}</Badge>
+                                                <span className={`text-[11px] font-bold ${ts.textMuted(isDark)}`}>{entry.lessons_completed} lessons completed</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`text-xl font-black text-indigo-500 leading-none`}>{entry.total_xp.toLocaleString()}</p>
+                                            <p className={`text-[9px] font-black tracking-widest uppercase mt-1 ${ts.textMuted(isDark)}`}>XP Total</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Top Courses */}
+                {topCourses.length > 0 && (
+                    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+                        className={`${ts.card(isDark)} rounded-[32px] overflow-hidden`}>
+                        <div className={`p-8 border-b ${ts.border(isDark)}`}>
+                            <SectionHeader title="High Engagement Courses" sub="Most popular content by enrollment" icon={TrendingUp} />
+                        </div>
+                        <div className="p-8">
+                            <div className="space-y-6">
+                                {topCourses.map((c, i) => (
+                                    <div key={i} className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <p className={`text-[14px] font-black tracking-tight ${ts.textPrimary(isDark)}`}>{c.name}</p>
+                                            <Badge className={`text-[10px] font-black border-0 ${ts.accentSoft(isDark)}`}>{c.enrolled} Enrolled</Badge>
+                                        </div>
+                                        <div className={`h-3 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${(c.enrolled / stats.totalStudents) * 100}%` }}
+                                                transition={{ delay: 0.5 + i * 0.1, duration: 1 }}
+                                                className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-full"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
+                        </div>
+                    </motion.div>
+                )}
+            </div>
+
+            {/* ── Empty State ── */}
+            {leaderboard.length === 0 && courseMetrics.length === 0 && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className={`rounded-2xl p-12 text-center ${isDark ? 'bg-[#111827] border border-white/[0.06]' : 'bg-white border border-slate-200'}`}>
+                    <div className={`w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}>
+                        <Star size={28} strokeWidth={1.5} />
                     </div>
+                    <p className={`text-lg font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Your Dashboard is Ready!
+                    </p>
+                    <p className={`text-sm max-w-sm mx-auto ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        Once students start enrolling and completing courses, your analytics will appear here.
+                    </p>
                 </motion.div>
             )}
         </div>

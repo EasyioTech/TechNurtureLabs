@@ -39,16 +39,23 @@ export async function getStudentProfileData() {
     const usersWithMoreXp = await db.select().from(users).where(and(gt(users.cumulative_xp, Number(profile?.cumulative_xp) || 0), eq(users.role, 'student')));
     const rank = usersWithMoreXp.length + 1;
 
+    const stats = {
+        xp: Number(profile?.cumulative_xp) || 0,
+        streak: profile?.current_streak || 0,
+        level: Math.floor((Number(profile?.cumulative_xp) || 0) / 1000) + 1,
+    };
+
     return {
         profile: profile ? {
             ...profile,
             // Backward-compatible aliases
             full_name: `${profile.first_name} ${profile.last_name}`,
             total_xp: Number(profile.cumulative_xp),
-            level: Math.floor((Number(profile.cumulative_xp) || 0) / 500) + 1,
+            level: stats.level,
             bio: '',
             avatar_style: profile.avatar_url,
         } : null,
+        stats,
         achievements: formattedAchievements,
         rank
     };

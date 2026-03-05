@@ -34,9 +34,9 @@ import { GraduationCap, ArrowLeft, User, School, Loader2, Sparkles, Eye, EyeOff,
 type SchoolOption = {
   id: string;
   name: string;
-  district: string;
+  city: string;
   state: string;
-  grades_available: number[];
+  grades_available: { id: string; name: string; level: number }[];
 };
 
 export default function StudentRegistrationPage() {
@@ -101,11 +101,16 @@ export default function StudentRegistrationPage() {
     setLoading(true);
 
     try {
-      await registerStudent(formData);
-      toast.success('Registration successful!');
-      router.push('/login');
+      const result = await registerStudent(formData);
+
+      if (result.success) {
+        toast.success('Registration successful!');
+        router.push('/login');
+      } else {
+        toast.error(result.error || 'Registration failed');
+      }
     } catch (err: any) {
-      toast.error(err.message || 'Registration failed');
+      toast.error('A network error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -256,7 +261,7 @@ export default function StudentRegistrationPage() {
                             className="w-full bg-white/5 border border-white/10 h-12 text-white px-4 rounded-xl flex items-center justify-between"
                           >
                             <span className={selectedSchool ? "text-white" : "text-white/30"}>
-                              {selectedSchool ? `${selectedSchool.name} - ${selectedSchool.district}` : "Select your school"}
+                              {selectedSchool ? `${selectedSchool.name} - ${selectedSchool.city || 'Location'}` : "Select your school"}
                             </span>
                             <ChevronsUpDown size={16} className="text-white/40" />
                           </button>
@@ -270,7 +275,7 @@ export default function StudentRegistrationPage() {
                                 {schools.map((school) => (
                                   <CommandItem
                                     key={school.id}
-                                    value={`${school.name} ${school.district}`}
+                                    value={`${school.name} ${school.city}`}
                                     onSelect={() => {
                                       handleSchoolChange(school.id);
                                       setSchoolSearchOpen(false);
@@ -281,7 +286,7 @@ export default function StudentRegistrationPage() {
                                       size={16}
                                       className={formData.school_id === school.id ? "opacity-100" : "opacity-0"}
                                     />
-                                    {school.name} - {school.district}
+                                    {school.name} - {school.city}
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
@@ -295,21 +300,27 @@ export default function StudentRegistrationPage() {
                   {selectedSchool && (
                     <div className="space-y-2">
                       <Label className="text-white/70 text-sm">Select Your Class</Label>
-                      <Select
-                        value={formData.grade}
-                        onValueChange={(value) => setFormData({ ...formData, grade: value })}
-                      >
-                        <SelectTrigger className="w-full bg-white/5 border-white/10 h-12 text-white px-4 rounded-xl">
-                          <SelectValue placeholder="Select your class" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-white/10">
-                          {availableGrades.map((grade) => (
-                            <SelectItem key={grade} value={grade.toString()}>
-                              Class {grade}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {availableGrades.length === 0 ? (
+                        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm">
+                          This school hasn't listed any classes yet. Please contact your school or register another school.
+                        </div>
+                      ) : (
+                        <Select
+                          value={formData.grade}
+                          onValueChange={(value) => setFormData({ ...formData, grade: value })}
+                        >
+                          <SelectTrigger className="w-full bg-white/5 border-white/10 h-12 text-white px-4 rounded-xl">
+                            <SelectValue placeholder="Select your class" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-900 border-white/10">
+                            {availableGrades.map((grade) => (
+                              <SelectItem key={grade.id} value={grade.id}>
+                                {grade.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                   )}
 

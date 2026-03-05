@@ -2,8 +2,8 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseGradeMapping } from '@/db/schema';
-import { eq, and, gt, inArray, asc, desc, isNotNull } from 'drizzle-orm';
+import { users, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseGradeMapping, quizAttempts } from '@/db/schema';
+import { eq, and, gt, inArray, asc, desc, isNotNull, sql } from 'drizzle-orm';
 
 export type DashboardData = {
     profile: any;
@@ -12,7 +12,8 @@ export type DashboardData = {
         streak: number;
         level: number;
         lessonsCompleted: number;
-        totalTime: number;
+        totalTime: number; // in hours
+        accuracy: number; // percentage
         rank: number;
     };
     dailyChallenges: any[];
@@ -36,12 +37,25 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     const completedLessons = await db.select().from(lessonProgress)
         .where(and(eq(lessonProgress.user_id, userId), isNotNull(lessonProgress.completed_at)));
 
+    // Total learning time in hours
+    const timeSpentResult = await db.select({
+        total_secs: sql<number>`sum(${lessonProgress.time_spent_secs})`
+    }).from(lessonProgress).where(eq(lessonProgress.user_id, userId));
+    const totalHours = Math.round((Number(timeSpentResult[0]?.total_secs) || 0) / 3600 * 10) / 10;
+
+    // Average Accuracy from quiz attempts
+    const quizResult = await db.select({
+        avg_pct: sql<number>`avg((${quizAttempts.score} / ${quizAttempts.max_score}) * 100)`
+    }).from(quizAttempts).where(eq(quizAttempts.user_id, userId));
+    const accuracy = Math.round(Number(quizResult[0]?.avg_pct) || 0);
+
     const stats = {
         xp: Number(profile.cumulative_xp) || 0,
         streak: profile.current_streak || 0,
         level: Math.floor((Number(profile.cumulative_xp) || 0) / 500) + 1,
         lessonsCompleted: completedLessons.length,
-        totalTime: 0,
+        totalTime: totalHours,
+        accuracy: accuracy,
         rank: 0
     };
 
@@ -129,25 +143,46 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         with: { course: true }
     });
 
-    // 3. Fetch courses mapped to the student's grade (for auto-show)
+    // 3. Fetch courses where all_grades is true
+    const globalCourses = await db.query.courses.findMany({
+        where: and(eq(courses.all_grades, true), eq(courses.is_published, true))
+    });
+
+    // 4. Fetch courses mapped to the student's grade (for auto-show)
     let gradeMappedCourses: any[] = [];
     if (gradeId) {
         const mappings = await db.query.courseGradeMapping.findMany({
             where: eq(courseGradeMapping.grade_id, gradeId),
             with: { course: true }
         });
-        gradeMappedCourses = mappings.map(m => m.course).filter(Boolean);
+        gradeMappedCourses = mappings.map(m => m.course).filter(c => c && c.is_published === true);
     }
 
     // Combine and deduplicate
-    const enrollmentCourseIds = new Set(userEnrollments.map(e => e.course_id));
-    const allRelevantCourses = [...userEnrollments.map(e => ({ ...e.course, isEnrolled: true }))];
+    const courseMap = new Map<string, any>();
 
-    gradeMappedCourses.forEach(c => {
-        if (!enrollmentCourseIds.has(c.id)) {
-            allRelevantCourses.push({ ...c, isEnrolled: false });
+    // Priority 1: Enrolled courses
+    userEnrollments.forEach(e => {
+        if (e.course && e.course.is_published) {
+            courseMap.set(e.course.id, { ...e.course, isEnrolled: true });
         }
     });
+
+    // Priority 2: Global courses
+    globalCourses.forEach(c => {
+        if (!courseMap.has(c.id)) {
+            courseMap.set(c.id, { ...c, isEnrolled: false });
+        }
+    });
+
+    // Priority 3: Grade mapped courses
+    gradeMappedCourses.forEach(c => {
+        if (c && !courseMap.has(c.id)) {
+            courseMap.set(c.id, { ...c, isEnrolled: false });
+        }
+    });
+
+    const allRelevantCourses = Array.from(courseMap.values());
 
     const coursesWithProgress = await Promise.all(
         allRelevantCourses.map(async (course) => {

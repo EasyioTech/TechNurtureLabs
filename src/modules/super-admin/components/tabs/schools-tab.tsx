@@ -28,13 +28,15 @@ interface SchoolsTabProps {
     editingSchool: Partial<SchoolInfo> | null;
     setEditingSchool: (s: Partial<SchoolInfo> | null) => void;
     searchQuery?: string;
+    grades: any[];
 }
 
 export function SchoolsTab({
     stats, schoolsList, paymentPlans = [], onToggleStatus, onSaveSchool, onAssignPlan,
-    showEditDialog, setShowEditDialog, editingSchool, setEditingSchool, searchQuery = ''
+    showEditDialog, setShowEditDialog, editingSchool, setEditingSchool, searchQuery = '',
+    grades
 }: SchoolsTabProps) {
-    const { isDark } = useAdminTheme();
+    const { isDark, accent } = useAdminTheme();
     const [assignSchoolId, setAssignSchoolId] = useState<string | null>(null);
     const [selectedPlanId, setSelectedPlanId] = useState<string>('');
 
@@ -57,6 +59,15 @@ export function SchoolsTab({
         }
     }
 
+    const handleToggleGrade = (gradeId: string) => {
+        if (!editingSchool) return;
+        const currentIds = (editingSchool as any).gradeIds || [];
+        const newIds = currentIds.includes(gradeId)
+            ? currentIds.filter((id: string) => id !== gradeId)
+            : [...currentIds, gradeId];
+        setEditingSchool({ ...editingSchool, gradeIds: newIds } as any);
+    };
+
     return (
         <div className="space-y-4">
             {/* Stat Cards */}
@@ -74,7 +85,7 @@ export function SchoolsTab({
                     const activeTheme = themes[item.theme as keyof typeof themes];
                     return (
                         <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                            className={`rounded-[24px] border p-6 transition-all duration-300 shadow-lg shadow-black/5 flex flex-col justify-between group ${t.card(isDark)} ${t.cardHover(isDark)} border-transparent hover:border-lime-400/20`}>
+                            className={`rounded-[24px] border p-6 transition-all duration-300 shadow-lg shadow-black/5 flex flex-col justify-between group ${t.card(isDark)} ${t.cardHover(isDark)} ${t.cardHoverAccent(isDark, accent)}`}>
                             <div className="flex justify-between items-start mb-4">
                                 <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>{item.label}</p>
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${activeTheme}`}>
@@ -83,7 +94,7 @@ export function SchoolsTab({
                             </div>
                             <div>
                                 <p className={`text-3xl font-[900] tracking-tighter ${t.textPrimary(isDark)}`}>{item.value}</p>
-                                <span className={`inline-flex items-center gap-1 text-[10px] font-black mt-3 px-2.5 py-1 rounded-full ${t.accentBadge(isDark)}`}>
+                                <span className={`inline-flex items-center gap-1 text-[10px] font-black mt-3 px-2.5 py-1 rounded-full ${t.accentBadge(isDark, accent)}`}>
                                     <ArrowUpRight size={10} />{item.badge}
                                 </span>
                             </div>
@@ -109,7 +120,7 @@ export function SchoolsTab({
                         <motion.div key={school.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.22 + i * 0.04 }}
                             className={`px-6 py-4 flex items-center gap-4 transition-all group ${t.cardHover(isDark)}`}>
                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[14px] font-black flex-shrink-0
-                                ${isDark ? 'bg-lime-400/10 text-lime-400 border border-lime-400/20' : 'bg-slate-100 text-slate-900 border border-slate-200'}`}>
+                                ${t.initialCircle(isDark, accent)}`}>
                                 {school.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -124,7 +135,7 @@ export function SchoolsTab({
                                 <p className={`text-[12px] font-black ${t.textSecondary(isDark)}`}>{(school.student_count || 0).toLocaleString()}</p>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Badge className={`text-[9px] font-black px-2 py-0.5 rounded-md ${school.plan_name ? t.accentSoft(isDark) : (isDark ? 'bg-white/[0.04] text-slate-500' : 'bg-slate-100 text-slate-400')}`}>
+                                <Badge className={`text-[9px] font-black px-2 py-0.5 rounded-md ${school.plan_name ? t.accentSoft(isDark, accent) : (isDark ? 'bg-white/[0.04] text-slate-500' : 'bg-slate-100 text-slate-400')}`}>
                                     {school.plan_name ? school.plan_name.toUpperCase() : 'NO PLAN'}
                                 </Badge>
                                 <Badge className={`text-[9px] font-black px-2 py-0.5 rounded-md ${school.is_active ? t.live(isDark) : t.danger(isDark)}`}>
@@ -144,7 +155,7 @@ export function SchoolsTab({
                                             </Button>
                                         </PopoverTrigger>
                                         <PopoverContent className={`w-72 rounded-2xl p-4 shadow-2xl border ${isDark ? 'bg-[#0f1219] border-white/10' : 'bg-white border-slate-200'}`} side="left">
-                                            <p className={`text-xs font-black uppercase tracking-widest mb-3 ${isDark ? 'text-lime-400' : 'text-slate-900'}`}>Assign Subscription Plan</p>
+                                            <p className={`text-xs font-black uppercase tracking-widest mb-3 ${isDark ? accent.text : 'text-slate-900'}`}>Assign Subscription Plan</p>
                                             <p className={`text-[11px] font-medium mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                                 For: <span className={`font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{school.name}</span>
                                             </p>
@@ -161,18 +172,18 @@ export function SchoolsTab({
                                                 </SelectContent>
                                             </Select>
                                             <Button onClick={handleAssignPlan} disabled={!selectedPlanId}
-                                                className={`mt-3 w-full rounded-full h-9 text-[11px] font-black border-0 disabled:opacity-40 ${t.btnPrimary(isDark)}`}>
+                                                className={`mt-3 w-full rounded-full h-9 text-[11px] font-black border-0 disabled:opacity-40 ${t.btnPrimary(isDark, accent)}`}>
                                                 Assign Plan
                                             </Button>
                                         </PopoverContent>
                                     </Popover>
                                 )}
 
-                                <Button variant="ghost" size="icon" className={`w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-slate-500 hover:text-lime-400 hover:bg-white/[0.06]' : 'text-slate-300 hover:text-slate-800 hover:bg-slate-100'}`}
+                                <Button variant="ghost" size="icon" className={`w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? `text-slate-500 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-300 hover:text-slate-800 hover:bg-slate-100'}`}
                                     onClick={() => openEdit(school)}>
                                     <Edit size={14} />
                                 </Button>
-                                <Switch checked={school.is_active} onCheckedChange={(val) => onToggleStatus(school.id, val)} className="data-[state=checked]:bg-lime-400" />
+                                <Switch checked={school.is_active} onCheckedChange={(val) => onToggleStatus(school.id, val)} className={`data-[state=checked]:${accent.bg}`} />
                             </div>
                         </motion.div>
                     ))}
@@ -198,33 +209,73 @@ export function SchoolsTab({
                     {editingSchool && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Name</Label><Input value={editingSchool.name} onChange={e => setEditingSchool({ ...editingSchool, name: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Email</Label><Input value={editingSchool.email} onChange={e => setEditingSchool({ ...editingSchool, email: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Name</Label><Input value={editingSchool.name} onChange={e => setEditingSchool({ ...editingSchool, name: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Email</Label><Input value={editingSchool.email} onChange={e => setEditingSchool({ ...editingSchool, email: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Phone</Label><Input value={editingSchool.phone || ''} onChange={e => setEditingSchool({ ...editingSchool, phone: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Website</Label><Input value={editingSchool.website || ''} onChange={e => setEditingSchool({ ...editingSchool, website: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Phone</Label><Input value={editingSchool.phone || ''} onChange={e => setEditingSchool({ ...editingSchool, phone: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Website</Label><Input value={editingSchool.website || ''} onChange={e => setEditingSchool({ ...editingSchool, website: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
                             </div>
-                            <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Address</Label><Input value={editingSchool.address || ''} onChange={e => setEditingSchool({ ...editingSchool, address: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                            <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Address</Label><Input value={editingSchool.address || ''} onChange={e => setEditingSchool({ ...editingSchool, address: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
                             <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>City</Label><Input value={editingSchool.city || ''} onChange={e => setEditingSchool({ ...editingSchool, city: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>State</Label><Input value={editingSchool.state || ''} onChange={e => setEditingSchool({ ...editingSchool, state: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Pincode</Label><Input value={editingSchool.pincode || ''} onChange={e => setEditingSchool({ ...editingSchool, pincode: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>City</Label><Input value={editingSchool.city || ''} onChange={e => setEditingSchool({ ...editingSchool, city: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>State</Label><Input value={editingSchool.state || ''} onChange={e => setEditingSchool({ ...editingSchool, state: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Pincode</Label><Input value={editingSchool.pincode || ''} onChange={e => setEditingSchool({ ...editingSchool, pincode: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Country</Label><Input value={editingSchool.country || 'IN'} onChange={e => setEditingSchool({ ...editingSchool, country: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Logo URL</Label><Input value={editingSchool.logo_url || ''} onChange={e => setEditingSchool({ ...editingSchool, logo_url: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Country</Label><Input value={editingSchool.country || 'IN'} onChange={e => setEditingSchool({ ...editingSchool, country: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Logo URL</Label><Input value={editingSchool.logo_url || ''} onChange={e => setEditingSchool({ ...editingSchool, logo_url: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
                             </div>
                             <div className="space-y-3 pt-2">
-                                <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${isDark ? 'bg-white/[0.02] border-white/10' : 'bg-slate-50 border-slate-200'}`}><Label className={`text-xs font-bold leading-normal ${t.textSecondary(isDark)}`}>Data Processing Consent</Label><Switch checked={editingSchool.data_processing_consent} onCheckedChange={v => setEditingSchool({ ...editingSchool, data_processing_consent: v })} className="data-[state=checked]:bg-lime-400" /></div>
-                                <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${isDark ? 'bg-white/[0.02] border-white/10' : 'bg-slate-50 border-slate-200'}`}><Label className={`text-xs font-bold leading-normal ${t.textSecondary(isDark)}`}>Guardian Consent</Label><Switch checked={editingSchool.minor_data_guardian_consent} onCheckedChange={v => setEditingSchool({ ...editingSchool, minor_data_guardian_consent: v })} className="data-[state=checked]:bg-lime-400" /></div>
-                                <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${(editingSchool.is_active ?? true) ? (isDark ? 'border-lime-400/30 bg-lime-400/5' : 'border-emerald-200 bg-emerald-50') : (isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50')}`}><Label className={`text-xs font-bold leading-normal ${((editingSchool.is_active ?? true) && isDark) ? 'text-lime-400' : t.textPrimary(isDark)}`}>Account Status</Label><Switch checked={editingSchool.is_active} onCheckedChange={v => setEditingSchool({ ...editingSchool, is_active: v })} className="data-[state=checked]:bg-lime-400" /></div>
+                                <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${isDark ? 'bg-white/[0.02] border-white/10' : 'bg-slate-50 border-slate-200'}`}><Label className={`text-xs font-bold leading-normal ${t.textSecondary(isDark)}`}>Data Processing Consent</Label><Switch checked={editingSchool.data_processing_consent} onCheckedChange={v => setEditingSchool({ ...editingSchool, data_processing_consent: v })} className={`data-[state=checked]:${accent.bg}`} /></div>
+                                <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${isDark ? 'bg-white/[0.02] border-white/10' : 'bg-slate-50 border-slate-200'}`}><Label className={`text-xs font-bold leading-normal ${t.textSecondary(isDark)}`}>Guardian Consent</Label><Switch checked={editingSchool.minor_data_guardian_consent} onCheckedChange={v => setEditingSchool({ ...editingSchool, minor_data_guardian_consent: v })} className={`data-[state=checked]:${accent.bg}`} /></div>
+                                <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${(editingSchool.is_active ?? true) ? (isDark ? `border-${accent.name}-400/30 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-300/50 ${accent.softLight.split(' ')[0]}`) : (isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50')}`}><Label className={`text-xs font-bold leading-normal ${((editingSchool.is_active ?? true) && isDark) ? accent.text : t.textPrimary(isDark)}`}>Account Status</Label><Switch checked={editingSchool.is_active} onCheckedChange={v => setEditingSchool({ ...editingSchool, is_active: v })} className={`data-[state=checked]:${accent.bg}`} /></div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between px-1">
+                                    <Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Offered Classes</Label>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            const allIds = grades.map(g => g.id);
+                                            const currentIds = (editingSchool as any).gradeIds || [];
+                                            const newIds = currentIds.length === allIds.length ? [] : allIds;
+                                            setEditingSchool({ ...editingSchool, gradeIds: newIds } as any);
+                                        }}
+                                        className={`h-7 px-3 rounded-full text-[10px] font-black border-2 ${t.btnOutline(isDark)}`}
+                                    >
+                                        {((editingSchool as any).gradeIds?.length || 0) === grades.length ? 'DESELECT ALL' : 'SELECT ALL'}
+                                    </Button>
+                                </div>
+                                <div className={`p-4 rounded-[24px] border-2 flex flex-wrap gap-2 ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-slate-50'}`}>
+                                    {grades.map(grade => {
+                                        const isSelected = ((editingSchool as any).gradeIds || []).includes(grade.id);
+                                        return (
+                                            <button
+                                                key={grade.id}
+                                                type="button"
+                                                onClick={() => handleToggleGrade(grade.id)}
+                                                className={`px-4 py-2 rounded-full text-[11px] font-black tracking-tight transition-all border-2
+                                                    ${isSelected
+                                                        ? (isDark ? `${accent.bg} text-slate-900 border-${accent.name}-400 shadow-lg` : `${accent.bg} text-slate-900 border-${accent.name}-400 shadow-lg`)
+                                                        : (isDark ? 'bg-transparent text-slate-400 border-white/10 hover:bg-white/5' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}
+                                            >
+                                                Class {grade.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <p className={`text-[10px] font-bold ${t.textMuted(isDark)} px-1`}>
+                                    Select the classes supported by this institution. This governs the available options for student registration.
+                                </p>
                             </div>
                         </div>
                     )}
                     <DialogFooter className={`pt-6 border-t mt-6 ${t.border(isDark)}`}>
                         <Button variant="ghost" onClick={() => setShowEditDialog(false)} className={`rounded-full h-11 px-7 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white hover:text-white' : 'hover:bg-slate-200 text-slate-700'}`}>Cancel</Button>
-                        <Button className={`rounded-full h-11 px-9 font-black text-sm shadow-xl transition-all border-0 ${t.btnPrimary(isDark)} ${isDark ? 'shadow-lime-400/20' : 'shadow-slate-900/20'}`} onClick={handleSave}>
+                        <Button className={`rounded-full h-11 px-9 font-black text-sm shadow-xl transition-all border-0 ${t.btnPrimary(isDark, accent)}`} style={t.glowStyle(isDark, accent)} onClick={handleSave}>
                             {editingSchool?.id ? 'Save Changes' : 'Register School'}
                         </Button>
                     </DialogFooter>

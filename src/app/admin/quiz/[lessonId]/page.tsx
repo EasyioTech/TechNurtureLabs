@@ -10,6 +10,7 @@ export default function QuizEditorPage() {
     const params = useParams();
     const router = useRouter();
     const lessonId = params.lessonId as string;
+    const { isDark, accent } = useAdminTheme();
     const [quizData, setQuizData] = React.useState<any>(null);
     const [lessonData, setLessonData] = React.useState<any>(null);
     const [loading, setLoading] = React.useState(true);
@@ -35,9 +36,9 @@ export default function QuizEditorPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#0A0C10] flex flex-col items-center justify-center gap-6">
-                <div className="w-12 h-12 border-4 border-lime-400 border-t-transparent rounded-full animate-spin" />
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-400">Booting Quiz Engine...</p>
+            <div className={`min-h-screen ${isDark ? 'bg-[#0A0C10]' : 'bg-slate-50'} flex flex-col items-center justify-center gap-6`}>
+                <div className={`w-12 h-12 border-4 ${accent.border} border-t-transparent rounded-full animate-spin`} />
+                <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${accent.text}`}>Booting Quiz Engine...</p>
             </div>
         );
     }

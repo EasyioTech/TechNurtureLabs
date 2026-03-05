@@ -26,7 +26,7 @@ export function PaymentPlansTab({
     paymentPlans, onSavePlan, onDeletePlan,
     showPlanDialog, setShowPlanDialog, editingPlan, setEditingPlan,
 }: PaymentPlansTabProps) {
-    const { isDark } = useAdminTheme();
+    const { isDark, accent } = useAdminTheme();
     const [planToDelete, setPlanToDelete] = useState<{ id: string; name: string } | null>(null);
 
     return (
@@ -38,12 +38,13 @@ export function PaymentPlansTab({
                         <motion.div key={plan.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }}>
                             <div className={`relative rounded-[28px] border overflow-hidden hover:-translate-y-1 transition-all duration-500 shadow-xl shadow-black/5
                                 ${isFeatured
-                                    ? isDark ? 'bg-[#1a1f2e] border-lime-400/30 ring-4 ring-lime-400/5' : 'bg-white border-slate-900/10 ring-8 ring-slate-900/[0.02]'
+                                    ? isDark ? `bg-[#1a1f2e] border-${accent.name}-400/30 ring-4 ring-${accent.name}-400/5` : `bg-white border-${accent.name}-400/10 ring-8 ring-${accent.name}-400/[0.02]`
                                     : t.card(isDark)}`}>
 
                                 {isFeatured && (
                                     <div className="absolute top-4 right-4">
-                                        <Badge className={`text-[10px] font-black px-3 py-1 rounded-full ${isDark ? 'bg-lime-400 text-slate-900 shadow-[0_0_15px_rgba(163,230,53,0.4)]' : 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'}`}>
+                                        <Badge className={`text-[10px] font-black px-3 py-1 rounded-full ${accent.bg} text-slate-900`}
+                                            style={isDark ? { boxShadow: `0 0 15px ${accent.swatchDark}66` } : { boxShadow: `0 0 15px ${accent.swatchLight}33` }}>
                                             <Sparkles size={10} className="mr-1.5" />PREMIUM
                                         </Badge>
                                     </div>
@@ -66,7 +67,7 @@ export function PaymentPlansTab({
                                     <p className={`text-[13px] font-medium leading-relaxed ${t.textSecondary(isDark)}`}>{plan.description}</p>
 
                                     {plan.trial_days > 0 && (
-                                        <div className={`text-[11px] font-black rounded-full px-4 py-2 flex items-center gap-2 border ${isDark ? 'bg-lime-400/10 border-lime-400/20 text-lime-400' : 'bg-slate-900 text-white'}`}>
+                                        <div className={`text-[11px] font-black rounded-full px-4 py-2 flex items-center gap-2 border ${isDark ? `${accent.softDark}` : `${accent.bg} text-slate-900`}`}>
                                             <Badge className="bg-white/20 text-white border-white/20 text-[9px] font-black">{plan.trial_days} DAYS</Badge>
                                             <span className="uppercase tracking-tight">Free Trial Period</span>
                                         </div>
@@ -77,7 +78,7 @@ export function PaymentPlansTab({
                                         {plan.features.map((feature, i) => (
                                             <div key={i} className="flex items-center gap-3">
                                                 <div className={`w-5 h-5 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/[0.05]' : 'bg-slate-100'} border ${t.border(isDark)}`}>
-                                                    <Check size={10} className={isDark ? 'text-lime-400' : 'text-slate-900'} />
+                                                    <Check size={10} className={isDark ? accent.text : accent.softLight.split(' ')[1]} />
                                                 </div>
                                                 <span className={`text-[13px] font-medium ${t.textSecondary(isDark)}`}>{feature}</span>
                                             </div>

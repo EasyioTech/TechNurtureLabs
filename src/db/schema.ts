@@ -21,6 +21,8 @@ export const achievementTierEnum = pgEnum('achievement_tier', ['bronze', 'silver
 export const challengeStatusEnum = pgEnum('challenge_status', ['active', 'completed', 'expired']);
 export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion']);
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'issued', 'paid', 'void', 'overdue']);
+export const storageTypeEnum = pgEnum('storage_type', ['r2', 'local']);
+export const assetTypeEnum = pgEnum('asset_type', ['video', 'image', 'document']);
 
 // ============================================================================
 // CORE TENANT TABLES
@@ -224,6 +226,7 @@ export const courses = pgTable('courses', {
     description: text('description'),
     thumbnail_url: text('thumbnail_url'),
     is_published: boolean('is_published').notNull().default(false),
+    all_grades: boolean('all_grades').notNull().default(false),
     total_lessons: integer('total_lessons').notNull().default(0),
     total_xp: integer('total_xp').notNull().default(0),
     created_by: uuid('created_by').notNull().references(() => users.id, { onDelete: 'restrict' }),
@@ -551,6 +554,28 @@ export const loginAttempts = pgTable('login_attempts', {
     index('idx_login_created').on(table.created_at),
 ]);
 
+// ============================================================================
+// MEDIA LIBRARY
+// ============================================================================
+
+export const mediaAssets = pgTable('media_assets', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    file_name: text('file_name').notNull(),         // UUID-based storage key/filename
+    original_name: text('original_name').notNull(), // Original filename from the user
+    file_url: text('file_url').notNull(),            // Public URL (R2 or /api/media/...)
+    file_path: text('file_path').notNull(),          // Storage key (R2) or relative local path
+    mime_type: text('mime_type').notNull(),
+    file_size: bigint('file_size', { mode: 'number' }).notNull().default(0),
+    storage_type: storageTypeEnum('storage_type').notNull().default('local'),
+    asset_type: assetTypeEnum('asset_type').notNull().default('document'),
+    uploaded_by: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+    index('idx_media_asset_type').on(table.asset_type),
+    index('idx_media_uploaded_by').on(table.uploaded_by),
+    index('idx_media_created').on(table.created_at),
+]);
+
 export const passwordResetTokens = pgTable('password_reset_tokens', {
     id: uuid('id').defaultRandom().primaryKey(),
     user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -683,3 +708,11 @@ export const quizAttemptsRelations = relations(quizAttempts, ({ one }) => ({
     enrollment: one(enrollments, { fields: [quizAttempts.enrollment_id], references: [enrollments.id] }),
 }));
 
+export const schoolGradeMappingRelations = relations(schoolGradeMapping, ({ one }) => ({
+    school: one(schools, { fields: [schoolGradeMapping.school_id], references: [schools.id] }),
+    grade: one(grades, { fields: [schoolGradeMapping.grade_id], references: [grades.id] }),
+}));
+
+export const mediaAssetsRelations = relations(mediaAssets, ({ one }) => ({
+    uploader: one(users, { fields: [mediaAssets.uploaded_by], references: [users.id] }),
+}));

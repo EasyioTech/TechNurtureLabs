@@ -2,8 +2,8 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions } from '@/db/schema';
-import { eq, and, inArray, asc, isNotNull } from 'drizzle-orm';
+import { users, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseGradeMapping } from '@/db/schema';
+import { eq, and, inArray, asc, desc, isNotNull } from 'drizzle-orm';
 
 // Auto-enroll a student in a course if not already enrolled
 async function ensureEnrollment(userId: string, courseId: string) {
@@ -21,6 +21,26 @@ async function ensureEnrollment(userId: string, courseId: string) {
     });
 
     if (!currentSession) return null;
+
+    if (user.role === 'student') {
+        const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
+        if (!course) return null;
+
+        if (!course.all_grades) {
+            const currentRecord = await db.query.studentAcademicRecords.findFirst({
+                where: and(eq(studentAcademicRecords.user_id, userId), eq(studentAcademicRecords.session_id, currentSession.id)),
+                orderBy: (records, { desc }) => [desc(records.created_at)]
+            });
+
+            if (!currentRecord?.grade_id) return null;
+
+            const mapping = await db.query.courseGradeMapping.findFirst({
+                where: and(eq(courseGradeMapping.grade_id, currentRecord.grade_id), eq(courseGradeMapping.course_id, courseId))
+            });
+
+            if (!mapping) return null; // Not allowed to enroll
+        }
+    }
 
     const [newEnrollment] = await db.insert(enrollments).values({
         user_id: userId,
@@ -43,6 +63,35 @@ export async function getCourseDetailsData(courseId: string) {
     });
 
     if (!course) throw new Error('Course not found');
+
+    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!user) throw new Error('User not found');
+
+    if (user.role === 'student') {
+        // Validate access
+        const existingEnrollment = await db.query.enrollments.findFirst({
+            where: and(eq(enrollments.user_id, userId), eq(enrollments.course_id, courseId))
+        });
+
+        if (!existingEnrollment && !course.all_grades) {
+            const currentRecord = await db.query.studentAcademicRecords.findFirst({
+                where: eq(studentAcademicRecords.user_id, userId),
+                orderBy: (records, { desc }) => [desc(records.created_at)]
+            });
+
+            if (!currentRecord?.grade_id) {
+                throw new Error('Course not found');
+            }
+
+            const mapping = await db.query.courseGradeMapping.findFirst({
+                where: and(eq(courseGradeMapping.grade_id, currentRecord.grade_id), eq(courseGradeMapping.course_id, courseId))
+            });
+
+            if (!mapping) {
+                throw new Error('Course not found');
+            }
+        }
+    }
 
     const courseLessons = await db.query.lessons.findMany({
         where: eq(lessons.course_id, courseId),
@@ -121,7 +170,8 @@ export async function getLessonData(lessonId: string) {
     if (!lesson) return null;
 
     // Ensure enrollment exists so completion tracking works
-    await ensureEnrollment(userId, lesson.course_id);
+    const enrollment = await ensureEnrollment(userId, lesson.course_id);
+    if (!enrollment) return null;
 
     // Fetch quiz data if this is a quiz lesson
     let quizData: any = null;
@@ -234,6 +284,9 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
 export async function getLessonsByCourse(courseId: string) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
+
+    const enrollment = await ensureEnrollment(session.userId, courseId);
+    if (!enrollment) return [];
 
     const courseLessons = await db.query.lessons.findMany({
         where: eq(lessons.course_id, courseId),

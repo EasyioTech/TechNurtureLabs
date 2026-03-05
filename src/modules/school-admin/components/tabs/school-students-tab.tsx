@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { SchoolStudentMetric } from '../../types';
 import { useSchoolTheme, ts } from '../../theme-context';
 import { SCHOOL_STUDENT_PAGE_SIZE } from '../../hooks/use-school-data';
-import { Search, Zap, ChevronLeft, ChevronRight, GraduationCap, CheckCircle2, Users } from 'lucide-react';
+import { Search, Zap, ChevronLeft, ChevronRight, GraduationCap, CheckCircle2, Users, X, Flame } from 'lucide-react';
 
 interface StudentsTabProps {
     students: SchoolStudentMetric[];
@@ -31,110 +31,152 @@ export function SchoolStudentsTab({
 
     return (
         <div className="space-y-4">
-            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
-                className={`rounded-[24px] border overflow-hidden shadow-xl shadow-black/5 ${ts.card(isDark)}`}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                className={`rounded-[32px] border overflow-hidden ${ts.card(isDark)}`}>
 
                 {/* Header */}
-                <div className={`px-6 py-5 border-b ${ts.border(isDark)} flex flex-col sm:flex-row items-start sm:items-center gap-4`}>
+                <div className={`px-8 py-8 border-b ${ts.border(isDark)} flex flex-col lg:flex-row items-start lg:items-center gap-6`}>
                     <div className="flex-1">
-                        <h3 className={`font-black text-lg tracking-tight ${ts.textPrimary(isDark)}`}>Student Roster</h3>
-                        <p className={`text-[12px] font-medium ${ts.textMuted(isDark)}`}>{students.length} students enrolled</p>
+                        <h3 className={`font-black text-2xl tracking-tight mb-1 ${ts.textPrimary(isDark)}`}>Student Directory</h3>
+                        <p className={`text-[13px] font-bold ${ts.textMuted(isDark)}`}>Managing {students.length} enrolled learners</p>
                     </div>
-                    <div className={`flex items-center rounded-full px-4 py-2 gap-3 border w-full sm:w-72 ${ts.border(isDark)} ${isDark ? 'bg-white/[0.04] focus-within:bg-white/[0.06]' : 'bg-white shadow-sm'} transition-all focus-within:ring-2 focus-within:ring-lime-400/30`}>
-                        <Search size={14} className={ts.textMuted(isDark)} />
-                        <input type="text" placeholder="Search by name, email, grade..."
-                            value={studentSearch} onChange={e => { setStudentSearch(e.target.value); setStudentsPage(0); }}
-                            className={`bg-transparent text-[12px] font-bold outline-none flex-1 ${ts.textPrimary(isDark)}`} />
-                        {studentSearch && <button onClick={() => setStudentSearch('')} className={`text-[10px] ${ts.textMuted(isDark)}`}>✕</button>}
+
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+                        <div className={`flex items-center rounded-2xl px-5 py-3 gap-3 border w-full sm:w-80 transition-all focus-within:ring-4 focus-within:ring-indigo-500/10 ${isDark ? 'bg-white/[0.03] border-white/5 focus-within:bg-white/[0.05]' : 'bg-slate-50 border-slate-200 focus-within:bg-white focus-within:border-indigo-200'
+                            }`}>
+                            <Search size={16} className="text-indigo-500" />
+                            <input type="text" placeholder="Search by name, email..."
+                                value={studentSearch} onChange={e => { setStudentSearch(e.target.value); setStudentsPage(0); }}
+                                className={`bg-transparent text-[13px] font-bold outline-none flex-1 placeholder:text-slate-400 dark:placeholder:text-slate-600 ${ts.textPrimary(isDark)}`} />
+                            {studentSearch && (
+                                <button onClick={() => setStudentSearch('')} className={`p-1 rounded-md hover:bg-slate-200 dark:hover:bg-white/10 transition-colors`}>
+                                    <X size={12} className={ts.textMuted(isDark)} />
+                                </button>
+                            )}
+                        </div>
+
+                        <Button className={`rounded-2xl h-12 px-6 font-black text-[13px] ${ts.btnPrimary(isDark)}`}>
+                            <Users size={16} className="mr-2" />
+                            Export Roster
+                        </Button>
                     </div>
                 </div>
 
-                {/* Table header */}
-                <div className={`px-6 py-3 grid grid-cols-12 gap-2 border-b ${ts.border(isDark)} bg-slate-500/[0.02]`}>
-                    {['Student', 'Grade', 'Level / XP', 'Lessons Done', 'Streak', 'Last Active', 'Status'].map((h, i) => (
-                        <div key={h} className={`text-[9px] font-black uppercase tracking-widest ${ts.textMuted(isDark)} ${[0].includes(i) ? 'col-span-3' : [5].includes(i) ? 'col-span-2' : 'col-span-1'} ${i > 0 ? 'text-right' : ''}`}>{h}</div>
-                    ))}
-                    <div className="col-span-1" />
-                </div>
+                {/* Table */}
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead>
+                            <tr className={`border-b ${ts.border(isDark)} bg-slate-500/[0.02]`}>
+                                {['Student', 'Grade', 'XP / Level', 'Activity', 'Status', 'Actions'].map((h, i) => (
+                                    <th key={h} className={`px-8 py-5 text-[10px] font-black uppercase tracking-widest ${i === 0 ? 'text-left' : 'text-right'} ${ts.textMuted(isDark)}`}>
+                                        {h}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className={ts.divider(isDark)}>
+                            {pagedStudents.map((s, i) => (
+                                <motion.tr key={s.id}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.03 }}
+                                    className={`group transition-all ${ts.cardHover(isDark)}`}>
 
-                {/* Rows */}
-                <div className={ts.divider(isDark)}>
-                    {pagedStudents.map((s, i) => (
-                        <motion.div key={s.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-                            className={`px-6 py-3.5 grid grid-cols-12 gap-2 items-center transition-all ${ts.cardHover(isDark)}`}>
-                            {/* Name */}
-                            <div className="col-span-3 flex items-center gap-3 min-w-0">
-                                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-black flex-shrink-0
-                                    ${isDark ? 'bg-lime-400/10 text-lime-400' : 'bg-slate-100 text-slate-700'}`}>
-                                    {s.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                                </div>
-                                <div className="min-w-0">
-                                    <p className={`font-black text-[12px] truncate ${ts.textPrimary(isDark)}`}>{s.full_name}</p>
-                                    <p className={`text-[10px] truncate ${ts.textMuted(isDark)}`}>{s.email}</p>
-                                </div>
-                            </div>
-                            {/* Grade */}
-                            <div className="col-span-1 text-right">
-                                <span className={`text-[10px] font-black ${ts.textSecondary(isDark)}`}>{s.grade_name || '—'}</span>
-                            </div>
-                            {/* Level/XP */}
-                            <div className="col-span-1 text-right">
-                                <p className={`text-[12px] font-black ${isDark ? 'text-lime-400' : 'text-slate-900'}`}>{s.total_xp.toLocaleString()}</p>
-                                <p className={`text-[9px] font-bold ${ts.textMuted(isDark)}`}>LVL {s.level}</p>
-                            </div>
-                            {/* Lessons */}
-                            <div className="col-span-1 text-right">
-                                <span className={`text-[12px] font-black ${ts.textPrimary(isDark)}`}>{s.lessons_completed}</span>
-                            </div>
-                            {/* Streak */}
-                            <div className="col-span-1 text-right">
-                                <span className="text-[12px] font-black text-orange-500 flex items-center justify-end gap-0.5">
-                                    <Zap size={10} fill="currentColor" />{s.current_streak}d
-                                </span>
-                            </div>
-                            {/* Last active */}
-                            <div className="col-span-2 text-right">
-                                <span className={`text-[10px] font-bold ${ts.textMuted(isDark)}`}>
-                                    {s.last_active_at ? new Date(s.last_active_at).toLocaleDateString('en-IN') : 'Never'}
-                                </span>
-                            </div>
-                            {/* Status badge */}
-                            <div className="col-span-1 flex justify-end">
-                                <Badge className={`text-[9px] font-black px-2 ${s.is_active ? ts.live(isDark) : ts.danger(isDark)}`}>
-                                    {s.is_active ? 'ACTIVE' : 'OFF'}
-                                </Badge>
-                            </div>
-                            {/* Toggle */}
-                            <div className="col-span-1 flex justify-end">
-                                <Switch checked={s.is_active} onCheckedChange={val => onToggleStudent(s.id, val)} className="data-[state=checked]:bg-lime-400 scale-75" />
-                            </div>
-                        </motion.div>
-                    ))}
+                                    {/* Student Info */}
+                                    <td className="px-8 py-5">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-[14px] font-black flex-shrink-0 transition-transform group-hover:scale-105 shadow-lg ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                                                }`}>
+                                                {s.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className={`font-black text-[14px] tracking-tight truncate ${ts.textPrimary(isDark)}`}>{s.full_name}</p>
+                                                <p className={`text-[11px] font-bold truncate ${ts.textMuted(isDark)}`}>{s.email}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    {/* Grade */}
+                                    <td className="px-8 py-5 text-right">
+                                        <Badge className={`px-3 py-1 rounded-full border-0 text-[10px] font-black ${ts.accentSoft(isDark)}`}>
+                                            {s.grade_name || 'NOT ASSIGNED'}
+                                        </Badge>
+                                    </td>
+
+                                    {/* Progress */}
+                                    <td className="px-8 py-5 text-right">
+                                        <div className="inline-flex flex-col items-end">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`text-[15px] font-black ${ts.textPrimary(isDark)}`}>{s.total_xp.toLocaleString()}</span>
+                                                <Zap size={12} className="text-amber-500" fill="currentColor" />
+                                            </div>
+                                            <p className={`text-[10px] font-black tracking-widest uppercase ${ts.textMuted(isDark)}`}>LEVEL {s.level}</p>
+                                        </div>
+                                    </td>
+
+                                    {/* Metrics */}
+                                    <td className="px-8 py-5 text-right">
+                                        <div className="inline-flex flex-col items-end">
+                                            <p className={`text-[13px] font-black ${ts.textPrimary(isDark)}`}>{s.lessons_completed} Lessons</p>
+                                            <p className="text-[11px] font-bold text-orange-500 flex items-center gap-1">
+                                                <Flame size={12} /> {s.current_streak}d streak
+                                            </p>
+                                        </div>
+                                    </td>
+
+                                    {/* Status */}
+                                    <td className="px-8 py-5 text-right">
+                                        <Badge className={`px-3 py-1 rounded-full border-0 text-[10px] font-black ${s.is_active ? ts.live(isDark) : ts.danger(isDark)}`}>
+                                            {s.is_active ? 'ACTIVE' : 'DEACTIVATED'}
+                                        </Badge>
+                                    </td>
+
+                                    {/* Actions */}
+                                    <td className="px-8 py-5 text-right">
+                                        <div className="flex items-center justify-end gap-3">
+                                            <Switch
+                                                checked={s.is_active}
+                                                onCheckedChange={val => onToggleStudent(s.id, val)}
+                                                className="data-[state=checked]:bg-indigo-500 scale-90"
+                                            />
+                                            <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-xl ${ts.btnOutline(isDark)} border-0`}>
+                                                <ChevronRight size={18} />
+                                            </Button>
+                                        </div>
+                                    </td>
+                                </motion.tr>
+                            ))}
+                        </tbody>
+                    </table>
+
                     {pagedStudents.length === 0 && (
-                        <div className="py-14 text-center">
-                            <Users size={28} className={`mx-auto mb-2 ${ts.textMuted(isDark)}`} />
-                            <p className={`text-[11px] ${ts.textMuted(isDark)}`}>
-                                {studentSearch ? `No students match "${studentSearch}"` : 'No students enrolled'}
-                            </p>
+                        <div className="py-24 text-center">
+                            <div className={`w-16 h-16 rounded-3xl mx-auto mb-4 flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                                <Users size={32} className={ts.textMuted(isDark)} />
+                            </div>
+                            <h4 className={`text-lg font-black mb-1 ${ts.textPrimary(isDark)}`}>No students found</h4>
+                            <p className={`text-[13px] font-bold ${ts.textMuted(isDark)}`}>Try adjusting your search filters</p>
                         </div>
                     )}
                 </div>
 
                 {/* Pagination */}
                 {totalStudentPages > 1 && (
-                    <div className={`px-6 py-4 border-t ${ts.border(isDark)} flex items-center justify-between`}>
-                        <p className={`text-[11px] font-bold ${ts.textMuted(isDark)}`}>
-                            {studentsPage * SCHOOL_STUDENT_PAGE_SIZE + 1}–{Math.min((studentsPage + 1) * SCHOOL_STUDENT_PAGE_SIZE, filteredStudents.length)} of {filteredStudents.length}
+                    <div className={`px-8 py-6 border-t ${ts.border(isDark)} flex items-center justify-between bg-slate-500/[0.01]`}>
+                        <p className={`text-[12px] font-bold ${ts.textMuted(isDark)}`}>
+                            Showing <span className={ts.textPrimary(isDark)}>{studentsPage * SCHOOL_STUDENT_PAGE_SIZE + 1}–{Math.min((studentsPage + 1) * SCHOOL_STUDENT_PAGE_SIZE, filteredStudents.length)}</span> of {filteredStudents.length} learners
                         </p>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                             <Button variant="ghost" size="sm" disabled={studentsPage === 0} onClick={() => setStudentsPage(studentsPage - 1)}
-                                className={`rounded-full h-8 px-3 text-[11px] font-black disabled:opacity-30 ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-700'}`}>
-                                <ChevronLeft size={14} className="mr-1" />Prev
+                                className={`rounded-xl h-10 px-4 text-[12px] font-black transition-all ${ts.btnOutline(isDark)} disabled:opacity-30`}>
+                                <ChevronLeft size={16} className="mr-2" /> Previous
                             </Button>
-                            <span className={`text-[11px] font-black px-2 ${ts.textMuted(isDark)}`}>{studentsPage + 1}/{totalStudentPages}</span>
+                            <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg font-black text-[12px] ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
+                                {studentsPage + 1} <span className="opacity-30 mx-1">/</span> {totalStudentPages}
+                            </div>
                             <Button variant="ghost" size="sm" disabled={studentsPage >= totalStudentPages - 1} onClick={() => setStudentsPage(studentsPage + 1)}
-                                className={`rounded-full h-8 px-3 text-[11px] font-black disabled:opacity-30 ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-700'}`}>
-                                Next<ChevronRight size={14} className="ml-1" />
+                                className={`rounded-xl h-10 px-4 text-[12px] font-black transition-all ${ts.btnOutline(isDark)} disabled:opacity-30`}>
+                                Next <ChevronRight size={16} className="ml-2" />
                             </Button>
                         </div>
                     </div>

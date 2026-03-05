@@ -13,28 +13,47 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return new NextResponse('File path not provided', { status: 400 });
         }
 
+        // Supports both flat (filename) and subfolder (folder/filename) paths
         const fileName = filePathParams.join('/');
         const filePath = path.join(LOCAL_STORAGE_DIR, fileName);
+
+        // Prevent path traversal attacks
+        const resolvedPath = path.resolve(filePath);
+        const resolvedBase = path.resolve(LOCAL_STORAGE_DIR);
+        if (!resolvedPath.startsWith(resolvedBase)) {
+            return new NextResponse('Forbidden', { status: 403 });
+        }
 
         if (!fs.existsSync(filePath)) {
             return new NextResponse('File not found', { status: 404 });
         }
 
         const stats = await fs.promises.stat(filePath);
-        // Simple mime-type guessing based on generic extensions
         const ext = path.extname(fileName).toLowerCase();
-        let mimeType = 'application/octet-stream';
-        if (ext === '.mp4') mimeType = 'video/mp4';
-        else if (ext === '.pdf') mimeType = 'application/pdf';
-        else if (ext === '.ppt' || ext === '.pptx') mimeType = 'application/vnd.ms-powerpoint';
-        else if (ext === '.png') mimeType = 'image/png';
-        else if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
-        else if (ext === '.mp3') mimeType = 'audio/mpeg';
 
-        // Stream the file instead of reading entire buffer to handle large videos efficiently
+        // MIME type lookup
+        const MIME_MAP: Record<string, string> = {
+            '.mp4': 'video/mp4',
+            '.webm': 'video/webm',
+            '.mov': 'video/quicktime',
+            '.pdf': 'application/pdf',
+            '.ppt': 'application/vnd.ms-powerpoint',
+            '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+            '.svg': 'image/svg+xml',
+            '.mp3': 'audio/mpeg',
+            '.txt': 'text/plain',
+        };
+        const mimeType = MIME_MAP[ext] ?? 'application/octet-stream';
+
+        // Stream the file for efficiency (handles large videos)
         const readStream = fs.createReadStream(filePath);
-
-        // Convert Node.js readable stream to Web ReadableStream
         const stream = new ReadableStream({
             start(controller) {
                 readStream.on('data', (chunk) => controller.enqueue(chunk));
@@ -47,10 +66,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             headers: {
                 'Content-Type': mimeType,
                 'Content-Length': stats.size.toString(),
+                'Cache-Control': 'public, max-age=31536000, immutable',
             },
         });
     } catch (error) {
-        console.error('Media Serving Error:', error);
+        console.error('[Media] Serving error:', error);
         return new NextResponse('Internal Server Error', { status: 500 });
     }
 }

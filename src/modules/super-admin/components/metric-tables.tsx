@@ -17,7 +17,7 @@ interface MetricTablesProps {
 }
 
 export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: MetricTablesProps) {
-    const { isDark } = useAdminTheme();
+    const { isDark, accent } = useAdminTheme();
     const totalPages = Math.ceil(userMetrics.length / USER_METRICS_PAGE_SIZE);
     const pagedMetrics = userMetrics
         .sort((a, b) => b.total_xp - a.total_xp)
@@ -33,7 +33,7 @@ export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: 
                             <h3 className={`font-black text-lg tracking-tight ${t.textPrimary(isDark)}`}>Student Leaderboard</h3>
                             <p className={`text-[12px] font-medium ${t.textMuted(isDark)}`}>
                                 Engagement rankings based on earned experience points
-                                <span className={`ml-2 font-black ${isDark ? 'text-lime-400' : 'text-slate-600'}`}>
+                                <span className={`ml-2 font-black ${isDark ? accent.text : 'text-slate-600'}`}>
                                     ({userMetrics.length} students)
                                 </span>
                             </p>
@@ -49,7 +49,7 @@ export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: 
                                     className={`px-6 py-4 flex items-center gap-4 transition-all group ${t.cardHover(isDark)}`}>
                                     <div className="relative">
                                         <div className={`w-12 h-12 rounded-full flex items-center justify-center text-[12px] font-black flex-shrink-0
-                                            ${isTop3 ? (isDark ? 'bg-lime-400 text-slate-900 ring-4 ring-lime-400/10' : 'bg-slate-900 text-white shadow-lg shadow-slate-900/20') : isDark ? 'bg-white/[0.05] text-slate-500 border border-white/5' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
+                                            ${isTop3 ? (isDark ? `${accent.bg} text-slate-900 ${accent.ring.replace('ring-', 'ring-4 ring-')}` : 'bg-slate-900 text-white shadow-lg shadow-slate-900/20') : isDark ? 'bg-white/[0.05] text-slate-500 border border-white/5' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
                                             {u.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                         </div>
                                         {isTop3 && (
@@ -70,7 +70,7 @@ export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: 
                                         <p className={`text-[11px] font-bold ${t.textSecondary(isDark)}`}>{u.school_name}</p>
                                     </div>
                                     <div className="flex flex-col items-end min-w-[100px]">
-                                        <p className={`text-lg font-[900] tracking-tighter ${isDark ? 'text-lime-400' : 'text-slate-900'}`}>{u.total_xp.toLocaleString()} XP</p>
+                                        <p className={`text-lg font-[900] tracking-tighter ${isDark ? accent.text : 'text-slate-900'}`}>{u.total_xp.toLocaleString()} XP</p>
                                         <div className="flex items-center gap-2 mt-0.5">
                                             <span className="text-[10px] text-orange-500 font-black flex items-center gap-0.5"><Zap size={10} fill="currentColor" />{u.current_streak}D</span>
                                             <span className="text-[10px] text-emerald-500 font-black flex items-center gap-0.5"><CheckCircle2 size={10} />{u.lessons_completed}</span>
@@ -138,7 +138,7 @@ export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: 
                                             <div className="flex items-center justify-end gap-2.5">
                                                 <div className={`w-16 h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-slate-100'} ring-1 ring-black/5`}>
                                                     <motion.div initial={{ width: 0 }} animate={{ width: `${c.completion_rate}%` }}
-                                                        className={`h-full rounded-full ${isDark ? 'bg-lime-400 shadow-[0_0_10px_rgba(163,230,53,0.3)]' : 'bg-slate-900'}`} />
+                                                        className={`h-full rounded-full ${accent.bg}`} style={t.barGlow(isDark, accent)} />
                                                 </div>
                                                 <span className={`text-[12px] font-black tracking-tight ${t.textPrimary(isDark)}`}>{c.completion_rate}%</span>
                                             </div>

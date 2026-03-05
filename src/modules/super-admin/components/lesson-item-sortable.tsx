@@ -24,7 +24,7 @@ const CONTENT_TYPES = [
 ];
 
 export function SortableLessonItem({ lesson, index, onEdit, onDelete }: SortableLessonItemProps) {
-    const { isDark } = useAdminTheme();
+    const { isDark, accent } = useAdminTheme();
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
 
     const style = {
@@ -39,10 +39,10 @@ export function SortableLessonItem({ lesson, index, onEdit, onDelete }: Sortable
     return (
         <div ref={setNodeRef} style={style} {...attributes}>
             <div className={`p-4 rounded-2xl border transition-all duration-300 flex items-center gap-4 group
-                ${isDragging ? (isDark ? 'bg-white/[0.08] border-lime-400/50' : 'bg-slate-100 border-slate-400') : (t.card(isDark) + ' ' + t.cardHover(isDark))}`}>
+                ${isDragging ? (isDark ? `bg-white/[0.08] border-${accent.name}-400/50` : `bg-slate-100 border-${accent.name}-400/30`) : (t.card(isDark) + ' ' + t.cardHover(isDark))}`}>
 
                 <div {...listeners} className={`cursor-grab active:cursor-grabbing p-1 rounded-lg transition-colors
-                    ${isDark ? 'text-slate-600 hover:text-lime-400 hover:bg-white/[0.05]' : 'text-slate-300 hover:text-slate-900 hover:bg-slate-100'}`}>
+                    ${isDark ? `text-slate-600 ${accent.hoverText} hover:bg-white/[0.05]` : 'text-slate-300 hover:text-slate-900 hover:bg-slate-100'}`}>
                     <GripVertical size={20} />
                 </div>
 
@@ -52,8 +52,8 @@ export function SortableLessonItem({ lesson, index, onEdit, onDelete }: Sortable
                 </div>
 
                 <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-transform shadow-lg shadow-black/5
-                    ${isDark ? 'bg-lime-400/10 text-lime-400' : 'bg-slate-900 text-white'}`}>
-                    <Icon size={18} className={isDark ? 'drop-shadow-[0_0_8px_rgba(163,230,53,0.4)]' : ''} />
+                    ${isDark ? `${accent.softDark.split(' ').slice(0, 2).join(' ')}` : 'bg-slate-900 text-white'}`}>
+                    <Icon size={18} />
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -78,7 +78,7 @@ export function SortableLessonItem({ lesson, index, onEdit, onDelete }: Sortable
                 </div>
 
                 <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-slate-600 hover:text-lime-400 hover:bg-white/[0.06]' : 'text-slate-300 hover:text-slate-900 hover:bg-slate-100'}`} onClick={onEdit}>
+                    <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? `text-slate-600 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-300 hover:text-slate-900 hover:bg-slate-100'}`} onClick={onEdit}>
                         <Edit size={14} />
                     </Button>
                     <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-slate-600 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-300 hover:text-rose-600 hover:bg-rose-100'}`} onClick={onDelete}>

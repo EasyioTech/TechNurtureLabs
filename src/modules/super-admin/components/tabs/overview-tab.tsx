@@ -19,7 +19,7 @@ interface OverviewTabProps {
 function StatCard({ label, value, badge, icon: Icon, extra, delay = 0 }: {
     label: string; value: string; badge?: string; icon?: React.ElementType; extra?: React.ReactNode; delay?: number;
 }) {
-    const { isDark } = useAdminTheme();
+    const { isDark, accent } = useAdminTheme();
     return (
         <motion.div
             initial={{ opacity: 0, y: 14 }}
@@ -28,13 +28,14 @@ function StatCard({ label, value, badge, icon: Icon, extra, delay = 0 }: {
             className={`relative rounded-[24px] p-6 lg:p-7 border transition-all duration-500 overflow-hidden group ${t.card(isDark)} ${t.cardHover(isDark)}`}
         >
             <div className={`absolute -top-16 -right-16 w-40 h-40 rounded-full blur-3xl transition-all
-                ${isDark ? 'bg-lime-400/[0.04] group-hover:bg-lime-400/[0.08]' : 'bg-neutral-400/[0.04] group-hover:bg-neutral-400/[0.08]'}`} />
+                ${isDark ? `opacity-[0.04] group-hover:opacity-[0.08]` : 'bg-neutral-400/[0.04] group-hover:bg-neutral-400/[0.08]'}`}
+                style={isDark ? { backgroundColor: accent.swatchDark } : {}} />
 
             <div className="flex justify-between items-start mb-6">
                 <p className={`text-[12px] font-bold tracking-widest uppercase ${t.textMuted(isDark)}`}>{label}</p>
                 {Icon && (
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-neutral-50'}`}>
-                        <Icon size={14} className={isDark ? 'text-lime-400' : 'text-neutral-600'} />
+                        <Icon size={14} className={isDark ? accent.text : 'text-neutral-600'} />
                     </div>
                 )}
             </div>
@@ -45,7 +46,7 @@ function StatCard({ label, value, badge, icon: Icon, extra, delay = 0 }: {
 
             {badge && (
                 <div className="mt-4 flex items-center gap-2">
-                    <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full ${t.accentBadge(isDark)}`}>
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full ${t.accentBadge(isDark, accent)}`}>
                         {badge}
                     </span>
                 </div>
@@ -58,7 +59,7 @@ function StatCard({ label, value, badge, icon: Icon, extra, delay = 0 }: {
 function MiniStat({ label, value, icon: Icon, theme = 'emerald', delay = 0 }: {
     label: string; value: string; icon?: React.ElementType; theme?: 'emerald' | 'violet' | 'sky' | 'amber' | 'rose'; delay?: number;
 }) {
-    const { isDark } = useAdminTheme();
+    const { isDark, accent } = useAdminTheme();
 
     const themes = {
         emerald: isDark ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100',
@@ -75,7 +76,7 @@ function MiniStat({ label, value, icon: Icon, theme = 'emerald', delay = 0 }: {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay, duration: 0.35 }}
-            className={`rounded-2xl border p-5 flex items-center gap-4 transition-all duration-300 ${t.card(isDark)} border-transparent hover:border-lime-400/20 shadow-sm hover:shadow-xl shadow-black/5 group`}
+            className={`rounded-2xl border p-5 flex items-center gap-4 transition-all duration-300 ${t.card(isDark)} ${t.cardHoverAccent(isDark, accent)} shadow-sm hover:shadow-xl shadow-black/5 group`}
         >
             <div className={`w-12 h-12 rounded-full ${activeTheme} border flex items-center justify-center flex-shrink-0 transition-transform`}>
                 {Icon ? <Icon size={20} /> : <div className="w-4 h-4 rounded-sm" />}
@@ -89,7 +90,7 @@ function MiniStat({ label, value, icon: Icon, theme = 'emerald', delay = 0 }: {
 }
 
 export function OverviewTab({ stats, paymentPlans, schoolsList }: OverviewTabProps) {
-    const { isDark } = useAdminTheme();
+    const { isDark, accent } = useAdminTheme();
 
     const engagementData = [
         { name: 'Students', students: stats.totalStudents, lessons: stats.totalLessons },
@@ -121,7 +122,7 @@ export function OverviewTab({ stats, paymentPlans, schoolsList }: OverviewTabPro
                 <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${stats.avgCompletion}%` }}
-                    className={`h-full rounded-full ${isDark ? 'bg-lime-400 shadow-[0_0_10px_rgba(163,230,53,0.3)]' : 'bg-[#262626]'}`} />
+                    className={`h-full rounded-full ${accent.bg}`} style={t.barGlow(isDark, accent)} />
             </div>
             <span className={`text-[12px] font-black tracking-tighter ${t.textPrimary(isDark)}`}>{stats.avgCompletion}%</span>
         </div>

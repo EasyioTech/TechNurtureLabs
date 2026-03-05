@@ -10,17 +10,14 @@ import {
   useSensors,
   DragEndEvent,
 } from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { fetchCourseLessons, saveLessonOrderAdmin } from '@/modules/super-admin/actions';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { fetchCourseLessons, saveLessonOrderAdmin, cloneLessonAction } from '@/modules/super-admin/actions';
 import { LessonItem } from './lesson-item';
 import { Button } from '@/components/ui/button';
-import { Plus, Save } from 'lucide-react';
+import { Plus, Save, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { EntityLibraryPicker } from './entity-library-picker';
+import { useAdminTheme } from '../theme-context';
 
 type Lesson = {
   id: string;
@@ -30,8 +27,10 @@ type Lesson = {
 };
 
 export function CourseBuilder({ courseId }: { courseId: string }) {
+  const { isDark, accent } = useAdminTheme();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importOpen, setImportOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -40,18 +39,32 @@ export function CourseBuilder({ courseId }: { courseId: string }) {
     })
   );
 
-  useEffect(() => {
-    async function fetchLessons() {
-      try {
-        const data = await fetchCourseLessons(courseId);
-        if (data) setLessons(data as any);
-      } catch (e) {
-        console.error(e);
-      }
-      setLoading(false);
+  const refreshLessons = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchCourseLessons(courseId);
+      if (data) setLessons(data as any);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to load curriculum');
     }
-    fetchLessons();
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    refreshLessons();
   }, [courseId]);
+
+  const handleImportLesson = async (lessonId: string) => {
+    try {
+      await cloneLessonAction(lessonId, courseId);
+      toast.success('Chapter imported successfully');
+      refreshLessons();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to import chapter');
+    }
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -83,16 +96,26 @@ export function CourseBuilder({ courseId }: { courseId: string }) {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Course Curriculum</h2>
+        <h2 className="text-2xl font-[1000] tracking-tight">Course Curriculum</h2>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="rounded-full h-9 border-2 font-bold px-4">
+            <FileDown className="w-4 h-4 mr-2" /> Import Existing
+          </Button>
+          <Button variant="outline" size="sm" className="rounded-full h-9 border-2 font-bold px-4">
             <Plus className="w-4 h-4 mr-2" /> Add Lesson
           </Button>
-          <Button size="sm" onClick={saveOrder}>
+          <Button size="sm" onClick={saveOrder} className={`rounded-full h-9 font-black px-5 ${accent.bg} text-slate-900 border-0 ${accent.bgHover}`}>
             <Save className="w-4 h-4 mr-2" /> Save Order
           </Button>
         </div>
       </div>
+
+      <EntityLibraryPicker
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        type="lesson"
+        onSelect={handleImportLesson}
+      />
 
       <DndContext
         sensors={sensors}
