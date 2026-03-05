@@ -3,6 +3,7 @@ services:
   # Next.js Application
   # ----------------------------
   app:
+    image: technurturelabs-app:latest
     container_name: LMS_app
     build:
       context: .
