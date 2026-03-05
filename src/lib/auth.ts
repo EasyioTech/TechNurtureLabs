@@ -25,9 +25,12 @@ export async function createSession(payload: Omit<SessionPayload, 'sessionId'>) 
         .setExpirationTime('7d')
         .sign(JWT_SECRET);
 
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isHttpUrl = process.env.NEXT_PUBLIC_APP_URL?.startsWith('http://') || false;
+
     (await cookies()).set('session', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction && !isHttpUrl,
         sameSite: 'lax',
         path: '/',
         maxAge: SESSION_EXPIRY,
