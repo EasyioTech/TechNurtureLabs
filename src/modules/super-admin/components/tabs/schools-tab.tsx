@@ -73,16 +73,16 @@ export function SchoolsTab({
             {/* Stat Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {[
-                    { value: stats.activeSchools.toString(), label: 'Active Schools', icon: Building2, badge: `of ${stats.totalSchools}`, theme: 'sky' },
-                    { value: stats.activeSubscriptions.toString(), label: 'Subscriptions', icon: CheckCircle2, badge: 'active', theme: 'emerald' },
+                    { value: stats.activeSchools.toString(), label: 'Active Schools', icon: Building2, badge: `of ${stats.totalSchools}`, theme: 'accent' },
+                    { value: stats.activeSubscriptions.toString(), label: 'Subscriptions', icon: CheckCircle2, badge: 'active', theme: 'sky' },
                     { value: `₹${stats.totalRevenue.toLocaleString('en-IN')}`, label: 'Total Revenue', icon: IndianRupee, badge: 'all-time', theme: 'amber' },
                 ].map((item, i) => {
-                    const themes = {
+                    const themes: Record<string, string> = {
+                        accent: isDark ? accent.softDark : accent.softLight,
                         sky: isDark ? 'bg-sky-400/10 text-sky-400 border-sky-400/20' : 'bg-sky-50 text-sky-600 border-sky-100',
-                        emerald: isDark ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100',
                         amber: isDark ? 'bg-amber-400/10 text-amber-400 border-amber-400/20' : 'bg-amber-50 text-amber-600 border-amber-100',
                     };
-                    const activeTheme = themes[item.theme as keyof typeof themes];
+                    const activeTheme = themes[item.theme] || themes.accent;
                     return (
                         <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                             className={`rounded-[24px] border p-6 transition-all duration-300 shadow-lg shadow-black/5 flex flex-col justify-between group ${t.card(isDark)} ${t.cardHover(isDark)} ${t.cardHoverAccent(isDark, accent)}`}>

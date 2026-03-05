@@ -112,7 +112,7 @@ export default function StudentDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Sparkles className="w-8 h-8 text-indigo-600 animate-spin" />
+        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -143,9 +143,9 @@ export default function StudentDashboard() {
                   {getGreeting()}, {userProfile?.full_name?.split(' ')[0] || 'Student'}
                 </span>
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 tracking-tight text-slate-900 leading-tight">
-                  Ready to continue<br />
+                  Continue your<br />
                   <span className="text-indigo-600">
-                    your learning path?
+                    learning journey
                   </span>
                 </h2>
                 <p className="text-slate-600 text-base sm:text-lg mb-8 max-w-lg">

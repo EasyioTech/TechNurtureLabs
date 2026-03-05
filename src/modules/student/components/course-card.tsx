@@ -27,23 +27,22 @@ export function CourseCard({ course }: { course: Course }) {
                     <img
                         src={course.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600'}
                         alt={course.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:opacity-90 transition-opacity duration-300"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                    <div className="absolute bottom-3 left-3">
-                        <span className="text-xs font-medium text-white/90">{course.totalLessons} lessons</span>
-                    </div>
                 </div>
 
                 <CardContent className="p-4 sm:p-5 flex-1 flex flex-col">
-                    <div className="flex-1">
-                        <h4 className="font-semibold text-base text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors duration-150">
+                    <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-bold text-base text-slate-800 group-hover:text-indigo-600 transition-colors duration-150">
                             {course.title}
                         </h4>
-                        <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
-                            {course.description || 'Interactive lessons and practice exercises.'}
-                        </p>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
+                            {course.totalLessons} LESSONS
+                        </span>
                     </div>
+                    <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed font-medium">
+                        {course.description || 'Interactive lessons and practice exercises.'}
+                    </p>
 
                     <div className="mt-4 space-y-3">
                         <div className="flex items-center justify-between text-sm">

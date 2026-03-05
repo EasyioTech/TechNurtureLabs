@@ -216,9 +216,9 @@ export function LessonDialog({
 
                                     {/* Uploaded / library-selected file preview */}
                                     {editingLesson?.content_url && editingLesson.content_url.startsWith('/api/media/') && (
-                                        <div className={`relative flex items-center gap-3 p-3 rounded-2xl border-2 ${isDark ? `border-${accent.name}-400/20 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : 'border-emerald-200 bg-emerald-50'}`}>
+                                        <div className={`relative flex items-center gap-3 p-3 rounded-2xl border-2 ${isDark ? `border-${accent.name}-400/20 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-300/50 ${accent.softLight.split(' ')[0]}`}`}>
                                             <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${isDark ? accent.softDark.split(' ')[0] : 'bg-white shadow-sm'}`}>
-                                                <FileText size={16} className={isDark ? accent.text : 'text-emerald-700'} />
+                                                <FileText size={16} className={isDark ? accent.text : `text-${accent.name}-700`} />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className={`text-[11px] font-black truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -283,7 +283,7 @@ export function LessonDialog({
                             </div>
                         </div>
 
-                        <div className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-colors ${(editingLesson?.is_published ?? true) ? (isDark ? `border-${accent.name}-400/30 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-400/30 bg-emerald-50`) : t.border(isDark)}`}>
+                        <div className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-colors ${(editingLesson?.is_published ?? true) ? (isDark ? `border-${accent.name}-400/30 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-300/50 ${accent.softLight.split(' ')[0]}`) : t.border(isDark)}`}>
                             <div className="space-y-1">
                                 <Label className={`text-sm font-black ${((editingLesson?.is_published ?? true) && isDark) ? accent.text : t.textPrimary(isDark)}`}>Publish Lesson</Label>
                                 <p className={`text-[11px] font-bold ${t.textMuted(isDark)}`}>Make this lesson available to students.</p>
