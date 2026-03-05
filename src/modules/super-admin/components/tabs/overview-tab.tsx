@@ -140,9 +140,9 @@ export function OverviewTab({ stats, paymentPlans, schoolsList }: OverviewTabPro
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <MiniStat label="Schools" value={`${stats.activeSchools}`} icon={School} theme="accent" delay={0.2} />
-                <MiniStat label="Total XP" value={stats.totalXp.toLocaleString()} icon={Zap} theme="violet" delay={0.24} />
-                <MiniStat label="Enrollments" value={stats.totalEnrollments.toString()} icon={GraduationCap} theme="sky" delay={0.28} />
-                <MiniStat label="Active Subs" value={stats.activeSubscriptions.toString()} icon={Activity} theme="amber" delay={0.32} />
+                <MiniStat label="Total XP" value={stats.totalXp.toLocaleString()} icon={Zap} theme="accent" delay={0.24} />
+                <MiniStat label="Enrollments" value={stats.totalEnrollments.toString()} icon={GraduationCap} theme="accent" delay={0.28} />
+                <MiniStat label="Active Subs" value={stats.activeSubscriptions.toString()} icon={Activity} theme="accent" delay={0.32} />
             </div>
 
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.36 }}>

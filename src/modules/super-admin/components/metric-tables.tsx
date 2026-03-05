@@ -61,7 +61,7 @@ export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: 
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
                                             <p className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>{u.full_name}</p>
-                                            <Badge className={`text-[9px] font-black h-4 px-1.5 ${isDark ? 'bg-sky-400/10 text-sky-400' : 'bg-sky-100 text-sky-700'}`}>LVL {u.level}</Badge>
+                                            <Badge className={`text-[9px] font-black h-4 px-1.5 ${isDark ? accent.softDark.split(' ').slice(0, 2).join(' ') : accent.softLight.split(' ').slice(0, 2).join(' ')}`}>LVL {u.level}</Badge>
                                         </div>
                                         <p className={`text-[11px] font-medium leading-none mt-0.5 ${t.textMuted(isDark)}`}>{u.email}</p>
                                     </div>
@@ -73,7 +73,7 @@ export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: 
                                         <p className={`text-lg font-[900] tracking-tighter ${isDark ? accent.text : 'text-slate-900'}`}>{u.total_xp.toLocaleString()} XP</p>
                                         <div className="flex items-center gap-2 mt-0.5">
                                             <span className="text-[10px] text-orange-500 font-black flex items-center gap-0.5"><Zap size={10} fill="currentColor" />{u.current_streak}D</span>
-                                            <span className="text-[10px] text-emerald-500 font-black flex items-center gap-0.5"><CheckCircle2 size={10} />{u.lessons_completed}</span>
+                                            <span className={`text-[10px] ${isDark ? accent.text : `text-${accent.name}-600`} font-black flex items-center gap-0.5`}><CheckCircle2 size={10} />{u.lessons_completed}</span>
                                         </div>
                                     </div>
                                 </motion.div>
@@ -132,8 +132,8 @@ export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: 
                                                 {c.is_published ? 'ACTIVE' : 'DRAFT'}
                                             </Badge>
                                         </td>
-                                        <td className="px-6 py-5 text-right font-bold text-[13px]">{c.lesson_count}</td>
-                                        <td className="px-6 py-5 text-right font-black text-[13px] text-sky-500">{c.enrolled_count}</td>
+                                        <td className="px-6 py-5 text-right font-black text-[13px]">{c.lesson_count}</td>
+                                        <td className={`px-6 py-5 text-right font-black text-[13px] ${isDark ? accent.text : `text-${accent.name}-600`}`}>{c.enrolled_count}</td>
                                         <td className="px-6 py-5 text-right min-w-[140px]">
                                             <div className="flex items-center justify-end gap-2.5">
                                                 <div className={`w-16 h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-slate-100'} ring-1 ring-black/5`}>
@@ -143,7 +143,7 @@ export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: 
                                                 <span className={`text-[12px] font-black tracking-tight ${t.textPrimary(isDark)}`}>{c.completion_rate}%</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 text-right"><Badge className="bg-sky-500/10 text-sky-500 border-sky-400/20 text-[10px] font-black">{c.avg_xp} XP</Badge></td>
+                                        <td className="px-6 py-5 text-right"><Badge className={`text-[10px] font-black ${isDark ? accent.softDark.split(' ').slice(0, 2).join(' ') : accent.softLight.split(' ').slice(0, 2).join(' ')}`}>{c.avg_xp} XP</Badge></td>
                                         <td className="px-6 py-5 text-right">
                                             <div className="flex flex-col items-end">
                                                 <span className={`text-[12px] font-black ${t.textPrimary(isDark)}`}>{c.total_time_mins}m</span>
