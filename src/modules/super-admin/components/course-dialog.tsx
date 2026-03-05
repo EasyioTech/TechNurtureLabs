@@ -277,7 +277,7 @@ export function CourseDialog({
                             </p>
                         </div>
 
-                        <div className={`flex items-center justify-between p-5 rounded-[24px] border-2 transition-colors ${editingCourse?.published ? (isDark ? `border-${accent.name}-400/30 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-400/30 bg-emerald-50`) : t.border(isDark)}`}>
+                        <div className={`flex items-center justify-between p-5 rounded-[24px] border-2 transition-colors ${editingCourse?.published ? (isDark ? `border-${accent.name}-400/30 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-300/50 ${accent.softLight.split(' ')[0]}`) : t.border(isDark)}`}>
                             <div className="space-y-1">
                                 <Label className={`text-sm font-black ${editingCourse?.published && isDark ? accent.text : t.textPrimary(isDark)}`}>PUBLISHED STATUS</Label>
                                 <p className={`text-[11px] font-bold ${t.textMuted(isDark)}`}>Make this course visible to students.</p>

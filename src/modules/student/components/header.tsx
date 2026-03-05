@@ -107,7 +107,7 @@ export function StudentHeader({ profile, stats, searchQuery, setSearchQuery }: S
 
                         {/* Avatar + name (desktop) */}
                         <Link href="/student/profile" className="hidden sm:flex items-center gap-2.5 pl-1 group">
-                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shadow-sm ring-2 ring-white group-hover:ring-indigo-100 transition-all duration-150">
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm ring-2 ring-white group-hover:ring-indigo-100 transition-all duration-150">
                                 {initials}
                             </div>
                             <div className="hidden lg:block leading-none">
@@ -214,7 +214,7 @@ export function StudentHeader({ profile, stats, searchQuery, setSearchQuery }: S
 
                             {/* Profile card */}
                             <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
-                                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold ring-2 ring-white shadow">
+                                <div className="w-11 h-11 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold ring-2 ring-white shadow">
                                     {initials}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -289,8 +289,8 @@ function NavItem({ icon: Icon, label, href, active, close }: { icon: any; label:
             href={href}
             onClick={close}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors duration-100 ${active
-                    ? 'bg-indigo-50 text-indigo-600'
-                    : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100'
+                ? 'bg-indigo-50 text-indigo-600'
+                : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100'
                 }`}
         >
             <Icon size={18} className={active ? 'text-indigo-500' : 'text-slate-400'} />

@@ -150,7 +150,7 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
     };
 
     if (loading) return (
-        <div className="fixed inset-0 z-[200] bg-[#0f1219] flex flex-col items-center justify-center gap-6">
+        <div className={`fixed inset-0 z-[200] ${isDark ? 'bg-[#0f1219]' : 'bg-slate-50'} flex flex-col items-center justify-center gap-6`}>
             <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -158,7 +158,7 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
             />
             <div className="text-center space-y-2">
                 <p className={`text-xs font-black uppercase tracking-[0.2em] ${accent.text} animate-pulse`}>Loading Assessment</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Preparing your workspace...</p>
+                <p className={`text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'} uppercase tracking-widest`}>Preparing your workspace...</p>
             </div>
         </div>
     );
@@ -172,10 +172,10 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-[#0A0C10] flex flex-col font-sans select-none overflow-hidden"
+            className={`fixed inset-0 z-[200] ${isDark ? 'bg-[#0A0C10]' : 'bg-slate-50'} flex flex-col font-sans select-none overflow-hidden`}
         >
             {/* ─── Top Header ────────────────────────────────────────────────── */}
-            <header className="min-h-[72px] md:h-20 border-b border-white/5 flex flex-col md:flex-row items-center justify-between px-4 md:px-8 py-3 md:py-0 bg-[#0D0F14]/80 backdrop-blur-xl gap-4 md:gap-0 shrink-0">
+            <header className={`min-h-[72px] md:h-20 border-b ${isDark ? 'border-white/5 bg-[#0D0F14]/80' : 'border-slate-200 bg-white/80'} flex flex-col md:flex-row items-center justify-between px-4 md:px-8 py-3 md:py-0 backdrop-blur-xl gap-4 md:gap-0 shrink-0`}>
                 <div className="flex items-center gap-3 md:gap-6 w-full md:w-auto">
                     <button
                         onClick={onClose}
@@ -198,7 +198,7 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                 </div>
 
                 <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end">
-                    <div className="flex p-0.5 md:p-1 bg-white/[0.03] rounded-full border border-white/5">
+                    <div className={`flex p-0.5 md:p-1 ${isDark ? 'bg-white/[0.03] border-white/5' : 'bg-slate-100 border-slate-200 shadow-inner'} rounded-full border`}>
                         <button
                             onClick={() => setActiveTab('questions')}
                             className={`px-3 md:px-6 py-1.5 md:py-2 rounded-full text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'questions' ? `${accent.bg} text-slate-900 shadow-xl` : 'text-slate-500 hover:text-slate-300'}`}
@@ -232,14 +232,14 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
             {/* ─── Main Content Area ────────────────────────────────────────── */}
             <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
                 {/* Sidebar Stats - responsive handling */}
-                <aside className="hidden lg:block w-72 xl:w-80 border-r border-white/5 p-8 space-y-8 bg-[#0D0F14]/50 overflow-y-auto shrink-0">
+                <aside className={`hidden lg:block w-72 xl:w-80 border-r ${isDark ? 'border-white/5 bg-[#0D0F14]/50' : 'border-slate-200 bg-white/50'} p-8 space-y-8 overflow-y-auto shrink-0`}>
                     <div className="space-y-6">
                         <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Assessment Overview</h3>
 
                         <div className="grid grid-cols-1 gap-4">
-                            <StatCard icon={Sparkles} color="text-violet-400" label="XP Points" value={quiz.xp_reward} sub="Points per lesson" />
-                            <StatCard icon={Target} color="text-sky-400" label="Passing Score" value={`${quiz.pass_percentage}%`} sub="Min requirements" />
-                            <StatCard icon={Clock} color="text-emerald-400" label="Time Limit" value={quiz.time_limit_secs === 0 ? 'Unlimited' : `${Math.floor(quiz.time_limit_secs / 60)}m`} sub="Session duration" />
+                            <StatCard icon={Sparkles} color={accent.text} label="XP Points" value={quiz.xp_reward} sub="Points per lesson" />
+                            <StatCard icon={Target} color={accent.text} label="Passing Score" value={`${quiz.pass_percentage}%`} sub="Min requirements" />
+                            <StatCard icon={Clock} color={accent.text} label="Time Limit" value={quiz.time_limit_secs === 0 ? 'Unlimited' : `${Math.floor(quiz.time_limit_secs / 60)}m`} sub="Session duration" />
                         </div>
                     </div>
 
@@ -249,19 +249,19 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                         <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Summary</h3>
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Total Points</span>
-                                <span className="text-[11px] font-black text-white bg-white/5 px-2 py-1 rounded-lg border border-white/10">{totalPoints} PTS</span>
+                                <span className={`text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'} uppercase tracking-widest`}>Total Points</span>
+                                <span className={`text-[11px] font-black ${isDark ? 'text-white bg-white/5 border-white/10' : 'text-slate-900 bg-slate-100 border-slate-200'} px-2 py-1 rounded-lg border`}>{totalPoints} PTS</span>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Difficulty</span>
-                                <span className="text-[11px] font-black text-white tracking-widest uppercase">{quiz.questions.length > 5 ? 'Advanced' : 'Intermediate'}</span>
+                                <span className={`text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'} uppercase tracking-widest`}>Difficulty</span>
+                                <span className={`text-[11px] font-black ${isDark ? 'text-white' : 'text-slate-900'} tracking-widest uppercase`}>{quiz.questions.length > 5 ? 'Advanced' : 'Intermediate'}</span>
                             </div>
                         </div>
                     </div>
                 </aside>
 
                 {/* Question Canvas */}
-                <div id="questions-canvas" className="flex-1 bg-black/20 overflow-y-auto p-4 md:p-8 lg:p-12 custom-scrollbar relative">
+                <div id="questions-canvas" className={`flex-1 ${isDark ? 'bg-black/20' : 'bg-slate-100/50'} overflow-y-auto p-4 md:p-8 lg:p-12 custom-scrollbar relative`}>
                     <AnimatePresence mode="wait">
                         {activeTab === 'questions' ? (
                             <motion.div
@@ -273,12 +273,12 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                             >
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sm:mb-8">
                                     <div>
-                                        <h2 className="text-xl md:text-3xl font-black text-white tracking-tighter">Assessment Questions</h2>
-                                        <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Design your assessment logic here.</p>
+                                        <h2 className={`text-xl md:text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'} tracking-tighter`}>Assessment Questions</h2>
+                                        <p className={`text-[10px] md:text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'} uppercase tracking-widest mt-1`}>Design your assessment logic here.</p>
                                     </div>
                                     <Button
                                         onClick={addQuestion}
-                                        className="w-full sm:w-auto rounded-full bg-white text-slate-900 hover:bg-slate-200 font-black text-[10px] md:text-[11px] uppercase tracking-widest h-10 md:h-11 px-6 gap-2"
+                                        className={`w-full sm:w-auto rounded-full ${isDark ? 'bg-white text-slate-900 hover:bg-slate-200' : 'bg-slate-900 text-white hover:bg-slate-800'} font-black text-[10px] md:text-[11px] uppercase tracking-widest h-10 md:h-11 px-6 gap-2`}
                                     >
                                         <Plus size={16} strokeWidth={3} /> Add Question
                                     </Button>
@@ -296,12 +296,12 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
 
                                 {quiz.questions.length === 0 && (
                                     <div className="py-20 md:py-32 flex flex-col items-center justify-center text-center gap-6">
-                                        <div className="w-16 h-16 md:w-24 md:h-24 rounded-[32px] md:rounded-[40px] bg-white/[0.02] border border-white/5 flex items-center justify-center text-slate-700">
+                                        <div className={`w-16 h-16 md:w-24 md:h-24 rounded-[32px] md:rounded-[40px] ${isDark ? 'bg-white/[0.02] border-white/5 text-slate-700' : 'bg-slate-200 border-slate-300 text-slate-400'} flex items-center justify-center`}>
                                             <HelpCircle size={32} className="md:size-12" />
                                         </div>
                                         <div>
-                                            <h3 className="text-lg md:text-xl font-black text-white">No Questions Yet</h3>
-                                            <p className="text-[10px] md:text-sm font-bold text-slate-500 uppercase tracking-widest mt-2 px-6">Add your first question to get started.</p>
+                                            <h3 className={`text-lg md:text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>No Questions Yet</h3>
+                                            <p className={`text-[10px] md:text-sm font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'} uppercase tracking-widest mt-2 px-6`}>Add your first question to get started.</p>
                                         </div>
                                         <Button
                                             onClick={addQuestion}
@@ -321,17 +321,17 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                                 className="max-w-2xl mx-auto space-y-6 md:space-y-10"
                             >
                                 <div className="mb-6 md:mb-12 text-center md:text-left">
-                                    <h2 className="text-xl md:text-3xl font-black text-white tracking-tighter">Quiz Settings</h2>
-                                    <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Configure how this quiz behaves for students.</p>
+                                    <h2 className={`text-xl md:text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'} tracking-tighter`}>Quiz Settings</h2>
+                                    <p className={`text-[10px] md:text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'} uppercase tracking-widest mt-1`}>Configure how this quiz behaves for students.</p>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-6 md:gap-8 p-6 md:p-10 rounded-[32px] md:rounded-[40px] bg-[#11141B]/50 border border-white/5">
+                                <div className={`grid grid-cols-1 gap-6 md:gap-8 p-6 md:p-10 rounded-[32px] md:rounded-[40px] ${isDark ? 'bg-[#11141B]/50 border-white/5' : 'bg-white border-slate-200 shadow-xl'} border`}>
                                     <div className="space-y-3">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Quiz Title</Label>
                                         <Input
                                             value={quiz.title}
                                             onChange={(e) => setQuiz({ ...quiz, title: e.target.value })}
-                                            className={`h-14 md:h-16 rounded-2xl bg-black/30 border-white/5 px-6 font-black text-white focus:border-${accent.name}-400/30 transition-all`}
+                                            className={`h-14 md:h-16 rounded-2xl ${isDark ? 'bg-black/30 border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} px-6 font-black focus:border-${accent.name}-400/30 transition-all`}
                                         />
                                     </div>
 
@@ -342,15 +342,15 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                                         <SettingsField label="Rewards (XP)" value={quiz.xp_reward} onChange={(v: number) => setQuiz({ ...quiz, xp_reward: v })} />
                                     </div>
 
-                                    <div className="mt-4 flex items-center justify-between p-6 md:p-8 rounded-[24px] md:rounded-[32px] bg-white/[0.02] border border-white/10 group">
+                                    <div className={`mt-4 flex items-center justify-between p-6 md:p-8 rounded-[24px] md:rounded-[32px] ${isDark ? 'bg-white/[0.02] border-white/10' : 'bg-slate-50 border-slate-200'} border group`}>
                                         <div className="space-y-1 flex-1 pr-4">
-                                            <h4 className="text-[11px] font-black text-white uppercase tracking-widest">Publish Assessment</h4>
-                                            <p className="text-[9px] md:text-[10px] font-medium text-slate-500 leading-tight">Enable visibility of this assessment for enrolled students.</p>
+                                            <h4 className={`text-[11px] font-black ${isDark ? 'text-white' : 'text-slate-900'} uppercase tracking-widest`}>Publish Assessment</h4>
+                                            <p className={`text-[9px] md:text-[10px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'} leading-tight`}>Enable visibility of this assessment for enrolled students.</p>
                                         </div>
                                         <button
                                             onClick={() => setQuiz({ ...quiz, is_published: !quiz.is_published })}
-                                            className={`w-12 h-7 md:w-14 md:h-8 rounded-full p-1 transition-all shrink-0 ${quiz.is_published ? `${accent.bg}` : 'bg-slate-800'}`}
-                                            style={quiz.is_published ? t.glowStyle(true, accent) : {}}
+                                            className={`w-12 h-7 md:w-14 md:h-8 rounded-full p-1 transition-all shrink-0 ${quiz.is_published ? `${accent.bg}` : (isDark ? 'bg-slate-800' : 'bg-slate-300')}`}
+                                            style={quiz.is_published ? t.glowStyle(isDark, accent) : {}}
                                         >
                                             <div className={`w-5 h-5 md:w-6 md:h-6 rounded-full bg-white shadow-sm transition-all ${quiz.is_published ? 'translate-x-5 md:translate-x-6' : 'translate-x-0'}`} />
                                         </button>
@@ -375,14 +375,15 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
 // ─── Subcomponents ──────────────────────────────────────────────────
 
 function StatCard({ icon: Icon, color, label, value, sub }: any) {
+    const { isDark } = useAdminTheme();
     return (
-        <div className="p-4 rounded-2xl md:rounded-3xl bg-white/[0.02] border border-white/5 space-y-2">
+        <div className={`p-4 rounded-2xl md:rounded-3xl ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-white border-slate-200 shadow-sm'} border space-y-2`}>
             <div className={`flex items-center gap-2 ${color} mb-1`}>
                 <Icon size={14} />
                 <span className="text-[10px] font-black uppercase tracking-widest opacity-80">{label}</span>
             </div>
-            <div className="text-xl md:text-2xl font-black text-white">{value}</div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase leading-tight">{sub}</p>
+            <div className={`text-xl md:text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{value}</div>
+            <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'} font-bold uppercase leading-tight`}>{sub}</p>
         </div>
     );
 }
@@ -391,12 +392,12 @@ function SettingsField({ label, value, onChange }: any) {
     const { accent } = useAdminTheme();
     return (
         <div className="space-y-2.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">{label}</Label>
+            <Label className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'} px-1`}>{label}</Label>
             <Input
                 type="number"
                 value={value}
                 onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-                className={`h-12 md:h-14 rounded-xl md:rounded-2xl bg-black/20 border-white/5 px-4 md:px-6 font-bold text-white focus:border-${accent.name}-400/30 transition-all`}
+                className={`h-12 md:h-14 rounded-xl md:rounded-2xl ${isDark ? 'bg-black/20 border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900 shadow-inner'} px-4 md:px-6 font-bold focus:border-${accent.name}-400/30 transition-all`}
             />
         </div>
     );
@@ -409,18 +410,18 @@ function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
             layout
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group relative p-6 md:p-10 rounded-[32px] md:rounded-[48px] bg-[#11141B] border border-white/5 hover:border-white/10 transition-all shadow-2xl"
+            className={`group relative p-6 md:p-10 rounded-[32px] md:rounded-[48px] ${isDark ? 'bg-[#11141B] border-white/5' : 'bg-white border-slate-200 shadow-xl'} border hover:border-white/10 transition-all`}
         >
             <div className={`absolute -left-3 md:-left-4 top-8 md:top-10 w-7 h-7 md:w-8 md:h-8 rounded-lg md:rounded-xl ${accent.bg} text-slate-900 flex items-center justify-center font-black text-xs md:text-sm shadow-xl z-10`}
-                style={t.glowStyle(true, accent)}>
+                style={t.glowStyle(isDark, accent)}>
                 {idx + 1}
             </div>
 
             <div className="flex justify-between items-start mb-6 md:mb-10 pl-4 md:pl-6">
                 <div className="space-y-1">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-600">Question Type</Label>
+                    <Label className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Question Type</Label>
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-full uppercase tracking-widest">Multiple Choice</span>
+                        <span className={`text-[10px] font-black ${isDark ? 'text-white bg-white/5 border-white/10' : 'text-slate-900 bg-slate-100 border-slate-200'} px-3 py-1.5 rounded-full uppercase tracking-widest`}>Multiple Choice</span>
                     </div>
                 </div>
                 <button
@@ -433,18 +434,18 @@ function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
 
             <div className="space-y-8 md:space-y-10 pl-4 md:pl-6">
                 <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Question Text</Label>
+                    <Label className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Question Text</Label>
                     <Textarea
                         value={q.question_text}
                         onChange={(e) => onUpdate({ question_text: e.target.value })}
                         placeholder="Define the question context..."
-                        className={`bg-black/30 border-white/5 rounded-2xl md:rounded-[32px] min-h-[100px] md:min-h-[120px] p-5 md:p-6 text-sm md:text-base font-medium text-white placeholder:text-slate-700 focus:border-${accent.name}-400/30 transition-all resize-none`}
+                        className={`${isDark ? 'bg-black/30 border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} rounded-2xl md:rounded-[32px] min-h-[100px] md:min-h-[120px] p-5 md:p-6 text-sm md:text-base font-medium placeholder:text-slate-700 focus:border-${accent.name}-400/30 transition-all resize-none`}
                     />
                 </div>
 
                 <div className="space-y-6">
                     <div className="flex items-center justify-between mb-2 px-1">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Answer Options</Label>
+                        <Label className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Answer Options</Label>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                         {q.options.map((opt: string, oIdx: number) => (
@@ -456,11 +457,11 @@ function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
                                         newOpts[oIdx] = e.target.value;
                                         onUpdate({ options: newOpts });
                                     }}
-                                    className={`h-14 md:h-16 pl-14 md:pl-16 pr-6 rounded-full font-bold text-xs md:text-sm bg-black/20 border-white/5 text-white transition-all ${q.correct_answer === oIdx ? `border-${accent.name}-400/50 ${accent.softDark.split(' ')[0]}` : 'hover:border-white/10'}`}
+                                    className={`h-14 md:h-16 pl-14 md:pl-16 pr-6 rounded-full font-bold text-xs md:text-sm ${isDark ? 'bg-black/20 border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} transition-all ${q.correct_answer === oIdx ? `border-${accent.name}-400/50 ${isDark ? accent.softDark.split(' ')[0] : accent.softLight.split(' ')[0]}` : 'hover:border-white/10'}`}
                                 />
                                 <button
                                     onClick={() => onUpdate({ correct_answer: oIdx })}
-                                    className={`absolute left-3.5 md:left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${q.correct_answer === oIdx ? `${accent.bg} text-slate-900 shadow-lg` : 'bg-white/5 text-transparent border border-white/10 hover:text-slate-500'}`}
+                                    className={`absolute left-3.5 md:left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${q.correct_answer === oIdx ? `${accent.bg} text-slate-900 shadow-lg` : (isDark ? 'bg-white/5 border-white/10 text-transparent' : 'bg-slate-100 border-slate-200 text-transparent hover:text-slate-400')} border`}
                                 >
                                     <Check size={14} strokeWidth={4} />
                                 </button>
@@ -470,12 +471,12 @@ function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
                 </div>
 
                 <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Explanation (Optional)</Label>
+                    <Label className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Explanation (Optional)</Label>
                     <Input
                         value={q.explanation}
                         onChange={(e) => onUpdate({ explanation: e.target.value })}
                         placeholder="Provide an explanation for the correct answer..."
-                        className="bg-white/[0.03] border-white/5 h-12 md:h-14 rounded-full px-5 md:px-6 text-[13px] font-medium text-slate-400 placeholder:text-slate-700"
+                        className={`${isDark ? 'bg-white/[0.03] border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'} h-12 md:h-14 rounded-full px-5 md:px-6 text-[13px] font-medium placeholder:text-slate-700`}
                     />
                 </div>
             </div>

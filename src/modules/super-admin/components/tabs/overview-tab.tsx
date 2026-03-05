@@ -56,12 +56,13 @@ function StatCard({ label, value, badge, icon: Icon, extra, delay = 0 }: {
     );
 }
 
-function MiniStat({ label, value, icon: Icon, theme = 'emerald', delay = 0 }: {
-    label: string; value: string; icon?: React.ElementType; theme?: 'emerald' | 'violet' | 'sky' | 'amber' | 'rose'; delay?: number;
+function MiniStat({ label, value, icon: Icon, theme = 'accent', delay = 0 }: {
+    label: string; value: string; icon?: React.ElementType; theme?: 'emerald' | 'violet' | 'sky' | 'amber' | 'rose' | 'accent'; delay?: number;
 }) {
     const { isDark, accent } = useAdminTheme();
 
-    const themes = {
+    const themes: Record<string, string> = {
+        accent: isDark ? accent.softDark : accent.softLight,
         emerald: isDark ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100',
         violet: isDark ? 'bg-violet-400/10 text-violet-400 border-violet-400/20' : 'bg-violet-50 text-violet-600 border-violet-100',
         sky: isDark ? 'bg-sky-400/10 text-sky-400 border-sky-400/20' : 'bg-sky-50 text-sky-600 border-sky-100',
@@ -69,7 +70,7 @@ function MiniStat({ label, value, icon: Icon, theme = 'emerald', delay = 0 }: {
         rose: isDark ? 'bg-rose-400/10 text-rose-400 border-rose-400/20' : 'bg-rose-50 text-rose-600 border-rose-100',
     };
 
-    const activeTheme = themes[theme] || themes.emerald;
+    const activeTheme = themes[theme] || themes.accent;
 
     return (
         <motion.div
@@ -138,7 +139,7 @@ export function OverviewTab({ stats, paymentPlans, schoolsList }: OverviewTabPro
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <MiniStat label="Schools" value={`${stats.activeSchools}`} icon={School} theme="emerald" delay={0.2} />
+                <MiniStat label="Schools" value={`${stats.activeSchools}`} icon={School} theme="accent" delay={0.2} />
                 <MiniStat label="Total XP" value={stats.totalXp.toLocaleString()} icon={Zap} theme="violet" delay={0.24} />
                 <MiniStat label="Enrollments" value={stats.totalEnrollments.toString()} icon={GraduationCap} theme="sky" delay={0.28} />
                 <MiniStat label="Active Subs" value={stats.activeSubscriptions.toString()} icon={Activity} theme="amber" delay={0.32} />

@@ -68,7 +68,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Sparkles className="w-8 h-8 text-indigo-600 animate-spin" />
+        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -97,30 +97,29 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
           <div className="lg:col-span-2 space-y-6">
             <div>
               <Card className="bg-white border-slate-200 shadow-sm overflow-hidden">
-                <div className="h-64 relative overflow-hidden bg-slate-100">
+                <div className="h-48 sm:h-64 relative overflow-hidden bg-slate-100">
                   <img
                     src={course?.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800'}
                     alt={course?.title}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent" />
-                  <div className="absolute bottom-6 left-6 right-6">
+                </div>
+
+                <CardContent className="p-6">
+                  <div className="mb-6">
                     <div className="flex items-center gap-2 mb-3">
-                      <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white border-0">
+                      <Badge className="bg-indigo-50 text-indigo-600 border border-indigo-100 font-bold px-2 py-0.5 rounded-md hover:bg-indigo-100 transition-colors">
                         {course?.all_grades ? 'All Grades' : `Grade ${course?.grade}`}
                       </Badge>
                       {progress === 100 && (
-                        <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-0">
+                        <Badge className="bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold px-2 py-0.5 rounded-md">
                           <CheckCircle2 size={12} className="mr-1" /> Completed
                         </Badge>
                       )}
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-2">{course?.title}</h1>
-                    <p className="text-white/90 line-clamp-2 text-sm">{course?.description}</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">{course?.title}</h2>
+                    <p className="text-slate-600 font-medium text-sm leading-relaxed">{course?.description}</p>
                   </div>
-                </div>
-
-                <CardContent className="p-6">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <StatBox icon={BookOpen} label="Lessons" value={lessons.length} color="indigo" />
                     <StatBox icon={Clock} label="Duration" value={`${totalDuration}m`} color="sky" />

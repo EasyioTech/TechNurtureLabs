@@ -85,8 +85,8 @@ export function PaymentPlansTab({
                                         ))}
                                         {plan.max_students && (
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-5 h-5 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-sky-400/10' : 'bg-emerald-50'}`}>
-                                                    <Users size={10} className={isDark ? 'text-sky-400' : 'text-emerald-600'} />
+                                                <div className={`w-5 h-5 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? accent.softDark.split(' ')[0] : accent.softLight.split(' ')[0]}`}>
+                                                    <Users size={10} className={isDark ? accent.text : `text-${accent.name}-600`} />
                                                 </div>
                                                 <span className={`text-[13px] font-bold ${t.textSecondary(isDark)}`}>Up to {plan.max_students.toLocaleString()} students</span>
                                             </div>

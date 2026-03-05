@@ -10,11 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, CheckCircle2, Clock, Play, FileText, Trophy,
   Zap, ExternalLink, AlertCircle, ChevronRight, MonitorPlay,
-  HelpCircle, BookOpen
+  HelpCircle, BookOpen, User, Star
 } from 'lucide-react';
 import Link from 'next/link';
-import confetti from 'canvas-confetti';
-import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Types ────────────────────────────────────────────────────────
 type Question = {
@@ -52,10 +50,10 @@ type Lesson = {
 
 // ─── Content type helpers ──────────────────────────────────────────
 const CONTENT_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  video: { label: 'Video Lesson', icon: Play, color: 'text-violet-400' },
-  ppt: { label: 'Presentation', icon: MonitorPlay, color: 'text-blue-400' },
-  pdf: { label: 'Document', icon: FileText, color: 'text-emerald-400' },
-  quiz: { label: 'Assessment', icon: HelpCircle, color: 'text-amber-400' },
+  video: { label: 'Video Lesson', icon: Play, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
+  ppt: { label: 'Presentation', icon: MonitorPlay, color: 'text-sky-600 bg-sky-50 border-sky-100' },
+  pdf: { label: 'Document', icon: FileText, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
+  quiz: { label: 'Assessment', icon: HelpCircle, color: 'text-amber-600 bg-amber-50 border-amber-100' },
 };
 
 function isYouTubeUrl(url: string) {
@@ -104,7 +102,6 @@ export default function LessonPlayerPage() {
   const completeLesson = useCallback(async (quizPercentage?: number, isPerfect?: boolean) => {
     if (lessonComplete) return;
     setLessonComplete(true);
-    confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, colors: ['#10b981', '#8b5cf6', '#f59e0b', '#ec4899'] });
     try {
       await completeLessonAndReward(lessonId, quizPercentage, isPerfect);
     } catch (err) { console.error('Failed to record completion:', err); }
@@ -121,20 +118,20 @@ export default function LessonPlayerPage() {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-zinc-400 text-sm font-medium animate-pulse">Loading your lesson...</p>
+        <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-slate-500 font-medium animate-pulse">Loading lesson...</p>
       </div>
     </div>
   );
 
   if (!lesson) return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="text-center space-y-4">
-        <AlertCircle size={48} className="mx-auto text-red-400" />
-        <h2 className="text-xl font-bold text-white">Lesson Not Found</h2>
-        <p className="text-zinc-400">This lesson doesn't exist or you don't have access.</p>
+        <AlertCircle size={48} className="mx-auto text-red-500" />
+        <h2 className="text-xl font-bold text-slate-800">Lesson Not Found</h2>
+        <p className="text-slate-500">This lesson doesn't exist or you don't have access.</p>
         <Link href="/student"><Button variant="outline">Return to Dashboard</Button></Link>
       </div>
     </div>
@@ -144,23 +141,24 @@ export default function LessonPlayerPage() {
   const ConfigIcon = config.icon;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-50 bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-800">
+      <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href={`/student/course/${lesson.course_id}`} className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
-            <ArrowLeft size={20} />
-            <span className="text-sm font-medium">Back to Course</span>
+          <Link href={`/student/course/${lesson.course_id}`} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors">
+            <ArrowLeft size={18} />
+            <span className="text-sm font-semibold">Back to Course</span>
           </Link>
-          <div className="flex items-center gap-3">
-            <Badge className={`bg-zinc-800 border-zinc-700 text-xs font-bold ${config.color}`}>
-              <ConfigIcon size={10} className="mr-1.5" />{config.label}
-            </Badge>
-            <div className="flex items-center gap-1.5 text-zinc-400 text-sm">
+          <div className="flex items-center gap-4">
+            <div className={`px-2.5 py-1 rounded border text-xs font-bold flex items-center ${config.color}`}>
+              <ConfigIcon size={12} className="mr-1.5" />{config.label}
+            </div>
+            <div className="flex items-center gap-1.5 text-slate-500 text-sm font-medium">
               <Clock size={14} /><span>{lesson.duration} min</span>
             </div>
-            <div className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-sm font-bold border border-amber-500/20">
-              +{lesson.xp_reward} XP
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-50 text-amber-600 text-sm font-bold border border-amber-100">
+              <Star size={14} fill="currentColor" />
+              <span>+{lesson.xp_reward} XP</span>
             </div>
           </div>
         </div>
@@ -168,9 +166,14 @@ export default function LessonPlayerPage() {
 
       {/* ── Content ── */}
       <main className="max-w-5xl mx-auto px-6 py-10">
-        <div className="mb-8">
-          <h1 className="text-3xl font-black mb-2">{lesson.title}</h1>
-          <p className={`text-sm ${config.color} font-semibold`}>{config.label}</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 mb-1">{lesson.title}</h1>
+            <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
+              <ConfigIcon size={16} />
+              {config.label}
+            </p>
+          </div>
         </div>
 
         {/* ── VIDEO ── */}
@@ -206,24 +209,18 @@ export default function LessonPlayerPage() {
         )}
 
         {/* ── Completion Banner ── */}
-        <AnimatePresence>
-          {lessonComplete && lesson.content_type !== 'quiz' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-10 p-8 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center"
-            >
-              <CheckCircle2 size={48} className="mx-auto text-emerald-400 mb-4" />
-              <h3 className="text-2xl font-black text-emerald-400 mb-2">Lesson Complete! 🎉</h3>
-              <p className="text-zinc-400 mb-6">You earned <span className="text-amber-400 font-bold">+{lesson.xp_reward} XP</span></p>
-              <Link href={`/student/course/${lesson.course_id}`}>
-                <Button className="bg-emerald-500 hover:bg-emerald-600 rounded-full h-12 px-8 font-bold">
-                  Continue Journey <ChevronRight size={18} className="ml-1" />
-                </Button>
-              </Link>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {lessonComplete && lesson.content_type !== 'quiz' && (
+          <div className="mt-8 p-8 rounded-xl bg-emerald-50 border border-emerald-100 text-center shadow-sm">
+            <CheckCircle2 size={48} className="mx-auto text-emerald-500 mb-4" />
+            <h3 className="text-2xl font-bold text-emerald-900 mb-2">Lesson Complete!</h3>
+            <p className="text-emerald-700 mb-6 font-medium">You earned <span className="font-bold text-emerald-800">+{lesson.xp_reward} XP</span></p>
+            <Link href={`/student/course/${lesson.course_id}`}>
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white h-12 px-8 font-bold border-0 shadow-sm">
+                Continue Journey <ChevronRight size={18} className="ml-1" />
+              </Button>
+            </Link>
+          </div>
+        )}
       </main>
     </div>
   );
@@ -242,8 +239,8 @@ function VideoPlayer({ url, videoRef, videoProgress, onTimeUpdate, lessonComplet
   const isYT = isYouTubeUrl(url);
 
   return (
-    <div className="space-y-5">
-      <div className="aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-zinc-800">
+    <div className="space-y-6">
+      <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-sm border border-slate-200">
         {isYT ? (
           <iframe
             src={toYouTubeEmbed(url)}
@@ -256,30 +253,37 @@ function VideoPlayer({ url, videoRef, videoProgress, onTimeUpdate, lessonComplet
             ref={videoRef}
             src={url}
             controls
-            className="w-full h-full"
+            className="w-full h-full object-contain"
             onTimeUpdate={onTimeUpdate}
           />
         )}
       </div>
 
       {isYT ? (
-        <div className={`flex items-center justify-between p-5 rounded-xl ${lessonComplete ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-zinc-900 border border-zinc-800'}`}>
-          <p className="text-sm text-zinc-400">Watch the full video, then mark it as complete.</p>
+        <div className={`flex items-center justify-between p-5 rounded-xl ${lessonComplete ? 'bg-emerald-50 border border-emerald-100' : 'bg-white border border-slate-200'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${lessonComplete ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+              {lessonComplete ? <CheckCircle2 size={20} /> : <Play size={20} />}
+            </div>
+            <div>
+              <p className={`font-bold ${lessonComplete ? 'text-emerald-800' : 'text-slate-800'}`}>Video Lesson</p>
+              <p className={`text-sm ${lessonComplete ? 'text-emerald-600' : 'text-slate-500'}`}>Watch the full video, then mark it as complete.</p>
+            </div>
+          </div>
           {!lessonComplete && (
-            <Button onClick={onComplete} className="rounded-full bg-emerald-500 hover:bg-emerald-600 h-10 px-6 font-bold">
-              <CheckCircle2 size={16} className="mr-2" /> Mark Complete
+            <Button onClick={onComplete} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-10 border-0 shadow-sm">
+              Mark Complete <CheckCircle2 size={16} className="ml-2" />
             </Button>
           )}
-          {lessonComplete && <CheckCircle2 size={24} className="text-emerald-400" />}
         </div>
       ) : (
-        <div className="space-y-2 p-4 bg-zinc-900 rounded-xl border border-zinc-800">
-          <div className="flex justify-between text-sm text-zinc-400">
+        <div className="space-y-3 p-5 bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex justify-between text-sm font-semibold text-slate-700">
             <span>Watch Progress</span>
-            <span className="font-bold text-white">{Math.round(videoProgress)}%</span>
+            <span className="text-indigo-600">{Math.round(videoProgress)}%</span>
           </div>
-          <Progress value={videoProgress} className="h-2" />
-          <p className="text-xs text-zinc-600">Watch 90% of the video to unlock the next lesson</p>
+          <Progress value={videoProgress} className="h-2 bg-slate-100 [&>div]:bg-indigo-600" />
+          <p className="text-xs text-slate-500 font-medium">Watch 90% of the video to unlock the next lesson</p>
         </div>
       )}
     </div>
@@ -296,10 +300,10 @@ function PDFViewer({ url, onComplete, lessonComplete }: {
   const [loaded, setLoaded] = useState(false);
 
   if (!url) return (
-    <div className="aspect-video bg-zinc-900 rounded-2xl border border-zinc-800 flex flex-col items-center justify-center gap-4">
-      <FileText size={56} className="text-zinc-600" />
-      <p className="text-zinc-500 text-sm">No document attached to this lesson.</p>
-      <Button onClick={onComplete} className="rounded-full bg-emerald-500 hover:bg-emerald-600">Mark Complete</Button>
+    <div className="aspect-video bg-white rounded-xl border border-slate-200 flex flex-col items-center justify-center gap-4">
+      <FileText size={48} className="text-slate-300" />
+      <p className="text-slate-500 font-medium">No document attached to this lesson.</p>
+      <Button onClick={onComplete} className="bg-indigo-600 hover:bg-indigo-700 text-white border-0">Mark Complete</Button>
     </div>
   );
 
@@ -308,39 +312,41 @@ function PDFViewer({ url, onComplete, lessonComplete }: {
     : toGoogleDocsViewer(url);
 
   return (
-    <div className="space-y-5">
-      <div className="w-full bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl" style={{ height: '75vh' }}>
+    <div className="space-y-6">
+      <div className="w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 shadow-sm relative" style={{ height: '75vh' }}>
         <iframe
           src={viewerUrl}
           className="w-full h-full"
           onLoad={() => setLoaded(true)}
         />
         {!loaded && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-50">
+            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </div>
-      <div className={`flex items-center justify-between p-5 rounded-xl ${lessonComplete ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-zinc-900 border border-zinc-800'}`}>
+      <div className={`flex items-center justify-between p-5 rounded-xl shadow-sm ${lessonComplete ? 'bg-emerald-50 border border-emerald-100' : 'bg-white border border-slate-200'}`}>
         <div className="flex items-center gap-3">
-          <FileText size={20} className="text-emerald-400" />
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${lessonComplete ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+            {lessonComplete ? <CheckCircle2 size={20} /> : <FileText size={20} />}
+          </div>
           <div>
-            <p className="text-sm font-bold text-white">Document Lesson</p>
-            <p className="text-xs text-zinc-500">Read through the document above, then mark it complete.</p>
+            <p className={`font-bold ${lessonComplete ? 'text-emerald-800' : 'text-slate-800'}`}>Document Lesson</p>
+            <p className={`text-sm ${lessonComplete ? 'text-emerald-600' : 'text-slate-500'}`}>Read through the document above, then mark it complete.</p>
           </div>
         </div>
-        {!lessonComplete ? (
-          <Button onClick={onComplete} className="rounded-full bg-emerald-500 hover:bg-emerald-600 h-10 px-6 font-bold">
-            <CheckCircle2 size={16} className="mr-2" /> Mark Complete
+        {!lessonComplete && (
+          <Button onClick={onComplete} className="bg-indigo-600 hover:bg-indigo-700 text-white h-10 px-6 font-bold border-0 shadow-sm">
+            Mark Complete <CheckCircle2 size={16} className="ml-2" />
           </Button>
-        ) : (
-          <CheckCircle2 size={24} className="text-emerald-400" />
         )}
       </div>
       {url && (
-        <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-zinc-500 hover:text-white text-sm transition-colors">
-          <ExternalLink size={14} /> Open document in a new tab
-        </a>
+        <div className="flex justify-end">
+          <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-sm font-semibold transition-colors">
+            <ExternalLink size={14} /> Open document in a new tab
+          </a>
+        </div>
       )}
     </div>
   );
@@ -354,43 +360,44 @@ function PPTViewer({ url, onComplete, lessonComplete }: {
   lessonComplete: boolean;
 }) {
   if (!url) return (
-    <div className="aspect-video bg-zinc-900 rounded-2xl border border-zinc-800 flex flex-col items-center justify-center gap-4">
-      <MonitorPlay size={56} className="text-zinc-600" />
-      <p className="text-zinc-500 text-sm">No presentation attached to this lesson.</p>
-      <Button onClick={onComplete} className="rounded-full bg-emerald-500 hover:bg-emerald-600">Mark Complete</Button>
+    <div className="aspect-video bg-white rounded-xl border border-slate-200 flex flex-col items-center justify-center gap-4">
+      <MonitorPlay size={48} className="text-slate-300" />
+      <p className="text-slate-500 font-medium">No presentation attached to this lesson.</p>
+      <Button onClick={onComplete} className="bg-indigo-600 hover:bg-indigo-700 text-white border-0">Mark Complete</Button>
     </div>
   );
 
-  // Google Slides / Office Online / raw PPT — use Google Docs viewer
   const viewerUrl = url.includes('docs.google.com')
     ? url
     : toGoogleDocsViewer(url);
 
   return (
-    <div className="space-y-5">
-      <div className="w-full bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl" style={{ height: '70vh' }}>
+    <div className="space-y-6">
+      <div className="w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 shadow-sm" style={{ height: '70vh' }}>
         <iframe src={viewerUrl} className="w-full h-full" allowFullScreen />
       </div>
-      <div className={`flex items-center justify-between p-5 rounded-xl ${lessonComplete ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-zinc-900 border border-zinc-800'}`}>
+      <div className={`flex items-center justify-between p-5 rounded-xl shadow-sm ${lessonComplete ? 'bg-emerald-50 border border-emerald-100' : 'bg-white border border-slate-200'}`}>
         <div className="flex items-center gap-3">
-          <MonitorPlay size={20} className="text-blue-400" />
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${lessonComplete ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+            {lessonComplete ? <CheckCircle2 size={20} /> : <MonitorPlay size={20} />}
+          </div>
           <div>
-            <p className="text-sm font-bold text-white">Presentation Slides</p>
-            <p className="text-xs text-zinc-500">Review all slides, then mark as complete.</p>
+            <p className={`font-bold ${lessonComplete ? 'text-emerald-800' : 'text-slate-800'}`}>Presentation Slides</p>
+            <p className={`text-sm ${lessonComplete ? 'text-emerald-600' : 'text-slate-500'}`}>Review all slides, then mark as complete.</p>
           </div>
         </div>
-        {!lessonComplete ? (
-          <Button onClick={onComplete} className="rounded-full bg-emerald-500 hover:bg-emerald-600 h-10 px-6 font-bold">
-            <CheckCircle2 size={16} className="mr-2" /> Mark Complete
+        {!lessonComplete && (
+          <Button onClick={onComplete} className="bg-indigo-600 hover:bg-indigo-700 text-white h-10 px-6 font-bold border-0 shadow-sm">
+            Mark Complete <CheckCircle2 size={16} className="ml-2" />
           </Button>
-        ) : (
-          <CheckCircle2 size={24} className="text-emerald-400" />
         )}
       </div>
       {url && (
-        <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-zinc-500 hover:text-white text-sm transition-colors">
-          <ExternalLink size={14} /> Open presentation in a new tab
-        </a>
+        <div className="flex justify-end">
+          <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-sm font-semibold transition-colors">
+            <ExternalLink size={14} /> Open presentation in a new tab
+          </a>
+        </div>
       )}
     </div>
   );
@@ -412,13 +419,13 @@ function QuizEngine({ quizData, lessonXp, lessonComplete, onComplete }: {
 
   if (!quizData || !quizData.questions || quizData.questions.length === 0) {
     return (
-      <div className="p-10 rounded-2xl bg-zinc-900 border border-zinc-800 text-center space-y-4">
-        <HelpCircle size={48} className="mx-auto text-amber-400" />
-        <h3 className="text-xl font-bold">No Questions Yet</h3>
-        <p className="text-zinc-400">This quiz doesn't have any questions configured yet.</p>
+      <div className="p-10 rounded-xl bg-white border border-slate-200 shadow-sm text-center space-y-4">
+        <HelpCircle size={48} className="mx-auto text-amber-500" />
+        <h3 className="text-xl font-bold text-slate-800">No Questions Yet</h3>
+        <p className="text-slate-500 font-medium">This quiz doesn't have any questions configured.</p>
         {!lessonComplete && (
-          <Button onClick={() => onComplete(100, false)} className="rounded-full bg-emerald-500 hover:bg-emerald-600">
-            Complete Lesson
+          <Button onClick={() => onComplete(100, false)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold border-0 mt-4">
+            Mark Lesson Complete
           </Button>
         )}
       </div>
@@ -442,7 +449,6 @@ function QuizEngine({ quizData, lessonXp, lessonComplete, onComplete }: {
     if (typeof question.correct_answer === 'number') {
       correctIdx = question.correct_answer;
     } else {
-      // Try finding the index of the matching string in options
       correctIdx = question.options.findIndex(o =>
         o.toLowerCase().trim() === String(question.correct_answer).toLowerCase().trim()
       );
@@ -456,7 +462,6 @@ function QuizEngine({ quizData, lessonXp, lessonComplete, onComplete }: {
         setCurrentQuestion(c => c + 1);
         setSelectedAnswer(null);
       } else {
-        // Quiz finished
         const finalScore = isCorrect ? score + (question.points || 1) : score;
         setScore(finalScore);
         setQuizFinished(true);
@@ -471,7 +476,6 @@ function QuizEngine({ quizData, lessonXp, lessonComplete, onComplete }: {
     return <QuizResults score={score} total={totalPoints} percentage={pct} xp={lessonXp} courseId="" lessonId="" />;
   }
 
-  // Determine correct index for display
   let correctIdxForDisplay: number;
   if (typeof question.correct_answer === 'number') {
     correctIdxForDisplay = question.correct_answer;
@@ -484,15 +488,15 @@ function QuizEngine({ quizData, lessonXp, lessonComplete, onComplete }: {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Progress header */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-zinc-400 text-sm">Question {currentQuestion + 1} of {questions.length}</span>
-        <span className="text-zinc-400 text-sm">{quizData.quiz.pass_percentage}% to pass</span>
+      <div className="flex items-center justify-between mb-2 px-2">
+        <span className="text-slate-500 text-sm font-semibold">Question {currentQuestion + 1} of {questions.length}</span>
+        <span className="text-slate-500 text-sm font-semibold">{quizData.quiz.pass_percentage}% to pass</span>
       </div>
-      <Progress value={((currentQuestion + 1) / questions.length) * 100} className="h-1.5" />
+      <Progress value={((currentQuestion + 1) / questions.length) * 100} className="h-2 bg-slate-200 [&>div]:bg-indigo-600" />
 
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="bg-white border-slate-200 shadow-sm">
         <CardContent className="p-8">
-          <h2 className="text-xl font-bold mb-8 leading-relaxed">{question.text}</h2>
+          <h2 className="text-xl font-bold text-slate-800 mb-8 leading-relaxed">{question.text}</h2>
 
           <div className="space-y-3">
             {question.options.map((option, i) => {
@@ -501,47 +505,41 @@ function QuizEngine({ quizData, lessonXp, lessonComplete, onComplete }: {
               const showResult = selectedAnswer !== null;
 
               return (
-                <motion.button
+                <button
                   key={i}
-                  whileHover={{ scale: selectedAnswer !== null ? 1 : 1.01 }}
-                  whileTap={{ scale: selectedAnswer !== null ? 1 : 0.99 }}
                   onClick={() => handleSelect(i)}
                   disabled={selectedAnswer !== null}
-                  className={`w-full p-4 rounded-xl text-left transition-all duration-300 border-2 text-sm font-medium
-                                        ${showResult && isCorrect
-                      ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300'
+                  className={`w-full p-4 rounded-xl text-left transition-colors border-2 text-sm font-bold
+                    ${showResult && isCorrect
+                      ? 'bg-emerald-50 border-emerald-500 text-emerald-800'
                       : showResult && isSelected && !isCorrect
-                        ? 'bg-red-500/15 border-red-500 text-red-300'
-                        : 'bg-zinc-800 border-zinc-700 hover:border-violet-500 text-white'
+                        ? 'bg-red-50 border-red-500 text-red-800'
+                        : 'bg-white border-slate-200 hover:border-indigo-400 text-slate-700'
                     }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0
-                                            ${showResult && isCorrect
+                    <span className={`w-8 h-8 rounded-md flex items-center justify-center text-xs font-black flex-shrink-0
+                        ${showResult && isCorrect
                         ? 'bg-emerald-500 text-white'
                         : showResult && isSelected && !isCorrect
                           ? 'bg-red-500 text-white'
-                          : 'bg-zinc-700 text-zinc-300 group-hover:bg-violet-600'
+                          : 'bg-slate-100 text-slate-500'
                       }`}>
                       {String.fromCharCode(65 + i)}
                     </span>
                     {option}
                   </div>
-                </motion.button>
+                </button>
               );
             })}
           </div>
 
           {/* Explanation */}
           {selectedAnswer !== null && question.explanation && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-6 p-4 rounded-xl bg-zinc-800 border border-zinc-700"
-            >
-              <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1">Explanation</p>
-              <p className="text-sm text-zinc-300">{question.explanation}</p>
-            </motion.div>
+            <div className="mt-6 p-5 rounded-xl bg-slate-50 border border-slate-200">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Explanation</p>
+              <p className="text-sm font-medium text-slate-700">{question.explanation}</p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -562,42 +560,42 @@ function QuizResults({ score, total, percentage, xp, courseId, lessonId }: {
   const earned = Math.round(xp * (percentage / 100));
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="max-w-md mx-auto"
-    >
-      <Card className="bg-zinc-900 border-zinc-800">
+    <div className="max-w-md mx-auto">
+      <Card className="bg-white border-slate-200 shadow-sm">
         <CardContent className="p-10 text-center">
-          <Trophy size={56} className={`mx-auto mb-6 ${passed ? 'text-amber-400' : 'text-zinc-500'}`} />
-          <h2 className="text-3xl font-black mb-2">{passed ? 'Excellent Work! 🎉' : 'Keep Practicing!'}</h2>
-          <p className="text-zinc-400 mb-8 text-sm">
-            You scored {score} of {total} points
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${passed ? 'bg-amber-100 text-amber-500' : 'bg-slate-100 text-slate-400'}`}>
+            <Trophy size={40} />
+          </div>
+          <h2 className="text-3xl font-bold text-slate-800 mb-2">{passed ? 'Excellent Work!' : 'Keep Practicing!'}</h2>
+          <p className="text-slate-500 font-medium mb-8">
+            You scored {score} out of {total} points
           </p>
 
           {/* Score ring */}
-          <div className="relative w-28 h-28 mx-auto mb-8">
+          <div className="relative w-32 h-32 mx-auto mb-8">
             <svg className="w-full h-full -rotate-90">
-              <circle cx="56" cy="56" r="48" stroke="currentColor" strokeWidth="8" fill="none" className="text-zinc-800" />
+              <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="8" fill="none" className="text-slate-100" />
               <circle
-                cx="56" cy="56" r="48"
+                cx="64" cy="64" r="56"
                 stroke="currentColor" strokeWidth="8" fill="none"
-                strokeDasharray={`${percentage * 3.016} 301.6`}
-                className={passed ? 'text-emerald-500' : 'text-orange-500'}
+                strokeDasharray={`${percentage * 3.518} 351.8`}
+                className={passed ? 'text-emerald-500' : 'text-slate-400'}
                 style={{ transition: 'stroke-dasharray 1s ease' }}
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-3xl font-black">{percentage}%</span>
+              <div className="text-center">
+                <span className="text-3xl font-bold text-slate-800">{percentage}%</span>
+              </div>
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-amber-500/10 text-amber-400 font-bold text-sm border border-amber-500/20">
-            <Zap size={14} />
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-amber-50 text-amber-600 font-bold border border-amber-100">
+            <Star size={18} fill="currentColor" />
             +{earned} XP Earned
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 }
