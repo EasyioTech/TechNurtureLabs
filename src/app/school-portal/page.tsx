@@ -5,193 +5,201 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   School, ArrowRight, BarChart3, Users, BookOpen,
-  Sparkles, Globe, Shield, Check, ChevronRight
+  Sparkles, Globe, Shield, Check, Building2, Landmark, Rocket
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
+import { ScrollReveal } from '@/components/landing/ScrollReveal';
 
 export default function SchoolPortalLanding() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden font-sans">
+      {/* Dynamic Background Elements */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-gradient-to-b from-blue-600/20 via-cyan-600/10 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-gradient-to-t from-violet-500/10 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-50/50 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-indigo-50/50 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/3" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full opacity-[0.03] select-none pointer-events-none"
+          style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
       </div>
 
-      <nav className="relative z-50 border-b border-white/5">
+      <nav className="relative z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center transition-transform group-hover:scale-105 shadow-lg shadow-slate-900/10">
                 <School className="text-white" size={20} />
               </div>
               <div>
-                <span className="text-xl font-black tracking-tight">TechNurture Labs</span>
-                <span className="text-xs text-cyan-400 block -mt-1">for Schools</span>
+                <span className="text-xl font-black tracking-tight text-slate-900 block leading-none">TechNurture</span>
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Institutional Portal</span>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Link href="/school-portal/login">
-                <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10">
-                  Sign In
-                </Button>
-              </Link>
+            </Link>
+            <div className="hidden md:flex items-center gap-6">
+              <Link href="/school-portal/login" className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors uppercase tracking-widest">Sign In</Link>
               <Link href="/school-portal/register">
-                <Button className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 font-semibold">
-                  Register School
-                </Button>
+                <NeumorphicButton variant="primary" className="!h-10 !px-6 !text-[10px] !bg-slate-900 !rounded-lg !font-black !uppercase !tracking-widest">
+                  Partner with Us
+                </NeumorphicButton>
               </Link>
             </div>
           </div>
         </div>
       </nav>
 
-      <section className="relative z-10 pt-20 pb-32">
+      <section className="relative z-10 pt-16 pb-24 md:pt-24 md:pb-32">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 mb-8">
-                <School size={16} className="text-blue-400" />
-                <span className="text-sm text-blue-300">School Administration Portal</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-white border border-slate-200 shadow-sm mb-6">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-widest leading-none">Now Boarding Schools</span>
               </div>
 
-              <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.9] mb-6">
-                Transform your
-                <br />
-                <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent">
-                  school&apos;s learning
-                </span>
+              <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.85] mb-8 text-slate-900">
+                The Future of <br />
+                <span className="text-blue-600">Institutional</span> <br />
+                Learning.
               </h1>
 
-              <p className="text-lg md:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
-                Join TechNurture Labs and bring gamified learning to your students.
-                Track progress, manage courses, and watch engagement soar.
+              <p className="text-lg md:text-xl text-slate-600 max-w-xl mb-10 leading-relaxed font-medium">
+                Bridge the gap between traditional curriculum and digital engagement. Empower your staff with data-driven insights and gamified modules.
               </p>
+
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <Link href="/school-portal/register" className="w-full sm:w-auto">
+                  <NeumorphicButton size="lg" variant="primary" className="w-full !h-14 !px-10 !text-sm !bg-slate-900 !rounded-xl !font-black !uppercase !tracking-widest shadow-2xl shadow-slate-900/20">
+                    Register Institution
+                    <ArrowRight className="ml-2" size={18} />
+                  </NeumorphicButton>
+                </Link>
+                <div className="flex items-center gap-4 px-6 py-2">
+                  <div className="flex -space-x-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-slate-100 overflow-hidden">
+                        <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="Principal" className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Joined by 120+ leading schools</p>
+                </div>
+              </div>
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.8 }}
+              className="relative"
             >
-              <Link href="/school-portal/register">
-                <Button size="lg" className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-bold px-8 h-14 text-lg rounded-2xl shadow-lg shadow-blue-500/25 w-full sm:w-auto">
-                  <School className="mr-2" size={20} />
-                  Register Your School
-                </Button>
-              </Link>
-              <Link href="/school-portal/login">
-                <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10 font-bold px-8 h-14 text-lg rounded-2xl w-full sm:w-auto">
-                  Sign In
-                  <ArrowRight className="ml-2" size={20} />
-                </Button>
-              </Link>
+              <div className="absolute inset-0 bg-blue-500/5 rounded-[3rem] blur-3xl -rotate-6 scale-90" />
+              <div className="relative p-4 md:p-8 rounded-[3rem] bg-white border border-slate-200 shadow-2xl overflow-hidden aspect-square flex items-center justify-center">
+                <img src="/assets/register-school.svg" alt="School Collaboration" className="w-full h-auto object-contain mix-blend-multiply opacity-90 transition-transform hover:scale-105 duration-700" />
+              </div>
+
+              {/* Floating Stat Card */}
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl border border-slate-100 max-w-[200px]"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <BarChart3 size={16} />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Efficiency</span>
+                </div>
+                <p className="text-xl font-black text-slate-900">+42% Engagement</p>
+              </motion.div>
             </motion.div>
           </div>
         </div>
       </section>
 
-      <section className="relative z-10 py-20 bg-white/[0.02] border-y border-white/5">
+      <section className="relative z-10 py-24 bg-white border-y border-slate-200">
         <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">Platform Capabilities</h2>
+            <p className="text-slate-500 font-medium mt-4">Enterprise-grade tools for modern educators.</p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <FeatureCard
               icon={BarChart3}
-              title="Real-time Analytics"
-              description="Track student progress, engagement metrics, and learning outcomes with powerful dashboards"
-              gradient="from-blue-500 to-cyan-600"
+              title="Predictive Analytics"
+              description="Identify students falling behind before it happens. Comprehensive performance heatmaps for every grade."
+              color="blue"
             />
             <FeatureCard
               icon={Users}
-              title="Student Management"
-              description="Easily manage student enrollment, track performance, and identify students who need support"
-              gradient="from-cyan-500 to-teal-600"
+              title="Role-Based Access"
+              description="Dedicated portals for Prinicipals, Teachers, and Students with fine-grained permission control."
+              color="indigo"
             />
             <FeatureCard
               icon={BookOpen}
-              title="Course Administration"
-              description="Access common courses or request custom content tailored to your curriculum"
-              gradient="from-teal-500 to-emerald-600"
+              title="Curriculum Engine"
+              description="Sync with CBSE, ICSE, or State Board standards. Automate content distribution across the entire campus."
+              color="emerald"
             />
           </div>
         </div>
       </section>
 
-      <section className="relative z-10 py-20">
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <span className="text-sm font-bold text-cyan-400 uppercase tracking-wider">Why TechNurture Labs?</span>
-            <h2 className="text-3xl md:text-4xl font-black mt-4">
-              Built for schools, loved by students
-            </h2>
-          </div>
-
-          <div className="space-y-4">
-            {[
-              'Gamified learning keeps students engaged and motivated',
-              'Detailed analytics help teachers identify learning gaps',
-              'White-label solution with your school branding',
-              'CBSE, ICSE, and state board curriculum aligned',
-              'Secure platform with data privacy compliance',
-              '24/7 support from our education experts',
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10"
-              >
-                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <Check size={16} className="text-emerald-400" />
-                </div>
-                <span className="text-white/80">{item}</span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="relative z-10 py-20">
-        <div className="max-w-4xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="relative rounded-3xl bg-gradient-to-br from-blue-600 to-cyan-700 p-12 md:p-16 text-center overflow-hidden"
-          >
-            <div className="relative z-10">
-              <h2 className="text-3xl md:text-4xl font-black mb-6">
-                Ready to get started?
-              </h2>
-              <p className="text-white/70 text-lg mb-10 max-w-xl mx-auto">
-                Register your school today and transform how your students learn.
-              </p>
-              <Link href="/school-portal/register">
-                <Button size="lg" className="bg-white text-blue-700 hover:bg-white/90 font-bold px-8 h-14 text-lg rounded-2xl">
-                  Register School
-                  <ArrowRight className="ml-2" size={20} />
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      <footer className="relative z-10 border-t border-white/5 py-8">
+      <section className="relative z-10 py-24">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between">
+          <div className="bg-slate-900 rounded-[3rem] p-8 md:p-16 relative overflow-hidden text-white group">
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px] translate-x-1/2 -translate-y-1/2 group-hover:bg-blue-600/30 transition-colors duration-700" />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
+              <div>
+                <h2 className="text-4xl md:text-6xl font-black mb-8 leading-[0.9]">Ready to upgrade your institution?</h2>
+                <div className="space-y-4 mb-10">
+                  {[
+                    'Custom school branding integration',
+                    'Compliant with data privacy standards',
+                    'Expert onboarding for your entire staff'
+                  ].map((txt, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center">
+                        <Check size={12} className="text-blue-400" />
+                      </div>
+                      <span className="text-slate-400 font-medium">{txt}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/school-portal/register">
+                  <NeumorphicButton variant="primary" className="!h-14 !px-10 !bg-white !text-slate-900 !rounded-xl !font-black !uppercase !tracking-widest">
+                    Start Free Trial
+                    <Rocket className="ml-2" size={18} />
+                  </NeumorphicButton>
+                </Link>
+              </div>
+              <div className="hidden lg:block">
+                <img src="/assets/gaming-hero.svg" alt="Gamification" className="w-full h-auto object-contain transition-transform group-hover:scale-105 duration-700" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer className="relative z-10 py-12 border-t border-slate-200 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
                 <School className="text-white" size={16} />
               </div>
-              <span className="font-bold">TechNurture Labs for Schools</span>
+              <span className="font-black text-slate-900 tracking-tight">TechNurture Institutional</span>
             </div>
-            <p className="text-sm text-white/30">© 2025 TechNurture Labs. All rights reserved.</p>
+            <div className="flex items-center gap-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              <Link href="#" className="hover:text-slate-900 transition-colors">Documentation</Link>
+              <Link href="#" className="hover:text-slate-900 transition-colors">Privacy</Link>
+              <Link href="#" className="hover:text-slate-900 transition-colors">Ethics</Link>
+            </div>
+            <p className="text-[10px] text-slate-400 font-bold">© 2026 TechNurture Labs. Secure Institutional Endpoint.</p>
           </div>
         </div>
       </footer>
@@ -199,19 +207,41 @@ export default function SchoolPortalLanding() {
   );
 }
 
-function FeatureCard({ icon: Icon, title, description, gradient }: any) {
+function FeatureCard({ icon: Icon, title, description, color }: any) {
+  const colors = {
+    blue: 'bg-blue-50 text-blue-600 border-blue-100',
+    indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100'
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
-    >
-      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-5`}>
-        <Icon size={24} className="text-white" />
+    <ScrollReveal direction="up" className="p-8 rounded-[2.5rem] bg-white border border-slate-200 hover:border-slate-300 hover:shadow-2xl hover:shadow-slate-200/50 transition-all group">
+      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-500 border-2 ${(colors as any)[color]}`}>
+        <Icon size={28} />
       </div>
-      <h3 className="text-lg font-bold mb-2">{title}</h3>
-      <p className="text-sm text-white/50 leading-relaxed">{description}</p>
-    </motion.div>
+      <h3 className="text-2xl font-black mb-3 text-slate-900 tracking-tight">{title}</h3>
+      <p className="text-slate-500 font-medium leading-relaxed">{description}</p>
+      <div className="mt-6 flex items-center gap-2 text-[10px] font-black uppercase text-blue-600 tracking-widest pointer-events-none group-hover:gap-4 transition-all duration-500">
+        Learn Capability <ChevronRight size={14} />
+      </div>
+    </ScrollReveal>
+  );
+}
+
+function ChevronRight({ size, className }: any) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
   );
 }

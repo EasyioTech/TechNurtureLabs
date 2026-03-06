@@ -97,10 +97,12 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
         setSaving(true);
         try {
             const saved = await saveQuizAdmin(quiz);
-            setQuiz({
-                ...saved,
-                pass_percentage: Number(saved.pass_percentage)
-            } as any);
+            if (saved) {
+                setQuiz({
+                    ...saved,
+                    pass_percentage: Number(saved.pass_percentage)
+                } as any);
+            }
             toast.success('Assessment saved', {
                 description: 'Your changes are now live for students.',
                 icon: <Sparkles className={accent.text} size={16} />

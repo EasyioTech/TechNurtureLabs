@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { courses, lessons, paymentPlans, users, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, grades, courseGradeMapping, schoolGradeMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions } from '@/db/schema';
+import { courses, lessons, paymentPlans, users, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, classes, courseClassMapping, schoolClassMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions, promoCodes } from '@/db/schema';
 import { eq, asc, desc, count, sql, and } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { addMonths } from 'date-fns';
@@ -13,14 +13,15 @@ export async function fetchAllAdminData() {
     const coursesData = await db.query.courses.findMany({ orderBy: [desc(courses.created_at)] });
     const lessonsData = await db.query.lessons.findMany({ orderBy: [asc(lessons.sequence_order)] });
     const plansData = await db.query.paymentPlans.findMany({ orderBy: [asc(paymentPlans.price)] });
-    const gradesData = await db.query.grades.findMany({ orderBy: [asc(grades.level)] });
-    const courseGradeMappingsData = await db.query.courseGradeMapping.findMany();
-    const schoolGradeMappingsData = await db.query.schoolGradeMapping.findMany();
+    const classesData = await db.query.classes.findMany({ orderBy: [asc(classes.level)] });
+    const courseClassMappingsData = await db.query.courseClassMapping.findMany();
+    const schoolClassMappingsData = await db.query.schoolClassMapping.findMany();
     const progressData = await db.select().from(lessonProgress);
     const enrollmentsData = await db.select().from(enrollments);
     const subscriptionsData = await db.select().from(schoolSubscriptions);
     const transactionsData = await db.select().from(paymentTransactions);
     const courseProgressData = await db.select().from(courseProgress);
+    const promoCodesData = await db.select().from(promoCodes);
 
     // Count enrollments per course
     const enrollmentCounts = new Map<string, number>();
@@ -37,7 +38,7 @@ export async function fetchAllAdminData() {
         })),
         schools: schoolsData.map(s => ({
             ...s,
-            gradeIds: schoolGradeMappingsData.filter(m => m.school_id === s.id).map(m => m.grade_id)
+            classIds: schoolClassMappingsData.filter(m => m.school_id === s.id).map(m => m.class_id)
         })),
         courses: coursesData.map(c => ({
             ...c,
@@ -50,13 +51,15 @@ export async function fetchAllAdminData() {
             sequence_index: l.sequence_order,
             duration: l.duration_minutes || 10,
         })),
-        grades: gradesData,
-        courseGradeMappings: courseGradeMappingsData,
+        classes: classesData,
+        courseClassMappings: courseClassMappingsData,
         plans: plansData.map(p => ({
             ...p,
             price: Number(p.price),
             trial_days: p.trial_days || 0,
             currency: p.currency || 'INR',
+            is_active: p.is_active ?? true,
+            is_popular: p.is_popular ?? false,
             features: Array.isArray(p.features) ? p.features : (typeof p.features === 'object' && p.features ? Object.values(p.features as Record<string, string>) : []),
         })),
         progress: progressData,
@@ -64,7 +67,53 @@ export async function fetchAllAdminData() {
         subscriptions: subscriptionsData,
         transactions: transactionsData,
         courseProgress: courseProgressData,
+        promoCodes: promoCodesData,
     };
+}
+
+export async function savePromoCode(data: any) {
+    if (data.id) {
+        return await db.update(promoCodes).set({
+            code: data.code,
+            discount_type: data.discount_type,
+            discount_value: data.discount_value?.toString(),
+            max_uses: data.max_uses,
+            valid_from: data.valid_from ? new Date(data.valid_from) : null,
+            valid_until: data.valid_until ? new Date(data.valid_until) : null,
+            is_active: data.is_active ?? true,
+            updated_at: new Date()
+        }).where(eq(promoCodes.id, data.id)).returning();
+    } else {
+        return await db.insert(promoCodes).values({
+            code: data.code,
+            discount_type: data.discount_type,
+            discount_value: data.discount_value?.toString(),
+            max_uses: data.max_uses,
+            valid_from: data.valid_from ? new Date(data.valid_from) : null,
+            valid_until: data.valid_until ? new Date(data.valid_until) : null,
+            is_active: data.is_active ?? true,
+        }).returning();
+    }
+}
+
+export async function deletePromoCode(id: string) {
+    return await db.delete(promoCodes).where(eq(promoCodes.id, id));
+}
+
+export async function validatePromoCode(code: string) {
+    const promo = await db.query.promoCodes.findFirst({
+        where: eq(promoCodes.code, code.toUpperCase()),
+    });
+
+    if (!promo) return { success: false, error: 'Invalid promo code' };
+    if (!promo.is_active) return { success: false, error: 'Promo code is inactive' };
+    if (promo.max_uses && promo.current_uses >= promo.max_uses) return { success: false, error: 'Promo code usage limit reached' };
+
+    const now = new Date();
+    if (promo.valid_from && new Date(promo.valid_from) > now) return { success: false, error: 'Promo code is not yet valid' };
+    if (promo.valid_until && new Date(promo.valid_until) < now) return { success: false, error: 'Promo code has expired' };
+
+    return { success: true, promo };
 }
 
 export async function fetchCourseLessons(courseId: string) {
@@ -110,17 +159,17 @@ export async function saveCourseAdmin(courseData: any) {
         courseId = created.id;
     }
 
-    // Handle grade mappings if provided
-    if (courseData.gradeIds && Array.isArray(courseData.gradeIds)) {
+    // Handle class mappings if provided
+    if (courseData.classIds && Array.isArray(courseData.classIds)) {
         // Clear existing
-        await db.delete(courseGradeMapping).where(eq(courseGradeMapping.course_id, courseId));
+        await db.delete(courseClassMapping).where(eq(courseClassMapping.course_id, courseId));
 
         // Add new
-        if (courseData.gradeIds.length > 0) {
-            await db.insert(courseGradeMapping).values(
-                courseData.gradeIds.map((gradeId: string) => ({
+        if (courseData.classIds.length > 0) {
+            await db.insert(courseClassMapping).values(
+                courseData.classIds.map((classId: string) => ({
                     course_id: courseId,
-                    grade_id: gradeId
+                    class_id: classId
                 }))
             );
         }
@@ -199,6 +248,11 @@ export async function saveLessonOrderAdmin(updates: any[]) {
 }
 
 export async function savePlanAdmin(planData: any) {
+    if (planData.is_popular) {
+        // Only one plan can be featured
+        await db.update(paymentPlans).set({ is_popular: false });
+    }
+
     if (planData.id) {
         const [updated] = await db.update(paymentPlans).set({
             name: planData.name,
@@ -210,6 +264,7 @@ export async function savePlanAdmin(planData: any) {
             max_students: planData.max_students,
             trial_days: planData.trial_days || 0,
             is_active: planData.is_active ?? true,
+            is_popular: planData.is_popular ?? false,
         }).where(eq(paymentPlans.id, planData.id)).returning();
         return { ...updated, price: Number(updated.price) };
     } else {
@@ -223,6 +278,7 @@ export async function savePlanAdmin(planData: any) {
             max_students: planData.max_students,
             trial_days: planData.trial_days || 0,
             is_active: planData.is_active ?? true,
+            is_popular: planData.is_popular ?? false,
         } as any).returning();
         return { ...created, price: Number(created.price) };
     }
@@ -306,14 +362,14 @@ export async function saveSchoolAdmin(schoolData: any) {
             } as any);
         }
 
-        // Handle Grade Mappings
-        if (schoolData.gradeIds) {
-            await tx.delete(schoolGradeMapping).where(eq(schoolGradeMapping.school_id, schoolId));
-            if (schoolData.gradeIds.length > 0) {
-                await tx.insert(schoolGradeMapping).values(
-                    schoolData.gradeIds.map((gid: string) => ({
+        // Handle Class Mappings
+        if (schoolData.classIds) {
+            await tx.delete(schoolClassMapping).where(eq(schoolClassMapping.school_id, schoolId));
+            if (schoolData.classIds.length > 0) {
+                await tx.insert(schoolClassMapping).values(
+                    schoolData.classIds.map((cid: string) => ({
                         school_id: schoolId,
-                        grade_id: gid,
+                        class_id: cid,
                         is_active: true
                     }))
                 );
@@ -391,35 +447,46 @@ export async function deleteQuizAdmin(quizId: string) {
     await db.delete(quizzes).where(eq(quizzes.id, quizId));
 }
 
-export async function assignPlanToSchool(schoolId: string, planId: string, billingMonths: number = 12) {
+export async function assignPlanToSchool(schoolId: string, planId: string, billingMonths: number = 12, promoCodeId?: string | null) {
     const now = new Date();
     const periodEnd = addMonths(now, billingMonths);
 
-    // Check if subscription already exists for this school
-    const existing = await db.query.schoolSubscriptions.findFirst({
-        where: eq(schoolSubscriptions.school_id, schoolId),
-    });
+    return await db.transaction(async (tx) => {
+        // Increment promo code usage if applicable
+        if (promoCodeId) {
+            await tx.update(promoCodes)
+                .set({ current_uses: sql`${promoCodes.current_uses} + 1` })
+                .where(eq(promoCodes.id, promoCodeId));
+        }
 
-    if (existing) {
-        const [updated] = await db.update(schoolSubscriptions).set({
-            plan_id: planId,
-            status: 'active',
-            current_period_start: now,
-            current_period_end: periodEnd,
-            updated_at: now,
-        }).where(eq(schoolSubscriptions.id, existing.id)).returning();
-        return updated;
-    } else {
-        const [created] = await db.insert(schoolSubscriptions).values({
-            school_id: schoolId,
-            plan_id: planId,
-            status: 'active',
-            current_period_start: now,
-            current_period_end: periodEnd,
-            auto_renew: true,
-        } as any).returning();
-        return created;
-    }
+        // Check if subscription already exists for this school
+        const existing = await tx.query.schoolSubscriptions.findFirst({
+            where: eq(schoolSubscriptions.school_id, schoolId),
+        });
+
+        if (existing) {
+            const [updated] = await tx.update(schoolSubscriptions).set({
+                plan_id: planId,
+                promo_code_id: promoCodeId || null,
+                status: 'active',
+                current_period_start: now,
+                current_period_end: periodEnd,
+                updated_at: now,
+            }).where(eq(schoolSubscriptions.id, existing.id)).returning();
+            return updated;
+        } else {
+            const [created] = await tx.insert(schoolSubscriptions).values({
+                school_id: schoolId,
+                plan_id: planId,
+                promo_code_id: promoCodeId ? promoCodeId : null,
+                status: 'active',
+                current_period_start: now,
+                current_period_end: periodEnd,
+                auto_renew: true,
+            } as any).returning();
+            return created;
+        }
+    });
 }
 
 export async function saveStudentAdmin(userData: any) {
@@ -468,7 +535,7 @@ export async function saveStudentAdmin(userData: any) {
         }
 
         // Handle session and academic record
-        if (userData.grade_id && userData.school_id) {
+        if (userData.class_id && userData.school_id) {
             let session = await tx.query.academicSessions.findFirst({
                 where: and(
                     eq(academicSessions.school_id, userData.school_id),
@@ -501,16 +568,15 @@ export async function saveStudentAdmin(userData: any) {
 
             if (existingRecord) {
                 await tx.update(studentAcademicRecords)
-                    .set({ grade_id: userData.grade_id })
+                    .set({ class_id: userData.class_id })
                     .where(eq(studentAcademicRecords.id, existingRecord.id));
             } else {
                 await tx.insert(studentAcademicRecords).values({
                     user_id: userId,
                     school_id: userData.school_id,
                     session_id: session.id,
-                    grade_id: userData.grade_id,
-                    is_promoted: false
-                } as any);
+                    class_id: userData.class_id,
+                } as any).onConflictDoNothing();
             }
         }
 

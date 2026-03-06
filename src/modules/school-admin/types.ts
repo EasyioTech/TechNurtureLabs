@@ -25,7 +25,7 @@ export type SchoolStudentMetric = {
     lessons_completed: number;
     is_active: boolean;
     last_active_at: string | null;
-    grade_name?: string;
+    class_name?: string;
 };
 
 export type SchoolCourseMetric = {

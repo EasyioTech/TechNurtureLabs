@@ -9,6 +9,7 @@ import { SchoolOverviewTab } from './tabs/school-overview-tab';
 import { SchoolStudentsTab } from './tabs/school-students-tab';
 import { SchoolCoursesTab } from './tabs/school-courses-tab';
 import { SchoolReportsTab } from './tabs/school-reports-tab';
+import { SchoolProfileModal } from './school-profile-modal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -37,6 +38,7 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
     const [activePage, setActivePage] = useState('overview');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [schoolProfile, setSchoolProfile] = useState<SchoolProfile>(null);
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const data = useSchoolData(schoolId);
 
     useEffect(() => {
@@ -48,6 +50,12 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
 
     const schoolName = schoolProfile?.name || adminName || 'My School';
     const location = [schoolProfile?.city, schoolProfile?.state].filter(Boolean).join(', ');
+
+    const handleProfileUpdate = () => {
+        getSchoolProfile(schoolId).then(p => {
+            if (p) setSchoolProfile(p as any as SchoolProfile);
+        });
+    };
 
     if (data.loading) {
         return (
@@ -229,13 +237,23 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                             <Badge className={`px-4 py-2 rounded-2xl border-0 text-[11px] font-black tracking-wide ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
                                 REG: {schoolProfile?.slug?.toUpperCase() || 'N/A'}
                             </Badge>
-                            <Button className={`rounded-2xl h-12 px-6 font-black text-[13px] ${ts.btnPrimary(isDark)}`}>
+                            <Button
+                                onClick={() => setIsProfileModalOpen(true)}
+                                className={`rounded-2xl h-12 px-6 font-black text-[13px] ${ts.btnPrimary(isDark)}`}>
                                 Edit Profile
                             </Button>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <SchoolProfileModal
+                schoolId={schoolId}
+                profile={schoolProfile}
+                isOpen={isProfileModalOpen}
+                onClose={() => setIsProfileModalOpen(false)}
+                onUpdate={handleProfileUpdate}
+            />
 
             {/* ─── Page content ─── */}
             <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-10">

@@ -1,13 +1,12 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { users, courses, grades, schoolGradeMapping, courseGradeMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts } from '@/db/schema';
+import { users, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts } from '@/db/schema';
 import { eq, asc, desc, inArray, and, sql } from 'drizzle-orm';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCHOOL PROFILE
 // ─────────────────────────────────────────────────────────────────────────────
-
 export async function getSchoolProfile(schoolId: string) {
     const school = await db.query.schools.findFirst({ where: eq(schools.id, schoolId) });
     if (!school) return null;
@@ -28,6 +27,14 @@ export async function getSchoolProfile(schoolId: string) {
     };
 }
 
+export async function updateSchoolProfile(schoolId: string, data: any) {
+    await db.update(schools).set({
+        ...data,
+        updated_at: new Date(),
+    }).where(eq(schools.id, schoolId));
+    return { success: true };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getSchoolAdminDashboardData(schoolId: string) {
@@ -40,31 +47,33 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
         where: and(inArray(studentAcademicRecords.user_id, studentIds), eq(studentAcademicRecords.school_id, schoolId)),
     }) : [];
 
-    const studentGradeMap = new Map<string, string>();
-    academicRecords.forEach(r => studentGradeMap.set(r.user_id, r.grade_id));
+    const studentClassMap = new Map<string, string>();
+    academicRecords.forEach(r => studentClassMap.set(r.user_id, r.class_id));
 
-    // Base enrollments
+    // Base enrollments - only for published courses
     const schoolEnrollments = await db.query.enrollments.findMany({
         where: eq(enrollments.school_id, schoolId),
         with: { course: true }
     });
 
-    // 1. Get school grades
-    const gradeMapping = await db.query.schoolGradeMapping.findMany({
-        where: eq(schoolGradeMapping.school_id, schoolId),
-        with: { grade: true } as any
+    const activeEnrollments = schoolEnrollments.filter(e => e.course?.is_published);
+
+    // 1. Get school classes
+    const classMapping = await db.query.schoolClassMapping.findMany({
+        where: eq(schoolClassMapping.school_id, schoolId),
+        with: { class: true } as any
     });
-    const gradesData = gradeMapping.map((gm: any) => ({
-        id: gm.grade_id, name: gm.grade?.name || '', level_index: gm.grade?.level || 0,
+    const classesDataFinal = classMapping.map((gm: any) => ({
+        id: gm.class_id, name: gm.class?.name || '', level_index: gm.class?.level || 0,
         school_id: schoolId, created_at: gm.created_at,
     }));
-    const schoolGradeIds = gradesData.map(g => g.id);
+    const schoolClassIds = classesDataFinal.map(g => g.id);
 
     // 2. Get applicable courses
     let validCourseIds: string[] = [];
-    if (schoolGradeIds.length > 0) {
-        const mappings = await db.query.courseGradeMapping.findMany({
-            where: inArray(courseGradeMapping.grade_id, schoolGradeIds)
+    if (schoolClassIds.length > 0) {
+        const mappings = await db.query.courseClassMapping.findMany({
+            where: inArray(courseClassMapping.class_id, schoolClassIds)
         });
         validCourseIds = Array.from(new Set(mappings.map(m => m.course_id)));
     }
@@ -83,7 +92,7 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
     });
 
     // Add courses they are already enrolled in (in case mappings changed)
-    schoolEnrollments.forEach(e => {
+    activeEnrollments.forEach(e => {
         if (e.course && !uniqueCourseMap.has(e.course.id)) {
             uniqueCourseMap.set(e.course.id, { ...e.course, thumbnail: e.course.thumbnail_url, published: e.course.is_published });
         }
@@ -103,9 +112,9 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
             ...s, full_name: `${s.first_name} ${s.last_name}`,
             total_xp: Number(s.cumulative_xp), current_streak: s.current_streak || 0,
             level: Math.floor(Number(s.cumulative_xp) / 1000) + 1,
-            class_id: studentGradeMap.get(s.id) || '',
+            class_id: studentClassMap.get(s.id) || '',
         })),
-        coursesData, classesData: gradesData,
+        coursesData, classesData: classesDataFinal,
         lessonsData: lessonsData.map(l => ({ ...l, sequence_index: l.sequence_order, duration: l.duration_minutes || 10 })),
         progressData
     };
@@ -134,12 +143,40 @@ export async function getSchoolStats(schoolId: string) {
         : [];
 
     const courseProgressData = studentIds.length > 0
-        ? await db.select().from(courseProgress).where(inArray(courseProgress.user_id, studentIds))
+        ? await db.select({
+            id: courseProgress.id,
+            user_id: courseProgress.user_id,
+            course_id: courseProgress.course_id,
+            progress_pct: courseProgress.progress_pct,
+            completed_at: courseProgress.completed_at
+        })
+            .from(courseProgress)
+            .innerJoin(courses, eq(courseProgress.course_id, courses.id))
+            .where(and(
+                inArray(courseProgress.user_id, studentIds),
+                eq(courses.is_published, true),
+                sql`${courses.deleted_at} IS NULL`
+            ))
         : [];
-    const enrolledCourses = new Set(courseProgressData.map(cp => cp.course_id)).size;
+
     const avgCompletion = courseProgressData.length > 0
         ? Math.round(courseProgressData.reduce((a, cp) => a + Number(cp.progress_pct), 0) / courseProgressData.length)
         : 0;
+
+    // Calculate total published courses mapped to this school
+    const schoolClassMappingData = await db.query.schoolClassMapping.findMany({ where: eq(schoolClassMapping.school_id, schoolId) });
+    const classIds = schoolClassMappingData.map(m => m.class_id);
+    let totalActiveCourses = 0;
+    if (classIds.length > 0) {
+        const mappings = await db.query.courseClassMapping.findMany({ where: inArray(courseClassMapping.class_id, classIds) });
+        const cIds = Array.from(new Set(mappings.map(m => m.course_id)));
+        if (cIds.length > 0) {
+            const activeCourses = await db.query.courses.findMany({
+                where: and(inArray(courses.id, cIds), eq(courses.is_published, true))
+            });
+            totalActiveCourses = activeCourses.length;
+        }
+    }
 
     const totalXp = students.reduce((a, s) => a + (Number(s.cumulative_xp) || 0), 0);
     const avgXp = students.length > 0 ? Math.round(totalXp / students.length) : 0;
@@ -157,7 +194,7 @@ export async function getSchoolStats(schoolId: string) {
         activeStudents,
         avgXp,
         totalXp,
-        enrolledCourses,
+        enrolledCourses: totalActiveCourses,
         totalLessonsCompleted: lessonsCompleted,
         totalQuizzesTaken: quizData.length,
         avgCompletionRate: avgCompletion,
@@ -182,15 +219,15 @@ export async function getSchoolStudents(schoolId: string) {
         ? await db.select().from(lessonProgress).where(inArray(lessonProgress.user_id, studentIds))
         : [];
 
-    const gradeRecords = studentIds.length > 0
+    const classRecords = studentIds.length > 0
         ? await db.query.studentAcademicRecords.findMany({
             where: and(inArray(studentAcademicRecords.user_id, studentIds), eq(studentAcademicRecords.school_id, schoolId)),
-            with: { grade: true } as any
+            with: { class: true } as any
         })
         : [];
 
-    const gradeMap = new Map<string, string>();
-    gradeRecords.forEach((r: any) => gradeMap.set(r.user_id, r.grade?.name || ''));
+    const classMap = new Map<string, string>();
+    classRecords.forEach((r: any) => classMap.set(r.user_id, r.class?.name || ''));
 
     return students.map(s => ({
         id: s.id,
@@ -203,8 +240,53 @@ export async function getSchoolStudents(schoolId: string) {
         lessons_completed: progressData.filter(p => p.user_id === s.id && p.completed_at != null).length,
         is_active: s.is_active,
         last_active_at: s.last_active_at?.toISOString() || null,
-        grade_name: gradeMap.get(s.id) || '',
+        class_name: classMap.get(s.id) || '',
     }));
+}
+
+export async function getSchoolStudentDetails(userId: string) {
+    const student = await db.query.users.findFirst({
+        where: eq(users.id, userId)
+    });
+    if (!student) return null;
+
+    const progressData = await db.select().from(lessonProgress).where(eq(lessonProgress.user_id, userId));
+    const courseProgressData = await db.select().from(courseProgress).where(eq(courseProgress.user_id, userId));
+    const courseIds = courseProgressData.map(cp => cp.course_id);
+
+    const enrolledCourses = courseIds.length > 0
+        ? await db.query.courses.findMany({ where: inArray(courses.id, courseIds) })
+        : [];
+
+    const attempts = await db.query.quizAttempts.findMany({ where: eq(quizAttempts.user_id, userId) });
+    const avgScore = attempts.length > 0
+        ? Math.round(attempts.reduce((a, at) => a + (Number((at as any).score_pct) || 0), 0) / attempts.length)
+        : 0;
+
+    const classMappingDetails = await db.query.studentAcademicRecords.findFirst({
+        where: eq(studentAcademicRecords.user_id, userId),
+        with: { class: true } as any
+    });
+
+    return {
+        student: {
+            ...student,
+            full_name: `${student.first_name} ${student.last_name}`,
+            total_xp: Number(student.cumulative_xp),
+            level: Math.floor(Number(student.cumulative_xp) / 1000) + 1,
+            class_name: (classMappingDetails as any)?.class?.name || 'N/A'
+        },
+        courses: courseProgressData.map(cp => {
+            const c = enrolledCourses.find(cur => cur.id === cp.course_id);
+            return {
+                ...cp,
+                title: c?.title || 'Unknown',
+                thumbnail_url: c?.thumbnail_url || null
+            };
+        }),
+        quizCount: attempts.length,
+        avgScore
+    };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -212,20 +294,23 @@ export async function getSchoolStudents(schoolId: string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getSchoolCourseAnalytics(schoolId: string) {
+    // Only published courses
     const schoolEnrollments = await db.query.enrollments.findMany({
         where: eq(enrollments.school_id, schoolId),
         with: { course: true }
     });
 
-    const gradeMapping = await db.query.schoolGradeMapping.findMany({
-        where: eq(schoolGradeMapping.school_id, schoolId)
+    const activeEnrollments = schoolEnrollments.filter(e => e.course?.is_published);
+
+    const classMapping = await db.query.schoolClassMapping.findMany({
+        where: eq(schoolClassMapping.school_id, schoolId)
     });
-    const schoolGradeIds = gradeMapping.map(gm => gm.grade_id);
+    const schoolClassIds = classMapping.map(gm => gm.class_id);
 
     let validCourseIds: string[] = [];
-    if (schoolGradeIds.length > 0) {
-        const mappings = await db.query.courseGradeMapping.findMany({
-            where: inArray(courseGradeMapping.grade_id, schoolGradeIds)
+    if (schoolClassIds.length > 0) {
+        const mappings = await db.query.courseClassMapping.findMany({
+            where: inArray(courseClassMapping.class_id, schoolClassIds)
         });
         validCourseIds = Array.from(new Set(mappings.map(m => m.course_id)));
     }
@@ -242,7 +327,7 @@ export async function getSchoolCourseAnalytics(schoolId: string) {
         courseMap.set(c.id, { course: c, enrolledUserIds: new Set() });
     });
 
-    schoolEnrollments.forEach(e => {
+    activeEnrollments.forEach(e => {
         if (!e.course) return;
         if (!courseMap.has(e.course.id)) courseMap.set(e.course.id, { course: e.course, enrolledUserIds: new Set() });
         courseMap.get(e.course.id).enrolledUserIds.add(e.user_id);
@@ -345,7 +430,9 @@ export async function promoteStudentsAction(schoolId: string) {
 }
 
 export async function fetchSchoolAdminCourseData(schoolId: string, courseId: string) {
-    const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
+    const course = await db.query.courses.findFirst({
+        where: and(eq(courses.id, courseId), eq(courses.is_published, true))
+    });
     if (!course) return { course: null, lessonsData: [], studentsData: [], progressData: [] };
 
     // Validate course belongs to school
@@ -353,15 +440,15 @@ export async function fetchSchoolAdminCourseData(schoolId: string, courseId: str
         where: and(eq(enrollments.school_id, schoolId), eq(enrollments.course_id, courseId))
     });
 
-    const gradeMapping = await db.query.schoolGradeMapping.findMany({
-        where: eq(schoolGradeMapping.school_id, schoolId)
+    const classMapping = await db.query.schoolClassMapping.findMany({
+        where: eq(schoolClassMapping.school_id, schoolId)
     });
-    const schoolGradeIds = gradeMapping.map(gm => gm.grade_id);
+    const schoolClassIds = classMapping.map(gm => gm.class_id);
 
-    let isMappedToSchool = course.all_grades === true;
-    if (!isMappedToSchool && schoolGradeIds.length > 0) {
-        const mappings = await db.query.courseGradeMapping.findFirst({
-            where: and(inArray(courseGradeMapping.grade_id, schoolGradeIds), eq(courseGradeMapping.course_id, courseId))
+    let isMappedToSchool = course.all_classes === true;
+    if (!isMappedToSchool && schoolClassIds.length > 0) {
+        const mappings = await db.query.courseClassMapping.findFirst({
+            where: and(inArray(courseClassMapping.class_id, schoolClassIds), eq(courseClassMapping.course_id, courseId))
         });
         if (mappings) isMappedToSchool = true;
     }

@@ -5,15 +5,15 @@ export type Course = {
     thumbnail: string;
     totalLessons: number;
     completedLessons: number;
-    grade?: number | null;
-    all_grades?: boolean;
+    class?: number | null;
+    all_classes?: boolean;
 };
 
 export type UserProfile = {
     id: string;
     full_name: string;
     email: string;
-    grade: number | null;
+    class: number | null;
     total_xp: number;
     level: number;
     current_streak: number;

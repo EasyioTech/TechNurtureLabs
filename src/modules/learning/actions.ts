@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseGradeMapping } from '@/db/schema';
+import { users, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping } from '@/db/schema';
 import { eq, and, inArray, asc, desc, isNotNull } from 'drizzle-orm';
 
 // Auto-enroll a student in a course if not already enrolled
@@ -23,19 +23,21 @@ async function ensureEnrollment(userId: string, courseId: string) {
     if (!currentSession) return null;
 
     if (user.role === 'student') {
-        const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
+        const course = await db.query.courses.findFirst({
+            where: and(eq(courses.id, courseId), eq(courses.is_published, true))
+        });
         if (!course) return null;
 
-        if (!course.all_grades) {
+        if (!course.all_classes) {
             const currentRecord = await db.query.studentAcademicRecords.findFirst({
                 where: and(eq(studentAcademicRecords.user_id, userId), eq(studentAcademicRecords.session_id, currentSession.id)),
                 orderBy: (records, { desc }) => [desc(records.created_at)]
             });
 
-            if (!currentRecord?.grade_id) return null;
+            if (!currentRecord?.class_id) return null;
 
-            const mapping = await db.query.courseGradeMapping.findFirst({
-                where: and(eq(courseGradeMapping.grade_id, currentRecord.grade_id), eq(courseGradeMapping.course_id, courseId))
+            const mapping = await db.query.courseClassMapping.findFirst({
+                where: and(eq(courseClassMapping.class_id, currentRecord.class_id), eq(courseClassMapping.course_id, courseId))
             });
 
             if (!mapping) return null; // Not allowed to enroll
@@ -58,14 +60,19 @@ export async function getCourseDetailsData(courseId: string) {
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
 
+    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!user) throw new Error('User not found');
+
     const course = await db.query.courses.findFirst({
         where: eq(courses.id, courseId)
     });
 
     if (!course) throw new Error('Course not found');
 
-    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
-    if (!user) throw new Error('User not found');
+    // If not super admin, must be published
+    if (user.role !== 'super_admin' && !course.is_published) {
+        throw new Error('Course not found');
+    }
 
     if (user.role === 'student') {
         // Validate access
@@ -73,18 +80,18 @@ export async function getCourseDetailsData(courseId: string) {
             where: and(eq(enrollments.user_id, userId), eq(enrollments.course_id, courseId))
         });
 
-        if (!existingEnrollment && !course.all_grades) {
+        if (!existingEnrollment && !course.all_classes) {
             const currentRecord = await db.query.studentAcademicRecords.findFirst({
                 where: eq(studentAcademicRecords.user_id, userId),
                 orderBy: (records, { desc }) => [desc(records.created_at)]
             });
 
-            if (!currentRecord?.grade_id) {
+            if (!currentRecord?.class_id) {
                 throw new Error('Course not found');
             }
 
-            const mapping = await db.query.courseGradeMapping.findFirst({
-                where: and(eq(courseGradeMapping.grade_id, currentRecord.grade_id), eq(courseGradeMapping.course_id, courseId))
+            const mapping = await db.query.courseClassMapping.findFirst({
+                where: and(eq(courseClassMapping.class_id, currentRecord.class_id), eq(courseClassMapping.course_id, courseId))
             });
 
             if (!mapping) {

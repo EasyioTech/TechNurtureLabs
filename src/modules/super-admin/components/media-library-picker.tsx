@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useAdminTheme, t } from '../theme-context';
 import {
     Film, FileText, ImageIcon, Search, Loader2,
-    Cloud, HardDrive, AlertCircle, Trash2, Check
+    Cloud, HardDrive, AlertCircle, Trash2, Check, Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -67,6 +67,8 @@ export function MediaLibraryPicker({
     const [activeTab, setActiveTab] = React.useState<AssetType>(filterType ?? 'all');
     const [search, setSearch] = React.useState('');
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
+    const [uploading, setUploading] = React.useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     // Load assets when the sheet opens
     React.useEffect(() => {
@@ -119,6 +121,39 @@ export function MediaLibraryPicker({
         }
     }
 
+    async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+        // Default to global purpose or user intent based on filter
+        formData.append('purpose', filterType === 'video' ? 'system_video' : 'library');
+
+        try {
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (!res.ok || data.error) {
+                throw new Error(data.error || 'Upload failed');
+            }
+
+            toast.success('Upload complete');
+            // Reload the library so it shows up at the top
+            loadAssets(activeTab);
+        } catch (err: any) {
+            console.error('[Upload]', err);
+            toast.error(err.message || 'Failed to upload file');
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    }
+
     const filtered = assets.filter(a =>
         a.original_name.toLowerCase().includes(search.toLowerCase())
     );
@@ -139,7 +174,7 @@ export function MediaLibraryPicker({
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center ${accent.bg} text-slate-900`}>
                             <ImageIcon size={16} />
                         </div>
-                        <div className="text-left">
+                        <div className="text-left flex-1">
                             <h2 className={`text-lg font-[1000] tracking-tight ${t.textPrimary(isDark)}`}>
                                 Media Library
                             </h2>
@@ -147,6 +182,23 @@ export function MediaLibraryPicker({
                                 Select a previously uploaded asset
                             </p>
                         </div>
+
+                        <Button
+                            size="sm"
+                            disabled={uploading}
+                            onClick={() => fileInputRef.current?.click()}
+                            className={`rounded-full h-8 px-4 text-xs font-black uppercase tracking-wider ${accent.bg} text-slate-900 shrink-0`}
+                        >
+                            {uploading ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Upload size={14} className="mr-1.5" />}
+                            Upload New
+                        </Button>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            onChange={handleUpload}
+                            accept={filterType === 'video' ? 'video/*' : filterType === 'image' ? 'image/*' : undefined}
+                        />
                     </SheetTitle>
 
                     {/* Search */}

@@ -5,13 +5,35 @@ import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { SchoolCourseMetric } from '../../types';
 import { useSchoolTheme, ts } from '../../theme-context';
-import { BarChart3, TrendingUp, Clock, Target, Zap, ChevronRight, FileText } from 'lucide-react';
+import { BarChart3, TrendingUp, Clock, Target, Zap, ChevronRight, FileText, FileDown, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface ReportsTabProps { courseMetrics: SchoolCourseMetric[]; }
 
 export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
     const { isDark } = useSchoolTheme();
+    const router = useRouter();
+
+    const handleDownload = () => {
+        const headers = ['Course Title', 'Enrollments', 'Completion %', 'Avg XP', 'Time (Mins)'];
+        const rows = courseMetrics.map(c => [
+            c.title,
+            c.enrolled_count,
+            c.completion_rate,
+            c.avg_xp,
+            c.total_time_mins
+        ].map(v => `"${v}"`).join(','));
+        const csv = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `course_analytics_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        toast.success('Course report exported successfully');
+    };
 
     if (courseMetrics.length === 0) {
         return (
@@ -36,9 +58,11 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                         <h3 className={`font-black text-2xl tracking-tight mb-1 ${ts.textPrimary(isDark)}`}>Performance Analytics</h3>
                         <p className={`text-[13px] font-bold ${ts.textMuted(isDark)}`}>Detailed metrics across {courseMetrics.length} active courses</p>
                     </div>
-                    <Button className={`rounded-2xl h-12 px-6 font-black text-[13px] ${ts.btnOutline(isDark)}`}>
-                        <FileText size={16} className="mr-2" />
-                        Download PDF Report
+                    <Button
+                        onClick={handleDownload}
+                        className={`rounded-2xl h-12 px-6 font-black text-[13px] ${ts.btnOutline(isDark)}`}>
+                        <FileDown size={16} className="mr-2" />
+                        Download Report
                     </Button>
                 </div>
 
@@ -121,8 +145,12 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
 
                                     {/* Icon / Action */}
                                     <td className="px-8 py-6 text-right">
-                                        <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-xl ${ts.btnOutline(isDark)} border-0 group-hover:bg-indigo-500 group-hover:text-white`}>
-                                            <ChevronRight size={18} />
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => router.push(`/school-admin/course/${c.id}`)}
+                                            className={`w-9 h-9 rounded-xl ${ts.btnOutline(isDark)} border-0 group-hover:bg-indigo-500 group-hover:text-white`}>
+                                            <ExternalLink size={18} />
                                         </Button>
                                     </td>
                                 </motion.tr>

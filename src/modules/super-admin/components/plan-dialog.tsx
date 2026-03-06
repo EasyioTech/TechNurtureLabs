@@ -159,6 +159,18 @@ export function PaymentPlanDialog({
                         </div>
                     </div>
 
+                    <div className={`flex items-center justify-between p-5 rounded-[24px] border-2 transition-colors ${(editingPlan?.is_popular ?? false) ? (isDark ? `border-${accent.name}-400/30 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-300/50 ${accent.softLight.split(' ')[0]}`) : t.border(isDark)}`}>
+                        <div className="space-y-1">
+                            <Label className={`text-sm font-black ${((editingPlan?.is_popular ?? false) && isDark) ? accent.text : t.textPrimary(isDark)}`}>MOST POPULAR / FEATURED</Label>
+                            <p className={`text-[11px] font-bold ${t.textMuted(isDark)}`}>This plan will be centered and highlighted on the landing page</p>
+                        </div>
+                        <Switch
+                            checked={editingPlan?.is_popular ?? false}
+                            onCheckedChange={(val) => setEditingPlan({ ...editingPlan, is_popular: val })}
+                            className={`data-[state=checked]:${accent.bg}`}
+                        />
+                    </div>
+
                     <div className={`flex items-center justify-between p-5 rounded-[24px] border-2 transition-colors ${(editingPlan?.is_active ?? true) ? (isDark ? `border-${accent.name}-400/30 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-300/50 ${accent.softLight.split(' ')[0]}`) : t.border(isDark)}`}>
                         <div className="space-y-1">
                             <Label className={`text-sm font-black ${((editingPlan?.is_active ?? true) && isDark) ? accent.text : t.textPrimary(isDark)}`}>DEPLOYMENT STATUS</Label>

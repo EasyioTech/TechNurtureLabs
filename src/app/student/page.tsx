@@ -111,8 +111,12 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
+        <div className="relative w-24 h-24">
+          <img src="/assets/loading.svg" alt="Loading..." className="w-full h-full object-contain mix-blend-multiply opacity-70" />
+          <div className="absolute inset-0 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin opacity-20" />
+        </div>
+        <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px] animate-pulse">Initializing Academy</p>
       </div>
     );
   }
@@ -137,19 +141,24 @@ export default function StudentDashboard() {
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         <section className="mb-10 sm:mb-12">
           <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-            <div className="flex-1 flex flex-col justify-center">
-              <div>
-                <span className="inline-block px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-medium mb-4 shadow-sm">
+            <div className="flex-1 flex flex-col justify-center relative">
+              {/* Thematic Decoration */}
+              <div className="absolute -right-10 top-0 w-64 h-64 opacity-[0.03] pointer-events-none hidden lg:block select-none">
+                <img src="/assets/astronaut.svg" alt="" className="w-full h-full object-contain rotate-12" />
+              </div>
+
+              <div className="relative z-10">
+                <span className="inline-block px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-bold mb-4 shadow-sm uppercase tracking-wider">
                   {getGreeting()}, {userProfile?.full_name?.split(' ')[0] || 'Student'}
                 </span>
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 tracking-tight text-slate-900 leading-tight">
+                <h2 className="text-4xl sm:text-5xl lg:text-7xl font-black mb-4 tracking-tight text-slate-900 leading-[0.9]">
                   Continue your<br />
                   <span className="text-indigo-600">
                     learning journey
                   </span>
                 </h2>
-                <p className="text-slate-600 text-base sm:text-lg mb-8 max-w-lg">
-                  You have a <span className="font-semibold text-slate-900">{stats.streak}-day streak</span>. Keep going to complete your current modules.
+                <p className="text-slate-600 text-base sm:text-lg mb-8 max-w-lg font-medium">
+                  You have a <span className="font-bold text-slate-900">{stats.streak}-day streak</span>. Keep the momentum going!
                 </p>
               </div>
 

@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
     LayoutGrid, BookOpen, CreditCard, Users, BarChart3,
-    Building2, Bell, Search, Sun, Moon, Filter, LogOut, Plus, Palette, Check,
+    Building2, Bell, Search, Sun, Moon, Filter, LogOut, Plus, Palette, Check, Settings,
+    Menu, X
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useAdminData } from '../hooks/use-admin-data';
@@ -16,24 +17,30 @@ import { OverviewTab } from './tabs/overview-tab';
 import { CourseBuilderTab } from './tabs/course-builder-tab';
 import { PaymentPlansTab } from './tabs/payment-plans-tab';
 import { SchoolsTab } from './tabs/schools-tab';
+import { SettingsTab } from './tabs/settings-tab';
+import { PromoCodesTab } from './tabs/promo-codes-tab';
 import { UserDialog } from './user-dialog';
 
 const NAV_ITEMS = [
-    { id: 'overview', label: 'DASHBOARD' },
-    { id: 'courses', label: 'COURSES' },
-    { id: 'plans', label: 'PLANS' },
-    { id: 'schools', label: 'SCHOOLS' },
-    { id: 'users', label: 'STUDENTS' },
-    { id: 'courseMetrics', label: 'REPORTS' },
+    { id: 'overview', label: 'DASHBOARD', icon: LayoutGrid },
+    { id: 'courses', label: 'COURSES', icon: BookOpen },
+    { id: 'plans', label: 'PLANS', icon: CreditCard },
+    { id: 'promo', label: 'PROMOS', icon: CreditCard },
+    { id: 'schools', label: 'SCHOOLS', icon: Building2 },
+    { id: 'users', label: 'STUDENTS', icon: Users },
+    { id: 'courseMetrics', label: 'REPORTS', icon: BarChart3, iconOnly: true },
+    { id: 'settings', label: 'SETTINGS', icon: Settings, iconOnly: true },
 ];
 
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
     overview: { title: 'Platform Overview', subtitle: 'Monitor platform performance and system health.' },
     courses: { title: 'Course Management', subtitle: 'Create and manage courses and learning content.' },
     plans: { title: 'Pricing Plans', subtitle: 'Manage subscription plans and pricing levels.' },
+    promo: { title: 'Promo Codes', subtitle: 'Manage platform-wide discount codes.' },
     schools: { title: 'Schools & Partners', subtitle: 'View and manage all registered school accounts.' },
     users: { title: 'Student Management', subtitle: 'Track student progress and overall engagement.' },
     courseMetrics: { title: 'Performance Reports', subtitle: 'Analyze course effectiveness and student success.' },
+    settings: { title: 'Platform Settings', subtitle: 'Manage global platform configuration and hero video.' },
 };
 
 function DashboardContent() {
@@ -54,6 +61,7 @@ function DashboardContent() {
     }, [showColorPicker]);
     const [activePage, setActivePage] = useState('overview');
     const [searchQuery, setSearchQuery] = useState('');
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const data = useAdminData();
 
     if (data.loading) {
@@ -79,15 +87,15 @@ function DashboardContent() {
         <div className={`min-h-screen ${t.pageBg(isDark)} transition-colors duration-500 font-sans`}>
             {/* ── Navigation ── */}
             <header className={`sticky top-0 z-50 ${t.headerBg(isDark)} backdrop-blur-md transition-all duration-300`}>
-                <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
-                    <div className="flex items-center justify-between h-20">
+                <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10">
+                    <div className="flex items-center justify-between h-16 sm:h-20">
                         {/* Logo + Tabs */}
-                        <div className="flex items-center gap-10">
+                        <div className="flex items-center gap-4 md:gap-10">
                             <div className="flex items-center gap-3 group cursor-pointer">
-                                <div className={`w-10 h-10 rounded-full ${accent.bg} flex items-center justify-center ring-4 ring-transparent transition-all flex-shrink-0`}>
-                                    <LayoutGrid className='text-slate-900' size={18} />
+                                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${accent.bg} flex items-center justify-center ring-4 ring-transparent transition-all flex-shrink-0`}>
+                                    <LayoutGrid className='text-slate-900 w-4 h-4 sm:w-5 sm:h-5' />
                                 </div>
-                                <span className={`text-xl font-black tracking-tighter ${t.textPrimary(isDark)} whitespace-nowrap`}>TechNurture Labs</span>
+                                <span className={`hidden sm:block text-xl font-black tracking-tighter ${t.textPrimary(isDark)} whitespace-nowrap`}>TechNurture Labs</span>
                             </div>
 
                             <nav className={`hidden md:flex items-center ${isDark ? 'bg-neutral-900/50' : 'bg-neutral-100/80'} rounded-full p-1.5`}>
@@ -107,8 +115,12 @@ function DashboardContent() {
                                                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                                                 />
                                             )}
-                                            <span className={`relative z-10 transition-colors duration-300 ${isActive ? 'text-slate-900' : ''}`}>
-                                                {item.label}
+                                            <span className={`relative z-10 transition-colors duration-300 flex items-center justify-center ${isActive ? 'text-slate-900' : ''}`}>
+                                                {item.iconOnly ? (
+                                                    <item.icon size={16} strokeWidth={2.5} />
+                                                ) : (
+                                                    item.label
+                                                )}
                                             </span>
                                         </button>
                                     );
@@ -132,21 +144,21 @@ function DashboardContent() {
                                 )}
                             </div>
 
-                            <div className="flex items-center gap-2">
-                                <button className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all relative border group ${t.border(isDark)} ${isDark ? `hover:bg-white/[0.06] hover:border-white/10` : 'hover:bg-neutral-50 hover:shadow-md'}`}>
+                            <div className="flex items-center gap-1 sm:gap-2">
+                                <button className={`hidden sm:flex w-11 h-11 rounded-full items-center justify-center cursor-pointer transition-all relative border group ${t.border(isDark)} ${isDark ? `hover:bg-white/[0.06] hover:border-white/10` : 'hover:bg-neutral-50 hover:shadow-md'}`}>
                                     <Bell size={20} className={`transition-all group-hover:rotate-12 ${t.textSecondary(isDark)}`} />
                                     <span className={`absolute top-2.5 right-2.5 w-2 h-2 ${accent.bg} rounded-full ring-4 ${isDark ? 'ring-[#09090b]' : 'ring-white'}`} style={{ boxShadow: `0 0 10px ${isDark ? accent.swatchDark : accent.swatchLight}80` }} />
                                 </button>
 
                                 <button
                                     onClick={toggle}
-                                    className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all border group ${t.border(isDark)} ${isDark ? `hover:bg-white/[0.06] text-slate-400 ${accent.text.replace('text-', 'hover:text-')} hover:border-white/10` : 'hover:bg-neutral-50 text-neutral-500 hover:text-amber-500 hover:shadow-md'}`}
+                                    className={`hidden sm:flex w-11 h-11 rounded-full items-center justify-center cursor-pointer transition-all border group ${t.border(isDark)} ${isDark ? `hover:bg-white/[0.06] text-slate-400 ${accent.text.replace('text-', 'hover:text-')} hover:border-white/10` : 'hover:bg-neutral-50 text-neutral-500 hover:text-amber-500 hover:shadow-md'}`}
                                 >
                                     {isDark ? <Sun size={20} /> : <Moon size={20} />}
                                 </button>
 
                                 {/* ── Color Scheme Picker ── */}
-                                <div className="relative" ref={colorPickerRef}>
+                                <div className="relative hidden sm:block" ref={colorPickerRef}>
                                     <button
                                         onClick={() => setShowColorPicker(v => !v)}
                                         className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all border group ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] hover:border-white/10' : 'hover:bg-neutral-50 hover:shadow-md'}`}
@@ -211,24 +223,59 @@ function DashboardContent() {
                                 </div>
                             </div>
 
-                            <Avatar className={`w-11 h-11 cursor-pointer border-2 transition-all ${isDark ? `border-white/10 hover:border-opacity-50` : 'border-neutral-200/50 shadow-lg'}`} style={isDark ? { ['--hover-border' as string]: accent.swatchDark } : {}} onClick={() => signOut()}>
+                            <Avatar className={`w-9 h-9 sm:w-11 sm:h-11 cursor-pointer border-2 transition-all ${isDark ? `border-white/10 hover:border-opacity-50` : 'border-neutral-200/50 shadow-lg'}`} style={isDark ? { ['--hover-border' as string]: accent.swatchDark } : {}} onClick={() => signOut()}>
                                 <AvatarFallback className={`text-xs font-[1000] ${isDark ? `${accent.bg} text-slate-900` : 'bg-[#171717] text-white'}`}>SA</AvatarFallback>
                             </Avatar>
+
+                            {/* Mobile menu button */}
+                            <button className={`md:hidden w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all border group ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] hover:border-white/10' : 'hover:bg-neutral-50 hover:shadow-md'}`}
+                                onClick={() => setMobileMenuOpen(v => !v)}>
+                                {mobileMenuOpen ? <X size={18} className={t.textSecondary(isDark)} /> : <Menu size={18} className={t.textSecondary(isDark)} />}
+                            </button>
                         </div>
                     </div>
+
+                    {/* Mobile Nav Drawer */}
+                    <AnimatePresence>
+                        {mobileMenuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="md:hidden overflow-hidden pb-4"
+                            >
+                                <div className="grid grid-cols-2 gap-2 pt-2">
+                                    {NAV_ITEMS.map(item => {
+                                        const isActive = activePage === item.id;
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                onClick={() => { setActivePage(item.id); setMobileMenuOpen(false); }}
+                                                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[11px] font-black tracking-wider transition-all
+                                                    ${isActive ? `${accent.bg} text-slate-900` : `${isDark ? 'bg-white/[0.04]' : 'bg-neutral-100'} ${t.navInactive(isDark)}`}`}
+                                            >
+                                                <item.icon size={16} />
+                                                {item.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </header>
 
             {/* ── Content ── */}
-            <main className="max-w-[1440px] mx-auto px-6 lg:px-10 py-10">
+            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
                 {/* Page Header */}
-                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-12">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-8 sm:mb-12">
                     <div>
                         <motion.h1
                             key={`t-${activePage}`}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className={`text-4xl lg:text-5xl font-[900] tracking-tighter ${t.textPrimary(isDark)}`}
+                            className={`text-3xl sm:text-4xl lg:text-5xl font-[900] tracking-tighter ${t.textPrimary(isDark)}`}
                         >
                             {page.title}
                         </motion.h1>
@@ -237,18 +284,18 @@ function DashboardContent() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.1 }}
-                            className={`text-[12px] mt-2.5 font-black uppercase tracking-[0.22em] ${t.textMuted(isDark)}`}
+                            className={`text-[10px] sm:text-[12px] mt-2.5 font-black uppercase tracking-[0.22em] ${t.textMuted(isDark)}`}
                         >
                             {page.subtitle}
                         </motion.p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Button variant="outline" size="lg"
-                            className={`rounded-full gap-2.5 h-12 px-7 text-sm font-bold border-2 transition-all ${t.btnOutline(isDark)}`}>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Button variant="outline" size="sm"
+                            className={`rounded-full gap-2.5 h-10 sm:h-12 px-5 sm:px-7 text-xs sm:text-sm font-bold border-2 transition-all ${t.btnOutline(isDark)}`}>
                             <Filter size={16} />Filter View
                         </Button>
-                        <Button size="lg"
-                            className={`rounded-full gap-2.5 h-12 px-7 text-sm font-black shadow-xl transition-all
+                        <Button size="sm"
+                            className={`rounded-full gap-2.5 h-10 sm:h-12 px-5 sm:px-7 text-xs sm:text-sm font-black shadow-xl transition-all
                                 ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
                             style={isDark ? { boxShadow: `0 10px 25px -5px ${accent.swatchDark}33` } : {}}
                             onClick={() => {
@@ -258,6 +305,9 @@ function DashboardContent() {
                                 } else if (activePage === 'plans') {
                                     data.setEditingPlan({ billing_cycle: 'monthly', features: [], is_active: true, trial_days: 0 });
                                     data.setShowPlanDialog(true);
+                                } else if (activePage === 'promo') {
+                                    data.setEditingPromoCode({ discount_type: 'percentage', is_active: true, max_uses: null, current_uses: 0 });
+                                    data.setShowPromoCodeDialog(true);
                                 } else if (activePage === 'schools') {
                                     data.setEditingSchoolItem({ name: '', email: '', is_active: true, data_processing_consent: true, minor_data_guardian_consent: true });
                                     data.setShowSchoolDialog(true);
@@ -269,9 +319,10 @@ function DashboardContent() {
                             <Plus size={20} strokeWidth={3} />
                             {activePage === 'courses' ? 'NEW COURSE' :
                                 activePage === 'plans' ? 'UPDATE TIERS' :
-                                    activePage === 'schools' ? 'ADD INSTITUTION' :
-                                        activePage === 'users' ? 'NEW STUDENT' :
-                                            'QUICK ACTION'}
+                                    activePage === 'promo' ? 'ADD CODE' :
+                                        activePage === 'schools' ? 'ADD INSTITUTION' :
+                                            activePage === 'users' ? 'NEW STUDENT' :
+                                                'QUICK ACTION'}
                         </Button>
                     </div>
                 </div>
@@ -296,8 +347,8 @@ function DashboardContent() {
                                 editingCourse={data.editingCourse} setEditingCourse={data.setEditingCourse}
                                 showLessonDialog={data.showLessonDialog} setShowLessonDialog={data.setShowLessonDialog}
                                 editingLesson={data.editingLesson} setEditingLesson={data.setEditingLesson}
-                                grades={data.grades}
-                                courseGradeMappings={data.courseGradeMappings}
+                                classes={data.classes}
+                                courseClassMappings={data.courseClassMappings}
                             />
                         )}
                         {activePage === 'plans' && (
@@ -306,6 +357,14 @@ function DashboardContent() {
                                 onDeletePlan={data.deletePlan} showPlanDialog={data.showPlanDialog}
                                 setShowPlanDialog={data.setShowPlanDialog} editingPlan={data.editingPlan}
                                 setEditingPlan={data.setEditingPlan}
+                            />
+                        )}
+                        {activePage === 'promo' && (
+                            <PromoCodesTab
+                                promoCodes={data.promoCodes} onSavePromoCode={data.savePromoCode}
+                                onDeletePromoCode={data.deletePromoCode} showDialog={data.showPromoCodeDialog}
+                                setShowDialog={data.setShowPromoCodeDialog} editingCode={data.editingPromoCode}
+                                setEditingCode={data.setEditingPromoCode}
                             />
                         )}
                         {activePage === 'schools' && (
@@ -321,11 +380,12 @@ function DashboardContent() {
                                 editingSchool={data.editingSchoolItem as any}
                                 setEditingSchool={data.setEditingSchoolItem as any}
                                 searchQuery={searchQuery}
-                                grades={data.grades}
+                                classes={data.classes}
                             />
                         )}
                         {activePage === 'users' && <MetricTables userMetrics={data.userMetrics} courseMetrics={[]} page={data.userMetricsPage} setPage={data.setUserMetricsPage} />}
                         {activePage === 'courseMetrics' && <MetricTables userMetrics={[]} courseMetrics={data.courseMetrics} />}
+                        {activePage === 'settings' && <SettingsTab />}
                     </motion.div>
                 </AnimatePresence>
 
@@ -336,7 +396,7 @@ function DashboardContent() {
                     setEditingUser={data.setEditingUserItem}
                     onSave={data.saveStudent}
                     schools={data.schoolsList}
-                    grades={data.grades}
+                    classes={data.classes}
                 />
             </main>
         </div>

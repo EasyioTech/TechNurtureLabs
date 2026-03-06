@@ -41,8 +41,8 @@ interface CourseBuilderTabProps {
     setShowLessonDialog: (v: boolean) => void;
     editingLesson: Partial<Lesson> | null;
     setEditingLesson: (l: Partial<Lesson> | null) => void;
-    grades: any[];
-    courseGradeMappings: any[];
+    classes: any[];
+    courseClassMappings: any[];
 }
 
 export function CourseBuilderTab({
@@ -51,7 +51,7 @@ export function CourseBuilderTab({
     onSaveLesson, onDeleteLesson, onSaveLessonOrder,
     showCourseDialog, setShowCourseDialog, editingCourse, setEditingCourse,
     showLessonDialog, setShowLessonDialog, editingLesson, setEditingLesson,
-    grades, courseGradeMappings,
+    classes, courseClassMappings,
 }: CourseBuilderTabProps) {
     const { isDark, accent } = useAdminTheme();
     const [itemToDelete, setItemToDelete] = useState<{ type: 'course' | 'lesson', id: string, name: string } | null>(null);
@@ -230,7 +230,7 @@ export function CourseBuilderTab({
                 </motion.div>
             </div>
 
-            <CourseDialog open={showCourseDialog} onOpenChange={setShowCourseDialog} editingCourse={editingCourse} setEditingCourse={setEditingCourse} onSave={onSaveCourse} grades={grades} courseGradeMappings={courseGradeMappings} />
+            <CourseDialog open={showCourseDialog} onOpenChange={setShowCourseDialog} editingCourse={editingCourse} setEditingCourse={setEditingCourse} onSave={onSaveCourse} classes={classes} courseClassMappings={courseClassMappings} />
             <LessonDialog open={showLessonDialog} onOpenChange={setShowLessonDialog} editingLesson={editingLesson} setEditingLesson={setEditingLesson} onSave={onSaveLesson} />
 
             {/* Global Delete Confirmation Dialog */}
