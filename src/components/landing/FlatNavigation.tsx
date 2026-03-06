@@ -35,10 +35,6 @@ export const FlatNavigation = () => {
                     {/* Desktop Links */}
                     <div className="hidden md:flex items-center gap-8">
                         <a href="#features" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer">Features</a>
-                        <div className="flex items-center gap-1 cursor-pointer group">
-                            <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">Solutions</span>
-                            <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
-                        </div>
                         <a href="#testimonials" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer">Testimonials</a>
                         <a href="#stats" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer">Impact</a>
                         <a href="#pricing" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer">Pricing</a>

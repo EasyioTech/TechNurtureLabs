@@ -10,6 +10,7 @@ import { getPublicPricingPlans } from '@/modules/landing/actions';
 import { useRouter } from 'next/navigation';
 
 export const PricingHybrid = () => {
+    const isMobile = useIsMobile();
     const [plans, setPlans] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(true);
     const router = useRouter();
