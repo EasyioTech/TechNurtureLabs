@@ -17,11 +17,13 @@ import {
     deleteQuizAdmin,
     assignPlanToSchool,
     saveStudentAdmin,
+    savePromoCode as savePromoCodeAction,
+    deletePromoCode as deletePromoCodeAction,
 } from '../actions';
 
 export const USER_METRICS_PAGE_SIZE = 25;
 import {
-    Course, Lesson, PaymentPlan, Stats, UserMetric, CourseMetric, SchoolInfo,
+    Course, Lesson, PaymentPlan, Stats, UserMetric, CourseMetric, SchoolInfo, PromoCode,
 } from '../types';
 
 const DEFAULT_STATS: Stats = {
@@ -39,11 +41,12 @@ export function useAdminData() {
     const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
     const [lessons, setLessons] = useState<Lesson[]>([]);
     const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([]);
+    const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
     const [schoolsList, setSchoolsList] = useState<SchoolInfo[]>([]);
     const [userMetrics, setUserMetrics] = useState<UserMetric[]>([]);
     const [courseMetrics, setCourseMetrics] = useState<CourseMetric[]>([]);
-    const [grades, setGrades] = useState<any[]>([]);
-    const [courseGradeMappings, setCourseGradeMappings] = useState<any[]>([]);
+    const [classes, setClasses] = useState<any[]>([]);
+    const [courseClassMappings, setCourseClassMappings] = useState<any[]>([]);
     // Pagination
     const [userMetricsPage, setUserMetricsPage] = useState(0);
 
@@ -55,6 +58,8 @@ export function useAdminData() {
     const [editingCourse, setEditingCourse] = useState<Partial<Course> | null>(null);
     const [editingLesson, setEditingLesson] = useState<Partial<Lesson> | null>(null);
     const [editingPlan, setEditingPlan] = useState<Partial<PaymentPlan> | null>(null);
+    const [showPromoCodeDialog, setShowPromoCodeDialog] = useState(false);
+    const [editingPromoCode, setEditingPromoCode] = useState<Partial<PromoCode> | null>(null);
     const [editingSchoolItem, setEditingSchoolItem] = useState<Partial<SchoolInfo> | null>(null);
     const [showUserDialog, setShowUserDialog] = useState(false);
     const [editingUserItem, setEditingUserItem] = useState<Partial<any> | null>(null);
@@ -75,6 +80,7 @@ export function useAdminData() {
         const subscriptionsData = data.subscriptions || [];
         const transactionsData = data.transactions || [];
         const courseProgressData = data.courseProgress || [];
+        const promoCodesData = data.promoCodes || [];
 
         const getUserLastActivity = (studentId: string) => {
             const userProgress = progressData.filter(p => p.user_id === studentId);
@@ -138,19 +144,15 @@ export function useAdminData() {
             const sub = subscriptionsData.find(sub => sub.school_id === s.id);
             const plan = sub ? plansData.find(p => p.id === sub.plan_id) : null;
             return {
-                id: s.id, name: s.name, slug: s.slug, email: s.email,
-                phone: s.phone, address: s.address, city: s.city, state: s.state,
-                country: s.country || 'IN', pincode: s.pincode,
-                logo_url: s.logo_url, website: s.website,
-                is_active: s.is_active, created_at: s.created_at,
-                data_processing_consent: s.data_processing_consent,
-                minor_data_guardian_consent: s.minor_data_guardian_consent,
-                subscription_status: sub?.status || null,
-                plan_name: plan?.name || null,
+                ...s,
+                plan_name: plan?.name || 'No Plan',
+                subscription_status: sub?.status || 'inactive',
                 student_count: students.filter(st => st.school_id === s.id).length,
+                data_processing_consent: true,
+                minor_data_guardian_consent: true,
             };
         }));
-
+        setPromoCodes(promoCodesData);
         setUserMetricsPage(0); // reset to page 1 on data refresh
         setUserMetrics(students.map(s => {
             const school = schoolsRaw.find(sch => sch.id === s.school_id);
@@ -184,8 +186,8 @@ export function useAdminData() {
             };
         }));
 
-        setGrades(data.grades || []);
-        setCourseGradeMappings(data.courseGradeMappings || []);
+        setClasses(data.classes || []);
+        setCourseClassMappings(data.courseClassMappings || []);
 
         setLoading(false);
     }
@@ -271,6 +273,33 @@ export function useAdminData() {
         catch { toast.error('Failed to delete plan'); }
     }
 
+    // Promo Code CRUD
+    async function savePromoCode() {
+        if (!editingPromoCode?.code) { toast.error('Promo Code is required'); return; }
+        if (!editingPromoCode?.discount_type) { toast.error('Discount Type is required'); return; }
+        if (editingPromoCode.discount_value == null || Number(editingPromoCode.discount_value) <= 0) { toast.error('Valid Discount Value is required'); return; }
+
+        try {
+            await savePromoCodeAction({
+                id: editingPromoCode.id,
+                code: editingPromoCode.code,
+                discount_type: editingPromoCode.discount_type,
+                discount_value: editingPromoCode.discount_value,
+                max_uses: editingPromoCode.max_uses,
+                valid_from: editingPromoCode.valid_from,
+                valid_until: editingPromoCode.valid_until,
+                is_active: editingPromoCode.is_active ?? true,
+            });
+            toast.success(editingPromoCode.id ? 'Promo Code updated' : 'Promo Code created');
+        } catch { toast.error('Failed to save promo code'); }
+        setShowPromoCodeDialog(false); setEditingPromoCode(null); fetchAllData();
+    }
+
+    async function deletePromoCode(id: string) {
+        try { await deletePromoCodeAction(id); toast.success('Promo Code deleted'); fetchAllData(); }
+        catch { toast.error('Failed to delete promo code'); }
+    }
+
     // Quiz
     async function deleteQuiz(quizId: string) {
         try {
@@ -313,7 +342,7 @@ export function useAdminData() {
     }
 
     async function saveStudent() {
-        if (!editingUserItem?.email || !editingUserItem?.school_id || !editingUserItem?.grade_id) {
+        if (!editingUserItem?.email || !editingUserItem?.school_id || !editingUserItem?.class_id) {
             toast.error('Required fields: Email, School, and Class');
             return;
         }
@@ -330,16 +359,17 @@ export function useAdminData() {
 
     return {
         loading, stats, courses, selectedCourse, lessons, setLessons,
-        paymentPlans, schoolsList, userMetrics, courseMetrics,
-        grades, courseGradeMappings,
+        paymentPlans, promoCodes, schoolsList, userMetrics, courseMetrics,
+        classes, courseClassMappings,
         userMetricsPage, setUserMetricsPage,
         showCourseDialog, setShowCourseDialog, editingCourse, setEditingCourse,
         showLessonDialog, setShowLessonDialog, editingLesson, setEditingLesson,
         showPlanDialog, setShowPlanDialog, editingPlan, setEditingPlan,
+        showPromoCodeDialog, setShowPromoCodeDialog, editingPromoCode, setEditingPromoCode,
         showSchoolDialog, setShowSchoolDialog, editingSchoolItem, setEditingSchoolItem,
         showUserDialog, setShowUserDialog, editingUserItem, setEditingUserItem,
         fetchAllData, selectCourse, saveCourse, deleteCourse,
         saveLesson, deleteLesson, saveLessonOrder, deleteQuiz,
-        savePlan, deletePlan, toggleSchoolStatus, saveSchool, assignPlan, saveStudent,
+        savePlan, deletePlan, savePromoCode, deletePromoCode, toggleSchoolStatus, saveSchool, assignPlan, saveStudent,
     };
 }

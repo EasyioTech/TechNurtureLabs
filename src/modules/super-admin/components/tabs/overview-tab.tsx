@@ -132,7 +132,7 @@ export function OverviewTab({ stats, paymentPlans, schoolsList }: OverviewTabPro
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard label="Total Revenue" value={`₹${stats.totalRevenue.toLocaleString('en-IN')}`} icon={IndianRupee} delay={0} />
+                <StatCard label="Total Revenue" value={`\u20B9${stats.totalRevenue.toLocaleString('en-IN')}`} icon={IndianRupee} delay={0} />
                 <StatCard label="Total Students" value={stats.totalStudents.toLocaleString()} icon={Users} delay={0.05} />
                 <StatCard label="Course Completion" value={`${stats.avgCompletion}%`} icon={Zap} extra={completionBar} delay={0.1} />
                 <StatCard label="Total Courses" value={stats.totalCourses.toString()} icon={BookOpen} delay={0.15} />

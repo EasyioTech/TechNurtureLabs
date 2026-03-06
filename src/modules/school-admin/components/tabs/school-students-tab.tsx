@@ -9,7 +9,9 @@ import { Switch } from '@/components/ui/switch';
 import { SchoolStudentMetric } from '../../types';
 import { useSchoolTheme, ts } from '../../theme-context';
 import { SCHOOL_STUDENT_PAGE_SIZE } from '../../hooks/use-school-data';
-import { Search, Zap, ChevronLeft, ChevronRight, GraduationCap, CheckCircle2, Users, X, Flame } from 'lucide-react';
+import { Search, Zap, ChevronLeft, ChevronRight, GraduationCap, CheckCircle2, Users, X, Flame, FileDown, ExternalLink } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface StudentsTabProps {
     students: SchoolStudentMetric[];
@@ -28,6 +30,35 @@ export function SchoolStudentsTab({
     studentsPage, setStudentsPage, studentSearch, setStudentSearch, onToggleStudent
 }: StudentsTabProps) {
     const { isDark } = useSchoolTheme();
+    const router = useRouter();
+
+    const handleExport = () => {
+        if (students.length === 0) return;
+
+        const headers = ['Name', 'Email', 'Class', 'XP', 'Level', 'Streak', 'Lessons Completed', 'Status'];
+        const csvRows = students.map(s => [
+            s.full_name,
+            s.email,
+            s.class_name || 'N/A',
+            s.total_xp,
+            s.level,
+            s.current_streak,
+            s.lessons_completed,
+            s.is_active ? 'Active' : 'Deactivated'
+        ].map(val => `"${val}"`).join(','));
+
+        const csvContent = [headers.join(','), ...csvRows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `students_roster_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Student roster exported successfully');
+    };
 
     return (
         <div className="space-y-4">
@@ -55,8 +86,10 @@ export function SchoolStudentsTab({
                             )}
                         </div>
 
-                        <Button className={`rounded-2xl h-12 px-6 font-black text-[13px] ${ts.btnPrimary(isDark)}`}>
-                            <Users size={16} className="mr-2" />
+                        <Button
+                            onClick={handleExport}
+                            className={`rounded-2xl h-12 px-6 font-black text-[13px] ${ts.btnPrimary(isDark)}`}>
+                            <FileDown size={16} className="mr-2" />
                             Export Roster
                         </Button>
                     </div>
@@ -67,7 +100,7 @@ export function SchoolStudentsTab({
                     <table className="w-full">
                         <thead>
                             <tr className={`border-b ${ts.border(isDark)} bg-slate-500/[0.02]`}>
-                                {['Student', 'Grade', 'XP / Level', 'Activity', 'Status', 'Actions'].map((h, i) => (
+                                {['Student', 'Class', 'XP / Level', 'Activity', 'Status', 'Actions'].map((h, i) => (
                                     <th key={h} className={`px-8 py-5 text-[10px] font-black uppercase tracking-widest ${i === 0 ? 'text-left' : 'text-right'} ${ts.textMuted(isDark)}`}>
                                         {h}
                                     </th>
@@ -96,10 +129,10 @@ export function SchoolStudentsTab({
                                         </div>
                                     </td>
 
-                                    {/* Grade */}
+                                    {/* Class */}
                                     <td className="px-8 py-5 text-right">
                                         <Badge className={`px-3 py-1 rounded-full border-0 text-[10px] font-black ${ts.accentSoft(isDark)}`}>
-                                            {s.grade_name || 'NOT ASSIGNED'}
+                                            {s.class_name || 'NOT ASSIGNED'}
                                         </Badge>
                                     </td>
 
@@ -139,8 +172,12 @@ export function SchoolStudentsTab({
                                                 onCheckedChange={val => onToggleStudent(s.id, val)}
                                                 className="data-[state=checked]:bg-indigo-500 scale-90"
                                             />
-                                            <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-xl ${ts.btnOutline(isDark)} border-0`}>
-                                                <ChevronRight size={18} />
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => router.push(`/school-admin/student/${s.id}`)}
+                                                className={`w-9 h-9 rounded-xl ${ts.btnOutline(isDark)} border-0`}>
+                                                <ExternalLink size={18} />
                                             </Button>
                                         </div>
                                     </td>

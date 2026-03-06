@@ -1,10 +1,18 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { users, schools, paymentPlans, studentAcademicRecords, academicSessions, schoolGradeMapping } from '@/db/schema';
+import { users, schools, paymentPlans, studentAcademicRecords, academicSessions, schoolClassMapping } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { assignPlanToSchool } from '@/modules/super-admin/actions';
+import { classes } from '@/db/schema';
+import { asc } from 'drizzle-orm';
+
+export async function fetchGlobalClasses() {
+    return await db.query.classes.findMany({
+        orderBy: [asc(classes.level)]
+    });
+}
 
 export async function fetchApprovedSchools() {
     const schoolsData = await db.query.schools.findMany({
@@ -12,25 +20,25 @@ export async function fetchApprovedSchools() {
         orderBy: (schools, { asc }) => [asc(schools.name)]
     });
 
-    const gradeMappings = await db.query.schoolGradeMapping.findMany({
+    const classMappings = await db.query.schoolClassMapping.findMany({
         with: {
-            grade: true
+            academicClass: true
         } as any
     });
 
     return schoolsData.map(school => {
-        const schoolGrades = gradeMappings
+        const schoolClasses = classMappings
             .filter(gm => gm.school_id === school.id)
             .map((gm: any) => ({
-                id: gm.grade_id,
-                name: gm.grade?.name || '',
-                level: gm.grade?.level || 0
+                id: gm.class_id,
+                name: gm.academicClass?.name || '',
+                level: gm.academicClass?.level || 0
             }))
             .sort((a, b) => a.level - b.level);
 
         return {
             ...school,
-            grades_available: schoolGrades
+            classes_available: schoolClasses
         };
     });
 }
@@ -45,7 +53,7 @@ export async function fetchActivePaymentPlans() {
 export async function registerStudent(formData: any) {
     try {
         // 1. Validation
-        if (!formData.email || !formData.password || !formData.full_name || !formData.school_id || !formData.grade) {
+        if (!formData.email || !formData.password || !formData.full_name || !formData.school_id || (!formData.class_id && !formData.grade)) {
             return { success: false, error: 'Missing required registration fields.' };
         }
 
@@ -100,22 +108,22 @@ export async function registerStudent(formData: any) {
                 session = newSession;
             }
 
-            // 5. Link student to the grade in the session
+            // 5. Link student to the class in the session
             await tx.insert(studentAcademicRecords).values({
                 user_id: newUser.id,
-                school_id: formData.school_id,
+                school_id: newUser.school_id,
                 session_id: session.id,
-                grade_id: formData.grade,
-                is_promoted: false
-            } as any);
+                class_id: formData.class_id || formData.grade,
+            } as any).onConflictDoNothing();
 
             return { success: true, user: newUser };
         });
 
         return result;
     } catch (error: any) {
+        const detail = error?.cause?.detail || error?.cause?.message || error?.message || 'An unexpected error occurred during registration.';
         console.error('Registration error details:', error);
-        return { success: false, error: error.message || 'An unexpected error occurred during registration.' };
+        return { success: false, error: detail };
     }
 }
 
@@ -180,17 +188,28 @@ export async function registerSchool(formData: any) {
                 is_active: true,
             } as any);
 
-            // 4. Assign Initial Plan if provided
-            if (formData.plan_id) {
-                try {
-                    await assignPlanToSchool(newSchool.id, formData.plan_id);
-                } catch (error) {
-                    console.error("Failed to assign plan during school registration", error);
-                }
+            // 4. Handle class mappings for school
+            if (formData.classes_available && Array.isArray(formData.classes_available)) {
+                await tx.insert(schoolClassMapping).values(
+                    formData.classes_available.map((cid: string) => ({
+                        school_id: newSchool.id,
+                        class_id: cid,
+                        is_active: true
+                    }))
+                );
             }
 
             return { success: true, school: newSchool };
         });
+
+        // 5. Assign Initial Plan if provided (Outside the transaction to avoid nested generic transaction deadlocks/fk issues)
+        if (formData.plan_id && result?.school?.id) {
+            try {
+                await assignPlanToSchool(result.school.id, formData.plan_id, 12, formData.promo_code_id);
+            } catch (error) {
+                console.error("Failed to assign plan during school registration", error);
+            }
+        }
 
         return result;
     } catch (error: any) {

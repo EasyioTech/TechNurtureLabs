@@ -28,13 +28,13 @@ interface SchoolsTabProps {
     editingSchool: Partial<SchoolInfo> | null;
     setEditingSchool: (s: Partial<SchoolInfo> | null) => void;
     searchQuery?: string;
-    grades: any[];
+    classes: any[];
 }
 
 export function SchoolsTab({
     stats, schoolsList, paymentPlans = [], onToggleStatus, onSaveSchool, onAssignPlan,
     showEditDialog, setShowEditDialog, editingSchool, setEditingSchool, searchQuery = '',
-    grades
+    classes
 }: SchoolsTabProps) {
     const { isDark, accent } = useAdminTheme();
     const [assignSchoolId, setAssignSchoolId] = useState<string | null>(null);
@@ -59,13 +59,13 @@ export function SchoolsTab({
         }
     }
 
-    const handleToggleGrade = (gradeId: string) => {
+    const handleToggleClass = (classId: string) => {
         if (!editingSchool) return;
-        const currentIds = (editingSchool as any).gradeIds || [];
-        const newIds = currentIds.includes(gradeId)
-            ? currentIds.filter((id: string) => id !== gradeId)
-            : [...currentIds, gradeId];
-        setEditingSchool({ ...editingSchool, gradeIds: newIds } as any);
+        const currentIds = (editingSchool as any).classIds || [];
+        const newIds = currentIds.includes(classId)
+            ? currentIds.filter((id: string) => id !== classId)
+            : [...currentIds, classId];
+        setEditingSchool({ ...editingSchool, classIds: newIds } as any);
     };
 
     return (
@@ -161,7 +161,7 @@ export function SchoolsTab({
                                                 <SelectContent className={`rounded-2xl border ${isDark ? 'bg-[#0f1219] border-white/10' : 'bg-white border-slate-200'}`}>
                                                     {paymentPlans.map(p => (
                                                         <SelectItem key={p.id} value={p.id} className="text-[12px] font-bold cursor-pointer">
-                                                            {p.name} — ₹{p.price.toLocaleString()}/{p.billing_cycle}
+                                                            {p.name}  ₹{p.price.toLocaleString()}/{p.billing_cycle}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -234,30 +234,30 @@ export function SchoolsTab({
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => {
-                                            const allIds = grades.map(g => g.id);
-                                            const currentIds = (editingSchool as any).gradeIds || [];
+                                            const allIds = classes.map(g => g.id);
+                                            const currentIds = (editingSchool as any).classIds || [];
                                             const newIds = currentIds.length === allIds.length ? [] : allIds;
-                                            setEditingSchool({ ...editingSchool, gradeIds: newIds } as any);
+                                            setEditingSchool({ ...editingSchool, classIds: newIds } as any);
                                         }}
                                         className={`h-7 px-3 rounded-full text-[10px] font-black border-2 ${t.btnOutline(isDark)}`}
                                     >
-                                        {((editingSchool as any).gradeIds?.length || 0) === grades.length ? 'DESELECT ALL' : 'SELECT ALL'}
+                                        {((editingSchool as any).classIds?.length || 0) === classes.length ? 'DESELECT ALL' : 'SELECT ALL'}
                                     </Button>
                                 </div>
                                 <div className={`p-4 rounded-[24px] border-2 flex flex-wrap gap-2 ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-slate-50'}`}>
-                                    {grades.map(grade => {
-                                        const isSelected = ((editingSchool as any).gradeIds || []).includes(grade.id);
+                                    {classes.map(cls => {
+                                        const isSelected = ((editingSchool as any).classIds || []).includes(cls.id);
                                         return (
                                             <button
-                                                key={grade.id}
+                                                key={cls.id}
                                                 type="button"
-                                                onClick={() => handleToggleGrade(grade.id)}
+                                                onClick={() => handleToggleClass(cls.id)}
                                                 className={`px-4 py-2 rounded-full text-[11px] font-black tracking-tight transition-all border-2
                                                     ${isSelected
                                                         ? (isDark ? `${accent.bg} text-slate-900 border-${accent.name}-400 shadow-lg` : `${accent.bg} text-slate-900 border-${accent.name}-400 shadow-lg`)
                                                         : (isDark ? 'bg-transparent text-slate-400 border-white/10 hover:bg-white/5' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}
                                             >
-                                                Class {grade.name}
+                                                Class {cls.name}
                                             </button>
                                         );
                                     })}

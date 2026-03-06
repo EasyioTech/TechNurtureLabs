@@ -33,7 +33,7 @@ export function PaymentPlansTab({
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {paymentPlans.map((plan, index) => {
-                    const isFeatured = index === 1;
+                    const isFeatured = plan.is_popular;
                     return (
                         <motion.div key={plan.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }}>
                             <div className={`relative rounded-[28px] border overflow-hidden hover:-translate-y-1 transition-all duration-500 shadow-xl shadow-black/5
@@ -60,7 +60,7 @@ export function PaymentPlansTab({
                                     </div>
 
                                     <div className="flex items-baseline gap-1">
-                                        <span className={`text-4xl font-[1000] tracking-tighter ${t.textPrimary(isDark)}`}>₹{plan.price.toLocaleString()}</span>
+                                        <span className={`text-4xl font-[1000] tracking-tighter ${t.textPrimary(isDark)}`}>{'\u20B9'}{plan.price.toLocaleString()}</span>
                                         <span className={`text-[12px] font-black uppercase tracking-widest ml-1 ${t.textMuted(isDark)}`}>/ {plan.billing_cycle}</span>
                                     </div>
 

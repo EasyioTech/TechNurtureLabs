@@ -21,11 +21,11 @@ interface UserDialogProps {
     setEditingUser: (user: Partial<any> | null) => void;
     onSave: () => void;
     schools: SchoolInfo[];
-    grades: any[];
+    classes: any[];
 }
 
 export function UserDialog({
-    open, onOpenChange, editingUser, setEditingUser, onSave, schools, grades
+    open, onOpenChange, editingUser, setEditingUser, onSave, schools, classes
 }: UserDialogProps) {
     const { isDark, accent } = useAdminTheme();
     const [showPassword, setShowPassword] = React.useState(false);
@@ -139,14 +139,14 @@ export function UserDialog({
                     <div className="space-y-2">
                         <Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Assigned Class *</Label>
                         <Select
-                            value={editingUser?.grade_id || ''}
-                            onValueChange={val => setEditingUser({ ...editingUser, grade_id: val })}
+                            value={editingUser?.class_id || ''}
+                            onValueChange={val => setEditingUser({ ...editingUser, class_id: val })}
                         >
                             <SelectTrigger className={`rounded-full h-11 px-5 font-bold border-2 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200'}`}>
                                 <SelectValue placeholder="Select Class" />
                             </SelectTrigger>
                             <SelectContent className={`rounded-2xl border ${isDark ? 'bg-[#0f1219] border-white/10' : 'bg-white border-slate-200'}`}>
-                                {grades.map(g => (
+                                {classes.map(g => (
                                     <SelectItem key={g.id} value={g.id} className="font-bold text-sm">{g.name}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -160,7 +160,7 @@ export function UserDialog({
                         className={`rounded-full h-11 px-6 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-200'}`}>
                         Cancel
                     </Button>
-                    <Button onClick={onSave} disabled={!editingUser?.email || !editingUser?.school_id || !editingUser?.grade_id || !editingUser?.first_name || !editingUser?.last_name || (!isEditing && !editingUser?.password)}
+                    <Button onClick={onSave} disabled={!editingUser?.email || !editingUser?.school_id || !editingUser?.class_id || !editingUser?.first_name || !editingUser?.last_name || (!isEditing && !editingUser?.password)}
                         className={`rounded-full h-11 px-8 font-black text-sm shadow-xl transition-all border-0 ${t.btnPrimary(isDark, accent)}`}>
                         {isEditing ? 'Save Changes' : 'Create Student'}
                     </Button>

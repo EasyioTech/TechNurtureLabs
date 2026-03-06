@@ -8,16 +8,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { LogIn, ArrowLeft, Loader2, School, Eye, EyeOff, Wand2 } from 'lucide-react';
+import { useAuth } from '@/components/providers/auth-provider';
+import { LogIn, ArrowLeft, Loader2, School, Eye, EyeOff, Sparkles, CheckCircle2, Building2, Globe, Shield, BarChart3 } from 'lucide-react';
+import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
+import { ScrollReveal } from '@/components/landing/ScrollReveal';
 
 export default function SchoolLoginPage() {
+  const { signIn, setTransition } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,163 +30,191 @@ export default function SchoolLoginPage() {
     }
 
     setLoading(true);
+    const toastId = toast.loading('Logging in to portal...');
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role: 'school_admin' })
-      });
-      const data = await res.json();
-
-      setLoading(false);
-
-      if (!res.ok) {
-        toast.error('Login failed: ' + (data.error || 'Unknown error'));
-        return;
+      const result = await signIn(email, password, 'school_admin');
+      if (result.success) {
+        toast.success('Successfully logged in!', { id: toastId });
+        setTransition(true);
+        router.push('/school-admin');
+      } else {
+        toast.error(result.error || 'Invalid credentials', { id: toastId });
+        setLoading(false);
       }
-
-      toast.success('Welcome back!');
-      window.location.href = '/school-admin';
     } catch (err: any) {
       setLoading(false);
-      toast.error('Login failed: ' + err.message);
+      toast.error('Connection failed. Please try again.', { id: toastId });
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white flex">
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-blue-600/15 via-cyan-600/10 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-gradient-to-t from-teal-500/10 to-transparent rounded-full blur-3xl" />
-      </div>
+    <div className="h-screen overflow-hidden bg-slate-50 text-slate-900 flex font-sans selection:bg-blue-100 selection:text-blue-900">
 
-      <div className="hidden lg:flex flex-1 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-cyan-900/30" />
-        <img
-          src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1200&q=80"
-          alt="School"
-          className="w-full h-full object-cover opacity-40"
+      {/* Background Grid & Ambient Glow */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{ backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '40px 40px' }}
         />
-        <div className="absolute inset-0 flex flex-col justify-end p-12">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
-                <School className="text-white" size={24} />
-              </div>
-              <div>
-                <span className="text-2xl font-black">TechNurture Labs</span>
-                <span className="text-xs text-cyan-400 block">for Schools</span>
-              </div>
-            </div>
-            <h2 className="text-4xl font-black mb-4 leading-tight">
-              Manage your
-              <br />
-              school&apos;s learning
-            </h2>
-            <p className="text-white/60 text-lg max-w-md">
-              Access your dashboard to track student progress, manage courses, and grow engagement.
-            </p>
-          </motion.div>
-        </div>
+        <div className="absolute top-0 right-1/4 w-[800px] h-[600px] bg-blue-100/40 rounded-full blur-[120px]" />
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative z-10">
-        <div className="w-full max-w-md">
-          <Link href="/school-portal" className="inline-flex items-center gap-2 text-white/50 hover:text-white mb-8 transition-colors text-sm">
-            <ArrowLeft size={16} />
-            Back to School Portal
+      {/* Left Sidebar: Institution Focus */}
+      <div className="hidden lg:flex flex-1 relative overflow-hidden bg-white border-r border-slate-200 shadow-2xl z-10">
+        <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-white" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[140%] bg-blue-50/40 rounded-full blur-[120px]" />
+        </div>
+
+        <div className="relative z-10 w-full h-full flex flex-col justify-between p-10">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center transition-transform group-hover:scale-105 shadow-lg shadow-slate-900/10">
+              <Sparkles className="text-white" size={20} />
+            </div>
+            <span className="text-xl font-black tracking-tight text-slate-900">TechNurture</span>
           </Link>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.8 }}
+            className="max-w-md"
           >
-            <div className="lg:hidden flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
-                <School className="text-white" size={20} />
+            <div className="mb-4">
+              <img
+                src="/assets/login-school.svg"
+                alt="Institutional Data Security"
+                className="w-full h-auto max-h-[300px] object-contain mix-blend-multiply opacity-90 transition-transform hover:scale-105"
+              />
+            </div>
+
+            <h2 className="text-3xl font-black mb-4 text-slate-900 leading-[1.1] tracking-tight">
+              Manage your institution.
+            </h2>
+            <p className="text-slate-600 text-base font-medium leading-relaxed mb-6">
+              Access the administrative dashboard to manage courses, students, and overall school performance.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { icon: <Globe size={16} />, label: "White Label" },
+                { icon: <Shield size={16} />, label: "GDPR Safe" },
+                { icon: <BarChart3 size={16} />, label: "Live Stats" },
+                { icon: <Sparkles size={16} />, label: "AI Assisted" }
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="text-slate-900">{item.icon}</div>
+                  <span className="text-[10px] font-bold text-slate-700 tracking-tight uppercase">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <div className="text-sm text-slate-400 font-bold uppercase tracking-widest">
+            Institutional Portal · Security Grade A+
+          </div>
+        </div>
+      </div>
+
+      {/* Right Content: School Login Form */}
+      <div className="flex-1 flex flex-col items-center p-6 relative z-10 overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+          className="w-full max-w-sm my-auto shrink-0"
+        >
+          <Link href="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-900 mb-6 transition-all font-bold group cursor-pointer text-sm">
+            <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
+            Return to Directory
+          </Link>
+
+          <div className="mb-6 lg:hidden flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center">
+              <School className="text-white" size={20} />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-slate-900">Schools</span>
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-white border border-slate-200 shadow-sm mb-4">
+            <Building2 size={12} className="text-blue-600" />
+            <span className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Administrator</span>
+          </div>
+
+          <h1 className="text-3xl font-black mb-1 text-slate-900 tracking-tight leading-tight">School Login</h1>
+          <p className="text-slate-500 font-medium mb-8 text-base">Sign in to manage your school's dashboard.</p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <Label className="text-slate-600 font-bold text-[10px] ml-1 uppercase tracking-wider">Admin Email</Label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-white border-slate-200 h-12 px-5 text-slate-900 placeholder:text-slate-300 focus:border-blue-500 rounded-xl transition-all font-medium text-base shadow-sm"
+                placeholder="admin@institution.edu"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between ml-1">
+                <Label className="text-slate-600 font-bold text-[10px] uppercase tracking-wider">Password</Label>
+                <button type="button" className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-widest cursor-pointer">
+                  Recovery
+                </button>
               </div>
-              <div>
-                <span className="text-xl font-black">TechNurture Labs</span>
-                <span className="text-xs text-cyan-400 block">for Schools</span>
+              <div className="relative group">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-white border-slate-200 h-12 px-5 text-slate-900 placeholder:text-slate-300 focus:border-blue-500 rounded-xl transition-all font-medium text-base pr-12 shadow-sm"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 cursor-pointer"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
-            <h1 className="text-3xl font-black mb-2">School Admin Sign In</h1>
-            <p className="text-white/50 mb-8">Access your school administration dashboard</p>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <Label className="text-white/70 text-sm">Email address</Label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-white/5 border-white/10 h-12 text-white placeholder:text-white/30 focus:border-blue-500 focus:ring-blue-500/20"
-                  placeholder="admin@school.edu"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-white/70 text-sm">Password</Label>
-                  <button type="button" className="text-xs text-blue-400 hover:text-blue-300">
-                    Forgot password?
-                  </button>
-                </div>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-white/5 border-white/10 h-12 text-white placeholder:text-white/30 focus:border-blue-500 focus:ring-blue-500/20 pr-12"
-                    placeholder="Enter your password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <Button
+            <div className="pt-2">
+              <NeumorphicButton
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 text-base font-bold rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 shadow-lg shadow-blue-500/25"
+                variant="primary"
+                className="w-full !h-12 !text-sm !rounded-xl !bg-slate-900 hover:!bg-slate-800 shadow-xl shadow-slate-900/10 transition-all font-black uppercase tracking-widest cursor-pointer"
               >
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 animate-spin" size={20} />
-                    Signing in...
+                    Validating...
                   </>
                 ) : (
                   <>
-                    <LogIn size={18} className="mr-2" />
-                    Sign In
+                    Enter Admin Suite
+                    <LogIn size={18} className="ml-2" />
                   </>
                 )}
-              </Button>
-            </form>
-
-            <div className="mt-8 pt-8 border-t border-white/10">
-              <p className="text-center text-white/50 text-sm">
-                Don&apos;t have an account?{' '}
-                <Link href="/school-portal/register" className="text-blue-400 hover:text-blue-300 font-semibold">
-                  Register Your School
-                </Link>
-              </p>
+              </NeumorphicButton>
             </div>
-          </motion.div>
-        </div>
+          </form>
+
+          <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center gap-4">
+            <p className="text-slate-500 font-medium text-center text-sm">
+              New here?
+              <Link href="/school-portal/register" className="text-blue-600 hover:text-blue-700 font-black ml-1 cursor-pointer">
+                Partner with Us
+              </Link>
+            </p>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

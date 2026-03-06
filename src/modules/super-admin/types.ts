@@ -42,6 +42,7 @@ export type PaymentPlan = {
     trial_days: number;
     features: string[];
     is_active: boolean;
+    is_popular: boolean;
 };
 
 export type SchoolInfo = {
@@ -103,4 +104,16 @@ export type CourseMetric = {
     completion_rate: number;
     avg_xp: number;
     total_time_mins: number;
+};
+
+export type PromoCode = {
+    id: string;
+    code: string;
+    discount_type: 'percentage' | 'fixed';
+    discount_value: number | string;
+    max_uses: number | null;
+    current_uses: number;
+    valid_from: Date | string | null;
+    valid_until: Date | string | null;
+    is_active: boolean;
 };

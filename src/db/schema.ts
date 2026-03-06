@@ -23,6 +23,7 @@ export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'dele
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'issued', 'paid', 'void', 'overdue']);
 export const storageTypeEnum = pgEnum('storage_type', ['r2', 'local']);
 export const assetTypeEnum = pgEnum('asset_type', ['video', 'image', 'document']);
+export const discountTypeEnum = pgEnum('discount_type', ['percentage', 'fixed']);
 
 // ============================================================================
 // CORE TENANT TABLES
@@ -109,16 +110,32 @@ export const paymentPlans = pgTable('payment_plans', {
     max_students: integer('max_students'),
     features: jsonb('features').notNull().default({}),
     is_active: boolean('is_active').notNull().default(true),
+    is_popular: boolean('is_popular').notNull().default(false),
     trial_days: integer('trial_days').notNull().default(0),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
 });
 
+export const promoCodes = pgTable('promo_codes', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    code: text('code').notNull().unique(),
+    discount_type: discountTypeEnum('discount_type').notNull(),
+    discount_value: numeric('discount_value', { precision: 12, scale: 2 }).notNull(),
+    max_uses: integer('max_uses'),
+    current_uses: integer('current_uses').notNull().default(0),
+    valid_from: timestamp('valid_from', { withTimezone: true }),
+    valid_until: timestamp('valid_until', { withTimezone: true }),
+    is_active: boolean('is_active').notNull().default(true),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const schoolSubscriptions = pgTable('school_subscriptions', {
     id: uuid('id').defaultRandom().primaryKey(),
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'restrict' }),
     plan_id: uuid('plan_id').notNull().references(() => paymentPlans.id, { onDelete: 'restrict' }),
+    promo_code_id: uuid('promo_code_id').references(() => promoCodes.id, { onDelete: 'set null' }),
     status: subscriptionStatusEnum('status').notNull().default('trialing'),
     current_period_start: timestamp('current_period_start', { withTimezone: true }).notNull(),
     current_period_end: timestamp('current_period_end', { withTimezone: true }).notNull(),
@@ -138,6 +155,7 @@ export const paymentTransactions = pgTable('payment_transactions', {
     id: uuid('id').defaultRandom().primaryKey(),
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'restrict' }),
     subscription_id: uuid('subscription_id').notNull().references(() => schoolSubscriptions.id, { onDelete: 'restrict' }),
+    promo_code_id: uuid('promo_code_id').references(() => promoCodes.id, { onDelete: 'set null' }),
     razorpay_order_id: text('razorpay_order_id'),
     razorpay_payment_id: text('razorpay_payment_id'),
     razorpay_signature: text('razorpay_signature'),
@@ -180,21 +198,21 @@ export const invoices = pgTable('invoices', {
 // ACADEMIC STRUCTURE
 // ============================================================================
 
-export const grades = pgTable('grades', {
+export const classes = pgTable('classes', {
     id: uuid('id').defaultRandom().primaryKey(),
     name: text('name').notNull().unique(),
     level: integer('level').notNull().unique(),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const schoolGradeMapping = pgTable('school_grade_mapping', {
+export const schoolClassMapping = pgTable('school_class_mapping', {
     id: uuid('id').defaultRandom().primaryKey(),
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
-    grade_id: uuid('grade_id').notNull().references(() => grades.id, { onDelete: 'cascade' }),
+    class_id: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
     is_active: boolean('is_active').notNull().default(true),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    uniqueIndex('uq_school_grade').on(table.school_id, table.grade_id),
+    uniqueIndex('uq_school_class').on(table.school_id, table.class_id),
 ]);
 
 export const studentAcademicRecords = pgTable('student_academic_records', {
@@ -202,7 +220,7 @@ export const studentAcademicRecords = pgTable('student_academic_records', {
     user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     session_id: uuid('session_id').notNull().references(() => academicSessions.id, { onDelete: 'restrict' }),
-    grade_id: uuid('grade_id').notNull().references(() => grades.id, { onDelete: 'restrict' }),
+    class_id: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'restrict' }),
     roll_number: text('roll_number'),
     section: text('section'),
     is_promoted: boolean('is_promoted').notNull().default(false),
@@ -226,7 +244,7 @@ export const courses = pgTable('courses', {
     description: text('description'),
     thumbnail_url: text('thumbnail_url'),
     is_published: boolean('is_published').notNull().default(false),
-    all_grades: boolean('all_grades').notNull().default(false),
+    all_classes: boolean('all_classes').notNull().default(false),
     total_lessons: integer('total_lessons').notNull().default(0),
     total_xp: integer('total_xp').notNull().default(0),
     created_by: uuid('created_by').notNull().references(() => users.id, { onDelete: 'restrict' }),
@@ -237,13 +255,13 @@ export const courses = pgTable('courses', {
     index('idx_courses_published').on(table.is_published),
 ]);
 
-export const courseGradeMapping = pgTable('course_grade_mapping', {
+export const courseClassMapping = pgTable('course_class_mapping', {
     id: uuid('id').defaultRandom().primaryKey(),
     course_id: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
-    grade_id: uuid('grade_id').notNull().references(() => grades.id, { onDelete: 'cascade' }),
+    class_id: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    uniqueIndex('uq_course_grade').on(table.course_id, table.grade_id),
+    uniqueIndex('uq_course_class').on(table.course_id, table.class_id),
 ]);
 
 export const lessons = pgTable('lessons', {
@@ -576,6 +594,13 @@ export const mediaAssets = pgTable('media_assets', {
     index('idx_media_created').on(table.created_at),
 ]);
 
+export const platformSettings = pgTable('platform_settings', {
+    id: text('id').primaryKey(),
+    hero_video_url: text('hero_video_url').notNull().default(''),
+    hero_video_type: text('hero_video_type').notNull().default('youtube'), // 'upload', 'youtube', 'vimeo', 'link'
+    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const passwordResetTokens = pgTable('password_reset_tokens', {
     id: uuid('id').defaultRandom().primaryKey(),
     user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -602,7 +627,7 @@ export const schoolsRelations = relations(schools, ({ many }) => ({
     users: many(users),
     academicSessions: many(academicSessions),
     subscriptions: many(schoolSubscriptions),
-    gradeMapping: many(schoolGradeMapping),
+    classMapping: many(schoolClassMapping),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -621,7 +646,7 @@ export const academicSessionsRelations = relations(academicSessions, ({ one }) =
 
 export const coursesRelations = relations(courses, ({ one, many }) => ({
     createdBy: one(users, { fields: [courses.created_by], references: [users.id] }),
-    gradeMapping: many(courseGradeMapping),
+    classMapping: many(courseClassMapping),
     lessons: many(lessons),
     enrollments: many(enrollments),
 }));
@@ -683,12 +708,12 @@ export const studentAcademicRecordsRelations = relations(studentAcademicRecords,
     user: one(users, { fields: [studentAcademicRecords.user_id], references: [users.id] }),
     school: one(schools, { fields: [studentAcademicRecords.school_id], references: [schools.id] }),
     session: one(academicSessions, { fields: [studentAcademicRecords.session_id], references: [academicSessions.id] }),
-    grade: one(grades, { fields: [studentAcademicRecords.grade_id], references: [grades.id] }),
+    academicClass: one(classes, { fields: [studentAcademicRecords.class_id], references: [classes.id] }),
 }));
 
-export const courseGradeMappingRelations = relations(courseGradeMapping, ({ one }) => ({
-    course: one(courses, { fields: [courseGradeMapping.course_id], references: [courses.id] }),
-    grade: one(grades, { fields: [courseGradeMapping.grade_id], references: [grades.id] }),
+export const courseClassMappingRelations = relations(courseClassMapping, ({ one }) => ({
+    course: one(courses, { fields: [courseClassMapping.course_id], references: [courses.id] }),
+    academicClass: one(classes, { fields: [courseClassMapping.class_id], references: [classes.id] }),
 }));
 
 export const quizzesRelations = relations(quizzes, ({ one, many }) => ({
@@ -708,9 +733,9 @@ export const quizAttemptsRelations = relations(quizAttempts, ({ one }) => ({
     enrollment: one(enrollments, { fields: [quizAttempts.enrollment_id], references: [enrollments.id] }),
 }));
 
-export const schoolGradeMappingRelations = relations(schoolGradeMapping, ({ one }) => ({
-    school: one(schools, { fields: [schoolGradeMapping.school_id], references: [schools.id] }),
-    grade: one(grades, { fields: [schoolGradeMapping.grade_id], references: [grades.id] }),
+export const schoolClassMappingRelations = relations(schoolClassMapping, ({ one }) => ({
+    school: one(schools, { fields: [schoolClassMapping.school_id], references: [schools.id] }),
+    academicClass: one(classes, { fields: [schoolClassMapping.class_id], references: [classes.id] }),
 }));
 
 export const mediaAssetsRelations = relations(mediaAssets, ({ one }) => ({

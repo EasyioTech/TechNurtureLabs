@@ -22,40 +22,40 @@ interface CourseDialogProps {
     editingCourse: Partial<Course> | null;
     setEditingCourse: (course: Partial<Course> | null) => void;
     onSave: () => void;
-    grades: any[];
-    courseGradeMappings: any[];
+    classes: any[];
+    courseClassMappings: any[];
 }
 
 export function CourseDialog({
-    open, onOpenChange, editingCourse, setEditingCourse, onSave, grades, courseGradeMappings
+    open, onOpenChange, editingCourse, setEditingCourse, onSave, classes, courseClassMappings
 }: CourseDialogProps) {
     const { isDark, accent } = useAdminTheme();
     const [showFullPreview, setShowFullPreview] = React.useState(false);
     const [libraryOpen, setLibraryOpen] = React.useState(false);
     const isEditing = !!editingCourse?.id;
 
-    // Local state for selected grades to avoid immediate parent updates
-    const [selectedGradeIds, setSelectedGradeIds] = React.useState<string[]>([]);
+    // Local state for selected classes to avoid immediate parent updates
+    const [selectedClassIds, setSelectedClassIds] = React.useState<string[]>([]);
 
     React.useEffect(() => {
         if (open) {
             if (editingCourse?.id) {
-                const currentMappings = courseGradeMappings
+                const currentMappings = courseClassMappings
                     .filter(m => m.course_id === editingCourse.id)
-                    .map(m => m.grade_id);
-                setSelectedGradeIds(currentMappings);
+                    .map(m => m.class_id);
+                setSelectedClassIds(currentMappings);
             } else {
-                setSelectedGradeIds([]);
+                setSelectedClassIds([]);
             }
         }
     }, [open]); // Only run when dialog opens
 
-    const handleToggleGrade = (gradeId: string) => {
-        const newIds = selectedGradeIds.includes(gradeId)
-            ? selectedGradeIds.filter(id => id !== gradeId)
-            : [...selectedGradeIds, gradeId];
-        setSelectedGradeIds(newIds);
-        setEditingCourse({ ...editingCourse, gradeIds: newIds } as any);
+    const handleToggleClass = (classId: string) => {
+        const newIds = selectedClassIds.includes(classId)
+            ? selectedClassIds.filter(id => id !== classId)
+            : [...selectedClassIds, classId];
+        setSelectedClassIds(newIds);
+        setEditingCourse({ ...editingCourse, classIds: newIds } as any);
     };
 
     return (
@@ -244,30 +244,30 @@ export function CourseDialog({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => {
-                                        const allIds = grades.map(g => g.id);
-                                        const newIds = selectedGradeIds.length === allIds.length ? [] : allIds;
-                                        setSelectedGradeIds(newIds);
-                                        setEditingCourse({ ...editingCourse, gradeIds: newIds } as any);
+                                        const allIds = classes.map(g => g.id);
+                                        const newIds = selectedClassIds.length === allIds.length ? [] : allIds;
+                                        setSelectedClassIds(newIds);
+                                        setEditingCourse({ ...editingCourse, classIds: newIds } as any);
                                     }}
                                     className={`h-7 px-3 rounded-full text-[10px] font-black border-2 ${t.btnOutline(isDark)}`}
                                 >
-                                    {selectedGradeIds.length === grades.length ? 'DESELECT ALL' : 'SELECT ALL'}
+                                    {selectedClassIds.length === classes.length ? 'DESELECT ALL' : 'SELECT ALL'}
                                 </Button>
                             </div>
                             <div className={`p-4 rounded-[24px] border-2 flex flex-wrap gap-2 ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-slate-50'}`}>
-                                {grades.map(grade => {
-                                    const isSelected = selectedGradeIds.includes(grade.id);
+                                {classes.map(cls => {
+                                    const isSelected = selectedClassIds.includes(cls.id);
                                     return (
                                         <button
-                                            key={grade.id}
+                                            key={cls.id}
                                             type="button"
-                                            onClick={() => handleToggleGrade(grade.id)}
+                                            onClick={() => handleToggleClass(cls.id)}
                                             className={`px-4 py-2 rounded-full text-[11px] font-black tracking-tight transition-all border-2
                                             ${isSelected
                                                     ? (isDark ? `${accent.bg} text-slate-900 border-${accent.name}-400 shadow-lg` : `${accent.bg} text-slate-900 border-${accent.name}-400 shadow-lg`)
                                                     : (isDark ? 'bg-transparent text-slate-400 border-white/10 hover:bg-white/5' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}
                                         >
-                                            Class {grade.name}
+                                            Class {cls.name}
                                         </button>
                                     );
                                 })}

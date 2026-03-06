@@ -13,6 +13,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend, BarChart, Bar
 } from 'recharts';
+import { useRouter } from 'next/navigation';
 
 interface OverviewTabProps {
     stats: SchoolStats;
@@ -103,6 +104,7 @@ function SectionHeader({ title, sub, icon: Icon }: { title: string; sub?: string
 
 export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: OverviewTabProps) {
     const { isDark } = useSchoolTheme();
+    const router = useRouter();
 
     const activityData = [
         { day: 'Mon', active: Math.round(stats.activeStudents * 0.60), total: stats.totalStudents },
@@ -116,10 +118,11 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
 
     const courseStatusData = [
         { name: 'Published', value: courseMetrics.filter(c => c.is_published).length || 0 },
-        { name: 'Draft', value: courseMetrics.filter(c => !c.is_published).length || 0 },
     ];
 
-    const topCourses = courseMetrics.slice(0, 5).map(c => ({
+    const topCoursesRaw = courseMetrics.slice(0, 5);
+    const topCourses = topCoursesRaw.map(c => ({
+        id: c.id,
         name: c.title.length > 20 ? c.title.slice(0, 20) + '…' : c.title,
         enrolled: c.enrolled_count,
         completion: c.completion_rate,
@@ -221,7 +224,7 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                 {/* Course Distribution */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
                     className={`p-8 ${ts.card(isDark)} rounded-[32px] flex flex-col`}>
-                    <SectionHeader title="Course Ecosystem" sub="Distribution of published vs unpublished content" icon={BarChart3} />
+                    <SectionHeader title="Course Availability" sub="Courses currently available to your students" icon={BarChart3} />
                     <div className="flex-1 flex flex-col sm:flex-row items-center gap-8">
                         <div className="w-full sm:w-1/2 h-[200px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -263,7 +266,9 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                             {leaderboard.slice(0, 5).map((entry, i) => {
                                 const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
                                 return (
-                                    <div key={entry.id} className={`px-8 py-5 flex items-center gap-5 transition-all ${ts.cardHover(isDark)}`}>
+                                    <div key={entry.id}
+                                        onClick={() => router.push(`/school-admin/student/${entry.id}`)}
+                                        className={`px-8 py-5 flex items-center gap-5 transition-all cursor-pointer hover:scale-[1.01] ${ts.cardHover(isDark)}`}>
                                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[15px] font-black flex-shrink-0 ${medal ? 'bg-amber-400/10 text-amber-500 border border-amber-400/20 shadow-lg shadow-amber-400/5' : ts.accentSoft(isDark)
                                             }`}>
                                             {medal || i + 1}
@@ -296,7 +301,9 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                         <div className="p-8">
                             <div className="space-y-6">
                                 {topCourses.map((c, i) => (
-                                    <div key={i} className="space-y-2">
+                                    <div key={c.id}
+                                        onClick={() => router.push(`/school-admin/course/${c.id}`)}
+                                        className="space-y-2 cursor-pointer group hover:scale-[1.01] transition-all">
                                         <div className="flex justify-between items-center">
                                             <p className={`text-[14px] font-black tracking-tight ${ts.textPrimary(isDark)}`}>{c.name}</p>
                                             <Badge className={`text-[10px] font-black border-0 ${ts.accentSoft(isDark)}`}>{c.enrolled} Enrolled</Badge>

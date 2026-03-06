@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseGradeMapping, quizAttempts } from '@/db/schema';
+import { users, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseClassMapping, quizAttempts } from '@/db/schema';
 import { eq, and, gt, inArray, asc, desc, isNotNull, sql } from 'drizzle-orm';
 
 export type DashboardData = {
@@ -129,13 +129,13 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     const usersWithMoreXp = await db.select().from(users).where(and(gt(users.cumulative_xp, Number(profile.cumulative_xp) || 0), eq(users.role, 'student')));
     stats.rank = usersWithMoreXp.length + 1;
 
-    // 1. Get student's current grade
+    // 1. Get student's current class
     const currentRecord = await db.query.studentAcademicRecords.findFirst({
         where: eq(studentAcademicRecords.user_id, userId),
         orderBy: [desc(studentAcademicRecords.created_at)]
     });
 
-    const gradeId = currentRecord?.grade_id;
+    const classId = currentRecord?.class_id;
 
     // 2. Fetch courses via enrollments
     const userEnrollments = await db.query.enrollments.findMany({
@@ -143,19 +143,19 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         with: { course: true }
     });
 
-    // 3. Fetch courses where all_grades is true
+    // 3. Fetch courses where all_classes is true
     const globalCourses = await db.query.courses.findMany({
-        where: and(eq(courses.all_grades, true), eq(courses.is_published, true))
+        where: and(eq(courses.all_classes, true), eq(courses.is_published, true))
     });
 
-    // 4. Fetch courses mapped to the student's grade (for auto-show)
-    let gradeMappedCourses: any[] = [];
-    if (gradeId) {
-        const mappings = await db.query.courseGradeMapping.findMany({
-            where: eq(courseGradeMapping.grade_id, gradeId),
+    // 4. Fetch courses mapped to the student's class (for auto-show)
+    let classMappedCourses: any[] = [];
+    if (classId) {
+        const mappings = await db.query.courseClassMapping.findMany({
+            where: eq(courseClassMapping.class_id, classId),
             with: { course: true }
         });
-        gradeMappedCourses = mappings.map(m => m.course).filter(c => c && c.is_published === true);
+        classMappedCourses = mappings.map(m => m.course).filter(c => c && c.is_published === true);
     }
 
     // Combine and deduplicate
@@ -175,8 +175,8 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         }
     });
 
-    // Priority 3: Grade mapped courses
-    gradeMappedCourses.forEach(c => {
+    // Priority 3: Class mapped courses
+    classMappedCourses.forEach(c => {
         if (c && !courseMap.has(c.id)) {
             courseMap.set(c.id, { ...c, isEnrolled: false });
         }

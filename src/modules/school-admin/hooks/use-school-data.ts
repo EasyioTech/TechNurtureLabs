@@ -60,7 +60,7 @@ export function useSchoolData(schoolId: string) {
         ? students.filter(s =>
             s.full_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
             s.email.toLowerCase().includes(studentSearch.toLowerCase()) ||
-            (s.grade_name || '').toLowerCase().includes(studentSearch.toLowerCase())
+            (s.class_name || '').toLowerCase().includes(studentSearch.toLowerCase())
         )
         : students;
 
