@@ -12,7 +12,7 @@ import { FooterDark } from '@/components/landing/FooterDark';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white text-slate-800 selection:bg-blue-500/30 selection:text-blue-900 font-roboto overflow-x-hidden">
+    <div className="min-h-screen bg-white text-slate-800 selection:bg-blue-500/30 selection:text-blue-900 font-roboto overflow-x-clip">
 
       {/* 1. Flat Navigation Bar */}
       <FlatNavigation />

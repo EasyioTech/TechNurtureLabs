@@ -49,14 +49,14 @@ export const DemoMaterial = () => {
 
     const { scrollYProgress } = useScroll({
         target: containerRef,
-        offset: ["start end", "end end"]
+        offset: ["start start", "end end"]
     });
 
-    // Transforms for desktop only
-    const scaleTransform = useTransform(scrollYProgress, [0, 1], [0.75, 1.3]);
-    const glowOpacityTransform = useTransform(scrollYProgress, [0.3, 0.8], [0, 0.3]);
-    const textOpacityTransform = useTransform(scrollYProgress, [0, 0.35], [1, 0]);
-    const textYTransform = useTransform(scrollYProgress, [0, 0.35], [0, -30]);
+    // Transforms for desktop only - Animating through the 200vh height
+    const scaleTransform = useTransform(scrollYProgress, [0, 0.8], [0.8, 1.2]);
+    const glowOpacityTransform = useTransform(scrollYProgress, [0, 0.5], [0, 0.4]);
+    const textOpacityTransform = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
+    const textYTransform = useTransform(scrollYProgress, [0, 0.4], [0, -40]);
 
     // Apply values based on device
     const scale = isMobile ? 1 : scaleTransform;
@@ -80,7 +80,7 @@ export const DemoMaterial = () => {
     }, []);
 
     return (
-        <section ref={containerRef} id="demo" className={`relative z-10 bg-slate-50 ${isMobile ? 'h-auto py-20 overflow-hidden' : 'h-[300vh]'}`}>
+        <section ref={containerRef} id="demo" className={`relative z-10 bg-slate-50 ${isMobile ? 'h-auto py-20 overflow-hidden' : 'h-[250vh]'}`}>
             <div className={`${isMobile ? 'relative w-full flex flex-col items-center' : 'sticky top-0 h-screen w-full flex flex-col items-center justify-center overflow-hidden'} px-6`}>
 
                 {/* Subdued Grid Background */}

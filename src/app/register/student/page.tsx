@@ -245,7 +245,7 @@ export default function StudentRegistrationPage() {
 
       <div className="flex-1 flex flex-col items-center bg-white/50 lg:bg-transparent relative z-10 overflow-y-auto">
         <div className="w-full max-w-[440px] px-6 py-12 lg:py-0 lg:px-0 lg:my-auto scroll-smooth">
-          <Link href="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-900 mb-10 transition-all font-bold group cursor-pointer lg:absolute lg:top-12 lg:left-12">
+          <Link href="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 mb-10 transition-all font-bold group bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm hover:shadow-md w-fit lg:absolute lg:top-12 lg:left-12">
             <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
             <span className="text-xs uppercase tracking-widest">Back to site</span>
           </Link>
@@ -258,10 +258,6 @@ export default function StudentRegistrationPage() {
           </div>
 
           <div className="text-center lg:text-left space-y-3 mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-slate-600">
-              <UserCircle2 size={14} className="text-indigo-600" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Student Enrollment</span>
-            </div>
             <h1 className="text-4xl font-black text-slate-950 tracking-tight leading-none">Create Account</h1>
             <p className="text-slate-500 font-medium text-base">Step {step} of 2 — Getting your details</p>
           </div>
@@ -433,7 +429,7 @@ export default function StudentRegistrationPage() {
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           className={`bg-white border-2 h-16 px-6 text-slate-900 placeholder:text-slate-300 focus:ring-4 transition-all font-bold text-lg rounded-2xl shadow-sm
-                            ${/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) ? 'border-emerald-500/50 bg-emerald-50/10' : 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/10'}
+                            ${/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) ? 'border-emerald-500 bg-emerald-50/10' : 'border-slate-200 focus:border-indigo-600 focus:ring-indigo-500/10'}
                           `}
                           placeholder="yourname@school.com"
                         />
@@ -474,7 +470,7 @@ export default function StudentRegistrationPage() {
                               className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
                               autoComplete="new-password"
                             />
-                            <div className="flex justify-between gap-2 sm:gap-3">
+                            <div className="flex justify-between gap-2 md:gap-3">
                               {[0, 1, 2, 3, 4, 5].map(i => (
                                 <div
                                   key={i}
@@ -482,14 +478,14 @@ export default function StudentRegistrationPage() {
                                     ${formData.password[i]
                                       ? 'border-slate-900 bg-white shadow-md'
                                       : (i === formData.password.length && pinFocused)
-                                        ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-500/10 scale-105'
-                                        : 'border-slate-100 bg-slate-50/50'}
+                                        ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-500/10 scale-110'
+                                        : 'border-slate-200 bg-white'}
                                   `}
                                 >
                                   {formData.password[i] ? (
-                                    <div className="w-3.5 h-3.5 rounded-full bg-slate-900 animate-in zoom-in duration-300" />
+                                    <div className="w-4 h-4 rounded-full bg-slate-900 animate-in zoom-in duration-300" />
                                   ) : (
-                                    <div className={`w-1.5 h-1.5 rounded-full transition-colors ${i === formData.password.length && pinFocused ? 'bg-indigo-400 animate-pulse' : 'bg-slate-200'}`} />
+                                    <div className={`w-2 h-2 rounded-full transition-colors ${i === formData.password.length && pinFocused ? 'bg-indigo-400 animate-pulse' : 'bg-slate-100'}`} />
                                   )}
                                 </div>
                               ))}

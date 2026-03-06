@@ -138,7 +138,7 @@ export default function StudentLoginPage() {
           transition={{ duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="w-full max-w-sm my-auto shrink-0"
         >
-          <Link href="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-900 mb-6 transition-all font-bold group cursor-pointer">
+          <Link href="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 mb-8 transition-all font-bold group bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm hover:shadow-md w-fit">
             <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
             Back to Home
           </Link>
@@ -150,10 +150,6 @@ export default function StudentLoginPage() {
             <span className="text-xl font-bold tracking-tight text-slate-900">TechNurture</span>
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-white border border-slate-200 shadow-sm mb-4">
-            <GraduationCap size={14} className="text-blue-600" />
-            <span className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Student Portal</span>
-          </div>
 
           <h1 className="text-3xl font-black mb-2 text-slate-900 tracking-tight leading-tight">Student Login</h1>
           <p className="text-slate-500 font-medium mb-8 text-base">Enter your account details below to sign in.</p>
@@ -165,7 +161,7 @@ export default function StudentLoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-white border-slate-200 h-12 px-5 text-slate-900 placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-xl transition-all font-medium text-base shadow-sm"
+                className="bg-white border-2 border-slate-200 h-14 px-5 text-slate-900 placeholder:text-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5 rounded-2xl transition-all font-bold text-lg shadow-sm"
                 placeholder="name@school.com"
                 required
               />
@@ -190,22 +186,22 @@ export default function StudentLoginPage() {
                   autoComplete="current-password"
                   required
                 />
-                <div className="flex justify-between gap-2">
+                <div className="flex justify-between gap-3">
                   {[0, 1, 2, 3, 4, 5].map(i => (
                     <div
                       key={i}
-                      className={`flex-1 h-14 rounded-xl border-2 flex items-center justify-center transition-all duration-200
+                      className={`flex-1 h-16 rounded-2xl border-2 flex items-center justify-center transition-all duration-200
                         ${password[i]
-                          ? 'border-blue-500 bg-white shadow-sm'
+                          ? 'border-slate-900 bg-white shadow-md'
                           : (i === password.length && pinFocused)
-                            ? 'border-blue-600 bg-blue-50/50 ring-4 ring-blue-500/10 scale-105'
-                            : 'border-slate-200 bg-slate-50/30'}
+                            ? 'border-blue-600 bg-blue-50/50 ring-4 ring-blue-500/10 scale-110'
+                            : 'border-slate-200 bg-white'}
                       `}
                     >
                       {password[i] ? (
-                        <div className="w-3 h-3 rounded-full bg-slate-900 animate-in zoom-in duration-300" />
+                        <div className="w-4 h-4 rounded-full bg-slate-900 animate-in zoom-in duration-300" />
                       ) : (
-                        <div className={`w-1 h-1 rounded-full transition-colors ${i === password.length && pinFocused ? 'bg-blue-400 animate-pulse' : 'bg-slate-200'}`} />
+                        <div className={`w-2 h-2 rounded-full transition-colors ${i === password.length && pinFocused ? 'bg-blue-400 animate-pulse' : 'bg-slate-100'}`} />
                       )}
                     </div>
                   ))}
