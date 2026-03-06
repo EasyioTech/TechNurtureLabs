@@ -3,6 +3,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { motion, HTMLMotionProps } from 'framer-motion';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface GlassCardLightProps extends HTMLMotionProps<"div"> {
     children: React.ReactNode;
@@ -12,10 +13,11 @@ interface GlassCardLightProps extends HTMLMotionProps<"div"> {
 // Glassmorphism Light: Translucent white panels, subtle blur, fine white borders
 export const GlassCardLight = React.forwardRef<HTMLDivElement, GlassCardLightProps>(
     ({ children, className, ...props }, ref) => {
+        const isMobile = useIsMobile();
         return (
             <motion.div
                 ref={ref}
-                whileHover={{ y: -6, scale: 1.01 }}
+                whileHover={isMobile ? {} : { y: -6, scale: 1.01 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={cn(
                     "relative rounded-[2.5rem] overflow-hidden cursor-pointer group/card",

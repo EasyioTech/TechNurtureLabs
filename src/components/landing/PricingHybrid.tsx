@@ -4,6 +4,7 @@ import React from 'react';
 import { ScrollReveal } from './ScrollReveal';
 import { NeumorphicButton } from './NeumorphicButton';
 import { Check } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 import { getPublicPricingPlans } from '@/modules/landing/actions';
 import { useRouter } from 'next/navigation';
@@ -76,7 +77,8 @@ export const PricingHybrid = () => {
                         return (
                             <ScrollReveal key={plan.id} delay={0.1 * (idx + 1)} className={isCenter ? "relative z-20" : ""}>
                                 {isCenter && <div className="absolute inset-0 bg-blue-500 rounded-3xl blur-xl opacity-20" />}
-                                <div className={`bg-slate-50 rounded-3xl p-8 border border-slate-200 transition-all duration-500 hover:scale-105 active:scale-95 cursor-pointer 
+                                <div className={`bg-slate-50 rounded-3xl p-8 border border-slate-200 transition-all duration-500 cursor-pointer 
+                                    ${!isMobile ? 'hover:scale-105 active:scale-95' : ''}
                                     ${isCenter ? 'shadow-[10px_10px_20px_#cbd5e1,-10px_-10px_20px_#ffffff] border-2 border-blue-500 relative z-10 transform md:-translate-y-4' : 'shadow-sm'}`}
                                     onClick={handlePlanClick}>
 

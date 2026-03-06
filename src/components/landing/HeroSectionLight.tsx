@@ -75,7 +75,7 @@ export const HeroSectionLight = () => {
                     </div>
 
                     {/* Right Column: Hero Illustration (Integrated with background) */}
-                    <div className="relative w-full max-w-[650px] ml-auto">
+                    <div className="relative w-full max-w-[650px] mx-auto lg:ml-auto">
                         <motion.div
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}

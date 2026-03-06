@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, useMotionValue } from 'framer-motion';
 import { Play, Pause } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const CustomVideoPlayer = ({ src }: { src: string }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -21,7 +22,7 @@ const CustomVideoPlayer = ({ src }: { src: string }) => {
     };
 
     return (
-        <div className="relative w-full h-full group bg-black cursor-pointer absolute top-0 left-0 overflow-hidden" onClick={togglePlay}>
+        <div className="absolute inset-0 group bg-black cursor-pointer overflow-hidden" onClick={togglePlay}>
             <video
                 ref={videoRef}
                 src={src}
@@ -43,7 +44,7 @@ const CustomVideoPlayer = ({ src }: { src: string }) => {
 };
 
 export const DemoMaterial = () => {
-    // Tall container to create scrollable space while the sticky content is pinned
+    const isMobile = useIsMobile();
     const containerRef = useRef<HTMLDivElement>(null);
 
     const { scrollYProgress } = useScroll({
@@ -51,15 +52,17 @@ export const DemoMaterial = () => {
         offset: ["start end", "end end"]
     });
 
-    // Map the scroll progress (0 to 1) to a scale (0.75 to 1.3)
-    const scale = useTransform(scrollYProgress, [0, 1], [0.75, 1.3]);
+    // Transforms for desktop only
+    const scaleTransform = useTransform(scrollYProgress, [0, 1], [0.75, 1.3]);
+    const glowOpacityTransform = useTransform(scrollYProgress, [0.3, 0.8], [0, 0.3]);
+    const textOpacityTransform = useTransform(scrollYProgress, [0, 0.35], [1, 0]);
+    const textYTransform = useTransform(scrollYProgress, [0, 0.35], [0, -30]);
 
-    // Halo glow opacity that grows with the video
-    const glowOpacity = useTransform(scrollYProgress, [0.3, 0.8], [0, 0.3]);
-
-    // Smoothly fade out the text as the video grows massive
-    const textOpacity = useTransform(scrollYProgress, [0, 0.35], [1, 0]);
-    const textY = useTransform(scrollYProgress, [0, 0.35], [0, -30]);
+    // Apply values based on device
+    const scale = isMobile ? 1 : scaleTransform;
+    const glowOpacity = isMobile ? 0.2 : glowOpacityTransform;
+    const textOpacity = isMobile ? 1 : textOpacityTransform;
+    const textY = isMobile ? 0 : textYTransform;
 
     const [videoUrl, setVideoUrl] = React.useState('');
     const [loading, setLoading] = React.useState(true);
@@ -77,8 +80,8 @@ export const DemoMaterial = () => {
     }, []);
 
     return (
-        <section ref={containerRef} id="demo" className="relative z-10 bg-slate-50 h-[300vh]">
-            <div className="sticky top-0 h-screen w-full flex flex-col items-center justify-center overflow-hidden px-6">
+        <section ref={containerRef} id="demo" className={`relative z-10 bg-slate-50 ${isMobile ? 'h-auto py-20 overflow-hidden' : 'h-[300vh]'}`}>
+            <div className={`${isMobile ? 'relative w-full flex flex-col items-center' : 'sticky top-0 h-screen w-full flex flex-col items-center justify-center overflow-hidden'} px-6`}>
 
                 {/* Subdued Grid Background */}
                 <div className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none"
@@ -98,8 +101,8 @@ export const DemoMaterial = () => {
                 </motion.div>
 
                 <motion.div
-                    style={{ scale }}
-                    className="relative w-full max-w-5xl mx-auto origin-center z-10 mt-16 md:mt-24 group cursor-pointer"
+                    style={isMobile ? {} : { scale }}
+                    className="relative w-full max-w-5xl mx-auto origin-center z-10 mt-8 md:mt-24 group cursor-pointer"
                 >
                     {/* Dynamic Halo Glow behind the video */}
                     <motion.div

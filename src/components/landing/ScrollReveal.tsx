@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ScrollRevealProps {
     children: React.ReactNode;
@@ -21,6 +22,8 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
     staggerChildren,
     duration = 0.8,
 }) => {
+    const isMobile = useIsMobile();
+
     const directions = {
         up: { y: 40, x: 0 },
         down: { y: -40, x: 0 },
@@ -31,9 +34,10 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
 
     const variants: Variants = {
         hidden: {
-            opacity: 0,
-            ...directions[direction],
-            filter: 'blur(10px)',
+            opacity: isMobile ? 1 : 0,
+            y: isMobile ? 0 : directions[direction].y,
+            x: isMobile ? 0 : directions[direction].x,
+            filter: isMobile ? 'blur(0px)' : 'blur(10px)',
         },
         visible: {
             opacity: 1,
@@ -41,9 +45,9 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
             y: 0,
             filter: 'blur(0px)',
             transition: {
-                duration,
-                delay,
-                ease: [0.21, 0.47, 0.32, 0.98], // Custom ease for silky smooth feel
+                duration: isMobile ? 0 : duration,
+                delay: isMobile ? 0 : delay,
+                ease: [0.21, 0.47, 0.32, 0.98],
                 staggerChildren: staggerChildren,
             },
         },
@@ -51,7 +55,7 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
 
     return (
         <motion.div
-            initial="hidden"
+            initial={isMobile ? "visible" : "hidden"}
             whileInView="visible"
             viewport={{ once: true, margin: "-10%" }}
             variants={variants}

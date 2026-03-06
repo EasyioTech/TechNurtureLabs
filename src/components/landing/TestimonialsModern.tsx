@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ScrollReveal } from "./ScrollReveal";
 import { GlassCardLight } from "./GlassCardLight";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const testimonials = [
     {
@@ -82,10 +83,11 @@ export const TestimonialsColumn = (props: {
     testimonials: typeof testimonials;
     duration?: number;
 }) => {
+    const isMobile = useIsMobile();
     return (
         <div className={cn("relative overflow-hidden", props.className)}>
             <motion.div
-                animate={{
+                animate={isMobile ? {} : {
                     translateY: "-50%",
                 }}
                 transition={{
