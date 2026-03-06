@@ -90,4 +90,25 @@ BEGIN
     END IF;
 END $$;
 
+-- 8. Add 'platform_settings' table if missing
+CREATE TABLE IF NOT EXISTS platform_settings (
+    id              TEXT PRIMARY KEY,
+    hero_video_url  TEXT NOT NULL DEFAULT '',
+    hero_video_type TEXT NOT NULL DEFAULT 'youtube',
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 9. Seed global settings if missing
+INSERT INTO platform_settings (id, hero_video_url, hero_video_type)
+VALUES ('global', '', 'youtube')
+ON CONFLICT (id) DO NOTHING;
+
+-- 10. Fix missing school-class mappings (Optional safety net)
+-- If a school has no classes mapped, give them all available classes
+INSERT INTO school_class_mapping (school_id, class_id)
+SELECT s.id, c.id
+FROM schools s, classes c
+WHERE NOT EXISTS (SELECT 1 FROM school_class_mapping WHERE school_id = s.id)
+ON CONFLICT DO NOTHING;
+
 COMMIT;

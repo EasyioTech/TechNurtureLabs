@@ -195,13 +195,20 @@ export default function SchoolRegistrationPage() {
       return;
     }
 
+    const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+    if (!key) {
+      toast.error('Razorpay Public Key is missing. Please check your system configuration.');
+      console.error('NEXT_PUBLIC_RAZORPAY_KEY_ID is not defined');
+      return;
+    }
+
     if (checkoutOrder.free) {
       handleRegisterSchool(null);
       return;
     }
 
     const options = {
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      key: key,
       amount: checkoutOrder.amount,
       currency: checkoutOrder.currency,
       name: 'TechNurture Labs',

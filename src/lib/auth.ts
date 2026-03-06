@@ -26,11 +26,12 @@ export async function createSession(payload: Omit<SessionPayload, 'sessionId'>) 
         .sign(JWT_SECRET);
 
     const isProduction = process.env.NODE_ENV === 'production';
-    const isHttpUrl = process.env.NEXT_PUBLIC_APP_URL?.startsWith('http://') || false;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+    const isHttp = appUrl.startsWith('http://') || !isProduction;
 
     (await cookies()).set('session', token, {
         httpOnly: true,
-        secure: isProduction && !isHttpUrl,
+        secure: isProduction && !isHttp,
         sameSite: 'lax',
         path: '/',
         maxAge: SESSION_EXPIRY,
