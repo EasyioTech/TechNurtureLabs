@@ -6,10 +6,11 @@ import { eq } from 'drizzle-orm';
 
 import { serverEnv } from '@/lib/env.server';
 
-const razorpay = new Razorpay({
+const isBuild = process.env.NEXT_SKIP_TYPECHECK === '1' || process.env.npm_lifecycle_event === 'build';
+const razorpay = (!isBuild && serverEnv.RAZORPAY_KEY_ID && serverEnv.RAZORPAY_KEY_SECRET) ? new Razorpay({
     key_id: serverEnv.RAZORPAY_KEY_ID,
     key_secret: serverEnv.RAZORPAY_KEY_SECRET,
-});
+}) : null;
 
 export async function POST(req: NextRequest) {
     try {
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
 
         // Try to create Razorpay Order, fallback to SIMULATED for testing/preview if keys are missing
         try {
-            if (!serverEnv.RAZORPAY_KEY_ID || serverEnv.RAZORPAY_KEY_ID === 'rzp_test_yourkeyhere') {
+            if (!razorpay || !serverEnv.RAZORPAY_KEY_ID || serverEnv.RAZORPAY_KEY_ID === 'rzp_test_yourkeyhere') {
                 throw new Error('CONFIG_MISSING');
             }
 
