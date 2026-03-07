@@ -28,8 +28,11 @@ export async function GET(req: NextRequest) {
         const schemaText = fs.readFileSync(schemaPath, 'utf8');
 
         // 3. Force completely drop and recreate the Database architecture as superuser
+        // Terminate other sessions to prevent "tuple concurrently updated" errors during DROP SCHEMA
         await sql.unsafe(`
-            DROP SCHEMA public CASCADE;
+            SELECT pg_terminate_backend(pid) FROM pg_stat_activity 
+            WHERE datname = 'orchids' AND pid <> pg_backend_pid();
+            DROP SCHEMA IF EXISTS public CASCADE;
             CREATE SCHEMA public;
         `);
 
