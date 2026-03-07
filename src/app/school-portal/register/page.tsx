@@ -135,7 +135,7 @@ export default function SchoolRegistrationPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || step !== 4) return;
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
@@ -145,7 +145,7 @@ export default function SchoolRegistrationPage() {
         document.body.removeChild(script);
       }
     };
-  }, []);
+  }, [step]);
 
   const handleClassToggle = (classId: string) => {
     setFormData(prev => ({
