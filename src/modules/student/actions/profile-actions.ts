@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, achievements, userAchievements, lessonProgress, quizAttempts } from '@/db/schema';
+import { users, achievements, userAchievements, lessonProgress, quizAttempts, studentAcademicRecords, classes } from '@/db/schema';
 import { eq, and, gt, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -11,7 +11,16 @@ export async function getStudentProfileData() {
     if (!session) throw new Error('Unauthorized');
 
     const profile = await db.query.users.findFirst({
-        where: eq(users.id, session.userId)
+        where: eq(users.id, session.userId),
+        with: {
+            academicRecords: {
+                where: eq(studentAcademicRecords.user_id, session.userId),
+                with: {
+                    academicClass: true
+                },
+                limit: 1
+            }
+        }
     });
 
     const allAchievements = await db.query.achievements.findMany();
@@ -37,10 +46,24 @@ export async function getStudentProfileData() {
         return 0;
     });
 
-    const usersWithMoreXp = await db.select().from(users).where(and(gt(users.cumulative_xp, Number(profile?.cumulative_xp) || 0), eq(users.role, 'student')));
-    const totalStudents = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.role, 'student'));
+    // Calculate rank at school level
+    const usersWithMoreXp = await db.select().from(users).where(
+        and(
+            gt(users.cumulative_xp, Number(profile?.cumulative_xp) || 0),
+            eq(users.role, 'student'),
+            eq(users.school_id, profile?.school_id || '')
+        )
+    );
+    const totalSchoolStudents = await db.select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(
+            and(
+                eq(users.role, 'student'),
+                eq(users.school_id, profile?.school_id || '')
+            )
+        );
     const rank = usersWithMoreXp.length + 1;
-    const rankPercentage = Math.max(1, Math.round((rank / (totalStudents[0]?.count || 1)) * 100));
+    const rankPercentage = Math.min(100, Math.max(1, Math.round((rank / (totalSchoolStudents[0]?.count || 1)) * 100)));
 
     const lessonsData = await db.select({
         count: sql<number>`count(*)`,
@@ -63,7 +86,8 @@ export async function getStudentProfileData() {
     return {
         profile: profile ? {
             ...profile,
-            // Backward-compatible aliases
+            // Indian context: Use Class instead of Grade
+            className: (profile.academicRecords?.[0] as any)?.academicClass?.name || 'Unassigned',
             full_name: `${profile.first_name} ${profile.last_name}`,
             total_xp: Number(profile.cumulative_xp),
             level: stats.level,
@@ -101,6 +125,12 @@ export async function updateStudentProfile(data: {
         bio: data.bio,
         phone: data.phone
     }).where(eq(users.id, session.userId));
+
+    try {
+        const { checkAndAwardAchievements } = await import('@/modules/student/actions/achievement-actions');
+        await checkAndAwardAchievements();
+    } catch (e) { }
+
     revalidatePath('/student/profile');
 }
 

@@ -18,7 +18,7 @@ type UserProfile = {
   last_name: string;
   full_name: string;
   email: string;
-  grade: number | null;
+  className: string | null;
   gender: string | null;
   total_xp: number;
   level: number;
@@ -177,7 +177,7 @@ export default function StudentProfile() {
   }
 
   const xpProgress = (profile?.total_xp || 0) % 1000;
-  const progressPercent = (xpProgress / 1000) * 100;
+  const progressPercent = Math.min(100, (xpProgress / 1000) * 100);
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-32">
@@ -204,8 +204,8 @@ export default function StudentProfile() {
             </div>
             <div className="flex-1 text-center md:text-left">
               <div className="flex flex-wrap items-center gap-3 mb-2 justify-center md:justify-start">
-                <Badge className="bg-indigo-600 text-white border-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Grade {profile?.grade}</Badge>
-                <Badge className="bg-white/10 text-white border-white/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Rank #{rank.current}</Badge>
+                <Badge className="bg-indigo-600 text-white border-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{profile?.className || 'Class Not Set'}</Badge>
+                <Badge className="bg-white/10 text-white border-white/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">School Rank #{rank.current}</Badge>
               </div>
               <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter leading-none mb-4">{profile?.full_name}</h1>
               <p className="text-slate-400 font-bold text-sm uppercase tracking-widest opacity-80">{profile?.email}</p>

@@ -420,6 +420,7 @@ export const achievements = pgTable('achievements', {
     description: text('description'),
     icon_url: text('icon_url'),
     tier: achievementTierEnum('tier').notNull().default('bronze'),
+    category: text('category').notNull().default('Beginner'),
     xp_threshold: integer('xp_threshold'),
     criteria: jsonb('criteria').notNull().default({}),
     is_active: boolean('is_active').notNull().default(true),

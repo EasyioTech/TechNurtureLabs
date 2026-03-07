@@ -13,7 +13,7 @@ export type UserProfile = {
     id: string;
     full_name: string;
     email: string;
-    class: number | null;
+    className: string | null;
     total_xp: number;
     level: number;
     current_streak: number;

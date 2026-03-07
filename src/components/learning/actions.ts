@@ -302,8 +302,12 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
             entity_id: lessonId,
             new_values: { lesson_title: lesson.title, xp_earned: xpToAdd }
         } as any);
+
+        // Check for newly earned achievements
+        const { checkAndAwardAchievements } = await import('@/modules/student/actions/achievement-actions');
+        await checkAndAwardAchievements();
     } catch (e) {
-        console.error('Failed to log activity:', e);
+        console.error('Failed to log activity or check achievements:', e);
     }
 }
 

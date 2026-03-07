@@ -557,7 +557,7 @@ function QuizEngine({ quizData, lessonXp, lessonComplete, onComplete }: {
       <div>
         <div className="flex items-center justify-between mb-6 px-4">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Question {currentQuestion + 1} of {questions.length}</span>
-          <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Passing Grade: {quizData.quiz.pass_percentage}%</span>
+          <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Passing Score: {quizData.quiz.pass_percentage}%</span>
         </div>
         <div className="h-4 bg-white rounded-full overflow-hidden p-1 border border-slate-100 shadow-sm">
           <div
@@ -646,7 +646,7 @@ function QuizResults({ score, total, percentage, xp, courseId, lessonId }: {
 
           <h2 className="text-4xl font-black uppercase tracking-tight mb-4">{passed ? 'Quiz Passed!' : 'Try Again'}</h2>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-12">
-            Scored {score} / {total} points • Your Grade {percentage}%
+            Scored {score} / {total} points • Your Score {percentage}%
           </p>
 
           <div className="relative w-48 h-48 mx-auto mb-12">

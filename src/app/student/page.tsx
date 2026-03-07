@@ -115,7 +115,7 @@ export default function StudentDashboard() {
   }
 
   const currentLevelXp = stats.xp % 1000;
-  const levelProgress = (currentLevelXp / 1000) * 100;
+  const levelProgress = Math.min(100, (currentLevelXp / 1000) * 100);
   const lastCourse = courses[0];
 
   return (
@@ -140,7 +140,7 @@ export default function StudentDashboard() {
             </h1>
             <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-3 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Active Session • Academic Year {new Date().getFullYear()}-{String(new Date().getFullYear() + 1).slice(2)}
+              {userProfile?.className || 'Class Not Set'} • Academic Year {new Date().getFullYear()}-{String(new Date().getFullYear() + 1).slice(2)}
             </p>
           </div>
           <div className="flex items-center gap-4">

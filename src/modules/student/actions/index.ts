@@ -38,7 +38,15 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     const userId = session.userId;
 
     const profile = await db.query.users.findFirst({
-        where: eq(users.id, userId)
+        where: eq(users.id, userId),
+        with: {
+            academicRecords: {
+                with: {
+                    academicClass: true
+                },
+                limit: 1
+            }
+        }
     });
 
     if (!profile) throw new Error('User not found');
@@ -63,10 +71,24 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     }).from(quizAttempts).where(eq(quizAttempts.user_id, userId));
     const accuracy = Math.round(Number(quizResult[0]?.avg_pct) || 0);
 
-    const usersWithMoreXp = await db.select().from(users).where(and(gt(users.cumulative_xp, Number(profile.cumulative_xp) || 0), eq(users.role, 'student')));
-    const totalStudents = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.role, 'student'));
+    // Calculate rank at school level
+    const usersWithMoreXp = await db.select().from(users).where(
+        and(
+            gt(users.cumulative_xp, Number(profile.cumulative_xp) || 0),
+            eq(users.role, 'student'),
+            eq(users.school_id, profile.school_id || '')
+        )
+    );
+    const totalSchoolStudents = await db.select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(
+            and(
+                eq(users.role, 'student'),
+                eq(users.school_id, profile.school_id || '')
+            )
+        );
     const rank = usersWithMoreXp.length + 1;
-    const rankPercentage = Math.max(1, Math.round((rank / (totalStudents[0]?.count || 1)) * 100));
+    const rankPercentage = Math.min(100, Math.max(1, Math.round((rank / (totalSchoolStudents[0]?.count || 1)) * 100)));
 
     const stats = {
         xp: Number(profile.cumulative_xp) || 0,
@@ -109,16 +131,6 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
                 is_completed: !!uc?.completed_at
             };
         });
-    }
-
-    // If less than 3, add virtual/default challenges as requested by user
-    if (formattedChallenges.length < 3) {
-        const defaults = [
-            { id: 'v-xp', title: 'Gain 50 XP', challenge_type: 'xp_gain', target_value: 50, xp_reward: 10, icon: 'zap', current_progress: Math.min(stats.xp % 100, 50), is_completed: (stats.xp % 100) >= 50 },
-            { id: 'v-time', title: 'Study for 30m', challenge_type: 'learning_time', target_value: 30, xp_reward: 15, icon: 'clock', current_progress: Math.min(Math.round(stats.totalTime * 60) % 60, 30), is_completed: (stats.totalTime * 60 % 60) >= 30 },
-            { id: 'v-quiz', title: 'Complete a Quiz', challenge_type: 'quiz_complete', target_value: 1, xp_reward: 20, icon: 'target', current_progress: stats.accuracy > 0 ? 1 : 0, is_completed: stats.accuracy > 0 }
-        ];
-        formattedChallenges = [...formattedChallenges, ...defaults].slice(0, 3);
     }
 
     // Achievements
@@ -294,6 +306,7 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     return {
         profile: {
             ...profile,
+            className: (profile.academicRecords?.[0] as any)?.academicClass?.name || 'Class Unassigned',
             full_name: `${profile.first_name} ${profile.last_name}`,
             total_xp: Number(profile.cumulative_xp) || 0,
             level: stats.level,

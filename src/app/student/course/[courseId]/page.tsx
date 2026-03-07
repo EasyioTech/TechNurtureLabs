@@ -126,7 +126,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ course
                 <div className="absolute bottom-8 left-8 right-8 lg:bottom-12 lg:left-12 lg:right-12">
                   <div className="flex flex-wrap items-center gap-3 mb-6">
                     <Badge className="bg-indigo-600/90 text-white border-0 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest backdrop-blur-md">
-                      {course?.all_grades ? 'Universal Course' : `Grade ${course?.grade} Level`}
+                      {course?.all_grades ? 'Universal Course' : `Class ${course?.grade} Level`}
                     </Badge>
                     <Badge className="bg-white/10 text-white border-white/20 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest backdrop-blur-md">
                       {enrolledCount} Students Enrolled
@@ -352,4 +352,4 @@ function LessonRow({ lesson, index }: { lesson: Lesson; index: number }) {
     </Link>
   );
 }
-
+
