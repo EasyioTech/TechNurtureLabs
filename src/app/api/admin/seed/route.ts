@@ -27,19 +27,15 @@ export async function GET(req: NextRequest) {
         const schemaPath = path.join(process.cwd(), 'database', 'schema.sql');
         const schemaText = fs.readFileSync(schemaPath, 'utf8');
 
-        // 3. Force completely drop and recreate the Database architecture as superuser
-        // Terminate other sessions to prevent "tuple concurrently updated" errors during DROP SCHEMA
-        await sql.unsafe(`
-            SELECT pg_terminate_backend(pid) FROM pg_stat_activity 
-            WHERE datname = 'orchids' AND pid <> pg_backend_pid();
-            DROP SCHEMA IF EXISTS public CASCADE;
-            CREATE SCHEMA public;
-        `);
+        // 3. SAFE INITIALIZATION ONLY
+        // We NO LONGER drop the schema here. Drizzle handles migrations safely.
+        // This endpoint is now for idempotent infrastructure setup (Roles & Permissions).
+        console.log("Starting idempotent infrastructure setup...");
 
-        // 4. Inject 100% of the Production Models & the built-in Seed
-        await sql.unsafe(schemaText);
+        // 4. (Optional) Run migrations/push if needed, but we do this in CI/CD now.
+        // We will just ensure the role and database settings are correct.
 
-        // 5. Explicitly grant permissions again just to be 100% safe
+        // 5. Explicitly grant permissions ensuring technurture_app can manage the schema
         await sql.unsafe(`
             GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO technurture_app;
             GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO technurture_app;
@@ -49,7 +45,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            message: 'SUPERUSER INITIALIZATION SUCCESSFUL: Database rebuilt from scratch, Role Created, Permissions Granted, and Seeded flawlessly.'
+            message: 'INFRASTRUCTURE SYNC SUCCESSFUL: Roles and permissions verified. No data was deleted.'
         });
     } catch (e: any) {
         console.error('Superuser Database Reconstruction Error:', e);

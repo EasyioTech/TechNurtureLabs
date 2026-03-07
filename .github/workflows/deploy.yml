@@ -32,9 +32,10 @@ jobs:
             echo "Waiting for application to start..."
             sleep 15
             
-            # Verification step: Trigger the seed/init API
-            # This ensures the DB is always in the correct state after a pull
-            curl -s http://localhost:3000/api/admin/seed
+            # Safe Schema Synchronization
+            # Instead of dropping the DB, we run push to update the schema safely
+            echo "Synchronizing database schema..."
+            docker exec LMS_app npm run db:push
             
             echo "Deployment successful!"
 
