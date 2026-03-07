@@ -50,10 +50,10 @@ export function PromoCodesTab({
                         >
                             <div>
                                 <div className="flex justify-between items-start mb-4">
-                                    <div className={`p-3 rounded-xl border-2 ${code.is_active ? (isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-100 border-emerald-200 text-emerald-600') : (isDark ? 'bg-slate-800 border-slate-700 text-slate-500' : 'bg-slate-200 border-slate-300 text-slate-500')}`}>
+                                    <div className={`p-3 rounded-xl border-2 ${code.is_active ? (isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-100 border-emerald-200 text-emerald-600') : (isDark ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-slate-200 border-slate-300 text-slate-500')}`}>
                                         <Tag size={20} strokeWidth={2.5} />
                                     </div>
-                                    <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${code.is_active ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                    <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${code.is_active ? (isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-100') : (isDark ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-700 border-rose-100')}`}>
                                         {code.is_active ? 'ACTIVE' : 'INACTIVE'}
                                     </span>
                                 </div>

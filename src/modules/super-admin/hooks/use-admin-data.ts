@@ -47,6 +47,7 @@ export function useAdminData() {
     const [courseMetrics, setCourseMetrics] = useState<CourseMetric[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
     const [courseClassMappings, setCourseClassMappings] = useState<any[]>([]);
+    const [platformSettings, setPlatformSettings] = useState<any | null>(null);
     // Pagination
     const [userMetricsPage, setUserMetricsPage] = useState(0);
 
@@ -188,6 +189,7 @@ export function useAdminData() {
 
         setClasses(data.classes || []);
         setCourseClassMappings(data.courseClassMappings || []);
+        setPlatformSettings(data.platformSettings || null);
 
         setLoading(false);
     }
@@ -241,13 +243,18 @@ export function useAdminData() {
         } catch { toast.error('Failed to delete lesson'); }
     }
 
-    async function saveLessonOrder() {
+    async function saveLessonOrder(customLessons?: Lesson[], silent = false) {
         if (!selectedCourse) return;
-        const updates = lessons.map((lesson, index) => ({
+        const targetLessons = customLessons || lessons;
+        const updates = targetLessons.map((lesson, index) => ({
             id: lesson.id, course_id: lesson.course_id, title: lesson.title, sequence_index: index,
         }));
-        try { await saveLessonOrderAdmin(updates); toast.success('Order saved'); }
-        catch { toast.error('Failed to save order'); }
+        try {
+            await saveLessonOrderAdmin(updates);
+            if (!silent) toast.success('Order saved');
+        } catch {
+            if (!silent) toast.error('Failed to save order');
+        }
     }
 
     // Plan CRUD
@@ -360,7 +367,7 @@ export function useAdminData() {
     return {
         loading, stats, courses, selectedCourse, lessons, setLessons,
         paymentPlans, promoCodes, schoolsList, userMetrics, courseMetrics,
-        classes, courseClassMappings,
+        classes, courseClassMappings, platformSettings,
         userMetricsPage, setUserMetricsPage,
         showCourseDialog, setShowCourseDialog, editingCourse, setEditingCourse,
         showLessonDialog, setShowLessonDialog, editingLesson, setEditingLesson,

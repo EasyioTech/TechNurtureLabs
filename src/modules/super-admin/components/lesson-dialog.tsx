@@ -89,7 +89,7 @@ export function LessonDialog({
                                 placeholder="e.g. Introduction to Neural Networks"
                                 value={editingLesson?.title || ''}
                                 onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })}
-                                className={`rounded-full h-12 px-5 shadow-inner text-sm font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] text-white border-white/5' : 'bg-slate-50 border-slate-200'}`}
+                                className={`rounded-full h-12 px-5 shadow-inner text-sm font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] text-white border-white/5 shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                             />
                         </div>
 
@@ -128,7 +128,7 @@ export function LessonDialog({
                                 placeholder="Briefly describe the key takeaways..."
                                 value={editingLesson?.description || ''}
                                 onChange={(e) => setEditingLesson({ ...editingLesson, description: e.target.value })}
-                                className={`rounded-2xl min-h-[80px] p-4 shadow-inner text-sm font-medium border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 resize-none ${isDark ? 'bg-white/[0.04] text-white border-white/5' : 'bg-slate-50 border-slate-200'}`}
+                                className={`rounded-2xl min-h-[80px] p-4 shadow-inner text-sm font-medium border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 resize-none ${isDark ? 'bg-white/[0.08] text-white border-white/5 shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                             />
                         </div>
 
@@ -152,7 +152,7 @@ export function LessonDialog({
                                         {/* External URL Input */}
                                         <div className="space-y-2">
                                             <div className="relative group">
-                                                <Link2 size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isDark ? `text-slate-600 group-focus-within:${accent.text}` : 'text-slate-400 group-focus-within:text-slate-900'}`} />
+                                                <Link2 size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isDark ? `text-slate-400 group-focus-within:${accent.text}` : 'text-slate-400 group-focus-within:text-slate-900'}`} />
                                                 <Input
                                                     id="content-url"
                                                     placeholder="Paste Link URL..."
@@ -264,7 +264,7 @@ export function LessonDialog({
                                         min="0"
                                         value={editingLesson?.xp_reward || 0}
                                         onChange={(e) => setEditingLesson({ ...editingLesson, xp_reward: Number(e.target.value) })}
-                                        className={`rounded-full h-12 pl-10 pr-5 shadow-inner text-sm font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] text-violet-400 border-white/5' : 'bg-slate-50 text-violet-600 border-slate-200'}`}
+                                        className={`rounded-full h-12 pl-10 pr-5 shadow-inner text-sm font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] text-violet-400 border-white/5 shadow-inner' : 'bg-slate-50 text-violet-600 border-slate-200'}`}
                                     />
                                 </div>
                             </div>
@@ -277,7 +277,7 @@ export function LessonDialog({
                                         min="1"
                                         value={editingLesson?.duration || editingLesson?.duration_minutes || 0}
                                         onChange={(e) => setEditingLesson({ ...editingLesson, duration: Number(e.target.value), duration_minutes: Number(e.target.value) })}
-                                        className={`rounded-full h-12 pl-10 pr-5 shadow-inner text-sm font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] text-sky-400 border-white/5' : 'bg-slate-50 text-sky-600 border-slate-200'}`}
+                                        className={`rounded-full h-12 pl-10 pr-5 shadow-inner text-sm font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] text-sky-400 border-white/5 shadow-inner' : 'bg-slate-50 text-sky-600 border-slate-200'}`}
                                     />
                                 </div>
                             </div>

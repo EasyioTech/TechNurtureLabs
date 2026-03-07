@@ -29,7 +29,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
     lime: {
         bg: 'bg-lime-400', bgHover: 'hover:bg-lime-300', text: 'text-lime-400',
         softDark: 'bg-lime-400/10 text-lime-400 border-lime-400/20',
-        softLight: 'bg-lime-50 text-lime-700 border-lime-200',
+        softLight: 'bg-lime-100/60 text-lime-800 border-lime-200',
         badgeDark: 'text-lime-400 bg-lime-400/10', badgeLight: 'text-lime-700 bg-lime-50',
         ring: 'ring-lime-400/20', name: 'lime', label: 'Lime',
         swatchDark: '#a3e635', swatchLight: '#65a30d', hoverText: 'hover:text-lime-400',
@@ -37,7 +37,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
     violet: {
         bg: 'bg-violet-400', bgHover: 'hover:bg-violet-300', text: 'text-violet-400',
         softDark: 'bg-violet-400/10 text-violet-400 border-violet-400/20',
-        softLight: 'bg-violet-50 text-violet-700 border-violet-200',
+        softLight: 'bg-violet-100/60 text-violet-800 border-violet-200',
         badgeDark: 'text-violet-400 bg-violet-400/10', badgeLight: 'text-violet-700 bg-violet-50',
         ring: 'ring-violet-400/20', name: 'violet', label: 'Violet',
         swatchDark: '#a78bfa', swatchLight: '#7c3aed', hoverText: 'hover:text-violet-400',
@@ -45,7 +45,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
     ocean: {
         bg: 'bg-cyan-400', bgHover: 'hover:bg-cyan-300', text: 'text-cyan-400',
         softDark: 'bg-cyan-400/10 text-cyan-400 border-cyan-400/20',
-        softLight: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+        softLight: 'bg-cyan-100/60 text-cyan-800 border-cyan-200',
         badgeDark: 'text-cyan-400 bg-cyan-400/10', badgeLight: 'text-cyan-700 bg-cyan-50',
         ring: 'ring-cyan-400/20', name: 'cyan', label: 'Ocean',
         swatchDark: '#22d3ee', swatchLight: '#0891b2', hoverText: 'hover:text-cyan-400',
@@ -53,7 +53,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
     rose: {
         bg: 'bg-rose-400', bgHover: 'hover:bg-rose-300', text: 'text-rose-400',
         softDark: 'bg-rose-400/10 text-rose-400 border-rose-400/20',
-        softLight: 'bg-rose-50 text-rose-700 border-rose-200',
+        softLight: 'bg-rose-100/60 text-rose-800 border-rose-200',
         badgeDark: 'text-rose-400 bg-rose-400/10', badgeLight: 'text-rose-700 bg-rose-50',
         ring: 'ring-rose-400/20', name: 'rose', label: 'Rose',
         swatchDark: '#fb7185', swatchLight: '#e11d48', hoverText: 'hover:text-rose-400',
@@ -61,7 +61,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
     amber: {
         bg: 'bg-amber-400', bgHover: 'hover:bg-amber-300', text: 'text-amber-400',
         softDark: 'bg-amber-400/10 text-amber-400 border-amber-400/20',
-        softLight: 'bg-amber-50 text-amber-700 border-amber-200',
+        softLight: 'bg-amber-100/60 text-amber-800 border-amber-200',
         badgeDark: 'text-amber-400 bg-amber-400/10', badgeLight: 'text-amber-700 bg-amber-50',
         ring: 'ring-amber-400/20', name: 'amber', label: 'Amber',
         swatchDark: '#fbbf24', swatchLight: '#d97706', hoverText: 'hover:text-amber-400',
@@ -69,7 +69,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
     emerald: {
         bg: 'bg-emerald-400', bgHover: 'hover:bg-emerald-300', text: 'text-emerald-400',
         softDark: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20',
-        softLight: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        softLight: 'bg-emerald-100/60 text-emerald-800 border-emerald-200',
         badgeDark: 'text-emerald-400 bg-emerald-400/10', badgeLight: 'text-emerald-700 bg-emerald-50',
         ring: 'ring-emerald-400/20', name: 'emerald', label: 'Emerald',
         swatchDark: '#34d399', swatchLight: '#059669', hoverText: 'hover:text-emerald-400',
@@ -77,7 +77,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
     indigo: {
         bg: 'bg-indigo-400', bgHover: 'hover:bg-indigo-300', text: 'text-indigo-400',
         softDark: 'bg-indigo-400/10 text-indigo-400 border-indigo-400/20',
-        softLight: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        softLight: 'bg-indigo-100/60 text-indigo-800 border-indigo-200',
         badgeDark: 'text-indigo-400 bg-indigo-400/10', badgeLight: 'text-indigo-700 bg-indigo-50',
         ring: 'ring-indigo-400/20', name: 'indigo', label: 'Indigo',
         swatchDark: '#818cf8', swatchLight: '#4f46e5', hoverText: 'hover:text-indigo-400',
@@ -138,17 +138,17 @@ export const useAdminTheme = () => useContext(Ctx);
 /* ── Shared style helpers ── */
 export const t = {
     pageBg: (d: boolean) => d ? 'bg-[#09090b]' : 'bg-[#fafafa]',
-    card: (d: boolean) => d ? 'bg-[#121214] border-white/[0.06]' : 'bg-white border-neutral-200/50 shadow-sm shadow-black/[0.01]',
-    cardHover: (d: boolean) => d ? 'hover:bg-[#18181b]' : 'hover:bg-neutral-50/30',
-    textPrimary: (d: boolean) => d ? 'text-white' : 'text-[#262626]',
-    textSecondary: (d: boolean) => d ? 'text-slate-400' : 'text-[#666666]',
-    textMuted: (d: boolean) => d ? 'text-slate-500' : 'text-[#a3a3a3]',
-    border: (d: boolean) => d ? 'border-white/[0.06]' : 'border-neutral-200/50',
-    divider: (d: boolean) => d ? 'divide-white/[0.04]' : 'divide-neutral-100/80',
-    headerBg: (d: boolean) => d ? 'bg-[#09090b]/80' : 'bg-white/90',
-    navPillBg: (d: boolean) => d ? 'bg-white/[0.04]' : 'bg-neutral-100/80',
-    navActive: (d: boolean) => d ? 'bg-white text-slate-900' : 'bg-[#262626] text-white',
-    navInactive: (d: boolean) => d ? 'text-slate-400 hover:text-white' : 'text-neutral-500 hover:text-[#262626]',
+    card: (d: boolean) => d ? 'bg-[#121214] border-white/[0.08]' : 'bg-white border-neutral-200 shadow-sm shadow-black/[0.01]',
+    cardHover: (d: boolean) => d ? 'hover:bg-[#18181b] hover:border-white/20' : 'hover:bg-neutral-50/30',
+    textPrimary: (d: boolean) => d ? 'text-white' : 'text-[#171717]',
+    textSecondary: (d: boolean) => d ? 'text-slate-200' : 'text-[#4b5563]',
+    textMuted: (d: boolean) => d ? 'text-slate-400' : 'text-[#6b7280]',
+    border: (d: boolean) => d ? 'border-white/[0.12]' : 'border-neutral-200',
+    divider: (d: boolean) => d ? 'divide-white/[0.08]' : 'divide-neutral-100',
+    headerBg: (d: boolean) => d ? 'bg-[#09090b]/90' : 'bg-white/95',
+    navPillBg: (d: boolean) => d ? 'bg-white/[0.06]' : 'bg-neutral-100',
+    navActive: (d: boolean) => d ? 'bg-white text-slate-950' : 'bg-[#171717] text-white',
+    navInactive: (d: boolean) => d ? 'text-slate-300 hover:text-white' : 'text-neutral-500 hover:text-[#171717]',
     inputBg: (d: boolean) => d ? 'bg-white/[0.06] text-white placeholder:text-slate-500' : 'bg-[#f5f5f5] text-[#262626] border-neutral-200/60 placeholder:text-neutral-400',
 
     /* ── Accent-aware helpers ── */
@@ -170,8 +170,8 @@ export const t = {
     draft: (d: boolean) => d ? 'bg-white/[0.06] text-slate-500 border-white/10' : 'bg-neutral-100/80 text-neutral-500 border-neutral-200/60',
     danger: (d: boolean) => d ? 'bg-rose-500/10 text-rose-400 border-rose-400/20' : 'bg-rose-50 text-rose-700 border-rose-100',
 
-    iconBg: (d: boolean) => d ? 'bg-white/[0.06]' : 'bg-neutral-100',
-    iconText: (d: boolean) => d ? 'text-slate-400' : 'text-neutral-500',
+    iconBg: (d: boolean) => d ? 'bg-white/[0.08]' : 'bg-neutral-100',
+    iconText: (d: boolean) => d ? 'text-slate-200' : 'text-neutral-600',
 
     /* Input focus ring - accent aware */
     inputFocus: (a: AccentPalette) => {

@@ -1,10 +1,11 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { redis } from './redis';
+import { serverEnv } from '@/lib/env.server';
 
-const jwtSecretEnv = process.env.JWT_SECRET;
+const jwtSecretEnv = serverEnv.JWT_SECRET;
 if (!jwtSecretEnv || jwtSecretEnv.length < 32) {
-    if (process.env.NODE_ENV === 'production') {
+    if (serverEnv.NODE_ENV === 'production') {
         throw new Error('CRITICAL CONFIG ERROR: JWT_SECRET environment variable is missing or too short. It must be at least 32 characters long. The application cannot start securely.');
     } else {
         console.warn('WARNING: Using weak fallback JWT_SECRET for local development. DO NOT use in production.');
@@ -33,8 +34,8 @@ export async function createSession(payload: Omit<SessionPayload, 'sessionId'>) 
         .setExpirationTime('7d')
         .sign(JWT_SECRET);
 
-    const isProduction = process.env.NODE_ENV === 'production';
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+    const isProduction = serverEnv.NODE_ENV === 'production';
+    const appUrl = serverEnv.NEXT_PUBLIC_APP_URL;
     const isHttp = appUrl.startsWith('http://') || !isProduction;
 
     (await cookies()).set('session', token, {
@@ -72,8 +73,8 @@ export async function verifySession(): Promise<SessionPayload | null> {
                 .setExpirationTime('7d')
                 .sign(JWT_SECRET);
 
-            const isProduction = process.env.NODE_ENV === 'production';
-            const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+            const isProduction = serverEnv.NODE_ENV === 'production';
+            const appUrl = serverEnv.NEXT_PUBLIC_APP_URL;
             const isHttp = appUrl.startsWith('http://') || !isProduction;
 
             cookieStore.set('session', newToken, {

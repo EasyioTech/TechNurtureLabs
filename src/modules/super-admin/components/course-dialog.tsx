@@ -105,7 +105,7 @@ export function CourseDialog({
                                 placeholder="e.g. Advanced Robotics Operations"
                                 value={editingCourse?.title || ''}
                                 onChange={(e) => setEditingCourse({ ...editingCourse, title: e.target.value })}
-                                className={`rounded-full h-12 px-5 shadow-inner text-sm font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] text-white border-white/5' : 'bg-slate-50 border-slate-200'}`}
+                                className={`rounded-full h-12 px-5 shadow-inner text-sm font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] text-white border-white/5 shadow-inner' : 'bg-slate-50 border-slate-200'}`}
                             />
                         </div>
 
@@ -116,7 +116,7 @@ export function CourseDialog({
                                 placeholder="Define operational parameters and learning objectives..."
                                 value={editingCourse?.description || ''}
                                 onChange={(e) => setEditingCourse({ ...editingCourse, description: e.target.value })}
-                                className={`rounded-2xl min-h-[100px] p-4 shadow-inner text-sm font-medium border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 resize-none ${isDark ? 'bg-white/[0.04] text-white border-white/5' : 'bg-slate-50 border-slate-200'}`}
+                                className={`rounded-2xl min-h-[100px] p-4 shadow-inner text-sm font-medium border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 resize-none ${isDark ? 'bg-white/[0.08] text-white border-white/5' : 'bg-slate-50 border-slate-200'}`}
                             />
                         </div>
 
@@ -130,9 +130,9 @@ export function CourseDialog({
                                         placeholder="Paste Image URL..."
                                         value={editingCourse?.thumbnail || ''}
                                         onChange={(e) => setEditingCourse({ ...editingCourse, thumbnail: e.target.value })}
-                                        className={`rounded-full h-12 pl-11 pr-5 shadow-inner text-sm font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] text-white border-white/5' : 'bg-slate-50 border-slate-200'}`}
+                                        className={`rounded-full h-12 pl-11 pr-5 shadow-inner text-sm font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] text-white border-white/5 shadow-inner' : 'bg-slate-50 border-slate-200'}`}
                                     />
-                                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>
                                         <ExternalLink size={16} />
                                     </div>
                                 </div>
@@ -264,8 +264,8 @@ export function CourseDialog({
                                             onClick={() => handleToggleClass(cls.id)}
                                             className={`px-4 py-2 rounded-full text-[11px] font-black tracking-tight transition-all border-2
                                             ${isSelected
-                                                    ? (isDark ? `${accent.bg} text-slate-900 border-${accent.name}-400 shadow-lg` : `${accent.bg} text-slate-900 border-${accent.name}-400 shadow-lg`)
-                                                    : (isDark ? 'bg-transparent text-slate-400 border-white/10 hover:bg-white/5' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}
+                                                    ? (isDark ? `${accent.bg} text-slate-900 border-white shadow-lg` : `${accent.bg} text-slate-900 border-slate-900 shadow-lg`)
+                                                    : (isDark ? 'bg-white/[0.05] text-slate-400 border-white/10 hover:bg-white/10 hover:text-white' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}
                                         >
                                             Class {cls.name}
                                         </button>

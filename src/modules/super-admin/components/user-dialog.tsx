@@ -93,7 +93,7 @@ export function UserDialog({
                                 onChange={e => setEditingUser({ ...editingUser, email: e.target.value })}
                                 className={`rounded-full h-11 pl-11 pr-5 font-bold border-2 focus-visible:ring-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200'}`}
                             />
-                            <Mail size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+                            <Mail size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-slate-400'}`} />
                         </div>
                     </div>
 
@@ -111,7 +111,7 @@ export function UserDialog({
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className={`absolute right-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-600 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}
+                                    className={`absolute right-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}
                                 >
                                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
@@ -125,10 +125,10 @@ export function UserDialog({
                             value={editingUser?.school_id || ''}
                             onValueChange={val => setEditingUser({ ...editingUser, school_id: val })}
                         >
-                            <SelectTrigger className={`rounded-full h-11 px-5 font-bold border-2 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200'}`}>
+                            <SelectTrigger className={`rounded-full h-11 px-5 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-900 shadow-sm'}`}>
                                 <SelectValue placeholder="Select School" />
                             </SelectTrigger>
-                            <SelectContent className={`rounded-2xl border ${isDark ? 'bg-[#0f1219] border-white/10' : 'bg-white border-slate-200'}`}>
+                            <SelectContent className={`rounded-2xl border-2 shadow-2xl ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
                                 {schools.map(s => (
                                     <SelectItem key={s.id} value={s.id} className="font-bold text-sm">{s.name}</SelectItem>
                                 ))}
@@ -142,10 +142,10 @@ export function UserDialog({
                             value={editingUser?.class_id || ''}
                             onValueChange={val => setEditingUser({ ...editingUser, class_id: val })}
                         >
-                            <SelectTrigger className={`rounded-full h-11 px-5 font-bold border-2 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200'}`}>
+                            <SelectTrigger className={`rounded-full h-11 px-5 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-900 shadow-sm'}`}>
                                 <SelectValue placeholder="Select Class" />
                             </SelectTrigger>
-                            <SelectContent className={`rounded-2xl border ${isDark ? 'bg-[#0f1219] border-white/10' : 'bg-white border-slate-200'}`}>
+                            <SelectContent className={`rounded-2xl border-2 shadow-2xl ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
                                 {classes.map(g => (
                                     <SelectItem key={g.id} value={g.id} className="font-bold text-sm">{g.name}</SelectItem>
                                 ))}

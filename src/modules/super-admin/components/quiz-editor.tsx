@@ -441,7 +441,7 @@ function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
                         value={q.question_text}
                         onChange={(e) => onUpdate({ question_text: e.target.value })}
                         placeholder="Define the question context..."
-                        className={`${isDark ? 'bg-black/30 border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} rounded-2xl md:rounded-[32px] min-h-[100px] md:min-h-[120px] p-5 md:p-6 text-sm md:text-base font-medium placeholder:text-slate-700 focus:border-${accent.name}-400/30 transition-all resize-none`}
+                        className={`${isDark ? 'bg-black/30 border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} rounded-2xl md:rounded-[32px] min-h-[100px] md:min-h-[120px] p-5 md:p-6 text-sm md:text-base font-medium placeholder:text-slate-600 focus:border-${accent.name}-400/30 transition-all resize-none`}
                     />
                 </div>
 
@@ -478,7 +478,7 @@ function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
                         value={q.explanation}
                         onChange={(e) => onUpdate({ explanation: e.target.value })}
                         placeholder="Provide an explanation for the correct answer..."
-                        className={`${isDark ? 'bg-white/[0.03] border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'} h-12 md:h-14 rounded-full px-5 md:px-6 text-[13px] font-medium placeholder:text-slate-700`}
+                        className={`${isDark ? 'bg-white/[0.03] border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'} h-12 md:h-14 rounded-full px-5 md:px-6 text-[13px] font-medium placeholder:text-slate-600`}
                     />
                 </div>
             </div>

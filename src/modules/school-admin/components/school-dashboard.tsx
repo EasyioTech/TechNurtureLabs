@@ -86,10 +86,16 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
 
                         {/* School Identity */}
                         <div className="flex items-center gap-4 flex-shrink-0 min-w-0">
-                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-600 shadow-indigo-600/20'
-                                }`}>
-                                <GraduationCap size={22} className={isDark ? 'text-indigo-400' : 'text-white'} strokeWidth={2.5} />
-                            </div>
+                            {schoolProfile?.logo_url ? (
+                                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg bg-white border ${isDark ? 'border-indigo-500/20' : 'border-slate-100'} p-1 overflow-hidden`}>
+                                    <img src={schoolProfile.logo_url} alt={schoolName} className="w-full h-full object-contain" />
+                                </div>
+                            ) : (
+                                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-600 shadow-indigo-600/20'
+                                    }`}>
+                                    <GraduationCap size={22} className={isDark ? 'text-indigo-400' : 'text-white'} strokeWidth={2.5} />
+                                </div>
+                            )}
                             <div className="min-w-0 hidden sm:block">
                                 <p className={`text-[15px] font-black tracking-tight leading-none truncate ${ts.textPrimary(isDark)}`}>
                                     {schoolName}

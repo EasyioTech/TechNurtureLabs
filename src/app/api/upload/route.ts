@@ -24,13 +24,16 @@ export async function POST(request: NextRequest) {
         // Derive the bare filename from the path (e.g. "videos/uuid.mp4" → "uuid.mp4")
         const fileName = path.basename(result.path);
 
-        // Resolve current user (optional — non-blocking if unauthenticated)
+        // Enforce authentication to prevent anonymous file upload abuse
         let uploadedBy: string | null = null;
         try {
             const session = await verifySession();
-            uploadedBy = session?.userId ?? null;
+            if (!session || !session.userId) {
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+            uploadedBy = session.userId;
         } catch {
-            // Unauthenticated or session missing — that's fine
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         // Persist to media library

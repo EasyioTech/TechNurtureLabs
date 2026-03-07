@@ -49,7 +49,7 @@ export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: 
                                     className={`px-6 py-4 flex items-center gap-4 transition-all group ${t.cardHover(isDark)}`}>
                                     <div className="relative">
                                         <div className={`w-12 h-12 rounded-full flex items-center justify-center text-[12px] font-black flex-shrink-0
-                                            ${isTop3 ? (isDark ? `${accent.bg} text-slate-900 ${accent.ring.replace('ring-', 'ring-4 ring-')}` : 'bg-slate-900 text-white shadow-lg shadow-slate-900/20') : isDark ? 'bg-white/[0.05] text-slate-500 border border-white/5' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
+                                            ${isTop3 ? (isDark ? `${accent.bg} text-slate-900 ${accent.ring.replace('ring-', 'ring-4 ring-')}` : 'bg-slate-900 text-white shadow-lg shadow-slate-900/20') : isDark ? 'bg-white/[0.12] text-slate-200 border border-white/10 shadow-inner' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
                                             {u.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                         </div>
                                         {isTop3 && (
@@ -116,7 +116,7 @@ export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: 
                         <table className="w-full">
                             <thead><tr className={`border-b ${t.border(isDark)} bg-slate-500/[0.02]`}>
                                 {['Course', 'Status', 'Lessons', 'Students', 'Completion Rate', 'Avg. XP', 'Time Spent'].map(h => (
-                                    <th key={h} className={`px-6 py-4 text-[10px] font-black uppercase tracking-widest ${h === 'Course' ? 'text-left' : 'text-right'} ${t.textMuted(isDark)}`}>{h}</th>
+                                    <th key={h} className={`px-6 py-4 text-[10px] font-black uppercase tracking-widest ${h === 'Course' ? 'text-left' : 'text-right'} ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{h}</th>
                                 ))}
                             </tr></thead>
                             <tbody className={t.divider(isDark)}>

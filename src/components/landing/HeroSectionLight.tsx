@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Presentation, Sparkles, CheckCircle2 } from 'lucide-react';
 import { ScrollReveal } from './ScrollReveal';
 
-export const HeroSectionLight = () => {
+export const HeroSectionLight = ({ settings }: { settings?: any }) => {
     return (
         <section className="relative z-10 pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-slate-50">
 
@@ -27,8 +27,12 @@ export const HeroSectionLight = () => {
 
                         <ScrollReveal delay={0.1} direction="up" duration={0.8}>
                             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white border border-slate-200 shadow-sm mb-6">
-                                <Sparkles size={14} className="text-blue-600" />
-                                <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">Enterprise LMS 2.0</span>
+                                {settings?.logo_url ? (
+                                    <img src={settings.logo_url} alt="Logo" className="w-4 h-4 object-contain" />
+                                ) : (
+                                    <Sparkles size={14} className="text-blue-600" />
+                                )}
+                                <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">{settings?.platform_name || 'TechNurture'} Labs</span>
                             </div>
                         </ScrollReveal>
 

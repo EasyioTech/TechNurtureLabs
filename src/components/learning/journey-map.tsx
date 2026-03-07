@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Play, CheckCircle2, Trophy, FileText } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { getLessonsByCourse } from '@/modules/learning/actions';
+import { getLessonsByCourse } from '@/components/learning/actions';
 import Link from 'next/link';
 
 type Lesson = {

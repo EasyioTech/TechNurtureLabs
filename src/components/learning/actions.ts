@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping } from '@/db/schema';
+import { users, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping, schools } from '@/db/schema';
 import { eq, and, inArray, asc, desc, isNotNull } from 'drizzle-orm';
 
 // Auto-enroll a student in a course if not already enrolled
@@ -150,6 +150,10 @@ export async function getCourseDetailsData(courseId: string) {
         });
     }
 
+    const school = user.school_id ? await db.query.schools.findFirst({
+        where: eq(schools.id, user.school_id)
+    }) : null;
+
     return {
         course: {
             ...course,
@@ -157,6 +161,7 @@ export async function getCourseDetailsData(courseId: string) {
             published: course.is_published,
         },
         lessons: formattedLessons,
+        school,
         enrolledCount
     };
 }

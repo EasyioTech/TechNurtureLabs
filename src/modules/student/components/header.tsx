@@ -13,12 +13,13 @@ import { useAuth } from '@/components/providers/auth-provider';
 
 interface StudentHeaderProps {
     profile?: { full_name: string; email: string };
+    school?: { name: string; logo_url?: string | null };
     stats: { xp: number; streak: number; level: number };
     searchQuery?: string;
     setSearchQuery?: (q: string) => void;
 }
 
-export function StudentHeader({ profile, stats, searchQuery, setSearchQuery }: StudentHeaderProps) {
+export function StudentHeader({ profile, school, stats, searchQuery, setSearchQuery }: StudentHeaderProps) {
     const { signOut } = useAuth();
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -61,12 +62,18 @@ export function StudentHeader({ profile, stats, searchQuery, setSearchQuery }: S
 
                     {/* ── Left: Logo ── */}
                     <Link href="/student" className="flex items-center gap-2.5 flex-shrink-0 select-none">
-                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm">
-                            <GraduationCap size={20} className="text-white" />
-                        </div>
+                        {school?.logo_url ? (
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white flex items-center justify-center shadow-sm overflow-hidden border border-slate-100 p-1">
+                                <img src={school.logo_url} alt={school.name} className="w-full h-full object-contain" />
+                            </div>
+                        ) : (
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm">
+                                <GraduationCap size={20} className="text-white" />
+                            </div>
+                        )}
                         <div className="hidden min-[480px]:block leading-none">
-                            <p className="text-[15px] sm:text-base font-extrabold text-slate-800 tracking-tight">TechNurture</p>
-                            <p className="text-[10px] font-semibold text-indigo-500 tracking-wide">LABS</p>
+                            <p className="text-[15px] sm:text-base font-extrabold text-slate-800 tracking-tight">{school?.name || 'TechNurture'}</p>
+                            <p className="text-[10px] font-semibold text-indigo-500 tracking-wide uppercase">Institutional Portal</p>
                         </div>
                     </Link>
 
@@ -202,10 +209,16 @@ export function StudentHeader({ profile, stats, searchQuery, setSearchQuery }: S
                             {/* Top */}
                             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                                 <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
-                                        <GraduationCap size={16} />
-                                    </div>
-                                    <span className="font-extrabold text-slate-800 text-[15px] tracking-tight">TechNurture</span>
+                                    {school?.logo_url ? (
+                                        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-slate-100 p-0.5">
+                                            <img src={school.logo_url} alt={school.name} className="w-full h-full object-contain" />
+                                        </div>
+                                    ) : (
+                                        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+                                            <GraduationCap size={16} />
+                                        </div>
+                                    )}
+                                    <span className="font-extrabold text-slate-800 text-[15px] tracking-tight truncate max-w-[150px]">{school?.name || 'TechNurture'}</span>
                                 </div>
                                 <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg bg-slate-50 text-slate-500 active:scale-95">
                                     <X size={18} />
@@ -235,7 +248,7 @@ export function StudentHeader({ profile, stats, searchQuery, setSearchQuery }: S
                             {/* Nav */}
                             <nav className="flex-1 overflow-y-auto py-3 px-3">
                                 <NavItem icon={LayoutDashboard} label="Dashboard" href="/student" active={pathname === '/student'} close={() => setMobileOpen(false)} />
-                                <NavItem icon={Compass} label="Explore Courses" href="/student" close={() => setMobileOpen(false)} />
+                                <NavItem icon={Compass} label="Explore Courses" href="/student/explore" close={() => setMobileOpen(false)} />
                                 <NavItem icon={User} label="My Profile" href="/student/profile" active={pathname === '/student/profile'} close={() => setMobileOpen(false)} />
                                 <NavItem icon={Crown} label="Achievements" href="/student/profile" close={() => setMobileOpen(false)} />
                                 <NavItem icon={Settings} label="Settings" href="/student/profile" close={() => setMobileOpen(false)} />

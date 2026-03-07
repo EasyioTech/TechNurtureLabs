@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -29,9 +28,10 @@ import {
 } from '@/components/ui/command';
 import { fetchApprovedSchools, registerStudent } from '@/modules/auth/register-actions';
 import { toast } from 'sonner';
-import { GraduationCap, ArrowLeft, User, School, Loader2, Sparkles, Check, Zap, ChevronsUpDown, Search, UserCircle2, ArrowRight, Trophy } from 'lucide-react';
+import { GraduationCap, ArrowLeft, User, School, Loader2, Check, ChevronsUpDown, Search, UserCircle2, ArrowRight, Trophy } from 'lucide-react';
 import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
-import { ScrollReveal } from '@/components/landing/ScrollReveal';
+import { StudentRegistrationSidebar } from '@/components/registration/StudentRegistrationSidebar';
+import { ManIcon, WomanIcon } from '@/components/registration/GenderIcons';
 
 type SchoolOption = {
   id: string;
@@ -47,7 +47,6 @@ export default function StudentRegistrationPage() {
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [loadingSchools, setLoadingSchools] = useState(true);
   const [selectedSchool, setSelectedSchool] = useState<SchoolOption | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState(1);
   const [schoolSearchOpen, setSchoolSearchOpen] = useState(false);
 
@@ -60,8 +59,38 @@ export default function StudentRegistrationPage() {
     class_id: '',
     gender: '',
   });
-  const [accountSubStep, setAccountSubStep] = useState<'email' | 'pin' | 'confirm'>('email');
   const [pinFocused, setPinFocused] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateStep1 = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.full_name.trim()) newErrors.full_name = 'Full name is required';
+    if (!formData.gender) newErrors.gender = 'Gender selection is required';
+    if (!formData.school_id) newErrors.school_id = 'School selection is required';
+    if (!formData.class_id) newErrors.class_id = 'Class selection is required';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateStep2 = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.email.trim()) newErrors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email format';
+
+    if (formData.password.length !== 6) newErrors.password = 'PIN must be 6 digits';
+    if (formData.confirm_password !== formData.password) newErrors.confirm_password = 'PINs do not match';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNextStep = () => {
+    if (validateStep1()) {
+      setErrors({});
+      setStep(2);
+    }
+  };
 
   useEffect(() => {
     fetchSchools();
@@ -87,43 +116,31 @@ export default function StudentRegistrationPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.full_name || !formData.email || !formData.password || !formData.school_id || !formData.class_id || !formData.gender) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
-    if (formData.password !== formData.confirm_password) {
-      toast.error('PINs do not match');
-      return;
-    }
-
-    if (!/^\d{6}$/.test(formData.password)) {
-      toast.error('PIN must be exactly 6 digits');
+    if (!validateStep2()) {
+      toast.error('Please fix the errors in the form');
       return;
     }
 
     setLoading(true);
-    const toastId = toast.loading('Creating your account...');
+    const toastId = toast.loading('Registering your account...');
 
     try {
       const result = await registerStudent(formData);
 
       if (result.success) {
-        toast.success('Registration successful! You can now log in.', { id: toastId });
+        toast.success('Registration complete! You can now sign in.', { id: toastId });
         router.push('/login');
       } else {
-        toast.error(result.error || 'Registration failed. Please try again.', { id: toastId });
+        toast.error(result.error || 'Registration failed. Please verify your details.', { id: toastId });
       }
     } catch (err: any) {
-      toast.error('Connection error. Please try again.', { id: toastId });
+      toast.error('Connection issue. Please try again.', { id: toastId });
     } finally {
       setLoading(false);
     }
   };
 
   const availableClasses = selectedSchool?.classes_available || [];
-  const canProceedStep1 = formData.full_name && formData.gender && formData.school_id && formData.class_id;
-  const canProceedStep2 = formData.email && /^\d{6}$/.test(formData.password) && formData.password === formData.confirm_password;
 
   return (
     <div className="h-screen overflow-hidden bg-slate-50 text-slate-900 flex font-sans selection:bg-indigo-100 selection:text-indigo-900">
@@ -137,111 +154,7 @@ export default function StudentRegistrationPage() {
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-indigo-100/40 rounded-full blur-[140px]" />
       </div>
 
-      {/* Left Sidebar: Brand & Journey Steps */}
-      <div className="hidden lg:flex flex-[0.85] relative overflow-hidden bg-white border-r border-slate-200/60 z-10">
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.08),transparent)]" />
-          <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-indigo-50/40 to-transparent" />
-
-          {/* Animated decorative elements */}
-          {/* Animated decorative illustrations */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-[0.05] pointer-events-none">
-            <img src="/illustrations/interactive-courses.svg" className="w-full h-full object-contain rotate-12" alt="" />
-          </div>
-        </div>
-
-        <div className="relative z-10 w-full h-full flex flex-col justify-between p-12">
-          <header>
-            <Link href="/" className="flex items-center gap-3 group w-fit">
-              <div className="w-12 h-12 rounded-2xl bg-slate-950 flex items-center justify-center transition-all group-hover:rotate-6 group-hover:scale-110 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
-                <Sparkles className="text-white" size={24} />
-              </div>
-              <div>
-                <span className="text-2xl font-black tracking-tighter text-slate-950 block leading-none">TechNurture</span>
-                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.2em] ml-0.5">Labs</span>
-              </div>
-            </Link>
-          </header>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.8 }}
-            className="max-w-md"
-          >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100/50 mb-6">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-              </span>
-              <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest">Enrollment Open 2024-25</span>
-            </div>
-
-            <h2 className="text-[44px] font-black mb-6 text-slate-900 leading-[1.05] tracking-tight">
-              Start your <span className="text-indigo-600">learning</span> adventure today.
-            </h2>
-
-            <p className="text-slate-500 text-lg font-medium leading-relaxed mb-10">
-              Transform the way you learn with world-class resources designed specifically for your growth.
-            </p>
-
-            <div className="grid gap-6">
-              {[
-                {
-                  icon: <UserCircle2 className="text-indigo-600" size={20} />,
-                  title: "Smart Profile",
-                  desc: "Personalized dashboard that tracks your wins."
-                },
-                {
-                  icon: <Zap className="text-amber-500" size={20} />,
-                  title: "Fast Track",
-                  desc: "Learn complex topics 3x faster with AI aids."
-                },
-                {
-                  icon: <Trophy className="text-emerald-500" size={20} />,
-                  title: "Global Rank",
-                  desc: "Compete and earn certificates of excellence."
-                }
-              ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + (i * 0.1) }}
-                  className="flex items-start gap-4 p-4 rounded-2xl bg-white/40 hover:bg-white/60 transition-all group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                    {item.icon}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 mb-1">{item.title}</h4>
-                    <p className="text-xs font-medium text-slate-500 leading-snug">{item.desc}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          <footer className="flex flex-col gap-6 pt-10 border-t border-slate-100">
-            <div className="flex items-center justify-between">
-              <div className="flex -space-x-3">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="w-9 h-9 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center overflow-hidden">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=student${i}`} alt="Avatar" className="w-full h-full object-cover" />
-                  </div>
-                ))}
-                <div className="w-9 h-9 rounded-full border-2 border-white bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
-                  12k+
-                </div>
-              </div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Trusted by Schools globally</p>
-            </div>
-            <div className="flex justify-center">
-              <img src="/illustrations/learning.svg" alt="Success Illustration" className="w-48 h-auto opacity-40 mix-blend-multiply" />
-            </div>
-          </footer>
-        </div>
-      </div>
+      <StudentRegistrationSidebar />
 
       <div className="flex-1 flex flex-col items-center bg-white/50 lg:bg-transparent relative z-10 overflow-y-auto">
         <div className="w-full max-w-[440px] px-6 py-12 lg:py-0 lg:px-0 lg:my-auto scroll-smooth">
@@ -252,20 +165,20 @@ export default function StudentRegistrationPage() {
 
           <div className="mb-8 lg:hidden flex items-center justify-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center shadow-lg">
-              <Sparkles className="text-white" size={20} />
+              <School className="text-white" size={20} />
             </div>
             <span className="text-xl font-black tracking-tighter text-slate-950">TechNurture</span>
           </div>
 
           <div className="text-center lg:text-left space-y-3 mb-10">
-            <h1 className="text-4xl font-black text-slate-950 tracking-tight leading-none">Create Account</h1>
-            <p className="text-slate-500 font-medium text-base">Step {step} of 2 — Getting your details</p>
+            <h1 className="text-4xl font-black text-slate-950 tracking-tight leading-none">Student Registration</h1>
+            <p className="text-slate-500 font-medium text-base">Step {step} of 2: Create your account</p>
           </div>
 
           {/* Progress Bar */}
           <div className="flex gap-2 mb-10">
-            <div className={`h-1.5 rounded-full transition-all duration-700 ${step >= 1 ? 'bg-indigo-600 flex-1 shadow-[0_0_10px_rgba(79,70,229,0.3)]' : 'bg-slate-100 flex-1'}`} />
-            <div className={`h-1.5 rounded-full transition-all duration-700 ${step >= 2 ? 'bg-indigo-600 flex-1 shadow-[0_0_10px_rgba(79,70,229,0.3)]' : 'bg-slate-100 flex-1'}`} />
+            <div className={`h-1.5 rounded-full transition-all duration-700 ${step >= 1 ? 'bg-slate-950 flex-1' : 'bg-slate-100 flex-1'}`} />
+            <div className={`h-1.5 rounded-full transition-all duration-700 ${step >= 2 ? 'bg-slate-950 flex-1' : 'bg-slate-100 flex-1'}`} />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -280,36 +193,69 @@ export default function StudentRegistrationPage() {
                   className="space-y-4"
                 >
                   <div className="space-y-1">
-                    <Label className="text-slate-600 font-bold text-[10px] ml-1 uppercase tracking-wider">Full Name *</Label>
+                    <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.full_name ? 'text-rose-500' : 'text-slate-600'}`}>Full Name *</Label>
                     <Input
                       value={formData.full_name}
-                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                      className="bg-white border-slate-200 h-12 px-5 text-slate-900 placeholder:text-slate-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl transition-all font-medium text-base shadow-sm"
-                      placeholder="Enter your full name"
+                      onChange={(e) => {
+                        setFormData({ ...formData, full_name: e.target.value });
+                        if (errors.full_name) setErrors(prev => ({ ...prev, full_name: '' }));
+                      }}
+                      className={`bg-white h-14 px-5 text-slate-900 placeholder:text-slate-300 focus:ring-4 rounded-xl transition-all font-medium text-base shadow-sm border ${errors.full_name ? 'border-rose-400 ring-rose-500/10 focus:border-rose-500' : 'border-slate-200 focus:border-slate-950 focus:ring-slate-950/5'
+                        }`}
+                      placeholder="Enter full name"
                     />
+                    {errors.full_name && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.full_name}</p>}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">Gender</Label>
-                      <Select
-                        value={formData.gender}
-                        onValueChange={(value) => setFormData({ ...formData, gender: value })}
+                  <div className="space-y-3">
+                    <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.gender ? 'text-rose-500' : 'text-slate-600'}`}>Gender Selection *</Label>
+                    <div className={`flex bg-slate-100/50 p-1.5 rounded-2xl gap-2 relative border transition-all shadow-inner ${errors.gender ? 'border-rose-300 ring-4 ring-rose-500/5' : 'border-slate-200/50'
+                      }`}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, gender: 'male' });
+                          if (errors.gender) setErrors(prev => ({ ...prev, gender: '' }));
+                        }}
+                        className={`relative z-10 flex-1 flex items-center justify-center gap-3 py-4 rounded-[14px] transition-all duration-300 font-bold text-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${formData.gender === 'male' ? 'text-indigo-700' : 'text-slate-400 hover:text-slate-600'
+                          }`}
                       >
-                        <SelectTrigger className="w-full bg-white border-slate-200 h-14 px-5 text-slate-900 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 transition-all font-medium">
-                          <SelectValue placeholder="Select one" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border-slate-200 rounded-xl overflow-hidden shadow-2xl">
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <ManIcon className={`transition-all duration-500 ${formData.gender === 'male' ? 'text-indigo-500 drop-shadow-[0_0_8px_rgba(99,102,241,0.4)]' : 'text-slate-300'}`} />
+                        Male
+                        {formData.gender === 'male' && (
+                          <motion.div
+                            layoutId="genderHighlight"
+                            className="absolute inset-0 bg-white rounded-[14px] shadow-sm z-[-1]"
+                            transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                          />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, gender: 'female' });
+                          if (errors.gender) setErrors(prev => ({ ...prev, gender: '' }));
+                        }}
+                        className={`relative z-10 flex-1 flex items-center justify-center gap-3 py-4 rounded-[14px] transition-all duration-300 font-bold text-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${formData.gender === 'female' ? 'text-pink-600' : 'text-slate-400 hover:text-slate-600'
+                          }`}
+                      >
+                        <WomanIcon className={`transition-all duration-500 ${formData.gender === 'female' ? 'text-pink-500 drop-shadow-[0_0_8px_rgba(244,114,182,0.4)]' : 'text-slate-300'}`} />
+                        Female
+                        {formData.gender === 'female' && (
+                          <motion.div
+                            layoutId="genderHighlight"
+                            className="absolute inset-0 bg-white rounded-[14px] shadow-sm z-[-1]"
+                            transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                          />
+                        )}
+                      </button>
                     </div>
+                    {errors.gender && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.gender}</p>}
                   </div>
+
 
                   <div className="space-y-2">
-                    <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">Your Institution</Label>
+                    <Label className={`text-sm ml-1 uppercase tracking-wider font-bold transition-colors ${errors.school_id ? 'text-rose-500' : 'text-slate-600'}`}>Your Institution</Label>
                     {loadingSchools ? (
                       <div className="flex items-center gap-2 text-slate-400 p-4 bg-white border border-slate-100 rounded-2xl">
                         <Loader2 className="animate-spin" size={18} />
@@ -320,10 +266,11 @@ export default function StudentRegistrationPage() {
                         <PopoverTrigger asChild>
                           <button
                             type="button"
-                            className="w-full bg-white border border-slate-200 h-14 px-5 text-slate-900 rounded-2xl flex items-center justify-between text-left focus:ring-4 focus:ring-indigo-500/10 transition-all cursor-pointer"
+                            className={`w-full bg-white border h-14 px-5 rounded-2xl flex items-center justify-between text-left focus:ring-4 transition-all cursor-pointer ${errors.school_id ? 'border-rose-400 ring-rose-500/10' : 'border-slate-200 focus:ring-slate-950/5'
+                              }`}
                           >
                             <span className={selectedSchool ? "text-slate-900 font-bold" : "text-slate-400 font-medium"}>
-                              {selectedSchool ? `${selectedSchool.name}` : "Search for your school"}
+                              {selectedSchool ? `${selectedSchool.name}` : "Search school"}
                             </span>
                             <ChevronsUpDown size={18} className="text-slate-400" />
                           </button>
@@ -344,6 +291,7 @@ export default function StudentRegistrationPage() {
                                     onSelect={() => {
                                       handleSchoolChange(school.id);
                                       setSchoolSearchOpen(false);
+                                      if (errors.school_id) setErrors(prev => ({ ...prev, school_id: '' }));
                                     }}
                                     className="px-4 py-3 text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 cursor-pointer flex items-center justify-between font-medium"
                                   >
@@ -360,6 +308,7 @@ export default function StudentRegistrationPage() {
                         </PopoverContent>
                       </Popover>
                     )}
+                    {errors.school_id && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.school_id}</p>}
                   </div>
 
                   {selectedSchool && (
@@ -368,13 +317,17 @@ export default function StudentRegistrationPage() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                     >
-                      <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">Academic Class</Label>
+                      <Label className={`text-sm ml-1 uppercase tracking-wider font-bold transition-colors ${errors.class_id ? 'text-rose-500' : 'text-slate-600'}`}>Academic Class</Label>
                       <Select
                         value={formData.class_id}
-                        onValueChange={(value) => setFormData({ ...formData, class_id: value })}
+                        onValueChange={(value) => {
+                          setFormData({ ...formData, class_id: value });
+                          if (errors.class_id) setErrors(prev => ({ ...prev, class_id: '' }));
+                        }}
                       >
-                        <SelectTrigger className="w-full bg-white border border-slate-200 h-14 px-5 text-slate-900 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 transition-all font-medium">
-                          <SelectValue placeholder="Select your current class" />
+                        <SelectTrigger className={`w-full bg-white border h-14 px-5 text-slate-900 rounded-2xl focus:ring-4 transition-all font-medium ${errors.class_id ? 'border-rose-400 ring-rose-500/10' : 'border-slate-200 focus:ring-slate-950/5'
+                          }`}>
+                          <SelectValue placeholder="Select class" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border-slate-200 rounded-xl overflow-hidden shadow-2xl">
                           {availableClasses.map((cls) => (
@@ -384,18 +337,18 @@ export default function StudentRegistrationPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {errors.class_id && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.class_id}</p>}
                     </motion.div>
                   )}
 
                   <div className="pt-2">
                     <NeumorphicButton
                       type="button"
-                      onClick={() => setStep(2)}
-                      disabled={!canProceedStep1}
+                      onClick={handleNextStep}
                       variant="primary"
-                      className="w-full !h-14 !text-base !rounded-2xl !bg-slate-900 hover:!bg-slate-800 shadow-xl shadow-slate-900/10 transition-all font-black uppercase tracking-widest cursor-pointer group"
+                      className="w-full !h-14 !text-base !rounded-2xl !bg-slate-950 hover:!bg-slate-900 shadow-xl shadow-slate-950/10 transition-all font-black uppercase tracking-widest cursor-pointer group"
                     >
-                      Continue to account
+                      Next Step
                       <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
                     </NeumorphicButton>
                   </div>
@@ -415,30 +368,34 @@ export default function StudentRegistrationPage() {
                     className="text-sm font-bold text-slate-400 hover:text-slate-900 flex items-center gap-1 mb-8 cursor-pointer transition-colors"
                   >
                     <ArrowLeft size={16} />
-                    Back to Profile
+                    Previous
                   </button>
 
                   <div className="space-y-8">
                     {/* Sub-step 1: Email */}
                     <div className="space-y-2">
-                      <Label className="text-slate-600 font-bold text-xs ml-1 uppercase tracking-[0.2em]">Institutional Email</Label>
+                      <Label className={`text-xs ml-1 uppercase tracking-[0.2em] font-bold transition-colors ${errors.email ? 'text-rose-500' : 'text-slate-600'}`}>Institutional Email</Label>
                       <div className="relative group">
                         <Input
                           type="email"
                           autoFocus
                           value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          onChange={(e) => {
+                            setFormData({ ...formData, email: e.target.value });
+                            if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                          }}
                           className={`bg-white border-2 h-16 px-6 text-slate-900 placeholder:text-slate-300 focus:ring-4 transition-all font-bold text-lg rounded-2xl shadow-sm
-                            ${/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) ? 'border-emerald-500 bg-emerald-50/10' : 'border-slate-200 focus:border-indigo-600 focus:ring-indigo-500/10'}
+                            ${errors.email ? 'border-rose-400 ring-rose-500/10' : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) ? 'border-emerald-500 bg-emerald-50/10' : 'border-slate-200 focus:border-slate-950 focus:ring-slate-950/10'}
                           `}
-                          placeholder="yourname@school.com"
+                          placeholder="student@school.com"
                         />
-                        {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
+                        {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && !errors.email && (
                           <div className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center animate-in zoom-in">
                             <Check size={14} className="text-white" />
                           </div>
                         )}
                       </div>
+                      {errors.email && <p className="text-xs text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.email}</p>}
                     </div>
 
                     {/* Sub-step 2: PIN (Revealed after valid Email) */}
@@ -450,8 +407,8 @@ export default function StudentRegistrationPage() {
                           className="space-y-4"
                         >
                           <div className="flex items-center justify-between px-1">
-                            <Label className="text-slate-600 font-bold text-xs uppercase tracking-[0.2em]">Set 6-Digit PIN</Label>
-                            {formData.password.length === 6 && <Check size={16} className="text-emerald-500" />}
+                            <Label className={`text-xs uppercase tracking-[0.2em] font-bold transition-colors ${errors.password ? 'text-rose-500' : 'text-slate-600'}`}>Set 6-Digit PIN</Label>
+                            {formData.password.length === 6 && !errors.password && <Check size={16} className="text-emerald-500" />}
                           </div>
 
                           <div className="relative">
@@ -476,16 +433,16 @@ export default function StudentRegistrationPage() {
                                   key={i}
                                   className={`flex-1 h-16 rounded-2xl border-2 flex items-center justify-center transition-all duration-300
                                     ${formData.password[i]
-                                      ? 'border-slate-900 bg-white shadow-md'
+                                      ? errors.password ? 'border-rose-400 bg-rose-50/20' : 'border-slate-900 bg-white shadow-md'
                                       : (i === formData.password.length && pinFocused)
                                         ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-500/10 scale-110'
-                                        : 'border-slate-200 bg-white'}
+                                        : errors.password ? 'border-rose-200 bg-rose-50/10' : 'border-slate-200 bg-white'}
                                   `}
                                 >
                                   {formData.password[i] ? (
-                                    <div className="w-4 h-4 rounded-full bg-slate-900 animate-in zoom-in duration-300" />
+                                    <div className={`w-4 h-4 rounded-full animate-in zoom-in duration-300 ${errors.password ? 'bg-rose-500' : 'bg-slate-900'}`} />
                                   ) : (
-                                    <div className={`w-2 h-2 rounded-full transition-colors ${i === formData.password.length && pinFocused ? 'bg-indigo-400 animate-pulse' : 'bg-slate-100'}`} />
+                                    <div className={`w-2 h-2 rounded-full transition-colors ${i === formData.password.length && pinFocused ? 'bg-indigo-400 animate-pulse' : errors.password ? 'bg-rose-200' : 'bg-slate-100'}`} />
                                   )}
                                 </div>
                               ))}
@@ -539,50 +496,38 @@ export default function StudentRegistrationPage() {
                                       : 'border-slate-100 bg-slate-50/50'}
                                   `}
                                 >
-                                  {formData.confirm_password[i] ? (
-                                    <div className={`w-3.5 h-3.5 rounded-full animate-in zoom-in duration-300 ${formData.password === formData.confirm_password ? 'bg-emerald-600' : 'bg-rose-500'}`} />
-                                  ) : (
-                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                                  {formData.confirm_password[i] && (
+                                    <div className={`w-3 h-3 rounded-full ${formData.password === formData.confirm_password ? 'bg-emerald-600' : 'bg-rose-500'}`} />
                                   )}
                                 </div>
                               ))}
                             </div>
+                            {formData.confirm_password.length > 0 && formData.password !== formData.confirm_password && (
+                              <p className="text-[10px] text-rose-500 font-bold mt-2 ml-1 animate-in fade-in slide-in-from-top-1">PINs do not match. Please verify your entries.</p>
+                            )}
                           </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
                   </div>
 
-                  <div className="pt-6">
-                    <AnimatePresence>
-                      {canProceedStep2 && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                        >
-                          <NeumorphicButton
-                            type="submit"
-                            disabled={loading}
-                            variant="primary"
-                            className={`w-full !h-16 !text-base !rounded-2xl shadow-2xl transition-all font-black uppercase tracking-[0.2em] cursor-pointer
-                              ${!loading ? '!bg-indigo-600 hover:!bg-indigo-700 !text-white' : '!bg-slate-200'}
-                            `}
-                          >
-                            {loading ? (
-                              <>
-                                <Loader2 className="mr-2 animate-spin" size={20} />
-                                Creating Adventure...
-                              </>
-                            ) : (
-                              <>
-                                <span>Complete & Start</span>
-                                <GraduationCap size={20} className="ml-3" />
-                              </>
-                            )}
-                          </NeumorphicButton>
-                        </motion.div>
+                  <div className="pt-8">
+                    <NeumorphicButton
+                      type="submit"
+                      disabled={loading}
+                      variant="primary"
+                      className={`w-full !h-16 !text-lg !rounded-2xl !bg-slate-950 hover:!bg-slate-900 shadow-2xl transition-all font-black uppercase tracking-[0.2em] cursor-pointer flex items-center justify-center gap-3 ${Object.keys(errors).length > 0 ? 'ring-4 ring-rose-500/20 border-rose-500' : ''
+                        }`}
+                    >
+                      {loading ? (
+                        <><Loader2 className="animate-spin" size={24} /> Submitting...</>
+                      ) : (
+                        <>
+                          Complete Registration
+                          <Check size={20} className="ml-2" />
+                        </>
                       )}
-                    </AnimatePresence>
+                    </NeumorphicButton>
                   </div>
                 </motion.div>
               )}

@@ -17,51 +17,63 @@ export function ChallengeCard({ title, progress, total, reward, icon: Icon, unit
     const percentage = Math.min((progress / total) * 100, 100);
     const isComplete = progress >= total;
 
-    const barColor: Record<string, string> = {
+    const accentClasses: Record<string, string> = {
+        emerald: 'text-emerald-600 bg-emerald-50 border-emerald-100',
+        amber: 'text-amber-600 bg-amber-50 border-amber-100',
+        sky: 'text-sky-600 bg-sky-50 border-sky-100',
+        violet: 'text-violet-600 bg-violet-50 border-violet-100',
+    };
+
+    const barColors: Record<string, string> = {
         emerald: 'bg-emerald-500',
         amber: 'bg-amber-500',
         sky: 'bg-sky-500',
         violet: 'bg-violet-500',
     };
 
-    const iconBg: Record<string, string> = {
-        emerald: 'bg-emerald-100 text-emerald-600',
-        amber: 'bg-amber-100 text-amber-600',
-        sky: 'bg-sky-100 text-sky-600',
-        violet: 'bg-violet-100 text-violet-600',
-    };
-
     return (
-        <Card className={`bg-white border border-slate-200 shadow-sm ${isComplete ? 'border-emerald-200 bg-emerald-50/30' : ''}`}>
-            <CardContent className="p-5">
-                <div className="flex items-start justify-between mb-4">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconBg[color] || iconBg.emerald}`}>
-                        <Icon size={18} />
+        <div className={`group bg-white border border-slate-100 p-6 rounded-[2.5rem] transition-all duration-300 hover:shadow-2xl hover:shadow-slate-200/50 ${isComplete ? 'border-emerald-200' : 'hover:border-slate-300'}`}>
+            <div className="flex items-center justify-between mb-6">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${accentClasses[color] || accentClasses.emerald}`}>
+                    <Icon size={22} strokeWidth={2.5} />
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-600 rounded-full border border-amber-100 font-black text-[10px] uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    +{reward} XP
+                </div>
+            </div>
+
+            <h4 className="text-base font-black text-slate-900 mb-4 tracking-tight leading-tight group-hover:text-indigo-600 transition-colors uppercase leading-[1.1]">
+                {title}
+            </h4>
+
+            <div className="space-y-4">
+                <div className="flex items-end justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Progress</p>
+                        <p className="text-sm font-bold text-slate-700">
+                            {progress}{unit} <span className="text-slate-300 text-[10px] mx-1">/</span> {total}{unit}
+                        </p>
                     </div>
-                    <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
-                        +{reward} XP
-                    </span>
+                    <p className={`text-sm font-black tracking-tighter ${isComplete ? 'text-emerald-600' : 'text-slate-900'}`}>
+                        {isComplete ? '100%' : `${Math.round(percentage)}%`}
+                    </p>
                 </div>
 
-                <h4 className="font-semibold text-slate-800 mb-3 leading-snug">{title}</h4>
-
-                <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">
-                            {progress}{unit} / {total}{unit}
-                        </span>
-                        <span className={`font-medium ${isComplete ? 'text-emerald-600' : 'text-slate-700'}`}>
-                            {isComplete ? 'Done ✓' : `${Math.round(percentage)}%`}
-                        </span>
-                    </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                            className={`h-full rounded-full transition-[width] duration-500 ${isComplete ? 'bg-emerald-500' : barColor[color] || barColor.emerald}`}
-                            style={{ width: `${percentage}%` }}
-                        />
-                    </div>
+                <div className="h-2.5 bg-slate-50 rounded-full overflow-hidden border border-slate-100 flex p-0.5">
+                    <div
+                        className={`h-full rounded-full transition-all duration-1000 ease-out ${isComplete ? 'bg-emerald-500' : barColors[color] || barColors.emerald}`}
+                        style={{ width: `${percentage}%` }}
+                    />
                 </div>
-            </CardContent>
-        </Card>
+
+                {isComplete && (
+                    <div className="flex items-center gap-1.5 text-emerald-600 font-bold text-[10px] uppercase tracking-widest pt-1">
+                        <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                        Goal Met
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }

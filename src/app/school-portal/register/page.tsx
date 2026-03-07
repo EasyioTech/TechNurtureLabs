@@ -1,14 +1,12 @@
 ﻿'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import confetti from 'canvas-confetti';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -20,11 +18,13 @@ import { registerSchool, fetchActivePaymentPlans, fetchGlobalClasses } from '@/m
 import { validatePromoCode } from '@/modules/super-admin/actions';
 import { toast } from 'sonner';
 import {
-  School, ArrowLeft, Building, MapPin, Users, CheckCircle2, Loader2, Sparkles,
-  Globe, Shield, BarChart3, CreditCard, Check, Eye, EyeOff, Search, ArrowRight,
-  Building2, Landmark, Tag, X, Zap, Lock, Badge, Gift, BadgeCheck, Trophy, Star
+  ArrowLeft, Users, CheckCircle2, Loader2,
+  CreditCard, Check, Eye, EyeOff, ArrowRight,
+  Building2, Landmark, BadgeCheck, X, MapPin, Map, Compass, Shield, Lock
 } from 'lucide-react';
 import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
+import { SchoolRegistrationSidebar } from '@/components/registration/SchoolRegistrationSidebar';
+import { CheckoutOverlay } from '@/components/registration/CheckoutOverlay';
 
 const INDIAN_STATES = [
   'Jammu and Kashmir', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -80,6 +80,38 @@ export default function SchoolRegistrationPage() {
   const [appliedPromo, setAppliedPromo] = useState<any>(null);
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateStep = (stepNumber: number) => {
+    const newErrors: Record<string, string> = {};
+    if (stepNumber === 1) {
+      if (!formData.name.trim()) newErrors.name = 'School name is required';
+      if (!formData.udise_code.trim()) newErrors.udise_code = 'UDISE code is required';
+      if (!formData.state) newErrors.state = 'State is required';
+      if (!formData.district) newErrors.district = 'District is required';
+    } else if (stepNumber === 2) {
+      if (formData.classes_available.length === 0) newErrors.classes_available = 'Select at least one class';
+    } else if (stepNumber === 3) {
+      if (!formData.principal_name.trim()) newErrors.principal_name = 'Principal name is required';
+      if (!formData.contact_email.trim()) newErrors.contact_email = 'Contact email is required';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email)) newErrors.contact_email = 'Invalid email format';
+      if (!formData.contact_phone.trim()) newErrors.contact_phone = 'Contact phone is required';
+      if (!formData.password) newErrors.password = 'Password is required';
+      else if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNextStep = (currentStep: number) => {
+    if (validateStep(currentStep)) {
+      setErrors({});
+      setStep(currentStep + 1);
+    } else {
+      toast.error('Please fill in all required fields correctly');
+    }
+  };
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -197,12 +229,9 @@ export default function SchoolRegistrationPage() {
 
     const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 
-    // Safety check: If key is missing or script failed and we are in a testing/preview state
     if (!key || !window.Razorpay) {
       console.warn('Razorpay Public Key missing or script not loaded. Entering Test/Preview Mode.');
       toast.info('System is in Secure Preview Mode. Simulating secure checkout...');
-
-      // We simulate a short delay to give "psychological satisfaction" of a secure process
       setTimeout(() => {
         handleRegisterSchool('pay_TEST_MODE_SUCCESS');
       }, 2000);
@@ -278,10 +307,6 @@ export default function SchoolRegistrationPage() {
     }
   };
 
-  const canProceedStep1 = formData.name && formData.udise_code && formData.state && formData.district;
-  const canProceedStep2 = formData.classes_available.length > 0;
-  const canProceedStep3 = formData.principal_name && formData.contact_email && formData.contact_phone && formData.password;
-
   return (
     <div className="h-screen overflow-hidden bg-slate-50 text-slate-900 flex font-sans selection:bg-blue-100 selection:text-blue-900">
 
@@ -326,258 +351,27 @@ export default function SchoolRegistrationPage() {
             >
               Your school portal is being activated. Redirecting you to sign in...
             </motion.p>
-            <div className="flex gap-1 mt-8">
-              {[0, 1, 2].map(i => (
-                <motion.div
-                  key={i}
-                  className="w-2 h-2 rounded-full bg-indigo-500"
-                  animate={{ scale: [1, 1.5, 1] }}
-                  transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.2 }}
-                />
-              ))}
-            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Premium Checkout Overlay */}
-      <AnimatePresence>
-        {showCheckout && checkoutOrder && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-slate-950/60 backdrop-blur-md flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 30, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.9, y: 30, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden"
-            >
-              <div className="relative bg-gradient-to-br from-indigo-600 to-blue-700 px-8 py-8 text-white overflow-hidden">
-                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white, transparent 60%)' }} />
-                <button
-                  onClick={() => setShowCheckout(false)}
-                  className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
-                >
-                  <X size={16} />
-                </button>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
-                    <Lock size={18} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Secure Checkout</p>
-                    <p className="text-sm font-bold text-white">TechNurture Labs</p>
-                  </div>
-                </div>
-                <h2 className="text-2xl font-black tracking-tight">{checkoutOrder.plan.name}</h2>
-                <p className="text-indigo-200 text-sm font-medium mt-1">Annual School License</p>
-              </div>
+      <CheckoutOverlay
+        showCheckout={showCheckout}
+        checkoutOrder={checkoutOrder}
+        setShowCheckout={setShowCheckout}
+        appliedPromo={appliedPromo}
+        promoCodeInput={promoCodeInput}
+        setPromoCodeInput={setPromoCodeInput}
+        handleApplyPromo={handleApplyPromo}
+        promoLoading={promoLoading}
+        promoError={promoError}
+        removePromo={removePromo}
+        handleRazorpayPayment={handleRazorpayPayment}
+        loading={loading}
+        setPromoError={setPromoError}
+      />
 
-              <div className="px-8 py-6 space-y-5">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-slate-500">Plan Price</span>
-                    <span className="font-black text-slate-900">
-                      {'\u20B9'}{Number(checkoutOrder.original_price).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-
-                  <AnimatePresence mode="wait">
-                    {!appliedPromo ? (
-                      <motion.div key="promo-input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <div className="flex gap-2 mt-2">
-                          <div className="relative flex-1">
-                            <Tag size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                              placeholder="Promo Code"
-                              value={promoCodeInput}
-                              onChange={(e) => { setPromoCodeInput(e.target.value.toUpperCase()); setPromoError(''); }}
-                              onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromo(); }}
-                              className="w-full h-12 pl-9 pr-4 border-2 border-slate-200 rounded-2xl text-sm font-bold font-mono uppercase tracking-widest focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all bg-slate-50"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleApplyPromo}
-                            disabled={promoLoading || !promoCodeInput}
-                            className="h-12 px-5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
-                          >
-                            {promoLoading ? <Loader2 size={16} className="animate-spin" /> : 'Apply'}
-                          </button>
-                        </div>
-                        {promoError && (
-                          <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-rose-500 text-xs font-bold mt-2 ml-1 flex items-center gap-1">
-                            <X size={12} /> {promoError}
-                          </motion.p>
-                        )}
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="promo-applied"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-4"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center">
-                              <Gift size={14} className="text-white" />
-                            </div>
-                            <div>
-                              <p className="text-xs font-black text-emerald-800 uppercase tracking-widest">{appliedPromo.code}</p>
-                              <p className="text-[10px] font-bold text-emerald-600">Code Applied</p>
-                            </div>
-                          </div>
-                          <button onClick={removePromo} className="text-emerald-600 hover:text-rose-500 transition-colors">
-                            <X size={16} />
-                          </button>
-                        </div>
-                        <p className="text-sm font-black text-emerald-700">
-                          {appliedPromo.discount_type === 'percentage'
-                            ? `${'\uD83C\uDF89'} ${appliedPromo.discount_value}% off - saving ${'\u20B9'}${Number(checkoutOrder.discount_amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}!`
-                            : `${'\uD83C\uDF89'} Flat ${'\u20B9'}${Number(checkoutOrder.discount_amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })} off applied!`}
-                        </p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <AnimatePresence>
-                    {appliedPromo && checkoutOrder.discount_amount > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="flex justify-between items-center text-emerald-600 overflow-hidden"
-                      >
-                        <span className="text-sm font-bold flex items-center gap-1.5">
-                          <BadgeCheck size={16} /> Promo Discount
-                        </span>
-                        <motion.span
-                          key={checkoutOrder.discount_amount}
-                          initial={{ scale: 1.3, color: '#10B981' }}
-                          animate={{ scale: 1 }}
-                          className="font-black text-lg"
-                        >
-                          - {'\u20B9'}{Number(checkoutOrder.discount_amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                        </motion.span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <div className="h-px bg-slate-100" />
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-base font-black text-slate-900">Total Due</span>
-                    <div className="text-right">
-                      {appliedPromo && checkoutOrder.discount_amount > 0 && (
-                        <p className="text-xs text-slate-400 line-through">{'\u20B9'}{Number(checkoutOrder.original_price).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
-                      )}
-                      <motion.p
-                        key={checkoutOrder.final_amount}
-                        initial={{ scale: 1.1 }}
-                        animate={{ scale: 1 }}
-                        className="text-3xl font-black text-slate-900"
-                      >
-                        {checkoutOrder.final_amount === 0 ? 'FREE' : `${'\u20B9'}${Number(checkoutOrder.final_amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`}
-                      </motion.p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { icon: <Lock size={12} />, label: '256-bit SSL' },
-                    { icon: <Shield size={12} />, label: 'PCI Compliant' },
-                    { icon: <BadgeCheck size={12} />, label: 'RBI Approved' }
-                  ].map((item, i) => (
-                    <div key={i} className="flex flex-col items-center gap-1 p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="text-slate-500">{item.icon}</span>
-                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{item.label}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleRazorpayPayment}
-                  disabled={loading || promoLoading}
-                  className={`w-full h-16 rounded-2xl font-black text-base uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-3 cursor-pointer
-                    ${checkoutOrder.final_amount === 0
-                      ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/30'
-                      : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-600/30'}
-                    active:scale-[0.98] disabled:opacity-60
-                  `}
-                >
-                  {loading ? (
-                    <><Loader2 size={20} className="animate-spin" /> Processing...</>
-                  ) : promoLoading ? (
-                    <><Loader2 size={20} className="animate-spin" /> Applying promo...</>
-                  ) : checkoutOrder.final_amount === 0 ? (
-                    <><BadgeCheck size={20} /> Activate Free Plan</>
-                  ) : (
-                    <><CreditCard size={20} /> Pay {'\u20B9'}{Number(checkoutOrder.final_amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })} via Razorpay</>
-                  )}
-                </button>
-
-                <p className="text-center text-[10px] text-slate-400 font-bold">
-                  Powered by Razorpay • UPI, Cards, Netbanking accepted
-                </p>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="hidden lg:flex flex-1 relative overflow-hidden bg-white border-r border-slate-200 shadow-2xl z-20">
-        <div className="absolute inset-0 z-0 bg-gradient-to-br from-slate-50 via-white to-transparent" />
-        <div className="relative z-10 w-full h-full flex flex-col justify-between p-16">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center transition-transform group-hover:scale-105 shadow-lg shadow-slate-900/10">
-              <Sparkles className="text-white" size={24} />
-            </div>
-            <span className="text-2xl font-black tracking-tight text-slate-900">TechNurture</span>
-          </Link>
-
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2, duration: 0.8 }}
-            className="max-w-md"
-          >
-            <div className="mb-8">
-              <img src="/illustrations/undraw_system-update_gekm.svg" alt="Enterprise Update" className="w-64 h-auto opacity-80 mix-blend-multiply" />
-            </div>
-
-            <h2 className="text-4xl font-black mb-6 text-slate-900 leading-[1.1] tracking-tight">
-              Bring <span className="text-blue-600">innovation</span> to your classroom.
-            </h2>
-            <p className="text-slate-600 text-lg font-medium leading-relaxed mb-8">
-              TechNurture Labs provides the infrastructure you need to launch a modern, gamified learning experience in minutes.
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { icon: <Globe size={18} />, label: 'White Label', color: 'text-blue-600' },
-                { icon: <Shield size={18} />, label: 'GDPR Safe', color: 'text-emerald-600' },
-                { icon: <BarChart3 size={18} />, label: 'Live Stats', color: 'text-indigo-600' },
-                { icon: <Sparkles size={18} />, label: 'AI Assisted', color: 'text-amber-600' }
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/50 hover:bg-white transition-all">
-                  <div className={item.color}>{item.icon}</div>
-                  <span className="text-sm font-bold text-slate-700">{item.label}</span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          <div className="text-sm text-slate-400 font-bold uppercase tracking-widest">
-            Institutional Enterprise License • v2.4
-          </div>
-        </div>
-      </div>
+      <SchoolRegistrationSidebar />
 
       <div className="flex-1 flex flex-col items-center p-6 lg:p-12 relative z-10 overflow-y-auto">
         <div className="w-full max-w-xl py-12 my-auto">
@@ -587,16 +381,16 @@ export default function SchoolRegistrationPage() {
           </Link>
 
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white border border-slate-200 shadow-sm mb-6">
-            <Landmark size={16} className="text-blue-600" />
-            <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">School Registration</span>
+            <Landmark size={16} className="text-slate-900" />
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">Portal Registration</span>
           </div>
 
-          <h1 className="text-4xl font-black mb-3 text-slate-900 tracking-tight leading-tight">School Registration</h1>
-          <p className="text-slate-500 font-medium mb-10 text-lg">Step {step} of {paymentPlans.length > 0 ? 4 : 3}. Enter your school details to get started.</p>
+          <h1 className="text-4xl font-black mb-3 text-slate-900 tracking-tight leading-tight">School Onboarding</h1>
+          <p className="text-slate-500 font-medium mb-10 text-lg">Step {step} of {paymentPlans.length > 0 ? 4 : 3}: Setup your account</p>
 
           <div className="flex gap-2 mb-12">
             {[1, 2, 3, ...(paymentPlans.length > 0 ? [4] : [])].map((s) => (
-              <div key={s} className={`h-1.5 rounded-full transition-all duration-500 flex-1 ${step >= s ? 'bg-blue-600' : 'bg-slate-200'}`} />
+              <div key={s} className={`h-1.5 rounded-full transition-all duration-500 flex-1 ${step >= s ? 'bg-slate-900' : 'bg-slate-200'}`} />
             ))}
           </div>
 
@@ -610,74 +404,127 @@ export default function SchoolRegistrationPage() {
                   exit={{ opacity: 0, x: -20 }}
                   className="space-y-6"
                 >
-                  <div className="flex items-center gap-2 text-blue-600 text-xs font-black uppercase tracking-widest mb-2">
+                  <div className="flex items-center gap-2 text-slate-900 text-xs font-black uppercase tracking-widest mb-2">
                     <Building2 size={16} />
-                    Institutional Identity
+                    Basic Information
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">Official School Name *</Label>
+                    <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.name ? 'text-rose-500' : 'text-slate-600'}`}>School Name *</Label>
                     <Input
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="bg-white border-slate-200 h-14 px-5 text-slate-900 placeholder:text-slate-300 focus:border-blue-500 rounded-2xl transition-all font-medium text-base shadow-sm"
+                      onChange={(e) => {
+                        setFormData({ ...formData, name: e.target.value });
+                        if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+                      }}
+                      className={`bg-white h-14 px-5 rounded-2xl transition-all font-medium text-base shadow-sm border ${errors.name ? 'border-rose-400 focus:border-rose-500 ring-rose-500/10 focus:ring-4' : 'border-slate-200 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5'
+                        }`}
                       placeholder="e.g., International Academic Square"
                     />
+                    {errors.name && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.name}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">UDISE / Registration Code *</Label>
+                    <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.udise_code ? 'text-rose-500' : 'text-slate-600'}`}>Registration ID / UDISE *</Label>
                     <Input
                       value={formData.udise_code}
-                      onChange={(e) => setFormData({ ...formData, udise_code: e.target.value })}
-                      className="bg-white border-slate-200 h-14 px-5 text-slate-900 placeholder:text-slate-300 focus:border-blue-500 rounded-2xl transition-all font-medium text-base shadow-sm"
+                      onChange={(e) => {
+                        setFormData({ ...formData, udise_code: e.target.value });
+                        if (errors.udise_code) setErrors(prev => ({ ...prev, udise_code: '' }));
+                      }}
+                      className={`bg-white h-14 px-5 rounded-2xl transition-all font-medium text-base shadow-sm border ${errors.udise_code ? 'border-rose-400 focus:border-rose-500 ring-rose-500/10 focus:ring-4' : 'border-slate-200 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5'
+                        }`}
                       placeholder="11-Digit Unique Code"
                     />
+                    {errors.udise_code && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.udise_code}</p>}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">State *</Label>
-                      <Select value={formData.state} onValueChange={(value) => setFormData({ ...formData, state: value })}>
-                        <SelectTrigger className="bg-white border-slate-200 h-14 px-5 text-slate-900 rounded-2xl font-medium">
-                          <SelectValue placeholder="Select state" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border-slate-200 max-h-60 rounded-xl shadow-2xl">
-                          {INDIAN_STATES.map((state) => (
-                            <SelectItem key={state} value={state}>{state}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  <div className="pt-4 border-t border-slate-100">
+                    <div className="flex items-center gap-2 text-slate-900 text-xs font-black uppercase tracking-widest mb-4">
+                      <MapPin size={16} />
+                      Location Details
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">District *</Label>
-                      {formData.state === 'Jammu and Kashmir' ? (
-                        <Select value={formData.district} onValueChange={(value) => setFormData({ ...formData, district: value })}>
-                          <SelectTrigger className="bg-white border-slate-200 h-14 px-5 text-slate-900 rounded-2xl font-medium">
-                            <SelectValue placeholder="Select district" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.state ? 'text-rose-500' : 'text-slate-600'}`}>State *</Label>
+                        <Select
+                          value={formData.state}
+                          onValueChange={(value) => {
+                            setFormData({ ...formData, state: value });
+                            if (errors.state) setErrors(prev => ({ ...prev, state: '' }));
+                          }}
+                        >
+                          <SelectTrigger className={`group bg-white border h-14 px-5 text-slate-900 rounded-2xl font-medium focus:ring-4 transition-all relative ${errors.state ? 'border-rose-400 ring-rose-500/10' : 'border-slate-200 focus:ring-slate-950/5'
+                            }`}>
+                            <div className="flex items-center gap-3 w-full">
+                              <Map size={18} className="text-slate-400 group-hover:text-indigo-600 transition-colors flex-shrink-0" />
+                              <div className="flex-1 text-left">
+                                <SelectValue placeholder="Select state" />
+                              </div>
+                            </div>
                           </SelectTrigger>
                           <SelectContent className="bg-white border-slate-200 max-h-60 rounded-xl shadow-2xl">
-                            {JK_DISTRICTS.map((district) => (
-                              <SelectItem key={district} value={district}>{district}</SelectItem>
+                            {INDIAN_STATES.map((state) => (
+                              <SelectItem key={state} value={state} className="py-3 rounded-lg focus:bg-slate-50 transition-colors">{state}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : (
-                        <Input
-                          value={formData.district}
-                          onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                          className="bg-white border-slate-200 h-14 px-5 text-slate-900 placeholder:text-slate-300 focus:border-blue-500 rounded-2xl transition-all font-medium text-base shadow-sm"
-                          placeholder="District Name"
-                        />
-                      )}
+                        {errors.state && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.state}</p>}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.district ? 'text-rose-500' : 'text-slate-600'}`}>District *</Label>
+                        <div className="relative group">
+                          {formData.state === 'Jammu and Kashmir' ? (
+                            <Select
+                              value={formData.district}
+                              onValueChange={(value) => {
+                                setFormData({ ...formData, district: value });
+                                if (errors.district) setErrors(prev => ({ ...prev, district: '' }));
+                              }}
+                            >
+                              <SelectTrigger className={`bg-white border h-14 px-5 text-slate-900 rounded-2xl font-medium focus:ring-4 transition-all ${errors.district ? 'border-rose-400 ring-rose-500/10' : 'border-slate-200 focus:ring-slate-950/5'
+                                }`}>
+                                <div className="flex items-center gap-3 w-full">
+                                  <Compass size={18} className="text-slate-400 group-hover:text-indigo-600 transition-colors flex-shrink-0" />
+                                  <div className="flex-1 text-left">
+                                    <SelectValue placeholder="Select district" />
+                                  </div>
+                                </div>
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border-slate-200 max-h-60 rounded-xl shadow-2xl">
+                                {JK_DISTRICTS.map((district) => (
+                                  <SelectItem key={district} value={district} className="py-3 rounded-lg focus:bg-slate-50 transition-colors">{district}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="relative">
+                              <div className="absolute left-5 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                                <Compass size={18} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                              </div>
+                              <Input
+                                value={formData.district}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, district: e.target.value });
+                                  if (errors.district) setErrors(prev => ({ ...prev, district: '' }));
+                                }}
+                                className={`bg-white h-14 pl-12 pr-5 rounded-2xl transition-all font-medium text-base shadow-sm border ${errors.district ? 'border-rose-400 focus:border-rose-500 ring-rose-500/10 focus:ring-4' : 'border-slate-200 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5'
+                                  }`}
+                                placeholder="District Name"
+                              />
+                            </div>
+                          )}
+                        </div>
+                        {errors.district && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.district}</p>}
+                      </div>
                     </div>
                   </div>
                   <div className="pt-4">
                     <NeumorphicButton
                       type="button"
-                      onClick={() => setStep(2)}
-                      disabled={!canProceedStep1}
+                      onClick={() => handleNextStep(1)}
                       variant="primary"
-                      className="w-full !h-14 !text-base !rounded-2xl !bg-slate-900 hover:!bg-slate-800 shadow-xl shadow-slate-900/10 transition-all font-black uppercase tracking-widest cursor-pointer group"
+                      className="w-full !h-14 !text-base !rounded-2xl !bg-slate-950 hover:!bg-slate-900 shadow-xl shadow-slate-950/10 transition-all font-black uppercase tracking-widest cursor-pointer group"
                     >
-                      Next: Academic Details
+                      Continue
                       <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
                     </NeumorphicButton>
                   </div>
@@ -693,22 +540,25 @@ export default function SchoolRegistrationPage() {
                   className="space-y-8"
                 >
                   <button type="button" onClick={() => setStep(1)} className="text-sm font-bold text-slate-400 hover:text-slate-900 flex items-center gap-1 cursor-pointer transition-colors mb-4">
-                    <ArrowLeft size={16} /> Back to Identity
+                    <ArrowLeft size={16} /> Previous
                   </button>
-                  <div className="flex items-center gap-2 text-indigo-600 text-xs font-black uppercase tracking-widest mb-2">
+                  <div className="flex items-center gap-2 text-slate-950 text-xs font-black uppercase tracking-widest mb-2">
                     <Users size={16} />
-                    Academic Scope
+                    Class Coverage
                   </div>
                   <div className="space-y-4">
-                    <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">Select Available Classes *</Label>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                    <Label className={`text-sm ml-1 uppercase tracking-wider font-bold transition-colors ${errors.classes_available ? 'text-rose-500' : 'text-slate-600'}`}>Select Available Classes *</Label>
+                    <div className={`grid grid-cols-3 sm:grid-cols-6 gap-3 p-3 rounded-2xl transition-all ${errors.classes_available ? 'bg-rose-50/50 ring-2 ring-rose-500/10' : ''}`}>
                       {classesData.map((cls: any) => (
                         <button
                           key={cls.id}
                           type="button"
-                          onClick={() => handleClassToggle(cls.id)}
+                          onClick={() => {
+                            handleClassToggle(cls.id);
+                            if (errors.classes_available) setErrors(prev => ({ ...prev, classes_available: '' }));
+                          }}
                           className={`h-14 rounded-2xl border text-base font-black transition-all cursor-pointer ${formData.classes_available.includes(cls.id)
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20 scale-[1.05]'
+                            ? 'bg-slate-950 border-slate-950 text-white shadow-lg'
                             : 'bg-white border-slate-200 text-slate-400 hover:border-slate-400'
                             }`}
                         >
@@ -716,6 +566,7 @@ export default function SchoolRegistrationPage() {
                         </button>
                       ))}
                     </div>
+                    {errors.classes_available && <p className="text-xs text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.classes_available}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">Est. Student Enrollment</Label>
@@ -730,12 +581,11 @@ export default function SchoolRegistrationPage() {
                   <div className="pt-4">
                     <NeumorphicButton
                       type="button"
-                      onClick={() => setStep(3)}
-                      disabled={!canProceedStep2}
+                      onClick={() => handleNextStep(2)}
                       variant="primary"
-                      className="w-full !h-14 !text-base !rounded-2xl !bg-slate-900 hover:!bg-slate-800 shadow-xl shadow-slate-900/10 transition-all font-black uppercase tracking-widest cursor-pointer group"
+                      className="w-full !h-14 !text-base !rounded-2xl !bg-slate-950 hover:!bg-slate-900 shadow-xl shadow-slate-950/10 transition-all font-black uppercase tracking-widest cursor-pointer group"
                     >
-                      Next: Contact Information
+                      Continue
                       <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
                     </NeumorphicButton>
                   </div>
@@ -751,82 +601,104 @@ export default function SchoolRegistrationPage() {
                   className="space-y-6"
                 >
                   <button type="button" onClick={() => setStep(2)} className="text-sm font-bold text-slate-400 hover:text-slate-900 flex items-center gap-1 cursor-pointer transition-colors mb-4">
-                    <ArrowLeft size={16} /> Back to Scope
+                    <ArrowLeft size={16} /> Previous
                   </button>
-                  <div className="flex items-center gap-2 text-emerald-600 text-xs font-black uppercase tracking-widest mb-2">
+                  <div className="flex items-center gap-2 text-slate-900 text-xs font-black uppercase tracking-widest mb-2">
                     <Shield size={16} />
-                    Administration Contact
+                    Account Access
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">Principal / Director Name *</Label>
+                    <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.principal_name ? 'text-rose-500' : 'text-slate-600'}`}>Contact Name *</Label>
                     <Input
                       value={formData.principal_name}
-                      onChange={(e) => setFormData({ ...formData, principal_name: e.target.value })}
-                      className="bg-white border-slate-200 h-14 px-5 text-slate-900 placeholder:text-slate-300 rounded-2xl font-medium shadow-sm"
+                      onChange={(e) => {
+                        setFormData({ ...formData, principal_name: e.target.value });
+                        if (errors.principal_name) setErrors(prev => ({ ...prev, principal_name: '' }));
+                      }}
+                      className={`bg-white h-14 px-5 rounded-2xl transition-all font-medium text-base shadow-sm border ${errors.principal_name ? 'border-rose-400 focus:border-rose-500 ring-rose-500/10 focus:ring-4' : 'border-slate-200 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5'
+                        }`}
                       placeholder="Full Name"
                     />
+                    {errors.principal_name && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.principal_name}</p>}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">Institutional Email *</Label>
+                      <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.contact_email ? 'text-rose-500' : 'text-slate-600'}`}>School Email *</Label>
                       <Input
                         type="email"
                         value={formData.contact_email}
-                        onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                        className="bg-white border-slate-200 h-14 px-5 text-slate-900 placeholder:text-slate-300 rounded-2xl font-medium shadow-sm"
+                        onChange={(e) => {
+                          setFormData({ ...formData, contact_email: e.target.value });
+                          if (errors.contact_email) setErrors(prev => ({ ...prev, contact_email: '' }));
+                        }}
+                        className={`bg-white h-14 px-5 rounded-2xl transition-all font-medium text-base shadow-sm border ${errors.contact_email ? 'border-rose-400 focus:border-rose-500 ring-rose-500/10 focus:ring-4' : 'border-slate-200 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5'
+                          }`}
                         placeholder="school@edu.com"
                       />
+                      {errors.contact_email && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.contact_email}</p>}
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">Primary Phone *</Label>
+                      <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.contact_phone ? 'text-rose-500' : 'text-slate-600'}`}>Primary Phone *</Label>
                       <Input
                         value={formData.contact_phone}
-                        onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                        className="bg-white border-slate-200 h-14 px-5 text-slate-900 placeholder:text-slate-300 rounded-2xl font-medium shadow-sm"
+                        onChange={(e) => {
+                          setFormData({ ...formData, contact_phone: e.target.value });
+                          if (errors.contact_phone) setErrors(prev => ({ ...prev, contact_phone: '' }));
+                        }}
+                        className={`bg-white h-14 px-5 rounded-2xl transition-all font-medium text-base shadow-sm border ${errors.contact_phone ? 'border-rose-400 focus:border-rose-500 ring-rose-500/10 focus:ring-4' : 'border-slate-200 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5'
+                          }`}
                         placeholder="Contact Number"
                       />
+                      {errors.contact_phone && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.contact_phone}</p>}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">Establish Admin Password *</Label>
+                    <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.password ? 'text-rose-500' : 'text-slate-600'}`}>Set Access Password *</Label>
                     <div className="relative group">
                       <Input
                         type={showPassword ? 'text' : 'password'}
                         value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="bg-white border-slate-200 h-14 px-5 text-slate-900 placeholder:text-slate-300 rounded-2xl font-medium shadow-sm pr-14"
+                        onChange={(e) => {
+                          setFormData({ ...formData, password: e.target.value });
+                          if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
+                        }}
+                        className={`bg-white h-14 px-5 rounded-2xl transition-all font-medium text-base shadow-sm pr-14 border ${errors.password ? 'border-rose-400 focus:border-rose-500 ring-rose-500/10 focus:ring-4' : 'border-slate-200 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5'
+                          }`}
                         placeholder="••••••••"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 cursor-pointer"
+                        className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 cursor-pointer z-10"
                       >
                         {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                       </button>
                     </div>
+                    {errors.password && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.password}</p>}
                   </div>
-                  <div className="pt-4">
+
+                  <div className="pt-6">
                     {paymentPlans.length > 0 ? (
                       <NeumorphicButton
                         type="button"
-                        onClick={() => setStep(4)}
-                        disabled={!canProceedStep3}
+                        onClick={() => handleNextStep(3)}
                         variant="primary"
-                        className="w-full !h-14 !text-base !rounded-2xl !bg-slate-900 hover:!bg-slate-800 shadow-xl shadow-slate-900/10 transition-all font-black uppercase tracking-widest cursor-pointer group"
+                        className="w-full !h-16 !text-base !rounded-2xl !bg-slate-950 hover:!bg-slate-950 shadow-xl shadow-slate-950/10 transition-all font-black uppercase tracking-widest cursor-pointer group"
                       >
-                        Proceed to Plans
+                        Proceed to Selection
                         <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
                       </NeumorphicButton>
                     ) : (
                       <NeumorphicButton
                         type="button"
-                        onClick={() => handleRegisterSchool(null)}
-                        disabled={loading || !canProceedStep3}
+                        onClick={() => {
+                          if (validateStep(3)) handleRegisterSchool(null);
+                          else toast.error('Please fill in all required fields correctly');
+                        }}
                         variant="primary"
-                        className="w-full !h-14 !text-base !rounded-2xl !bg-slate-900 hover:!bg-slate-800 shadow-xl shadow-slate-900/10 transition-all font-black uppercase tracking-widest cursor-pointer"
+                        className="w-full !h-16 !text-base !rounded-2xl !bg-slate-950 hover:!bg-slate-900 shadow-xl shadow-slate-950/10 transition-all font-black uppercase tracking-widest cursor-pointer"
                       >
-                        {loading ? 'Processing...' : 'Complete Registration'}
+                        {loading ? 'Processing...' : 'Register School'}
                       </NeumorphicButton>
                     )}
                   </div>
@@ -842,12 +714,12 @@ export default function SchoolRegistrationPage() {
                   className="space-y-6"
                 >
                   <button type="button" onClick={() => setStep(3)} className="text-sm font-bold text-slate-400 hover:text-slate-900 flex items-center gap-1 cursor-pointer transition-colors mb-4">
-                    <ArrowLeft size={16} /> Back to Contact
+                    <ArrowLeft size={16} /> Previous
                   </button>
 
-                  <div className="flex items-center gap-2 text-amber-600 text-xs font-black uppercase tracking-widest mb-2">
+                  <div className="flex items-center gap-2 text-slate-950 text-xs font-black uppercase tracking-widest mb-2">
                     <CreditCard size={16} />
-                    Select Your License Plan
+                    License Selection
                   </div>
 
                   {plansLoading ? (
@@ -862,18 +734,18 @@ export default function SchoolRegistrationPage() {
                           key={plan.id}
                           onClick={() => setFormData({ ...formData, plan_id: plan.id })}
                           className={`relative p-6 rounded-[2rem] border-2 cursor-pointer transition-all ${formData.plan_id === plan.id
-                            ? 'bg-blue-50/50 border-blue-600 ring-4 ring-blue-500/10'
+                            ? 'bg-slate-50 border-slate-900 shadow-lg'
                             : 'bg-white border-slate-100 hover:border-slate-300'
                             }`}
                         >
                           {formData.plan_id === plan.id && (
-                            <div className="absolute top-4 right-4 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
+                            <div className="absolute top-4 right-4 w-6 h-6 rounded-full bg-slate-950 flex items-center justify-center">
                               <Check size={14} className="text-white" />
                             </div>
                           )}
                           <div className="flex justify-between items-start mb-4 pr-8">
                             <div>
-                              <h3 className={`font-black text-xl tracking-tight ${formData.plan_id === plan.id ? 'text-blue-600' : 'text-slate-900'}`}>{plan.name}</h3>
+                              <h3 className={`font-black text-xl tracking-tight ${formData.plan_id === plan.id ? 'text-slate-950' : 'text-slate-900'}`}>{plan.name}</h3>
                               <p className="text-sm text-slate-500 font-medium">{plan.description}</p>
                             </div>
                             <div className="text-right shrink-0">
@@ -891,7 +763,7 @@ export default function SchoolRegistrationPage() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 pt-4 border-t border-slate-100">
                             {(Array.isArray(plan.features) ? plan.features : []).slice(0, 4).map((f: any, idx: number) => (
                               <div key={idx} className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                                <Check size={14} className="text-blue-600" />
+                                <Check size={14} className="text-slate-900" />
                                 {f}
                               </div>
                             ))}
@@ -907,10 +779,10 @@ export default function SchoolRegistrationPage() {
                       onClick={handleProceedToCheckout}
                       disabled={checkoutLoading || !formData.plan_id}
                       variant="primary"
-                      className="w-full !h-16 !text-base !rounded-2xl !bg-indigo-600 hover:!bg-indigo-700 !text-white shadow-2xl shadow-indigo-600/30 transition-all font-black uppercase tracking-widest cursor-pointer group"
+                      className="w-full !h-16 !text-base !rounded-2xl !bg-slate-950 hover:!bg-slate-900 !text-white shadow-2xl shadow-slate-950/30 transition-all font-black uppercase tracking-widest cursor-pointer group"
                     >
                       {checkoutLoading ? (
-                        <><Loader2 className="mr-2 animate-spin" size={20} /> Preparing Checkout...</>
+                        <><Loader2 className="mr-2 animate-spin" size={20} /> Preparing...</>
                       ) : (
                         <><CreditCard size={20} className="mr-2" /> Proceed to Checkout</>
                       )}
@@ -922,18 +794,18 @@ export default function SchoolRegistrationPage() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </form>
+          </form >
 
           <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col items-center gap-6">
             <p className="text-slate-500 font-medium text-center">
-              Already have an institutional ID?{' '}
-              <Link href="/school-portal/login" className="text-blue-600 hover:text-blue-700 font-black ml-1 cursor-pointer">
-                Enter Admin Portal
+              Already have a portal?{' '}
+              <Link href="/school-portal/login" className="text-slate-950 hover:underline font-black ml-1 cursor-pointer">
+                Sign In
               </Link>
             </p>
           </div>
-        </div>
-      </div>
-    </div>
+        </div >
+      </div >
+    </div >
   );
 }

@@ -32,7 +32,7 @@ interface CourseBuilderTabProps {
     onDeleteCourse: (id: string) => void;
     onSaveLesson: () => void;
     onDeleteLesson: (id: string) => void;
-    onSaveLessonOrder: () => void;
+    onSaveLessonOrder: (customLessons?: Lesson[], silent?: boolean) => void;
     showCourseDialog: boolean;
     setShowCourseDialog: (v: boolean) => void;
     editingCourse: Partial<Course> | null;
@@ -64,11 +64,14 @@ export function CourseBuilderTab({
     function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event;
         if (over && active.id !== over.id) {
-            setLessons(items => {
-                const oldIndex = items.findIndex(i => i.id === active.id);
-                const newIndex = items.findIndex(i => i.id === over.id);
-                return arrayMove(items, oldIndex, newIndex);
-            });
+            const oldIndex = lessons.findIndex(i => i.id === active.id);
+            const newIndex = lessons.findIndex(i => i.id === over.id);
+            const newItems = arrayMove(lessons, oldIndex, newIndex);
+
+            setLessons(newItems);
+
+            // Auto-save silently
+            onSaveLessonOrder(newItems, true);
         }
     }
 
@@ -90,11 +93,6 @@ export function CourseBuilderTab({
                     className={`rounded-[24px] border overflow-hidden transition-all duration-500 shadow-xl shadow-black/5 flex flex-col h-[700px] ${t.card(isDark)}`}>
                     <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${t.border(isDark)}`}>
                         <h3 className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>All Courses</h3>
-                        <Button size="sm"
-                            className={`rounded-full text-[10px] font-black h-8 px-4 border-0 ${t.btnPrimary(isDark, accent)}`}
-                            onClick={() => { setEditingCourse({ published: false }); setShowCourseDialog(true); }}>
-                            <Plus size={14} className="mr-1.5" />Create Course
-                        </Button>
                     </div>
 
                     {courses.length === 0 ? (
@@ -124,8 +122,8 @@ export function CourseBuilderTab({
                                         <div className="flex items-center gap-4">
                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-transform overflow-hidden
                                                 ${isSelected
-                                                    ? isDark ? `${accent.bg} text-slate-900` : 'bg-white text-slate-900 ring-2 ring-white/20'
-                                                    : isDark ? 'bg-white/[0.05] text-slate-500 border border-white/5' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
+                                                    ? isDark ? `${accent.bg} text-slate-900 shadow-lg shadow-${accent.name}-400/20` : 'bg-white text-slate-900 ring-2 ring-white/20'
+                                                    : isDark ? 'bg-white/[0.12] text-slate-300 border border-white/10 shadow-inner' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
                                                 {course.thumbnail || course.thumbnail_url ? (
                                                     <img src={course.thumbnail || course.thumbnail_url || ''} alt="" className="w-full h-full object-cover" />
                                                 ) : (
@@ -173,19 +171,9 @@ export function CourseBuilderTab({
                             </h3>
                             {selectedCourse && <p className={`text-[12px] font-medium mt-0.5 ${t.textMuted(isDark)}`}>{lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'} in this course</p>}
                         </div>
-                        {selectedCourse && (
-                            <div className="flex gap-3">
-                                <Button variant="outline" size="sm" className={`rounded-full h-9 px-5 text-[11px] font-black border-2 ${t.btnOutline(isDark)}`}
-                                    onClick={() => { setEditingLesson({ content_type: 'video', xp_reward: 10, duration: 10, is_published: true }); setShowLessonDialog(true); }}>
-                                    <Plus size={14} className="mr-1.5" />Add Lesson
-                                </Button>
-                                {lessons.length > 1 && (
-                                    <Button size="sm" className={`rounded-full h-9 px-5 text-[11px] font-black shadow-lg border-0 ${t.btnPrimary(isDark, accent)}`} style={t.glowStyle(isDark, accent)} onClick={onSaveLessonOrder}>
-                                        <Save size={14} className="mr-1.5" />Save Order
-                                    </Button>
-                                )}
-                            </div>
-                        )}
+                        <div className="flex gap-3">
+                            {/* Local actions replaced by global header buttons for cleaner UI */}
+                        </div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-5">

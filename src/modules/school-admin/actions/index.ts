@@ -69,7 +69,7 @@ const updateSchoolSchema = z.object({
     address: z.string().optional().nullable(),
     city: z.string().optional().nullable(),
     state: z.string().optional().nullable(),
-    country: z.string().optional().nullable(),
+    country: z.string().optional(),
     pincode: z.string().optional().nullable(),
     logo_url: z.string().url().optional().nullable().or(z.literal('')),
     website: z.string().url().optional().nullable().or(z.literal('')),
@@ -89,7 +89,7 @@ export async function updateSchoolProfile(schoolId: string, data: any) {
     await db.update(schools).set({
         ...parseResult.data,
         updated_at: new Date(),
-    }).where(eq(schools.id, schoolId));
+    } as any).where(eq(schools.id, schoolId));
     return { success: true };
 }
 

@@ -294,7 +294,7 @@ export function MediaLibraryPicker({
                                                 <AssetIcon
                                                     asset_type={asset.asset_type}
                                                     mime_type={asset.mime_type}
-                                                    className={isDark ? 'text-slate-600' : 'text-slate-400'}
+                                                    className={isDark ? 'text-slate-400' : 'text-slate-500'}
                                                 />
                                             )}
 

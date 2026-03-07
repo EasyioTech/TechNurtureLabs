@@ -38,7 +38,7 @@ export function PaymentPlansTab({
                         <motion.div key={plan.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }}>
                             <div className={`relative rounded-[28px] border overflow-hidden hover:-translate-y-1 transition-all duration-500 shadow-xl shadow-black/5
                                 ${isFeatured
-                                    ? isDark ? `bg-[#1a1f2e] border-${accent.name}-400/30 ring-4 ring-${accent.name}-400/5` : `bg-white border-${accent.name}-400/10 ring-8 ring-${accent.name}-400/[0.02]`
+                                    ? isDark ? `bg-[#0c0c0e] border-${accent.name}-400/30 ring-4 ring-${accent.name}-400/5` : `bg-white border-${accent.name}-400/10 ring-8 ring-${accent.name}-400/[0.02]`
                                     : t.card(isDark)}`}>
 
                                 {isFeatured && (
@@ -53,8 +53,8 @@ export function PaymentPlansTab({
                                 <div className="p-7 space-y-6">
                                     <div>
                                         <p className={`text-[10px] font-black tracking-[0.2em] uppercase mb-1 ${t.textMuted(isDark)}`}>Plan Details</p>
-                                        <h3 className={`text-xl font-black tracking-tight ${t.textPrimary(isDark)}`}>{plan.name}</h3>
-                                        <Badge className={`mt-2 text-[9px] font-black px-2 py-0.5 rounded-md ${plan.is_active ? t.live(isDark) : (isDark ? 'bg-white/[0.04] text-slate-500' : 'bg-slate-100 text-slate-400')}`}>
+                                        <h3 className={`text-xl font-black mb-1 font-mono uppercase tracking-widest ${t.textPrimary(isDark)}`}>{plan.name}</h3>
+                                        <Badge className={`mt-2 text-[9px] font-black px-2 py-0.5 rounded-md border ${plan.is_active ? (isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-100 text-emerald-600 border-emerald-200') : (isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-200 text-slate-500 border-slate-300')}`}>
                                             {plan.is_active ? 'ACTIVE' : 'INACTIVE'}
                                         </Badge>
                                     </div>
@@ -98,7 +98,7 @@ export function PaymentPlansTab({
                                             onClick={() => { setEditingPlan(plan); setShowPlanDialog(true); }}>
                                             <Edit size={14} className="mr-2" />Edit Plan
                                         </Button>
-                                        <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full transition-colors ${isDark ? 'text-slate-600 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-300 hover:text-rose-600 hover:bg-rose-100'}`}
+                                        <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full transition-colors ${isDark ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/20' : 'text-slate-300 hover:text-rose-600 hover:bg-rose-100'}`}
                                             onClick={() => setPlanToDelete({ id: plan.id, name: plan.name })}>
                                             <Trash2 size={16} />
                                         </Button>

@@ -2,6 +2,7 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
+import { serverEnv } from './env.server';
 
 export interface StorageContext {
     type: 'course' | 'lesson';
@@ -21,10 +22,10 @@ if (!fs.existsSync(LOCAL_STORAGE_DIR)) {
 // Cloudflare R2 client
 // ─────────────────────────────────────────────
 export const isCloudflareConfigured = Boolean(
-    process.env.CLOUDFLARE_ACCOUNT_ID &&
-    process.env.CLOUDFLARE_ACCESS_KEY_ID &&
-    process.env.CLOUDFLARE_SECRET_ACCESS_KEY &&
-    process.env.CLOUDFLARE_BUCKET_NAME
+    serverEnv.CLOUDFLARE_ACCOUNT_ID &&
+    serverEnv.CLOUDFLARE_ACCESS_KEY_ID &&
+    serverEnv.CLOUDFLARE_SECRET_ACCESS_KEY &&
+    serverEnv.CLOUDFLARE_BUCKET_NAME
 );
 
 export let s3Client: S3Client | null = null;
@@ -32,10 +33,10 @@ export let s3Client: S3Client | null = null;
 if (isCloudflareConfigured) {
     s3Client = new S3Client({
         region: 'auto',
-        endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        endpoint: `https://${serverEnv.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
         credentials: {
-            accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY_ID as string,
-            secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY as string,
+            accessKeyId: serverEnv.CLOUDFLARE_ACCESS_KEY_ID,
+            secretAccessKey: serverEnv.CLOUDFLARE_SECRET_ACCESS_KEY,
         },
     });
 }
@@ -65,7 +66,7 @@ export function getAssetType(mimeType: string): 'video' | 'image' | 'document' {
 }
 
 function buildPublicUrl(key: string): string {
-    let publicDomain = process.env.CLOUDFLARE_PUBLIC_DOMAIN || '';
+    let publicDomain = serverEnv.CLOUDFLARE_PUBLIC_DOMAIN;
     if (publicDomain && !publicDomain.startsWith('http')) {
         publicDomain = `https://${publicDomain}`;
     }
@@ -111,8 +112,31 @@ function isValidSignature(buffer: Buffer, mimeType: string): boolean {
     if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
         return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff; // ÿØÿ
     }
-    // We can add more exact matches, or fail-open (accept) unknown headers if they are common doc types like MP4
-    return true;
+    if (mimeType === 'image/gif') {
+        return buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38; // GIF8
+    }
+    if (mimeType === 'image/webp') {
+        return buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46; // RIFF
+    }
+    if (mimeType === 'video/mp4' || mimeType === 'video/quicktime') {
+        return buffer[4] === 0x66 && buffer[5] === 0x74 && buffer[6] === 0x79 && buffer[7] === 0x70; // ftyp
+    }
+    if (mimeType === 'video/webm') {
+        return buffer[0] === 0x1A && buffer[1] === 0x45 && buffer[2] === 0xDF && buffer[3] === 0xA3;
+    }
+    if (mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' || mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        return buffer[0] === 0x50 && buffer[1] === 0x4B && buffer[2] === 0x03 && buffer[3] === 0x04; // PK..
+    }
+    if (mimeType === 'application/vnd.ms-powerpoint' || mimeType === 'application/msword') {
+        return buffer[0] === 0xD0 && buffer[1] === 0xCF && buffer[2] === 0x11 && buffer[3] === 0xE0;
+    }
+    if (mimeType === 'image/svg+xml') {
+        const start = buffer.subarray(0, 100).toString('utf-8').trim();
+        return start.startsWith('<svg') || start.startsWith('<?xml');
+    }
+
+    // Explicit rejection for unmapped or potentially malicious types
+    return false;
 }
 
 /**
@@ -146,7 +170,7 @@ export async function uploadFile(
         const key = `${folder}/${fileName}`;
         try {
             const command = new PutObjectCommand({
-                Bucket: process.env.CLOUDFLARE_BUCKET_NAME as string,
+                Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
                 Key: key,
                 Body: buffer,
                 ContentType: mimeType,
@@ -196,7 +220,7 @@ export async function deleteFile(filePath: string, storageType: 'r2' | 'local'):
     if (storageType === 'r2' && isCloudflareConfigured && s3Client) {
         try {
             const command = new DeleteObjectCommand({
-                Bucket: process.env.CLOUDFLARE_BUCKET_NAME as string,
+                Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
                 Key: filePath,
             });
             await s3Client.send(command);

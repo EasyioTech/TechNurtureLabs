@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { hero_video_type, hero_video_url } = body;
+        const { hero_video_type, hero_video_url, logo_url, platform_name } = body;
 
         // Ensure global settings row exists
         const existingInfo = await db.query.platformSettings.findFirst({
@@ -37,6 +37,8 @@ export async function POST(request: NextRequest) {
                 .set({
                     hero_video_type,
                     hero_video_url,
+                    logo_url,
+                    platform_name,
                     updated_at: new Date()
                 })
                 .where(eq(platformSettings.id, 'global'));
@@ -46,6 +48,8 @@ export async function POST(request: NextRequest) {
                     id: 'global',
                     hero_video_type,
                     hero_video_url,
+                    logo_url,
+                    platform_name
                 });
         }
 

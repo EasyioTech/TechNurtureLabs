@@ -3,7 +3,7 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
 
-export const FooterDark = () => {
+export const FooterDark = ({ settings }: { settings?: any }) => {
     return (
         <footer className="relative z-10 bg-slate-950 text-slate-400 pt-24 pb-12 overflow-hidden">
             <div className="max-w-7xl mx-auto px-6">
@@ -11,10 +11,16 @@ export const FooterDark = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16 relative z-10">
                     <div className="md:col-span-1">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-slate-900">
-                                <Sparkles size={16} />
-                            </div>
-                            <span className="text-xl font-bold tracking-tight text-white">TechNurture</span>
+                            {settings?.logo_url ? (
+                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center p-1">
+                                    <img src={settings.logo_url} alt="Platform Logo" className="w-full h-full object-contain" />
+                                </div>
+                            ) : (
+                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-slate-900">
+                                    <Sparkles size={16} />
+                                </div>
+                            )}
+                            <span className="text-xl font-bold tracking-tight text-white">{settings?.platform_name || 'TechNurture'}</span>
                         </div>
                         <p className="text-sm leading-relaxed mb-6 font-medium">
                             Redefining K-12 education through world-class immersive learning experiences.

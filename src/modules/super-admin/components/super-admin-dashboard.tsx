@@ -20,6 +20,14 @@ import { SchoolsTab } from './tabs/schools-tab';
 import { SettingsTab } from './tabs/settings-tab';
 import { PromoCodesTab } from './tabs/promo-codes-tab';
 import { UserDialog } from './user-dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const NAV_ITEMS = [
     { id: 'overview', label: 'DASHBOARD', icon: LayoutGrid },
@@ -59,6 +67,7 @@ function DashboardContent() {
         if (showColorPicker) document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showColorPicker]);
+
     const [activePage, setActivePage] = useState('overview');
     const [searchQuery, setSearchQuery] = useState('');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -84,198 +93,226 @@ function DashboardContent() {
     const page = PAGE_TITLES[activePage] || PAGE_TITLES.overview;
 
     return (
-        <div className={`min-h-screen ${t.pageBg(isDark)} transition-colors duration-500 font-sans`}>
+        <div className={`min-h-screen ${t.pageBg(isDark)} transition-colors duration-500 font-sans pb-20`}>
             {/* ── Navigation ── */}
-            <header className={`sticky top-0 z-50 ${t.headerBg(isDark)} backdrop-blur-md transition-all duration-300`}>
+            <header className={`sticky top-0 z-50 ${t.headerBg(isDark)} backdrop-blur-md transition-all duration-300 border-b ${t.border(isDark)}`}>
                 <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10">
-                    <div className="flex items-center justify-between h-16 sm:h-20">
-                        {/* Logo + Tabs */}
-                        <div className="flex items-center gap-4 md:gap-10">
-                            <div className="flex items-center gap-3 group cursor-pointer">
-                                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${accent.bg} flex items-center justify-center ring-4 ring-transparent transition-all flex-shrink-0`}>
-                                    <LayoutGrid className='text-slate-900 w-4 h-4 sm:w-5 sm:h-5' />
+                    <div className="flex items-center justify-between h-16 sm:h-20 gap-4">
+                        {/* Left: Logo */}
+                        <div className="flex items-center gap-3 group cursor-pointer flex-shrink-0 z-10" onClick={() => setActivePage('overview')}>
+                            {data.platformSettings?.logo_url ? (
+                                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white flex items-center justify-center p-1.5 border border-white/10 shadow-lg overflow-hidden flex-shrink-0 transition-all group-hover:scale-105 group-hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                                    <img src={data.platformSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
                                 </div>
-                                <span className={`hidden sm:block text-xl font-black tracking-tighter ${t.textPrimary(isDark)} whitespace-nowrap`}>TechNurture Labs</span>
-                            </div>
-
-                            <nav className={`hidden md:flex items-center ${isDark ? 'bg-neutral-900/50' : 'bg-neutral-100/80'} rounded-full p-1.5`}>
-                                {NAV_ITEMS.map(item => {
-                                    const isActive = activePage === item.id;
-                                    return (
-                                        <button
-                                            key={item.id}
-                                            onClick={() => setActivePage(item.id)}
-                                            className={`relative px-5 py-2.5 rounded-full text-[11px] font-bold tracking-wider cursor-pointer transition-all duration-300
-                                                ${isActive ? '' : t.navInactive(isDark)}`}
-                                        >
-                                            {isActive && (
-                                                <motion.div
-                                                    layoutId="nav-pill-active"
-                                                    className={`absolute inset-0 rounded-full ${accent.bg} text-slate-900 ${isDark ? '' : 'shadow-lg'}`}
-                                                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                                                />
-                                            )}
-                                            <span className={`relative z-10 transition-colors duration-300 flex items-center justify-center ${isActive ? 'text-slate-900' : ''}`}>
-                                                {item.iconOnly ? (
-                                                    <item.icon size={16} strokeWidth={2.5} />
-                                                ) : (
-                                                    item.label
-                                                )}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </nav>
+                            ) : (
+                                <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-full ${accent.bg} flex items-center justify-center ring-4 ring-transparent transition-all flex-shrink-0 group-hover:rotate-12 group-hover:shadow-lg`}>
+                                    <LayoutGrid className='text-slate-900 w-5 h-5 sm:w-6 sm:h-6' />
+                                </div>
+                            )}
+                            <span className={`hidden md:block text-xl font-black tracking-tighter ${t.textPrimary(isDark)} whitespace-nowrap overflow-hidden text-ellipsis`}>
+                                {data.platformSettings?.platform_name || 'TechNurture'}
+                            </span>
                         </div>
 
-                        {/* Right side */}
-                        <div className="flex items-center gap-4">
-                            <div className={`hidden lg:flex items-center rounded-full px-5 py-2.5 gap-3 min-w-[280px] border transition-all duration-300 focus-within:ring-2 focus-within:ring-${accent.name}-400/30 focus-within:border-${accent.name}-400/30 ${t.border(isDark)} ${isDark ? 'bg-white/[0.04] focus-within:bg-white/[0.06]' : 'bg-white shadow-sm focus-within:shadow-md'}`}>
-                                <Search size={16} className={`transition-colors ${isDark ? `text-slate-600` : 'text-neutral-400'}`} />
-                                <input
-                                    type="text"
-                                    placeholder="Search dashboard..."
-                                    value={searchQuery}
-                                    onChange={e => setSearchQuery(e.target.value)}
-                                    className={`bg-transparent text-[13px] font-black outline-none flex-1 placeholder:font-bold ${t.textPrimary(isDark)}`}
-                                />
-                                {searchQuery && (
-                                    <button onClick={() => setSearchQuery('')} className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${isDark ? 'border-white/10 text-slate-600 hover:text-white' : 'border-neutral-200 text-neutral-400 hover:text-slate-900'}`}>✕</button>
-                                )}
-                            </div>
-
-                            <div className="flex items-center gap-1 sm:gap-2">
-                                <button className={`hidden sm:flex w-11 h-11 rounded-full items-center justify-center cursor-pointer transition-all relative border group ${t.border(isDark)} ${isDark ? `hover:bg-white/[0.06] hover:border-white/10` : 'hover:bg-neutral-50 hover:shadow-md'}`}>
-                                    <Bell size={20} className={`transition-all group-hover:rotate-12 ${t.textSecondary(isDark)}`} />
-                                    <span className={`absolute top-2.5 right-2.5 w-2 h-2 ${accent.bg} rounded-full ring-4 ${isDark ? 'ring-[#09090b]' : 'ring-white'}`} style={{ boxShadow: `0 0 10px ${isDark ? accent.swatchDark : accent.swatchLight}80` }} />
-                                </button>
-
-                                <button
-                                    onClick={toggle}
-                                    className={`hidden sm:flex w-11 h-11 rounded-full items-center justify-center cursor-pointer transition-all border group ${t.border(isDark)} ${isDark ? `hover:bg-white/[0.06] text-slate-400 ${accent.text.replace('text-', 'hover:text-')} hover:border-white/10` : 'hover:bg-neutral-50 text-neutral-500 hover:text-amber-500 hover:shadow-md'}`}
-                                >
-                                    {isDark ? <Sun size={20} /> : <Moon size={20} />}
-                                </button>
-
-                                {/* ── Color Scheme Picker ── */}
-                                <div className="relative hidden sm:block" ref={colorPickerRef}>
-                                    <button
-                                        onClick={() => setShowColorPicker(v => !v)}
-                                        className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all border group ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] hover:border-white/10' : 'hover:bg-neutral-50 hover:shadow-md'}`}
-                                        title="Change accent color"
-                                    >
-                                        <Palette size={20} className={`transition-all ${showColorPicker ? (isDark ? accent.text : 'text-neutral-800') : t.textSecondary(isDark)} group-hover:rotate-12`} />
-                                    </button>
-
-                                    <AnimatePresence>
-                                        {showColorPicker && (
-                                            <motion.div
-                                                initial={{ opacity: 0, scale: 0.9, y: 8 }}
-                                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                exit={{ opacity: 0, scale: 0.9, y: 8 }}
-                                                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                                                className={`absolute right-0 top-14 z-[100] min-w-[200px] rounded-2xl border p-3 backdrop-blur-xl shadow-2xl ${isDark ? 'bg-[#121214]/95 border-white/[0.08] shadow-black/40' : 'bg-white/95 border-neutral-200/60 shadow-black/10'}`}
-                                            >
-                                                <p className={`text-[10px] font-black tracking-[0.2em] uppercase mb-3 px-1 ${t.textMuted(isDark)}`}>ACCENT COLOR</p>
-                                                <div className="grid grid-cols-1 gap-1">
-                                                    {(Object.keys(COLOR_SCHEMES) as ColorScheme[]).map((key) => {
-                                                        const scheme = COLOR_SCHEMES[key];
-                                                        const isActive = colorScheme === key;
-                                                        return (
-                                                            <button
-                                                                key={key}
-                                                                onClick={() => { setColorScheme(key); setShowColorPicker(false); }}
-                                                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer group/item
-                                                                    ${isActive
-                                                                        ? isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'
-                                                                        : isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-neutral-50'
-                                                                    }`}
-                                                            >
-                                                                <div className="relative flex-shrink-0">
-                                                                    <div
-                                                                        className={`w-7 h-7 rounded-full transition-all ${isActive ? 'scale-110 ring-2 ring-offset-2' : 'group-hover/item:scale-105'}`}
-                                                                        style={{
-                                                                            background: isDark ? scheme.swatchDark : scheme.swatchLight,
-                                                                            ['--tw-ring-color' as string]: isDark ? scheme.swatchDark : scheme.swatchLight,
-                                                                            ['--tw-ring-offset-color' as string]: isDark ? '#121214' : '#ffffff',
-                                                                        }}
-                                                                    />
-                                                                    {isActive && (
-                                                                        <motion.div
-                                                                            initial={{ scale: 0 }}
-                                                                            animate={{ scale: 1 }}
-                                                                            className="absolute inset-0 flex items-center justify-center"
-                                                                        >
-                                                                            <Check size={14} className="text-white drop-shadow-md" strokeWidth={3} />
-                                                                        </motion.div>
-                                                                    )}
-                                                                </div>
-                                                                <span className={`text-xs font-bold ${isActive ? t.textPrimary(isDark) : t.textSecondary(isDark)} transition-colors`}>
-                                                                    {scheme.label}
-                                                                </span>
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            </div>
-
-                            <Avatar className={`w-9 h-9 sm:w-11 sm:h-11 cursor-pointer border-2 transition-all ${isDark ? `border-white/10 hover:border-opacity-50` : 'border-neutral-200/50 shadow-lg'}`} style={isDark ? { ['--hover-border' as string]: accent.swatchDark } : {}} onClick={() => signOut()}>
-                                <AvatarFallback className={`text-xs font-[1000] ${isDark ? `${accent.bg} text-slate-900` : 'bg-[#171717] text-white'}`}>SA</AvatarFallback>
-                            </Avatar>
-
-                            {/* Mobile menu button */}
-                            <button className={`md:hidden w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all border group ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] hover:border-white/10' : 'hover:bg-neutral-50 hover:shadow-md'}`}
-                                onClick={() => setMobileMenuOpen(v => !v)}>
-                                {mobileMenuOpen ? <X size={18} className={t.textSecondary(isDark)} /> : <Menu size={18} className={t.textSecondary(isDark)} />}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Mobile Nav Drawer */}
-                    <AnimatePresence>
-                        {mobileMenuOpen && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="md:hidden overflow-hidden pb-4"
-                            >
-                                <div className="grid grid-cols-2 gap-2 pt-2">
+                        {/* Center: Desktop Nav - Hidden on mobile, visible from medium screens */}
+                        <div className="hidden lg:flex flex-1 items-center justify-center min-w-0 max-w-full">
+                            <nav className={`flex items-center ${isDark ? 'bg-neutral-900/60' : 'bg-neutral-100/80'} rounded-full p-1 border ${t.border(isDark)} shadow-inner overflow-hidden max-w-full`}>
+                                <div className="flex items-center overflow-x-auto no-scrollbar scroll-smooth px-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                     {NAV_ITEMS.map(item => {
                                         const isActive = activePage === item.id;
                                         return (
                                             <button
                                                 key={item.id}
-                                                onClick={() => { setActivePage(item.id); setMobileMenuOpen(false); }}
-                                                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[11px] font-black tracking-wider transition-all
-                                                    ${isActive ? `${accent.bg} text-slate-900` : `${isDark ? 'bg-white/[0.04]' : 'bg-neutral-100'} ${t.navInactive(isDark)}`}`}
+                                                onClick={() => setActivePage(item.id)}
+                                                className={`relative px-4 py-2.5 sm:px-5 rounded-full text-[11px] font-black uppercase tracking-widest cursor-pointer transition-all duration-300 whitespace-nowrap flex-shrink-0
+                                                    ${isActive ? '' : t.navInactive(isDark)} hover:opacity-80`}
                                             >
-                                                <item.icon size={16} />
-                                                {item.label}
+                                                {isActive && (
+                                                    <motion.div
+                                                        layoutId="nav-pill-active"
+                                                        className={`absolute inset-0 rounded-full ${accent.bg} text-slate-900 shadow-xl shadow-black/10`}
+                                                        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                                                    />
+                                                )}
+                                                <span className={`relative z-10 transition-colors duration-300 flex items-center justify-center gap-2 ${isActive ? 'text-slate-900' : ''}`}>
+                                                    {item.iconOnly ? (
+                                                        <item.icon size={16} strokeWidth={3} />
+                                                    ) : (
+                                                        <>
+                                                            {isActive && <item.icon size={14} strokeWidth={3} className="hidden xl:block" />}
+                                                            {item.label}
+                                                        </>
+                                                    )}
+                                                </span>
                                             </button>
                                         );
                                     })}
                                 </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                            </nav>
+                        </div>
+
+                        {/* Right: Actions */}
+                        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 justify-end z-10">
+                            {/* Search */}
+                            <div className={`hidden sm:flex items-center rounded-full px-4 py-2 sm:py-2.5 gap-3 max-w-[280px] lg:max-w-[320px] flex-1 border transition-all duration-300 focus-within:ring-4 focus-within:ring-${accent.name}-400/20 focus-within:border-${accent.name}-400/30 ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-neutral-50 shadow-sm'}`}>
+                                <Search size={16} className={`flex-shrink-0 transition-colors ${isDark ? `text-slate-400` : 'text-neutral-500'}`} />
+                                <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className={`bg-transparent text-[13px] font-bold outline-none w-full placeholder:font-bold ${t.textPrimary(isDark)}`}
+                                />
+                                {searchQuery && (
+                                    <button onClick={() => setSearchQuery('')} className={`text-[10px] font-black px-2 py-0.5 rounded-md border transition-colors ${isDark ? 'border-white/10 text-slate-400 hover:text-white hover:bg-white/5' : 'border-neutral-200 text-neutral-400 hover:text-slate-900 hover:bg-neutral-50'}`}>✕</button>
+                                )}
+                            </div>
+
+                            {/* Settings Buttons */}
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                <button className={`hidden lg:flex w-10 h-10 rounded-full items-center justify-center cursor-pointer transition-all relative border group ${t.border(isDark)} ${isDark ? `hover:bg-white/[0.06] hover:border-white/10` : 'hover:bg-neutral-50 hover:shadow-md'}`}>
+                                    <Bell size={18} className={`transition-all group-hover:rotate-12 ${t.textSecondary(isDark)}`} />
+                                    <span className={`absolute top-2.5 right-2.5 w-2 h-2 ${accent.bg} rounded-full ring-2 ${isDark ? 'ring-[#09090b]' : 'ring-white'}`} style={{ boxShadow: `0 0 10px ${isDark ? accent.swatchDark : accent.swatchLight}80` }} />
+                                </button>
+
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full cursor-pointer border-2 transition-all p-0.5 overflow-hidden ${isDark ? `border-white/10 hover:border-white/20` : 'border-neutral-200/50 shadow-lg hover:shadow-xl'}`}>
+                                            <Avatar className="w-full h-full">
+                                                <AvatarFallback className={`text-[10px] font-black ${isDark ? `${accent.bg} text-slate-900` : 'bg-slate-900 text-white'}`}>SA</AvatarFallback>
+                                            </Avatar>
+                                        </div>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className={`w-64 rounded-3xl p-2 border-0 shadow-2xl ${isDark ? 'bg-[#121214]/98 backdrop-blur-xl' : 'bg-white'}`}>
+                                        <DropdownMenuLabel className={`px-4 py-3 text-[10px] font-black tracking-[0.2em] uppercase ${t.textMuted(isDark)}`}>SYSTEM SETTINGS</DropdownMenuLabel>
+
+                                        <DropdownMenuItem onClick={toggle} className={`flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50'}`}>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+                                                {isDark ? <Sun size={16} /> : <Moon size={16} />}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className={`text-xs font-black ${t.textPrimary(isDark)}`}>{isDark ? 'LIGHT MODE' : 'DARK MODE'}</span>
+                                                <span className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>SWITCH INTERFACE THEME</span>
+                                            </div>
+                                        </DropdownMenuItem>
+
+                                        <div className="px-2 py-1">
+                                            <div className="relative" ref={colorPickerRef}>
+                                                <button
+                                                    onClick={(e) => { e.preventDefault(); setShowColorPicker(v => !v); }}
+                                                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl cursor-pointer transition-all ${showColorPicker ? (isDark ? 'bg-white/10' : 'bg-neutral-100') : (isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50')}`}
+                                                >
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-indigo-50'} ${accent.text}`}>
+                                                        <Palette size={16} />
+                                                    </div>
+                                                    <div className="flex flex-col text-left">
+                                                        <span className={`text-xs font-black ${t.textPrimary(isDark)}`}>ACCENT COLOR</span>
+                                                        <span className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>{accent.label} SELECTED</span>
+                                                    </div>
+                                                </button>
+
+                                                <AnimatePresence>
+                                                    {showColorPicker && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                                                            className={`absolute right-full top-0 mr-2 z-[110] min-w-[180px] rounded-2xl border p-2 backdrop-blur-xl shadow-2xl ${isDark ? 'bg-[#18181b]/98 border-white/[0.08] shadow-black/40' : 'bg-white border-neutral-200/60 shadow-black/10'}`}
+                                                        >
+                                                            <div className="grid grid-cols-1 gap-1">
+                                                                {(Object.keys(COLOR_SCHEMES) as ColorScheme[]).map((key) => {
+                                                                    const scheme = COLOR_SCHEMES[key];
+                                                                    const isActive = colorScheme === key;
+                                                                    return (
+                                                                        <button
+                                                                            key={key}
+                                                                            onClick={() => { setColorScheme(key); setShowColorPicker(false); }}
+                                                                            className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer ${isActive ? (isDark ? 'bg-white/[0.1]' : 'bg-neutral-100') : (isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-neutral-50')}`}
+                                                                        >
+                                                                            <div className="w-4 h-4 rounded-full border border-white/10" style={{ backgroundColor: isDark ? scheme.swatchDark : scheme.swatchLight }} />
+                                                                            <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? t.textPrimary(isDark) : t.textSecondary(isDark)}`}>{scheme.label}</span>
+                                                                            {isActive && <Check size={12} className="ml-auto text-emerald-500" />}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        </div>
+
+                                        <DropdownMenuSeparator className={`my-2 ${isDark ? 'bg-white/[0.05]' : 'bg-neutral-100'}`} />
+
+                                        <DropdownMenuItem onClick={() => signOut()} className={`flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all hover:bg-rose-500/10 text-rose-500`}>
+                                            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-rose-500/10">
+                                                <LogOut size={16} />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-black">SIGN OUT</span>
+                                                <span className="text-[9px] font-bold opacity-70">END SESSION</span>
+                                            </div>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
+                                <button
+                                    className={`md:hidden w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all border shadow-lg ${t.border(isDark)} ${isDark ? 'bg-white/[0.05] hover:bg-white/[0.1] text-white' : 'bg-white hover:bg-neutral-50 text-slate-900'}`}
+                                    onClick={() => setMobileMenuOpen(v => !v)}
+                                    aria-label="Toggle Mobile Menu"
+                                >
+                                    {mobileMenuOpen ? <X size={20} strokeWidth={3} /> : <Menu size={20} strokeWidth={3} />}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+                {/* Mobile Nav Drawer */}
+                <AnimatePresence>
+                    {mobileMenuOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="md:hidden overflow-hidden bg-inherit border-t border-white/[0.05]"
+                        >
+                            <div className="max-w-[1440px] mx-auto px-4 py-4 grid grid-cols-2 min-[480px]:grid-cols-3 gap-2">
+                                {NAV_ITEMS.map(item => {
+                                    const isActive = activePage === item.id;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => { setActivePage(item.id); setMobileMenuOpen(false); }}
+                                            className={`flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-[1.5rem] text-[10px] font-black tracking-widest transition-all border
+                                                    ${isActive
+                                                    ? `${accent.bg} text-slate-900 border-transparent shadow-lg shadow-${accent.name}-500/20`
+                                                    : `${isDark ? 'bg-white/[0.03] border-white/[0.05]' : 'bg-neutral-50 border-neutral-200'} ${t.navInactive(isDark)}`}`}
+                                        >
+                                            <item.icon size={20} strokeWidth={isActive ? 3 : 2} />
+                                            <span>{item.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </header>
 
+            {/* Spacer for sticky header */}
+            <div className="h-4 sm:h-8" />
+
             {/* ── Content ── */}
-            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10">
                 {/* Page Header */}
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-8 sm:mb-12">
-                    <div>
+                    <div className="max-w-2xl">
                         <motion.h1
                             key={`t-${activePage}`}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className={`text-3xl sm:text-4xl lg:text-5xl font-[900] tracking-tighter ${t.textPrimary(isDark)}`}
+                            className={`text-2xl sm:text-3xl lg:text-4xl font-[1000] tracking-tighter uppercase ${t.textPrimary(isDark)}`}
                         >
                             {page.title}
                         </motion.h1>
@@ -284,46 +321,74 @@ function DashboardContent() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.1 }}
-                            className={`text-[10px] sm:text-[12px] mt-2.5 font-black uppercase tracking-[0.22em] ${t.textMuted(isDark)}`}
+                            className={`text-[10px] sm:text-[12px] mt-3 font-black uppercase tracking-[0.22em] ${t.textMuted(isDark)} leading-relaxed`}
                         >
                             {page.subtitle}
                         </motion.p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                        <Button variant="outline" size="sm"
-                            className={`rounded-full gap-2.5 h-10 sm:h-12 px-5 sm:px-7 text-xs sm:text-sm font-bold border-2 transition-all ${t.btnOutline(isDark)}`}>
-                            <Filter size={16} />Filter View
-                        </Button>
-                        <Button size="sm"
-                            className={`rounded-full gap-2.5 h-10 sm:h-12 px-5 sm:px-7 text-xs sm:text-sm font-black shadow-xl transition-all
-                                ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
-                            style={isDark ? { boxShadow: `0 10px 25px -5px ${accent.swatchDark}33` } : {}}
-                            onClick={() => {
-                                if (activePage === 'courses') {
-                                    data.setEditingCourse({ published: false });
-                                    data.setShowCourseDialog(true);
-                                } else if (activePage === 'plans') {
-                                    data.setEditingPlan({ billing_cycle: 'monthly', features: [], is_active: true, trial_days: 0 });
-                                    data.setShowPlanDialog(true);
-                                } else if (activePage === 'promo') {
-                                    data.setEditingPromoCode({ discount_type: 'percentage', is_active: true, max_uses: null, current_uses: 0 });
-                                    data.setShowPromoCodeDialog(true);
-                                } else if (activePage === 'schools') {
-                                    data.setEditingSchoolItem({ name: '', email: '', is_active: true, data_processing_consent: true, minor_data_guardian_consent: true });
-                                    data.setShowSchoolDialog(true);
-                                } else if (activePage === 'users') {
-                                    data.setEditingUserItem({ first_name: '', last_name: '', email: '', role: 'student', password: '' });
-                                    data.setShowUserDialog(true);
-                                }
-                            }}>
-                            <Plus size={20} strokeWidth={3} />
-                            {activePage === 'courses' ? 'NEW COURSE' :
-                                activePage === 'plans' ? 'UPDATE TIERS' :
-                                    activePage === 'promo' ? 'ADD CODE' :
-                                        activePage === 'schools' ? 'ADD INSTITUTION' :
-                                            activePage === 'users' ? 'NEW STUDENT' :
-                                                'QUICK ACTION'}
-                        </Button>
+                        {activePage === 'courses' ? (
+                            <>
+                                <Button variant="outline" size="sm"
+                                    onClick={() => {
+                                        data.setEditingCourse({ published: false });
+                                        data.setShowCourseDialog(true);
+                                    }}
+                                    className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black border-2 transition-all ${t.btnOutline(isDark)}`}>
+                                    <Plus size={isDark ? 14 : 16} /> CREATE COURSE
+                                </Button>
+                                <Button size="sm"
+                                    disabled={!data.selectedCourse}
+                                    onClick={() => {
+                                        if (data.selectedCourse) {
+                                            data.setEditingLesson({
+                                                course_id: data.selectedCourse.id,
+                                                is_published: true,
+                                                content_type: 'video'
+                                            });
+                                            data.setShowLessonDialog(true);
+                                        }
+                                    }}
+                                    className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black shadow-xl transition-all
+                                        ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)} ${!data.selectedCourse ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                                    style={isDark && data.selectedCourse ? t.glowStyle(isDark, accent) : {}}>
+                                    <Plus size={20} strokeWidth={3} /> CREATE LESSON
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button variant="outline" size="sm"
+                                    className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black border-2 transition-all ${t.btnOutline(isDark)}`}>
+                                    <Filter size={isDark ? 14 : 16} />FILTER
+                                </Button>
+                                <Button size="sm"
+                                    className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black shadow-xl transition-all
+                                        ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
+                                    style={isDark ? t.glowStyle(isDark, accent) : {}}
+                                    onClick={() => {
+                                        if (activePage === 'plans') {
+                                            data.setEditingPlan({ billing_cycle: 'monthly', features: [], is_active: true, trial_days: 0 });
+                                            data.setShowPlanDialog(true);
+                                        } else if (activePage === 'promo') {
+                                            data.setEditingPromoCode({ discount_type: 'percentage', is_active: true, max_uses: null, current_uses: 0 });
+                                            data.setShowPromoCodeDialog(true);
+                                        } else if (activePage === 'schools') {
+                                            data.setEditingSchoolItem({ name: '', email: '', is_active: true, data_processing_consent: true, minor_data_guardian_consent: true });
+                                            data.setShowSchoolDialog(true);
+                                        } else if (activePage === 'users') {
+                                            data.setEditingUserItem({ first_name: '', last_name: '', email: '', role: 'student', password: '' });
+                                            data.setShowUserDialog(true);
+                                        }
+                                    }}>
+                                    <Plus size={20} strokeWidth={3} />
+                                    {activePage === 'plans' ? 'UPDATE TIERS' :
+                                        activePage === 'promo' ? 'ADD CODE' :
+                                            activePage === 'schools' ? 'ADD INSTITUTION' :
+                                                activePage === 'users' ? 'NEW STUDENT' :
+                                                    'QUICK ACTION'}
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -405,6 +470,8 @@ function DashboardContent() {
 
 export function SuperAdminDashboard() {
     return (
-        <DashboardContent />
+        <AdminThemeProvider>
+            <DashboardContent />
+        </AdminThemeProvider>
     );
 }

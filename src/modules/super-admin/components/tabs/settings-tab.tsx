@@ -7,6 +7,8 @@ import { useAdminTheme, t } from '../../theme-context';
 import { toast } from 'sonner';
 import { Loader2, Video, Save, Link2, UploadCloud, Film } from 'lucide-react';
 import { MediaLibraryPicker } from '../media-library-picker';
+import { ImageUpload } from '@/modules/shared/components/image-upload';
+import { Palette } from 'lucide-react';
 
 export function SettingsTab() {
     const { isDark, accent } = useAdminTheme();
@@ -16,6 +18,8 @@ export function SettingsTab() {
 
     const [videoType, setVideoType] = useState<'youtube' | 'upload' | 'vimeo' | 'link'>('youtube');
     const [videoUrl, setVideoUrl] = useState('');
+    const [logoUrl, setLogoUrl] = useState('');
+    const [platformName, setPlatformName] = useState('TechNurture');
 
     useEffect(() => {
         // Fetch current settings
@@ -25,6 +29,8 @@ export function SettingsTab() {
                 if (data.settings) {
                     setVideoType(data.settings.hero_video_type || 'youtube');
                     setVideoUrl(data.settings.hero_video_url || '');
+                    setLogoUrl(data.settings.logo_url || '');
+                    setPlatformName(data.settings.platform_name || 'TechNurture');
                 }
                 setLoading(false);
             })
@@ -44,6 +50,8 @@ export function SettingsTab() {
                 body: JSON.stringify({
                     hero_video_type: videoType,
                     hero_video_url: videoUrl,
+                    logo_url: logoUrl,
+                    platform_name: platformName,
                 })
             });
             const data = await res.json();
@@ -70,6 +78,50 @@ export function SettingsTab() {
 
     return (
         <div className="space-y-8 max-w-4xl mx-auto">
+            {/* Platform Identity Section */}
+            <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
+                <div className="flex items-center gap-4 mb-8">
+                    <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
+                        <Palette className={accent.text} size={28} />
+                    </div>
+                    <div>
+                        <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Platform Identity</h2>
+                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Manage the primary logo and branding for the entire platform.</p>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                            <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>System Logo</Label>
+                            <div className="max-w-xs">
+                                <ImageUpload
+                                    value={logoUrl}
+                                    onChange={setLogoUrl}
+                                    isDark={isDark}
+                                />
+                            </div>
+                            <p className={`text-[11px] ${t.textMuted(isDark)} font-medium italic mt-2`}>
+                                This logo will be displayed on the main landing page, super admin dashboard, and default school portals.
+                            </p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>Platform Public Name</Label>
+                            <Input
+                                value={platformName}
+                                onChange={(e) => setPlatformName(e.target.value)}
+                                placeholder="e.g. TechNurture Labs"
+                                className={`text-base font-bold h-14 rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/10 text-white shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                            />
+                            <p className={`text-[11px] ${t.textMuted(isDark)} font-medium italic mt-2`}>
+                                The global brand name used in navigation bars, footers, and emails.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
                 <div className="flex items-center gap-4 mb-8">
                     <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
@@ -145,7 +197,7 @@ export function SettingsTab() {
                                     videoType === 'youtube' ? 'e.g., https://www.youtube.com/watch?v=...'
                                         : 'e.g., https://example.com/video.mp4'
                                 }
-                                className={`text-base font-medium h-14 rounded-xl ${isDark ? 'bg-white/[0.04] border-white/10' : 'bg-slate-50 border-slate-200'}`}
+                                className={`text-base font-bold h-14 rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/10 text-white shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                             />
                         )}
                     </div>

@@ -10,15 +10,20 @@ import { FAQFlat } from '@/components/landing/FAQFlat';
 import { CTAGlassmorphism } from '@/components/landing/CTAGlassmorphism';
 import { FooterDark } from '@/components/landing/FooterDark';
 
-export default function Home() {
+import { getPlatformSettings } from '@/components/landing/actions';
+
+export default async function Home() {
+  const settings = await getPlatformSettings();
+
   return (
     <div className="min-h-screen bg-white text-slate-800 selection:bg-blue-500/30 selection:text-blue-900 font-roboto overflow-x-clip">
 
       {/* 1. Flat Navigation Bar */}
-      <FlatNavigation />
+      <FlatNavigation settings={settings} />
 
       {/* 2. Hero Section - Glassmorphism + Bold Minimalism (Over Light Gradient) */}
-      <HeroSectionLight />
+      <HeroSectionLight settings={settings} />
+
 
       {/* 3. Features Section - Glassmorphism Bento Grid */}
       <FeaturesBentoLight />
@@ -42,7 +47,7 @@ export default function Home() {
       <CTAGlassmorphism />
 
       {/* 10. Footer - Dark Minimalism */}
-      <FooterDark />
+      <FooterDark settings={settings} />
 
     </div>
   );

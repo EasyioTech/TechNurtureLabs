@@ -2,23 +2,33 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseClassMapping, quizAttempts, auditLogs } from '@/db/schema';
+import { users, schools, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseClassMapping, quizAttempts, auditLogs } from '@/db/schema';
 import { eq, and, gt, inArray, asc, desc, isNotNull, sql } from 'drizzle-orm';
 
 export type DashboardData = {
     profile: any;
+    school: any;
     stats: {
         xp: number;
         streak: number;
         level: number;
         lessonsCompleted: number;
-        totalTime: number; // in hours
-        accuracy: number; // percentage
+        totalTime: number;
+        accuracy: number;
         rank: number;
+        rankPercentage: number;
     };
+    nextGoal: {
+        name: string;
+        requirement: string;
+        progress: number;
+    } | null;
     dailyChallenges: any[];
     achievements: any[];
     courses: any[];
+    activities: any[];
+    categories: any[];
+    topics: string[];
 };
 
 export async function getStudentDashboardData(): Promise<DashboardData> {
@@ -32,6 +42,10 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     });
 
     if (!profile) throw new Error('User not found');
+
+    const school = profile.school_id ? await db.query.schools.findFirst({
+        where: eq(schools.id, profile.school_id)
+    }) : null;
 
     // Count completed lessons for this user
     const completedLessons = await db.select().from(lessonProgress)
@@ -49,14 +63,20 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     }).from(quizAttempts).where(eq(quizAttempts.user_id, userId));
     const accuracy = Math.round(Number(quizResult[0]?.avg_pct) || 0);
 
+    const usersWithMoreXp = await db.select().from(users).where(and(gt(users.cumulative_xp, Number(profile.cumulative_xp) || 0), eq(users.role, 'student')));
+    const totalStudents = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.role, 'student'));
+    const rank = usersWithMoreXp.length + 1;
+    const rankPercentage = Math.max(1, Math.round((rank / (totalStudents[0]?.count || 1)) * 100));
+
     const stats = {
         xp: Number(profile.cumulative_xp) || 0,
         streak: profile.current_streak || 0,
-        level: Math.floor((Number(profile.cumulative_xp) || 0) / 500) + 1,
+        level: Math.floor((Number(profile.cumulative_xp) || 0) / 1000) + 1,
         lessonsCompleted: completedLessons.length,
         totalTime: totalHours,
         accuracy: accuracy,
-        rank: 0
+        rank: rank,
+        rankPercentage: rankPercentage
     };
 
     // Daily Challenges
@@ -125,9 +145,15 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         });
     }
 
-    // Class Rank (count of users with more xp)
-    const usersWithMoreXp = await db.select().from(users).where(and(gt(users.cumulative_xp, Number(profile.cumulative_xp) || 0), eq(users.role, 'student')));
-    stats.rank = usersWithMoreXp.length + 1;
+    // Next Goal
+    const nextAchievement = allAchvs.find(a => !formattedAchievements.find(fa => fa.id === a.id && fa.unlocked));
+    const nextGoal = nextAchievement ? {
+        name: nextAchievement.name,
+        requirement: nextAchievement.description || 'Unlock this achievement',
+        progress: Math.min(Math.round((stats.xp / (nextAchievement.xp_threshold || 1000)) * 100), 100)
+    } : null;
+
+    // Rank already calculated above
 
     // 1. Get student's current class
     const currentRecord = await db.query.studentAcademicRecords.findFirst({
@@ -217,18 +243,50 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         })
     );
 
+    // Fetch recent activity
+    const recentActivities = await db.query.auditLogs.findMany({
+        where: eq(auditLogs.user_id, userId),
+        orderBy: [desc(auditLogs.created_at)],
+        limit: 5
+    });
+
+    const formattedActivities = recentActivities.map(log => {
+        let title = "System update";
+        if (log.action === 'login') title = "Logged in";
+        if (log.action === 'update' && log.entity_type === 'lesson_progress') title = "Completed a lesson";
+        if (log.action === 'create' && log.entity_type === 'user_achievement') title = "Earned an achievement";
+        if (log.action === 'create' && log.entity_type === 'enrollment') title = "Enrolled in a course";
+
+        return {
+            id: log.id,
+            title,
+            time: log.created_at,
+            type: log.action
+        };
+    });
+
     return {
         profile: {
             ...profile,
-            // Backward-compatible aliases
             full_name: `${profile.first_name} ${profile.last_name}`,
-            total_xp: Number(profile.cumulative_xp),
+            total_xp: Number(profile.cumulative_xp) || 0,
             level: stats.level,
         },
+        school: school ? {
+            name: school.name,
+            logo_url: school.logo_url
+        } : null,
         stats,
+        nextGoal,
         dailyChallenges: formattedChallenges,
         achievements: formattedAchievements,
-        courses: coursesWithProgress.filter(Boolean)
+        courses: coursesWithProgress.filter(Boolean) as any[],
+        activities: formattedActivities,
+        categories: Array.from(new Set(coursesWithProgress.filter(Boolean).map(c => c?.category))).filter(Boolean).map(cat => ({
+            name: cat,
+            count: coursesWithProgress.filter(Boolean).filter(c => c?.category === cat).length
+        })),
+        topics: Array.from(new Set(coursesWithProgress.filter(Boolean).flatMap(c => c?.topics?.split(',').map((t: string) => t.trim())))).filter(Boolean) as string[]
     };
 }
 

@@ -6,6 +6,20 @@
 BEGIN;
 
 -- ============================================================================
+-- 0. APPLICATION ROLE
+-- ============================================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'technurture_app') THEN
+    CREATE ROLE technurture_app WITH LOGIN PASSWORD 'technurture_secure_pass';
+  END IF;
+END
+$$;
+
+GRANT ALL PRIVILEGES ON DATABASE orchids TO technurture_app;
+GRANT ALL ON SCHEMA public TO technurture_app;
+
+-- ============================================================================
 -- 0. EXTENSIONS
 -- ============================================================================
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -856,5 +870,10 @@ INSERT INTO grades (id, name, level) VALUES
     ('f0000000-0000-0000-0000-000000000011', 'Class 11', 11),
     ('f0000000-0000-0000-0000-000000000012', 'Class 12', 12)
 ON CONFLICT (level) DO NOTHING;
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO technurture_app;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO technurture_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO technurture_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO technurture_app;
 
 COMMIT;

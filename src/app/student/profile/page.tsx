@@ -1,18 +1,21 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { getStudentProfileData, updateStudentBio, updateStudentAvatar } from '@/modules/student/profile-actions';
+import { getStudentProfileData, updateStudentBio, updateStudentAvatar, updateStudentProfile } from '@/modules/student/actions/profile-actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { StudentHeader } from '../../../modules/student/components/header';
+import { Badge } from '@/components/ui/badge';
 import {
   Trophy, Star, Flame, BookOpen, Clock, Target,
   Sparkles, Award, Crown, Medal, Calendar, Edit3, Check, X,
-  Zap, GraduationCap, TrendingUp, Heart, Shield, Rocket
+  Zap, GraduationCap, TrendingUp, Heart, Shield, Rocket, ArrowLeft, Camera
 } from 'lucide-react';
+import Link from 'next/link';
 
 type UserProfile = {
   id: string;
+  first_name: string;
+  last_name: string;
   full_name: string;
   email: string;
   grade: number | null;
@@ -27,6 +30,7 @@ type UserProfile = {
   avatar_url: string | null;
   avatar_style: string | null;
   bio: string | null;
+  phone: string | null;
   created_at: string;
 };
 
@@ -42,14 +46,12 @@ type Achievement = {
 };
 
 const AVATAR_COLORS = [
-  { id: 'indigo', code: 'bg-indigo-600' },
-  { id: 'emerald', code: 'bg-emerald-600' },
-  { id: 'amber', code: 'bg-amber-600' },
-  { id: 'rose', code: 'bg-rose-600' },
-  { id: 'sky', code: 'bg-sky-600' },
-  { id: 'violet', code: 'bg-violet-600' },
-  { id: 'cyan', code: 'bg-cyan-600' },
-  { id: 'fuchsia', code: 'bg-fuchsia-600' },
+  { id: 'indigo', code: 'bg-indigo-600', label: 'Indigo' },
+  { id: 'emerald', code: 'bg-emerald-600', label: 'Emerald' },
+  { id: 'amber', code: 'bg-amber-600', label: 'Amber' },
+  { id: 'rose', code: 'bg-rose-600', label: 'Rose' },
+  { id: 'sky', code: 'bg-sky-600', label: 'Sky' },
+  { id: 'violet', code: 'bg-violet-600', label: 'Violet' },
 ];
 
 const AVATAR_ICONS = [
@@ -70,10 +72,13 @@ export default function StudentProfile() {
   const [loading, setLoading] = useState(true);
   const [editingBio, setEditingBio] = useState(false);
   const [editingAvatar, setEditingAvatar] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
   const [bioText, setBioText] = useState('');
+  const [formData, setFormData] = useState({ first_name: '', last_name: '', phone: '' });
   const [selectedColor, setSelectedColor] = useState('indigo');
   const [selectedIcon, setSelectedIcon] = useState('rocket');
-  const [rank, setRank] = useState(0);
+  const [rank, setRank] = useState({ current: 0, percentage: 0 });
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchProfileData();
@@ -85,8 +90,13 @@ export default function StudentProfile() {
       setProfile(data.profile as any);
       setStats(data.stats);
       setAchievements(data.achievements as any);
-      setRank(data.rank);
+      setRank({ current: data.rank, percentage: data.rankPercentage });
       setBioText(data.profile?.bio || '');
+      setFormData({
+        first_name: data.profile?.first_name || '',
+        last_name: data.profile?.last_name || '',
+        phone: data.profile?.phone || ''
+      });
 
       if (data.profile?.avatar_style) {
         const [color, icon] = data.profile.avatar_style.split(':');
@@ -101,310 +111,338 @@ export default function StudentProfile() {
 
   const saveBio = async () => {
     if (!profile) return;
-
+    setIsSaving(true);
     try {
       await updateStudentBio(bioText);
       setProfile({ ...profile, bio: bioText });
+      setEditingBio(false);
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsSaving(false);
     }
-    setEditingBio(false);
+  };
+
+  const saveProfile = async () => {
+    if (!profile) return;
+    setIsSaving(true);
+    try {
+      await updateStudentProfile({
+        ...formData,
+        bio: bioText
+      });
+      setProfile({
+        ...profile,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        full_name: `${formData.first_name} ${formData.last_name}`,
+        phone: formData.phone,
+        bio: bioText
+      });
+      setEditingProfile(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const saveAvatar = async () => {
     if (!profile) return;
-
     const avatarStyle = `${selectedColor}:${selectedIcon}`;
+    setIsSaving(true);
     try {
       await updateStudentAvatar(avatarStyle);
       setProfile({ ...profile, avatar_style: avatarStyle });
+      setEditingAvatar(false);
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsSaving(false);
     }
-    setEditingAvatar(false);
   };
 
-  const getAvatarColor = () => {
-    return AVATAR_COLORS.find(g => g.id === selectedColor)?.code || AVATAR_COLORS[0].code;
-  };
-
-  const getAvatarIcon = () => {
-    return AVATAR_ICONS.find(i => i.id === selectedIcon)?.icon || Rocket;
-  };
-
-  const getAchievementIcon = (iconName: string) => {
-    const icons: Record<string, any> = {
-      'trophy': Trophy,
-      'star': Star,
-      'flame': Flame,
-      'book-open': BookOpen,
-      'clock': Clock,
-      'target': Target,
-      'medal': Medal,
-      'crown': Crown,
-      'zap': Zap,
-      'award': Award,
-    };
-    return icons[iconName] || Trophy;
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, { bg: string; text: string }> = {
-      'learning': { bg: 'bg-emerald-50', text: 'text-emerald-700' },
-      'streak': { bg: 'bg-orange-50', text: 'text-orange-700' },
-      'quiz': { bg: 'bg-violet-50', text: 'text-violet-700' },
-      'time': { bg: 'bg-sky-50', text: 'text-sky-700' },
-      'special': { bg: 'bg-amber-50', text: 'text-amber-700' },
-    };
-    return colors[category] || colors['learning'];
-  };
-
-  const formatLearningTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours > 0) return `${hours}h ${mins}m`;
-    return `${mins}m`;
-  };
-
-  const formatJoinDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'long',
-      year: 'numeric'
-    });
-  };
+  const AvatarIconComponent = AVATAR_ICONS.find(i => i.id === selectedIcon)?.icon || Rocket;
+  const avatarBg = AVATAR_COLORS.find(c => c.id === selectedColor)?.code || 'bg-indigo-600';
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Sparkles className="w-8 h-8 text-indigo-600 animate-spin" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading Profile Context...</p>
+        </div>
       </div>
     );
   }
 
-  const currentLevelXp = (profile?.total_xp || 0) % 1000;
-  const levelProgress = (currentLevelXp / 1000) * 100;
-  const unlockedCount = achievements.filter(a => a.unlocked).length;
-  const AvatarIcon = getAvatarIcon();
-  const avatarColor = getAvatarColor();
+  const xpProgress = (profile?.total_xp || 0) % 1000;
+  const progressPercent = (xpProgress / 1000) * 100;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <StudentHeader profile={profile as any} stats={stats} />
+    <div className="min-h-screen bg-slate-50/50 pb-32">
+      {/* Dynamic Header */}
+      <div className="relative h-64 bg-slate-950 overflow-hidden border-b border-white/5">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(99,102,241,0.15)_0%,_transparent_70%)]" />
+        <div className="max-w-[1200px] mx-auto px-6 h-full flex flex-col justify-end pb-12 relative z-10">
+          <Link href="/student">
+            <button className="absolute top-8 left-6 flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest hover:text-white transition-colors">
+              <ArrowLeft size={16} /> Dashboard
+            </button>
+          </Link>
+          <div className="flex flex-col md:flex-row items-end gap-8">
+            <div className="relative group">
+              <div className={`w-32 h-32 rounded-[2.5rem] ${avatarBg} border-4 border-slate-950 shadow-2xl flex items-center justify-center`}>
+                <AvatarIconComponent size={56} className="text-white" />
+              </div>
+              <button
+                onClick={() => setEditingAvatar(true)}
+                className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-2xl shadow-xl flex items-center justify-center text-slate-900 border border-slate-200 hover:scale-110 active:scale-95 transition-all"
+              >
+                <Camera size={18} />
+              </button>
+            </div>
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex flex-wrap items-center gap-3 mb-2 justify-center md:justify-start">
+                <Badge className="bg-indigo-600 text-white border-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Grade {profile?.grade}</Badge>
+                <Badge className="bg-white/10 text-white border-white/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Rank #{rank.current}</Badge>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter leading-none mb-4">{profile?.full_name}</h1>
+              <p className="text-slate-400 font-bold text-sm uppercase tracking-widest opacity-80">{profile?.email}</p>
+            </div>
+            <div className="hidden lg:flex items-center gap-8 pb-4">
+              <div className="text-center">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total XP</p>
+                <p className="text-2xl font-black text-white">{profile?.total_xp.toLocaleString()}</p>
+              </div>
+              <div className="w-px h-10 bg-white/10" />
+              <div className="text-center">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Longest Streak</p>
+                <p className="text-2xl font-black text-orange-500">{profile?.longest_streak} Days</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <main className="relative z-10 max-w-5xl mx-auto px-6 py-8">
-        <section className="mb-10">
-          <Card className="bg-white border-slate-200 shadow-sm overflow-hidden overflow-visible">
-            <div className="h-28 bg-slate-100 relative"></div>
-            <CardContent className="px-8 pb-8 -mt-14 relative">
-              <div className="flex flex-col md:flex-row gap-6 items-start">
-                <div className="relative group">
-                  <div
-                    className={`w-28 h-28 rounded-2xl ${avatarColor} flex items-center justify-center shadow-md border-4 border-white cursor-pointer`}
-                    onClick={() => setEditingAvatar(true)}
-                  >
-                    <AvatarIcon size={40} className="text-white" />
-                  </div>
-                  <button
-                    onClick={() => setEditingAvatar(true)}
-                    className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center hover:bg-slate-50 border border-slate-200"
-                  >
-                    <Edit3 size={14} className="text-slate-600" />
-                  </button>
-                  <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center shadow-sm border-2 border-white text-white text-xs font-bold">
-                    {profile?.level || 1}
-                  </div>
-                </div>
-
-                <div className="flex-1 pt-16 md:pt-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h2 className="text-2xl font-bold text-slate-900">{profile?.full_name}</h2>
-                      <p className="text-slate-500 text-sm mt-0.5">{profile?.email}</p>
-                      <div className="flex flex-wrap items-center gap-2 mt-3 block sm:flex">
-                        {profile?.grade && (
-                          <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
-                            Grade {profile.grade}
-                          </span>
-                        )}
-                        <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-xs font-medium inline-flex items-center">
-                          <Calendar size={12} className="mr-1.5 text-slate-400" />
-                          Joined {formatJoinDate(profile?.created_at || '')}
-                        </span>
-                        <div className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 text-xs font-medium inline-flex items-center">
-                          <Medal size={12} className="mr-1.5" />
-                          Class Rank #{rank}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-5">
-                    {editingBio ? (
-                      <div className="flex items-start gap-3">
-                        <textarea
-                          value={bioText}
-                          onChange={(e) => setBioText(e.target.value)}
-                          placeholder="Tell us about yourself..."
-                          className="flex-1 p-3 rounded-lg border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none resize-none h-20 text-sm"
-                          maxLength={200}
-                        />
-                        <div className="flex flex-col gap-2">
-                          <button onClick={saveBio} className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
-                            <Check size={16} />
-                          </button>
-                          <button onClick={() => { setEditingBio(false); setBioText(profile?.bio || ''); }} className="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
-                            <X size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        onClick={() => setEditingBio(true)}
-                        className="p-3.5 rounded-lg bg-slate-50 border border-slate-100 cursor-pointer hover:border-slate-200 transition-colors group"
-                      >
-                        <p className="text-slate-600 text-sm">
-                          {profile?.bio || 'Click to add a short bio...'}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+      <main className="max-w-[1200px] mx-auto px-6 -mt-8 relative z-20">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Column: Bio & Stats */}
+          <div className="lg:col-span-8 space-y-8">
+            {/* Bio Card */}
+            <section className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-xl shadow-slate-200/50">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Biography</h3>
+                <div className="flex items-center gap-4">
+                  <Button variant="ghost" onClick={() => setEditingProfile(true)} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-all">
+                    Settings
+                  </Button>
+                  {!editingBio && (
+                    <Button variant="ghost" onClick={() => setEditingBio(true)} className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                      <Edit3 size={14} className="mr-2" /> Edit Bio
+                    </Button>
+                  )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </section>
+              {editingBio ? (
+                <div className="space-y-6">
+                  <textarea
+                    value={bioText}
+                    onChange={(e) => setBioText(e.target.value)}
+                    className="w-full h-32 p-6 rounded-[2rem] bg-slate-50 border-2 border-slate-100 focus:border-indigo-600 outline-none text-sm font-medium transition-all resize-none"
+                    placeholder="Tell us about yourself..."
+                  />
+                  <div className="flex gap-3">
+                    <Button onClick={saveBio} disabled={isSaving} className="h-12 px-8 bg-slate-900 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-indigo-600 transition-all">
+                      {isSaving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button variant="outline" onClick={() => setEditingBio(false)} disabled={isSaving} className="h-12 px-8 rounded-2xl font-black uppercase tracking-widest text-[10px]">Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-slate-600 text-base leading-relaxed font-medium">
+                  {profile?.bio || 'No bio provided yet. Add a few sentences to introduce yourself to your class!'}
+                </p>
+              )}
+            </section>
 
-        <section className="mb-10">
-          <h3 className="text-xl font-bold flex items-center gap-2 mb-5 text-slate-900">
-            <TrendingUp className="text-slate-400" size={20} />
-            Overview
-          </h3>
+            {/* Detailed Stats Grid */}
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <DetailStatCard icon={BookOpen} label="Lessons Complete" value={profile?.total_lessons_completed} color="text-indigo-600" bg="bg-indigo-50" />
+              <DetailStatCard icon={Target} label="Quizzes Passed" value={profile?.total_quizzes_completed} color="text-emerald-600" bg="bg-emerald-50" />
+              <DetailStatCard icon={Clock} label="Learning Time" value={`${profile?.total_learning_time_minutes}m`} color="text-sky-600" bg="bg-sky-50" />
+            </section>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard icon={Star} value={(profile?.total_xp || 0).toLocaleString()} label="Total XP" color="text-amber-600" bg="bg-amber-50" />
-            <StatCard icon={Flame} value={profile?.current_streak || 0} label="Current Streak" color="text-orange-600" bg="bg-orange-50" suffix=" days" />
-            <StatCard icon={Trophy} value={profile?.longest_streak || 0} label="Longest Streak" color="text-indigo-600" bg="bg-indigo-50" suffix=" days" />
-            <StatCard icon={BookOpen} value={profile?.total_lessons_completed || 0} label="Lessons Done" color="text-emerald-600" bg="bg-emerald-50" />
-            <StatCard icon={Target} value={profile?.total_quizzes_completed || 0} label="Quizzes Passed" color="text-sky-600" bg="bg-sky-50" />
-            <StatCard icon={Clock} value={formatLearningTime(profile?.total_learning_time_minutes || 0)} label="Time Spent" color="text-violet-600" bg="bg-violet-50" />
-            <StatCard icon={Crown} value={profile?.level || 1} label="Current Level" color="text-fuchsia-600" bg="bg-fuchsia-50" />
-            <StatCard icon={Award} value={unlockedCount} label="Achievements" color="text-rose-600" bg="bg-rose-50" suffix={`/${achievements.length}`} />
-          </div>
-
-          <Card className="mt-5 bg-white border-slate-200 shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-slate-800 font-semibold">Level {profile?.level || 1}</p>
+            {/* Progress Visualization */}
+            <section className="bg-slate-900 rounded-[3rem] p-10 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px]" />
+              <div className="flex items-center justify-between mb-10">
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-tight mb-1">Level Progress</h3>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Level {profile?.level} Expert</p>
+                </div>
                 <div className="text-right">
-                  <span className="text-indigo-600 font-semibold text-sm">{currentLevelXp} / 1000 XP</span>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Global Rank</p>
+                  <p className="text-xl font-black text-indigo-400">Top {rank.percentage}%</p>
                 </div>
               </div>
-              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-indigo-500 rounded-full transition-[width] duration-500 ease-out"
-                  style={{ width: `${levelProgress}%` }}
-                />
+              <div className="h-4 bg-white/5 rounded-full p-1 mb-6">
+                <div className="h-full bg-indigo-600 rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)]" style={{ width: `${progressPercent}%` }} />
               </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        <section>
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-xl font-bold flex items-center gap-2 text-slate-900">
-              <Trophy className="text-slate-400" size={20} />
-              Achievements Frame
-              <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
-                {unlockedCount} obtained
-              </span>
-            </h3>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] text-center">{Math.round(progressPercent)}% Towards Level {profile?.level ? profile.level + 1 : 2}</p>
+            </section>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {achievements.map((achievement) => {
-              const IconComponent = getAchievementIcon(achievement.icon);
-              const catColors = getCategoryColor(achievement.category);
-
-              return (
-                <Card key={achievement.id} className={`${achievement.unlocked ? 'bg-white' : 'bg-slate-50 opacity-60'} border-slate-200 shadow-sm`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${achievement.unlocked
-                        ? 'bg-amber-50 text-amber-600 border border-amber-100'
-                        : 'bg-slate-100 text-slate-400'
-                        }`}>
-                        <IconComponent size={20} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-1 mb-1">
-                          <h4 className="font-semibold text-slate-800 text-sm truncate">{achievement.name}</h4>
-                          <span className={`px-2 py-0.5 rounded flex-shrink-0 text-[10px] font-medium ${catColors.bg} ${catColors.text}`}>
-                            {achievement.category}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 mb-2 leading-snug line-clamp-2">{achievement.description}</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-slate-600">
-                            +{achievement.xp_reward} XP
-                          </span>
-                          {achievement.unlocked && achievement.unlocked_at && (
-                            <span className="text-[10px] text-slate-400">
-                              {new Date(achievement.unlocked_at).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+          {/* Right Column: Achievements & Streaks */}
+          <div className="lg:col-span-4 space-y-8">
+            {/* Achievement Badge List */}
+            <section className="bg-white border border-slate-100 rounded-[3rem] p-8 shadow-sm">
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center justify-between">
+                My Badges
+                <span className="text-[10px] text-slate-400 font-bold">{achievements.filter(a => a.unlocked).length} / {achievements.length}</span>
+              </h3>
+              <div className="space-y-4">
+                {achievements.slice(0, 5).map((ach) => (
+                  <div key={ach.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${ach.unlocked ? 'bg-slate-50 border-slate-100' : 'bg-white border-transparent opacity-40 grayscale'}`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${ach.unlocked ? 'bg-white text-indigo-600 shadow-sm' : 'bg-slate-50 text-slate-300'}`}>
+                      <Award size={20} />
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate">{ach.name}</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{ach.unlocked ? 'Unlocked' : 'Locked'}</p>
+                    </div>
+                  </div>
+                ))}
+                <Link href="/student/achievements">
+                  <Button variant="ghost" className="w-full mt-4 text-[10px] font-black uppercase tracking-widest text-indigo-600">View All Badges</Button>
+                </Link>
+              </div>
+            </section>
+
+            {/* Streak Hero */}
+            <section className="bg-indigo-600 rounded-[3rem] p-10 text-white shadow-2xl shadow-indigo-200">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-20 h-20 rounded-[2rem] bg-white/10 flex items-center justify-center mb-6">
+                  <Flame size={40} className="text-orange-400" fill="currentColor" />
+                </div>
+                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mb-2">Learning Streak</h4>
+                <p className="text-5xl font-black tracking-tighter mb-4">{profile?.current_streak} <span className="text-xl">DAYS</span></p>
+                <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 leading-relaxed max-w-[180px]">Keep learning every day to grow your streak!</p>
+              </div>
+            </section>
           </div>
-        </section>
+        </div>
       </main>
 
+      {/* Avatar Customization Modal */}
       {editingAvatar && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setEditingAvatar(false)}>
-          <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-slate-900 mb-5">Customize Avatar</h3>
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 sm:p-12">
+          <div className="bg-white rounded-[3.5rem] w-full max-w-xl p-10 shadow-2xl animate-in zoom-in-95 duration-200 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-[80px]" />
+            <div className="relative z-10">
+              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-10">Customize Avatar</h2>
 
-            <div className="flex justify-center mb-6">
-              <div className={`w-20 h-20 rounded-xl ${AVATAR_COLORS.find(g => g.id === selectedColor)?.code} flex items-center justify-center shadow-sm`}>
-                {React.createElement(AVATAR_ICONS.find(i => i.id === selectedIcon)?.icon || Rocket, { size: 36, className: 'text-white' })}
+              <div className="flex justify-center mb-12">
+                <div className={`w-36 h-36 rounded-[3rem] ${avatarBg} border-8 border-slate-50 shadow-2xl flex items-center justify-center transition-all duration-500`}>
+                  {React.createElement(AVATAR_ICONS.find(i => i.id === selectedIcon)?.icon || Rocket, { size: 64, className: 'text-white' })}
+                </div>
+              </div>
+
+              <div className="space-y-10">
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Select Colors</p>
+                  <div className="flex flex-wrap gap-4">
+                    {AVATAR_COLORS.map(c => (
+                      <button key={c.id} onClick={() => setSelectedColor(c.id)} className={`w-10 h-10 rounded-2xl ${c.code} transition-all ${selectedColor === c.id ? 'ring-4 ring-indigo-100 scale-110 shadow-lg' : 'opacity-60 hover:opacity-100 hover:scale-110'}`} />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Select Icon</p>
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+                    {AVATAR_ICONS.map(i => (
+                      <button
+                        key={i.id}
+                        onClick={() => setSelectedIcon(i.id)}
+                        className={`aspect-square rounded-2xl flex items-center justify-center transition-all ${selectedIcon === i.id ? 'bg-slate-900 text-white shadow-xl scale-110' : 'bg-slate-50 text-slate-400 hover:bg-slate-100 hover:scale-105'}`}
+                      >
+                        <i.icon size={20} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-12 flex gap-4">
+                <Button onClick={saveAvatar} disabled={isSaving} className="flex-1 h-14 bg-slate-900 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-indigo-600 transition-all shadow-xl shadow-slate-900/10">
+                  {isSaving ? 'Saving...' : 'Save Identity'}
+                </Button>
+                <Button variant="outline" onClick={() => setEditingAvatar(false)} disabled={isSaving} className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest text-[10px] border-2">Cancel</Button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
 
-            <div className="mb-5">
-              <p className="text-xs font-semibold text-slate-500 mb-2">Background Color</p>
-              <div className="flex flex-wrap gap-2">
-                {AVATAR_COLORS.map((color) => (
-                  <button
-                    key={color.id}
-                    onClick={() => setSelectedColor(color.id)}
-                    className={`w-8 h-8 rounded-full ${color.code} transition-all ${selectedColor === color.id ? 'ring-2 ring-offset-2 ring-indigo-600 scale-110' : 'hover:scale-105 opacity-80'}`}
+      {/* Edit Profile Modal */}
+      {editingProfile && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-white rounded-[3.5rem] w-full max-w-xl p-10 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-[80px]" />
+            <div className="relative z-10">
+              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-8">Edit Profile Information</h2>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">First Name</label>
+                    <input
+                      type="text"
+                      value={formData.first_name}
+                      onChange={e => setFormData({ ...formData, first_name: e.target.value })}
+                      className="w-full h-14 px-6 rounded-2xl bg-slate-50 border border-slate-100 focus:border-indigo-600 outline-none text-sm font-bold transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Last Name</label>
+                    <input
+                      type="text"
+                      value={formData.last_name}
+                      onChange={e => setFormData({ ...formData, last_name: e.target.value })}
+                      className="w-full h-14 px-6 rounded-2xl bg-slate-50 border border-slate-100 focus:border-indigo-600 outline-none text-sm font-bold transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Phone Number</label>
+                  <input
+                    type="text"
+                    value={formData.phone || ''}
+                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full h-14 px-6 rounded-2xl bg-slate-50 border border-slate-100 focus:border-indigo-600 outline-none text-sm font-bold transition-all"
+                    placeholder="+1 234 567 890"
                   />
-                ))}
-              </div>
-            </div>
+                </div>
 
-            <div className="mb-6">
-              <p className="text-xs font-semibold text-slate-500 mb-2">Icon Overlay</p>
-              <div className="grid grid-cols-4 gap-2">
-                {AVATAR_ICONS.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setSelectedIcon(item.id)}
-                    className={`aspect-square rounded-lg flex items-center justify-center transition-colors ${selectedIcon === item.id ? 'bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
-                  >
-                    <item.icon size={20} />
-                  </button>
-                ))}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Bio / About Me</label>
+                  <textarea
+                    value={bioText}
+                    onChange={e => setBioText(e.target.value)}
+                    className="w-full h-32 p-6 rounded-[2rem] bg-slate-50 border border-slate-100 focus:border-indigo-600 outline-none text-sm font-medium transition-all resize-none"
+                    placeholder="Tell us about yourself..."
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setEditingAvatar(false)}>Cancel</Button>
-              <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white" onClick={saveAvatar}>Save Changes</Button>
+              <div className="mt-10 flex gap-4">
+                <Button onClick={saveProfile} disabled={isSaving} className="flex-1 h-14 bg-slate-900 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-indigo-600 transition-all">
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
+                <Button variant="outline" onClick={() => setEditingProfile(false)} disabled={isSaving} className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest text-[10px]">Cancel</Button>
+              </div>
             </div>
           </div>
         </div>
@@ -413,18 +451,16 @@ export default function StudentProfile() {
   );
 }
 
-function StatCard({ icon: Icon, value, label, color, bg, suffix = '' }: any) {
+function DetailStatCard({ icon: Icon, label, value, color, bg }: any) {
   return (
-    <Card className="bg-white border-slate-200 shadow-sm">
-      <CardContent className="p-4">
-        <div className={`w-8 h-8 rounded-md ${bg} ${color} flex items-center justify-center mb-3`}>
-          <Icon size={16} />
-        </div>
-        <div>
-          <p className="text-xl font-bold text-slate-800">{value}{suffix}</p>
-          <p className="text-xs text-slate-500">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 transition-all hover:border-slate-200 hover:shadow-lg hover:shadow-slate-200/40 group">
+      <div className={`w-12 h-12 rounded-2xl ${bg} ${color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+        <Icon size={24} />
+      </div>
+      <div>
+        <p className="text-2xl font-black text-slate-900 leading-none mb-2">{value}</p>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+      </div>
+    </div>
   );
 }

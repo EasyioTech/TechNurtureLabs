@@ -25,11 +25,11 @@ interface EngagementChartsProps {
 
 export function EngagementCharts({ engagementData, planDistribution, revenueData }: EngagementChartsProps) {
     const { isDark, accent } = useAdminTheme();
-    const grid = isDark ? 'rgba(255,255,255,0.03)' : '#f5f5f5';
-    const axis = isDark ? '#475569' : '#a3a3a3';
-    const ttBg = isDark ? '#0f172a' : '#fff';
-    const ttBorder = isDark ? 'rgba(255,255,255,0.08)' : '#e5e5e5';
-    const ttColor = isDark ? '#fff' : '#171717';
+    const grid = isDark ? 'rgba(255,255,255,0.05)' : '#f0f0f0';
+    const axis = isDark ? '#94a3b8' : '#64748b'; // Slate 400 for dark mode, Slate 500 for light mode
+    const ttBg = isDark ? '#0f172a' : '#ffffff';
+    const ttBorder = isDark ? 'rgba(255,255,255,0.12)' : '#e2e8f0';
+    const ttColor = isDark ? '#f8fafc' : '#0f172a';
     const areaStroke = isDark ? accent.swatchDark : accent.swatchLight;
     const barFill = isDark ? accent.swatchDark : accent.swatchLight;
 

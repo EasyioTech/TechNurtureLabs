@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { useSchoolTheme, ts } from '../theme-context';
 import { toast } from 'sonner';
 import { updateSchoolProfile } from '../actions';
+import { ImageUpload } from '@/modules/shared/components/image-upload';
 
 interface SchoolProfileModalProps {
     schoolId: string;
@@ -156,19 +157,14 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                             </div>
 
                             {/* Logo URL */}
-                            <div className="md:col-span-2 space-y-2">
-                                <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${ts.textMuted(isDark)}`}>Logo URL</label>
-                                <div className="relative group">
-                                    <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" size={16} />
-                                    <input
-                                        type="text"
-                                        value={formData.logo_url}
-                                        placeholder="https://..."
-                                        onChange={e => setFormData({ ...formData, logo_url: e.target.value })}
-                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all focus:ring-4 focus:ring-indigo-500/10 ${isDark ? 'border-white/5 focus:bg-white/[0.05] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
-                                            }`}
-                                    />
-                                </div>
+                            <div className="md:col-span-2">
+                                <ImageUpload
+                                    label="Institution Logo"
+                                    description="This logo will be displayed on the student dashboard, certificates, and reports. High-quality PNG or SVG with transparent background is recommended."
+                                    value={formData.logo_url}
+                                    onChange={url => setFormData({ ...formData, logo_url: url })}
+                                    isDark={isDark}
+                                />
                             </div>
 
                             {/* Website */}

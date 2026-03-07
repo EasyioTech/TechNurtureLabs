@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1772850296211,
+      "tag": "0000_watery_anthem",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772859072479,
+      "tag": "0001_damp_triton",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772860879146,
+      "tag": "0002_overrated_overlord",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1772862584775,
+      "tag": "0003_add_course_categories",
+      "breakpoints": true
+    }
+  ]
+}

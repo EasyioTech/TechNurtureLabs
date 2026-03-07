@@ -52,7 +52,7 @@ export function PromoCodeDialog({
                             id="code"
                             value={editingCode?.code || ''}
                             onChange={(e) => setEditingCode({ ...editingCode, code: e.target.value.toUpperCase() })}
-                            className={`h-12 border-2 rounded-xl bg-transparent font-mono ${t.textPrimary(isDark)} ${t.border(isDark)}`}
+                            className={`h-12 border-2 rounded-xl transition-all font-mono focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                             placeholder="e.g. SUMMER2024"
                         />
                     </div>
@@ -64,12 +64,12 @@ export function PromoCodeDialog({
                                 value={editingCode?.discount_type || 'percentage'}
                                 onValueChange={(v: any) => setEditingCode({ ...editingCode, discount_type: v })}
                             >
-                                <SelectTrigger className={`h-12 border-2 rounded-xl bg-transparent font-bold ${t.textPrimary(isDark)} ${t.border(isDark)}`}>
+                                <SelectTrigger className={`h-12 border-2 rounded-xl transition-all font-bold focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
                                     <SelectValue placeholder="Discount Type" />
                                 </SelectTrigger>
-                                <SelectContent className={`border-2 rounded-xl ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                                    <SelectItem value="percentage">Percentage (%)</SelectItem>
-                                    <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
+                                <SelectContent className={`border-2 rounded-xl shadow-2xl ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
+                                    <SelectItem value="percentage" className="font-bold">Percentage (%)</SelectItem>
+                                    <SelectItem value="fixed" className="font-bold">Fixed Amount (₹)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -83,7 +83,7 @@ export function PromoCodeDialog({
                                 step="any"
                                 value={editingCode?.discount_value || ''}
                                 onChange={(e) => setEditingCode({ ...editingCode, discount_value: parseFloat(e.target.value) })}
-                                className={`h-12 border-2 rounded-xl bg-transparent ${t.textPrimary(isDark)} ${t.border(isDark)}`}
+                                className={`h-12 border-2 rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                                 placeholder="10"
                             />
                         </div>
@@ -97,7 +97,7 @@ export function PromoCodeDialog({
                             min="1"
                             value={editingCode?.max_uses || ''}
                             onChange={(e) => setEditingCode({ ...editingCode, max_uses: e.target.value ? parseInt(e.target.value) : null })}
-                            className={`h-12 border-2 rounded-xl bg-transparent ${t.textPrimary(isDark)} ${t.border(isDark)}`}
+                            className={`h-12 border-2 rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                             placeholder="Leave blank for unlimited"
                         />
                     </div>
@@ -110,7 +110,7 @@ export function PromoCodeDialog({
                                 type="date"
                                 value={editingCode?.valid_from ? new Date(editingCode.valid_from).toISOString().split('T')[0] : ''}
                                 onChange={(e) => setEditingCode({ ...editingCode, valid_from: e.target.value || null })}
-                                className={`h-12 border-2 rounded-xl bg-transparent ${t.textPrimary(isDark)} border-emerald-500/30 font-mono text-sm`}
+                                className={`h-12 border-2 rounded-xl bg-transparent transition-all focus-visible:ring-4 focus-visible:ring-emerald-400/20 ${t.textPrimary(isDark)} border-emerald-500/30 font-mono text-sm`}
                             />
                         </div>
                         <div className="space-y-2">
@@ -120,7 +120,7 @@ export function PromoCodeDialog({
                                 type="date"
                                 value={editingCode?.valid_until ? new Date(editingCode.valid_until).toISOString().split('T')[0] : ''}
                                 onChange={(e) => setEditingCode({ ...editingCode, valid_until: e.target.value || null })}
-                                className={`h-12 border-2 rounded-xl bg-transparent ${t.textPrimary(isDark)} border-rose-500/30 font-mono text-sm`}
+                                className={`h-12 border-2 rounded-xl bg-transparent transition-all focus-visible:ring-4 focus-visible:ring-rose-400/20 ${t.textPrimary(isDark)} border-rose-500/30 font-mono text-sm`}
                             />
                         </div>
                     </div>

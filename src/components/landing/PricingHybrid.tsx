@@ -6,7 +6,7 @@ import { NeumorphicButton } from './NeumorphicButton';
 import { Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-import { getPublicPricingPlans } from '@/modules/landing/actions';
+import { getPublicPricingPlans } from '@/components/landing/actions';
 import { useRouter } from 'next/navigation';
 
 export const PricingHybrid = () => {

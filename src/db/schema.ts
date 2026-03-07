@@ -85,6 +85,7 @@ export const users = pgTable('users', {
     longest_streak: integer('longest_streak').notNull().default(0),
     last_active_at: timestamp('last_active_at', { withTimezone: true }),
     is_active: boolean('is_active').notNull().default(true),
+    bio: text('bio'),
     email_verified_at: timestamp('email_verified_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -247,6 +248,8 @@ export const courses = pgTable('courses', {
     all_classes: boolean('all_classes').notNull().default(false),
     total_lessons: integer('total_lessons').notNull().default(0),
     total_xp: integer('total_xp').notNull().default(0),
+    category: text('category').notNull().default('General'),
+    topics: text('topics').notNull().default('Technology'),
     created_by: uuid('created_by').notNull().references(() => users.id, { onDelete: 'restrict' }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -595,7 +598,9 @@ export const mediaAssets = pgTable('media_assets', {
 ]);
 
 export const platformSettings = pgTable('platform_settings', {
-    id: text('id').primaryKey(),
+    id: text('id').primaryKey(), // Usually 'default'
+    logo_url: text('logo_url'),
+    platform_name: text('platform_name').notNull().default('TechNurture'),
     hero_video_url: text('hero_video_url').notNull().default(''),
     hero_video_type: text('hero_video_type').notNull().default('youtube'), // 'upload', 'youtube', 'vimeo', 'link'
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

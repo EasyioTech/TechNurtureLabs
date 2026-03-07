@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { s3Client, isCloudflareConfigured } from '@/lib/storage';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import path from 'path';
+import { serverEnv } from '@/lib/env.server';
 
 export async function GET(
     request: NextRequest,
@@ -21,7 +22,7 @@ export async function GET(
         const key = filePathParams.join('/');
 
         const command = new GetObjectCommand({
-            Bucket: process.env.CLOUDFLARE_BUCKET_NAME as string,
+            Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
             Key: key,
         });
 

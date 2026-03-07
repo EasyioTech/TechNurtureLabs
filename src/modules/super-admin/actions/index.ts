@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { courses, lessons, paymentPlans, users, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, classes, courseClassMapping, schoolClassMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions, promoCodes, auditLogs } from '@/db/schema';
+import { courses, lessons, paymentPlans, users, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, classes, courseClassMapping, schoolClassMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions, promoCodes, auditLogs, platformSettings } from '@/db/schema';
 import { eq, asc, desc, count, sql, and } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { addMonths } from 'date-fns';
@@ -22,6 +22,9 @@ export async function fetchAllAdminData() {
     const transactionsData = await db.select().from(paymentTransactions);
     const courseProgressData = await db.select().from(courseProgress);
     const promoCodesData = await db.select().from(promoCodes);
+    const platformSettingsData = await db.query.platformSettings.findFirst({
+        where: eq(platformSettings.id, 'global')
+    });
 
     // Count enrollments per course
     const enrollmentCounts = new Map<string, number>();
@@ -68,6 +71,7 @@ export async function fetchAllAdminData() {
         transactions: transactionsData,
         courseProgress: courseProgressData,
         promoCodes: promoCodesData,
+        platformSettings: platformSettingsData || null,
     };
 }
 
