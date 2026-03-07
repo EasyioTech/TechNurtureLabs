@@ -6,7 +6,8 @@ import path from 'path';
 export async function GET(req: NextRequest) {
     try {
         // Use raw postgres connection as the built-in superuser 'postgres' from docker-compose.yml
-        const sql = postgres('postgresql://postgres:admin@db:5432/orchids');
+        // max: 1 is explicitly required by postgres.js when executing massive raw SQL scripts containing BEGIN/COMMIT blocks.
+        const sql = postgres('postgresql://postgres:admin@db:5432/orchids', { max: 1 });
 
         // 1. Force create the application role
         await sql.unsafe(`
