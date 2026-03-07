@@ -38,7 +38,7 @@ export function PaymentPlansTab({
                         <motion.div key={plan.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }}>
                             <div className={`relative rounded-[28px] border overflow-hidden hover:-translate-y-1 transition-all duration-500 shadow-xl shadow-black/5
                                 ${isFeatured
-                                    ? isDark ? `bg-[#0c0c0e] border-${accent.name}-400/30 ring-4 ring-${accent.name}-400/5` : `bg-white border-${accent.name}-400/10 ring-8 ring-${accent.name}-400/[0.02]`
+                                    ? isDark ? `bg-[#0c0c0e] border-${accent.name}-500/20 shadow-2xl shadow-black/40` : `bg-white border-${accent.name}-500/20 shadow-xl shadow-black/5`
                                     : t.card(isDark)}`}>
 
                                 {isFeatured && (

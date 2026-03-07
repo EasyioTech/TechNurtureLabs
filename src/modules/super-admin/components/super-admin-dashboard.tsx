@@ -27,6 +27,9 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 
 const NAV_ITEMS = [
@@ -196,51 +199,36 @@ function DashboardContent() {
                                             </div>
                                         </DropdownMenuItem>
 
-                                        <div className="px-2 py-1">
-                                            <div className="relative" ref={colorPickerRef}>
-                                                <button
-                                                    onClick={(e) => { e.preventDefault(); setShowColorPicker(v => !v); }}
-                                                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl cursor-pointer transition-all ${showColorPicker ? (isDark ? 'bg-white/10' : 'bg-neutral-100') : (isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50')}`}
-                                                >
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-indigo-50'} ${accent.text}`}>
-                                                        <Palette size={16} />
-                                                    </div>
-                                                    <div className="flex flex-col text-left">
-                                                        <span className={`text-xs font-black ${t.textPrimary(isDark)}`}>ACCENT COLOR</span>
-                                                        <span className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>{accent.label} SELECTED</span>
-                                                    </div>
-                                                </button>
-
-                                                <AnimatePresence>
-                                                    {showColorPicker && (
-                                                        <motion.div
-                                                            initial={{ opacity: 0, scale: 0.9, y: -10 }}
-                                                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                            exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                                                            className={`absolute right-full top-0 mr-2 z-[110] min-w-[180px] rounded-2xl border p-2 backdrop-blur-xl shadow-2xl ${isDark ? 'bg-[#18181b]/98 border-white/[0.08] shadow-black/40' : 'bg-white border-neutral-200/60 shadow-black/10'}`}
-                                                        >
-                                                            <div className="grid grid-cols-1 gap-1">
-                                                                {(Object.keys(COLOR_SCHEMES) as ColorScheme[]).map((key) => {
-                                                                    const scheme = COLOR_SCHEMES[key];
-                                                                    const isActive = colorScheme === key;
-                                                                    return (
-                                                                        <button
-                                                                            key={key}
-                                                                            onClick={() => { setColorScheme(key); setShowColorPicker(false); }}
-                                                                            className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer ${isActive ? (isDark ? 'bg-white/[0.1]' : 'bg-neutral-100') : (isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-neutral-50')}`}
-                                                                        >
-                                                                            <div className="w-4 h-4 rounded-full border border-white/10" style={{ backgroundColor: isDark ? scheme.swatchDark : scheme.swatchLight }} />
-                                                                            <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? t.textPrimary(isDark) : t.textSecondary(isDark)}`}>{scheme.label}</span>
-                                                                            {isActive && <Check size={12} className="ml-auto text-emerald-500" />}
-                                                                        </button>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </div>
-                                        </div>
+                                        <DropdownMenuSub>
+                                            <DropdownMenuSubTrigger className={`flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all mx-2 my-1 focus:bg-transparent ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50'}`}>
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-indigo-50'} ${accent.text}`}>
+                                                    <Palette size={16} />
+                                                </div>
+                                                <div className="flex flex-col text-left">
+                                                    <span className={`text-xs font-black ${t.textPrimary(isDark)}`}>ACCENT COLOR</span>
+                                                    <span className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>{accent.label} SELECTED</span>
+                                                </div>
+                                            </DropdownMenuSubTrigger>
+                                            <DropdownMenuSubContent className={`w-48 rounded-2xl p-2 border-0 shadow-2xl ${isDark ? 'bg-[#18181b] backdrop-blur-xl' : 'bg-white'}`}>
+                                                <div className="grid grid-cols-1 gap-1">
+                                                    {(Object.keys(COLOR_SCHEMES) as ColorScheme[]).map((key) => {
+                                                        const scheme = COLOR_SCHEMES[key];
+                                                        const isActive = colorScheme === key;
+                                                        return (
+                                                            <DropdownMenuItem
+                                                                key={key}
+                                                                onSelect={() => setColorScheme(key)}
+                                                                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer ${isActive ? (isDark ? 'bg-white/[0.1]' : 'bg-neutral-100') : (isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-neutral-50')}`}
+                                                            >
+                                                                <div className="w-4 h-4 rounded-full border border-white/10" style={{ backgroundColor: isDark ? scheme.swatchDark : scheme.swatchLight }} />
+                                                                <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? t.textPrimary(isDark) : t.textSecondary(isDark)}`}>{scheme.label}</span>
+                                                                {isActive && <Check size={12} className="ml-auto text-emerald-500" />}
+                                                            </DropdownMenuItem>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </DropdownMenuSubContent>
+                                        </DropdownMenuSub>
 
                                         <DropdownMenuSeparator className={`my-2 ${isDark ? 'bg-white/[0.05]' : 'bg-neutral-100'}`} />
 

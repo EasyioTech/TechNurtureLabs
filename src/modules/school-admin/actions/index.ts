@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { users, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts } from '@/db/schema';
-import { eq, asc, desc, inArray, and, sql } from 'drizzle-orm';
+import { eq, asc, desc, inArray, and, sql, or } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -137,11 +137,14 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
         validCourseIds = Array.from(new Set(mappings.map(m => m.course_id)));
     }
 
-    const allValidCourses = validCourseIds.length > 0
-        ? await db.query.courses.findMany({
-            where: and(inArray(courses.id, validCourseIds), eq(courses.is_published, true))
-        })
-        : [];
+    const allValidCourses = await db.query.courses.findMany({
+        where: and(
+            eq(courses.is_published, true),
+            validCourseIds.length > 0
+                ? or(eq(courses.all_classes, true), inArray(courses.id, validCourseIds))
+                : eq(courses.all_classes, true)
+        )
+    });
 
     const uniqueCourseMap = new Map<string, any>();
 
@@ -227,16 +230,21 @@ export async function getSchoolStats(schoolId: string) {
     const schoolClassMappingData = await db.query.schoolClassMapping.findMany({ where: eq(schoolClassMapping.school_id, schoolId) });
     const classIds = schoolClassMappingData.map(m => m.class_id);
     let totalActiveCourses = 0;
+    let validCourseIds: string[] = [];
     if (classIds.length > 0) {
         const mappings = await db.query.courseClassMapping.findMany({ where: inArray(courseClassMapping.class_id, classIds) });
-        const cIds = Array.from(new Set(mappings.map(m => m.course_id)));
-        if (cIds.length > 0) {
-            const activeCourses = await db.query.courses.findMany({
-                where: and(inArray(courses.id, cIds), eq(courses.is_published, true))
-            });
-            totalActiveCourses = activeCourses.length;
-        }
+        validCourseIds = Array.from(new Set(mappings.map(m => m.course_id)));
     }
+
+    const activeCourses = await db.query.courses.findMany({
+        where: and(
+            eq(courses.is_published, true),
+            validCourseIds.length > 0
+                ? or(eq(courses.all_classes, true), inArray(courses.id, validCourseIds))
+                : eq(courses.all_classes, true)
+        )
+    });
+    totalActiveCourses = activeCourses.length;
 
     const totalXp = students.reduce((a, s) => a + (Number(s.cumulative_xp) || 0), 0);
     const avgXp = students.length > 0 ? Math.round(totalXp / students.length) : 0;
@@ -378,11 +386,14 @@ export async function getSchoolCourseAnalytics(schoolId: string) {
         validCourseIds = Array.from(new Set(mappings.map(m => m.course_id)));
     }
 
-    const allValidCourses = validCourseIds.length > 0
-        ? await db.query.courses.findMany({
-            where: and(inArray(courses.id, validCourseIds), eq(courses.is_published, true))
-        })
-        : [];
+    const allValidCourses = await db.query.courses.findMany({
+        where: and(
+            eq(courses.is_published, true),
+            validCourseIds.length > 0
+                ? or(eq(courses.all_classes, true), inArray(courses.id, validCourseIds))
+                : eq(courses.all_classes, true)
+        )
+    });
 
     const courseMap = new Map<string, any>();
 
