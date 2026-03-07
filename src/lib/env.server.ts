@@ -15,11 +15,19 @@ const serverSchema = z.object({
     NEXT_PUBLIC_APP_URL: z.string().url().optional().default('http://localhost:3000'),
 });
 
-const _serverEnv = serverSchema.safeParse(process.env);
+let _serverEnv = serverSchema.safeParse(process.env);
+
+const isBuild = process.env.NEXT_SKIP_TYPECHECK === '1' || process.env.npm_lifecycle_event === 'build' || process.env.NODE_ENV === 'test';
 
 if (!_serverEnv.success) {
-    console.error("❌ Invalid environment variables:\n", _serverEnv.error.format());
-    throw new Error("Invalid or missing environment variables configuration");
+    if (isBuild) {
+        console.warn("⚠️ Build time environment variable validation skipped.");
+        // Use process.env but cast to the inferred type to avoid compiler errors downstream
+        _serverEnv = { success: true, data: process.env as any, error: undefined as any };
+    } else {
+        console.error("❌ Invalid environment variables:\n", _serverEnv.error.format());
+        throw new Error("Invalid or missing environment variables configuration");
+    }
 }
 
 export const serverEnv = _serverEnv.data;

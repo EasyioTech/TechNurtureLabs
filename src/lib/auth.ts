@@ -4,11 +4,13 @@ import { redis } from './redis';
 import { serverEnv } from '@/lib/env.server';
 
 const jwtSecretEnv = serverEnv.JWT_SECRET;
+const isBuild = process.env.NEXT_SKIP_TYPECHECK === '1' || process.env.npm_lifecycle_event === 'build';
+
 if (!jwtSecretEnv || jwtSecretEnv.length < 32) {
-    if (serverEnv.NODE_ENV === 'production') {
+    if (serverEnv.NODE_ENV === 'production' && !isBuild) {
         throw new Error('CRITICAL CONFIG ERROR: JWT_SECRET environment variable is missing or too short. It must be at least 32 characters long. The application cannot start securely.');
     } else {
-        console.warn('WARNING: Using weak fallback JWT_SECRET for local development. DO NOT use in production.');
+        console.warn('WARNING: Using weak fallback JWT_SECRET for local development or build time. DO NOT use in production.');
     }
 }
 const JWT_SECRET = new TextEncoder().encode(jwtSecretEnv || 'super-secret-key-change-in-production-123456');
