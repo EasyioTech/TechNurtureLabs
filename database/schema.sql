@@ -220,22 +220,22 @@ CREATE TABLE invoices (
 -- 5. ACADEMIC STRUCTURE
 -- ============================================================================
 
--- 5a. Grades (system-wide, normalised)
-CREATE TABLE grades (
+-- 5a. Classes (system-wide, normalised)
+CREATE TABLE classes (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name        TEXT NOT NULL UNIQUE,
     level       INT NOT NULL UNIQUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 5b. School-grade mapping (which grades a school offers)
-CREATE TABLE school_grade_mapping (
+-- 5b. School-class mapping (which classes a school offers)
+CREATE TABLE school_class_mapping (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     school_id   UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-    grade_id    UUID NOT NULL REFERENCES grades(id) ON DELETE CASCADE,
+    class_id    UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
     is_active   BOOLEAN NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT uq_school_grade UNIQUE (school_id, grade_id)
+    CONSTRAINT uq_school_class UNIQUE (school_id, class_id)
 );
 
 -- 5c. Student academic records (per session — promotion creates new row)
@@ -244,7 +244,7 @@ CREATE TABLE student_academic_records (
     user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     school_id       UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
     session_id      UUID NOT NULL REFERENCES academic_sessions(id) ON DELETE RESTRICT,
-    grade_id        UUID NOT NULL REFERENCES grades(id) ON DELETE RESTRICT,
+    class_id        UUID NOT NULL REFERENCES classes(id) ON DELETE RESTRICT,
     roll_number     TEXT,
     section         TEXT,
     is_promoted     BOOLEAN NOT NULL DEFAULT FALSE,
@@ -267,7 +267,7 @@ CREATE TABLE courses (
     description     TEXT,
     thumbnail_url   TEXT,
     is_published    BOOLEAN NOT NULL DEFAULT FALSE,
-    all_grades     BOOLEAN NOT NULL DEFAULT FALSE,
+    all_classes     BOOLEAN NOT NULL DEFAULT FALSE,
     total_lessons   INT NOT NULL DEFAULT 0,
     total_xp        INT NOT NULL DEFAULT 0,
     created_by      UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -276,13 +276,13 @@ CREATE TABLE courses (
     deleted_at      TIMESTAMPTZ
 );
 
--- 6b. Course-grade mapping
-CREATE TABLE course_grade_mapping (
+-- 6b. Course-class mapping
+CREATE TABLE course_class_mapping (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     course_id   UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    grade_id    UUID NOT NULL REFERENCES grades(id) ON DELETE CASCADE,
+    class_id    UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT uq_course_grade UNIQUE (course_id, grade_id)
+    CONSTRAINT uq_course_class UNIQUE (course_id, class_id)
 );
 
 -- 6c. Lessons
@@ -679,14 +679,14 @@ CREATE INDEX idx_invoices_status ON invoices (status);
 -- Student academic records
 CREATE INDEX idx_sar_user ON student_academic_records (user_id);
 CREATE INDEX idx_sar_school_session ON student_academic_records (school_id, session_id);
-CREATE INDEX idx_sar_grade ON student_academic_records (grade_id);
+CREATE INDEX idx_sar_class ON student_academic_records (class_id);
 
 -- Courses
 CREATE INDEX idx_courses_published ON courses (is_published) WHERE deleted_at IS NULL;
 CREATE INDEX idx_courses_created_at ON courses (created_at);
 
--- Course-grade mapping
-CREATE INDEX idx_cgm_grade ON course_grade_mapping (grade_id);
+-- Course-class mapping
+CREATE INDEX idx_cgm_class ON course_class_mapping (class_id);
 
 -- Lessons
 CREATE INDEX idx_lessons_course ON lessons (course_id) WHERE deleted_at IS NULL;
@@ -855,8 +855,8 @@ VALUES (
     14
 ) ON CONFLICT (id) DO NOTHING;
 
--- Base Grades System
-INSERT INTO grades (id, name, level) VALUES
+-- Base Classes System
+INSERT INTO classes (id, name, level) VALUES
     ('f0000000-0000-0000-0000-000000000001', 'Class 1', 1),
     ('f0000000-0000-0000-0000-000000000002', 'Class 2', 2),
     ('f0000000-0000-0000-0000-000000000003', 'Class 3', 3),
