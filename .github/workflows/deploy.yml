@@ -25,8 +25,8 @@ jobs:
             git pull origin main
             
             # Rebuild and restart the cluster
-            docker-compose down
-            docker-compose up -d --build
+            docker compose down
+            docker compose up -d --build
             
             # Wait for the app to be ready
             echo "Waiting for application to start..."
