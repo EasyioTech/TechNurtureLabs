@@ -20,8 +20,7 @@ import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/student' },
-    { icon: BookOpen, label: 'My Courses', href: '/student/courses' },
-    { icon: Compass, label: 'Explore', href: '/student/explore' },
+    { icon: BookOpen, label: 'My Library', href: '/student/courses' },
     { icon: Target, label: 'Challenges', href: '/student/challenges' },
     { icon: Trophy, label: 'Achievements', href: '/student/achievements' },
     { icon: User, label: 'Profile', href: '/student/profile' },
@@ -58,7 +57,7 @@ export function StudentSidebar({
                 </Link>
             </div>
 
-            <nav className="flex-1 px-4 py-4 space-y-1">
+            <nav className="flex-1 px-4 py-8 space-y-3">
                 {NAV_ITEMS.map((item) => {
                     const isActive = pathname === item.href;
                     return (

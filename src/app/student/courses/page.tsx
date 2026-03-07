@@ -5,6 +5,7 @@ import {
     BookOpen, Search, Filter, Book, Clock,
     ArrowRight, ChevronRight, LayoutGrid, List
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { getStudentDashboardData } from '@/modules/student/actions';
 import { CourseCard } from '@/modules/student/components/course-card';
 import { Button } from '@/components/ui/button';
@@ -27,15 +28,16 @@ export default function MyCoursesPage() {
     }, []);
 
     const courses = (data?.courses || []).filter((c: any) => {
-        const matchesSearch = c.title.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = (c.title || '').toLowerCase().includes(searchQuery.toLowerCase());
         const completed = c.completedLessons || 0;
-        const total = c.totalLessons || 1;
+        const total = c.totalLessons || 0;
 
         let matchesFilter = true;
         if (filter === 'active') {
-            matchesFilter = completed > 0 && completed < total;
+            // Include those started but not finished, or even not started yet but are in library
+            matchesFilter = (completed < total) || (total === 0);
         } else if (filter === 'completed') {
-            matchesFilter = completed === total;
+            matchesFilter = completed === total && total > 0;
         }
 
         return matchesSearch && matchesFilter;
@@ -61,35 +63,43 @@ export default function MyCoursesPage() {
     return (
         <div className="min-h-screen bg-slate-50/30 pb-20">
             {/* Header Area */}
-            <div className="bg-white border-b border-slate-100 px-6 lg:px-12 py-12">
-                <div className="max-w-[1400px] mx-auto">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+            <div className="bg-white border-b border-slate-100 px-6 lg:px-12 py-16 lg:py-20 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+
+                <div className="max-w-[1400px] mx-auto relative z-10">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-12">
                         <div>
-                            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-3">My Library</p>
-                            <h1 className="text-3xl lg:text-4xl font-black text-slate-900 uppercase tracking-tight leading-none">My Courses</h1>
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                                    <BookOpen size={16} />
+                                </div>
+                                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.4em]">My Collection</p>
+                            </div>
+                            <h1 className="text-4xl lg:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-none">Learning <span className="text-indigo-600">Library</span></h1>
+                            <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mt-6">Manage your curriculum and track your academic progress</p>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-center gap-4">
-                            <div className="relative w-full sm:w-80">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <div className="flex flex-col sm:flex-row items-center gap-6">
+                            <div className="relative w-full sm:w-96 group">
+                                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={20} />
                                 <input
                                     type="text"
-                                    placeholder="SEARCH COURSES..."
+                                    placeholder="Search library..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-12 pr-6 h-14 bg-slate-50 border-none rounded-2xl text-[10px] font-black uppercase tracking-widest focus:ring-2 focus:ring-indigo-500/10 transition-all outline-none"
+                                    className="w-full pl-14 pr-6 h-16 bg-slate-50 border border-slate-100 rounded-3xl text-[11px] font-black uppercase tracking-widest focus:ring-4 focus:ring-indigo-600/5 focus:border-indigo-600 focus:bg-white transition-all outline-none"
                                 />
                             </div>
-                            <Button className="h-14 px-6 rounded-2xl bg-slate-950 text-white border-0 font-black uppercase tracking-widest text-[10px] flex items-center gap-2 hover:bg-slate-900 transition-all">
-                                <Filter size={16} /> Filter
-                            </Button>
+                            <button className="h-16 px-8 rounded-3xl bg-slate-950 text-white font-black uppercase tracking-widest text-[11px] flex items-center gap-3 hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 active:scale-95 group">
+                                <Filter size={18} className="group-hover:rotate-180 transition-transform duration-500" /> Filter Options
+                            </button>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-8 mt-12 pb-2 overflow-x-auto no-scrollbar">
-                        <FilterTab active={filter === 'all'} label="All Courses" count={(data?.courses || []).length} onClick={() => setFilter('all')} />
-                        <FilterTab active={filter === 'active'} label="In Progress" count={(data?.courses || []).filter((c: any) => (c.completedLessons || 0) > 0 && (c.completedLessons || 0) < (c.totalLessons || 1)).length} onClick={() => setFilter('active')} />
-                        <FilterTab active={filter === 'completed'} label="Completed" count={(data?.courses || []).filter((c: any) => (c.completedLessons || 0) === (c.totalLessons || 1)).length} onClick={() => setFilter('completed')} />
+                    <div className="flex items-center gap-8 mt-16 lg:mt-24 pb-2 overflow-x-auto no-scrollbar">
+                        <FilterTab active={filter === 'all'} label="Everything" count={(data?.courses || []).length} onClick={() => setFilter('all')} />
+                        <FilterTab active={filter === 'active'} label="In Progress" count={(data?.courses || []).filter((c: any) => (c.completedLessons || 0) < (c.totalLessons || 0)).length} onClick={() => setFilter('active')} />
+                        <FilterTab active={filter === 'completed'} label="Completed" count={(data?.courses || []).filter((c: any) => (c.totalLessons > 0) && (c.completedLessons || 0) === (c.totalLessons || 0)).length} onClick={() => setFilter('completed')} />
                     </div>
                 </div>
             </div>
@@ -124,12 +134,19 @@ function FilterTab({ active, label, count, onClick }: { active: boolean; label: 
     return (
         <button
             onClick={onClick}
-            className={`flex items-center gap-3 whitespace-nowrap pb-4 border-b-2 transition-all ${active ? 'border-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+            className={`flex items-center gap-3 whitespace-nowrap pb-6 border-b-2 transition-all relative ${active ? 'border-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
-            <span className={`text-[10px] font-black uppercase tracking-widest`}>{label}</span>
-            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+            <span className={`text-[11px] font-black uppercase tracking-[0.2em] ${active ? 'text-slate-900' : ''}`}>{label}</span>
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black transition-colors ${active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 text-slate-400'}`}>
                 {count}
             </span>
+            {active && (
+                <motion.div
+                    layoutId="activeTab"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600"
+                    initial={false}
+                />
+            )}
         </button>
     );
 }
