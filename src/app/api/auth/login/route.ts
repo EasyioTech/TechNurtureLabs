@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
 
         const { password_hash, ...userData } = user;
         return NextResponse.json({ success: true, user: userData });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Login error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ error: error.message || 'Internal server error', stack: error.stack }, { status: 500 });
     }
 }
