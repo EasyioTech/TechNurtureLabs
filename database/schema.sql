@@ -109,6 +109,7 @@ CREATE TABLE users (
     longest_streak      INT NOT NULL DEFAULT 0,
     last_active_at      TIMESTAMPTZ,
     is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+    bio                 TEXT,
     email_verified_at   TIMESTAMPTZ,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
