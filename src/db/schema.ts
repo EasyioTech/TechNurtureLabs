@@ -45,6 +45,7 @@ export const schools = pgTable('schools', {
     is_active: boolean('is_active').notNull().default(true),
     data_processing_consent: boolean('data_processing_consent').notNull().default(false),
     minor_data_guardian_consent: boolean('minor_data_guardian_consent').notNull().default(false),
+    udise_code: text('udise_code'),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),

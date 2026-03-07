@@ -148,6 +148,7 @@ export async function registerSchool(formData: any) {
                 state: formData.state,
                 country: formData.country || 'IN',
                 pincode: formData.pincode,
+                udise_code: formData.udise_code,
                 is_active: true,
             } as any).returning();
 

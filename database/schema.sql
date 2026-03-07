@@ -62,6 +62,7 @@ CREATE TABLE schools (
     logo_url        TEXT,
     website         TEXT,
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+    udise_code      TEXT,
     data_processing_consent     BOOLEAN NOT NULL DEFAULT FALSE,
     minor_data_guardian_consent  BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -140,6 +141,7 @@ CREATE TABLE payment_plans (
     max_students    INT,
     features        JSONB NOT NULL DEFAULT '{}',
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+    is_popular      BOOLEAN NOT NULL DEFAULT FALSE,
     trial_days      INT NOT NULL DEFAULT 0,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -875,7 +877,7 @@ VALUES (
 ) ON CONFLICT (id) DO NOTHING;
 
 -- Default payment plan (Required for school registration flow to work smoothly)
-INSERT INTO payment_plans (id, name, description, billing_cycle, price, max_students, trial_days)
+INSERT INTO payment_plans (id, name, description, billing_cycle, price, max_students, trial_days, is_popular)
 VALUES (
     'c0000000-0000-0000-0000-000000000001',
     'Starter Plan',
@@ -883,7 +885,8 @@ VALUES (
     'annual',
     49999.00,
     200,
-    14
+    14,
+    true
 ) ON CONFLICT (id) DO NOTHING;
 
 -- Base Classes System
