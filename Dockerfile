@@ -51,6 +51,7 @@ RUN chown nextjs:nodejs .next
 # Copy standalone output
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/database ./database
 
 # Create local_storage directory for fallback uploads
 RUN mkdir -p /app/local_storage && chown nextjs:nodejs /app/local_storage
