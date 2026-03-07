@@ -26,6 +26,7 @@ jobs:
             
             # Rebuild and restart the cluster
             docker compose down
+            docker compose build migration
             docker compose up -d --build
             
             # Wait for the app to be ready
@@ -33,9 +34,9 @@ jobs:
             sleep 15
             
             # Safe Schema Synchronization
-            # Instead of dropping the DB, we run push to update the schema safely
+            # We use a dedicated migration container to avoid bloating the production image
             echo "Synchronizing database schema..."
-            docker exec LMS_app npm run db:push
+            docker compose run --rm migration
             
             echo "Deployment successful!"
 

@@ -44,6 +44,24 @@ services:
       - storage_data:/app/local_storage
 
   # ----------------------------
+  # Database Migration Runner
+  # Uses the builder stage which has all devDependencies
+  # ----------------------------
+  migration:
+    build:
+      context: .
+      target: builder
+    container_name: LMS_migration
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://technurture_app:technurture_secure_pass@db:5432/orchids}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: npm run db:push
+    profiles: 
+      - migration # Only runs when explicitly called
+
+  # ----------------------------
   # PostgreSQL Database
   # seed.sql is auto-executed on first DB init
   # ----------------------------
