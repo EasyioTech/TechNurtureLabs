@@ -117,6 +117,10 @@ export default function LessonPlayerPage() {
     if (pct >= 90 && !lessonComplete) completeLesson();
   };
 
+  // Safe configuration lookup
+  const currentConfig = lesson ? (CONTENT_CONFIG[lesson.content_type] || CONTENT_CONFIG.video) : CONTENT_CONFIG.video;
+  const DynamicIcon = currentConfig.icon;
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-8">
@@ -124,7 +128,7 @@ export default function LessonPlayerPage() {
           <div className="absolute inset-0 border-[6px] border-slate-100 rounded-full" />
           <div className="absolute inset-0 border-[6px] border-indigo-600 border-t-transparent rounded-full animate-spin" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <ConfigIcon size={40} className="text-slate-900" />
+            <DynamicIcon size={40} className="text-slate-900" />
           </div>
         </div>
       </div>
@@ -168,9 +172,9 @@ export default function LessonPlayerPage() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className={`hidden sm:flex items-center gap-2 px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-widest ${config.color}`}>
-            <ConfigIcon size={14} strokeWidth={3} />
-            {config.label}
+          <div className={`hidden sm:flex items-center gap-2 px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-widest ${currentConfig.color}`}>
+            <DynamicIcon size={14} strokeWidth={3} />
+            {currentConfig.label}
           </div>
           <div className="h-6 w-px bg-slate-100 hidden sm:block" />
           <div className="flex items-center gap-2 bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border border-amber-100 text-[10px] font-black uppercase tracking-widest">
@@ -257,7 +261,7 @@ export default function LessonPlayerPage() {
 // ─── Video Player ──────────────────────────────────────────────────
 function VideoPlayer({ url, videoRef, videoProgress, onTimeUpdate, lessonComplete, onComplete }: {
   url: string;
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: React.Ref<HTMLVideoElement>;
   videoProgress: number;
   onTimeUpdate: () => void;
   lessonComplete: boolean;

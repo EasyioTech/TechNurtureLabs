@@ -80,22 +80,21 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     };
 
     // Daily Challenges
-    const today = new Date().toISOString().split('T')[0];
     const allChallenges = await db.query.dailyChallenges.findMany({
         where: eq(dailyChallenges.status, 'active'),
         limit: 3
     });
 
     let formattedChallenges: any[] = [];
+    const userChallengesData = await db.query.userDailyChallenges.findMany({
+        where: eq(userDailyChallenges.user_id, userId)
+    });
+
+    const challengeMap = new Map(
+        userChallengesData.map(uc => [uc.challenge_id, uc])
+    );
+
     if (allChallenges.length > 0) {
-        const userChallengesData = await db.query.userDailyChallenges.findMany({
-            where: eq(userDailyChallenges.user_id, userId)
-        });
-
-        const challengeMap = new Map(
-            userChallengesData.map(uc => [uc.challenge_id, uc])
-        );
-
         formattedChallenges = allChallenges.map(c => {
             const uc = challengeMap.get(c.id);
             const criteria = c.criteria as any;
@@ -110,6 +109,16 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
                 is_completed: !!uc?.completed_at
             };
         });
+    }
+
+    // If less than 3, add virtual/default challenges as requested by user
+    if (formattedChallenges.length < 3) {
+        const defaults = [
+            { id: 'v-xp', title: 'Gain 50 XP', challenge_type: 'xp_gain', target_value: 50, xp_reward: 10, icon: 'zap', current_progress: Math.min(stats.xp % 100, 50), is_completed: (stats.xp % 100) >= 50 },
+            { id: 'v-time', title: 'Study for 30m', challenge_type: 'learning_time', target_value: 30, xp_reward: 15, icon: 'clock', current_progress: Math.min(Math.round(stats.totalTime * 60) % 60, 30), is_completed: (stats.totalTime * 60 % 60) >= 30 },
+            { id: 'v-quiz', title: 'Complete a Quiz', challenge_type: 'quiz_complete', target_value: 1, xp_reward: 20, icon: 'target', current_progress: stats.accuracy > 0 ? 1 : 0, is_completed: stats.accuracy > 0 }
+        ];
+        formattedChallenges = [...formattedChallenges, ...defaults].slice(0, 3);
     }
 
     // Achievements
@@ -252,16 +261,33 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
 
     const formattedActivities = recentActivities.map(log => {
         let title = "System update";
-        if (log.action === 'login') title = "Logged in";
-        if (log.action === 'update' && log.entity_type === 'lesson_progress') title = "Completed a lesson";
-        if (log.action === 'create' && log.entity_type === 'user_achievement') title = "Earned an achievement";
-        if (log.action === 'create' && log.entity_type === 'enrollment') title = "Enrolled in a course";
+        let type: string = log.action;
+
+        if (log.action === 'login') {
+            title = "Logged into platform";
+            type = 'login';
+        } else if (log.action === 'update' && log.entity_type === 'lesson_progress') {
+            title = "Progressed in a lesson";
+            type = 'lesson_complete';
+        } else if (log.action === 'create' && log.entity_type === 'lesson_progress') {
+            title = "Completed a new lesson";
+            type = 'lesson_complete';
+        } else if (log.action === 'create' && log.entity_type === 'user_achievement') {
+            title = "Unlocked new achievement";
+            type = 'challenge_complete';
+        } else if (log.action === 'create' && log.entity_type === 'enrollment') {
+            title = "Started new course";
+            type = 'enroll';
+        } else if (log.action === 'create' && log.entity_type === 'quiz_attempt') {
+            title = "Attempted a quiz";
+            type = 'challenge_complete';
+        }
 
         return {
             id: log.id,
             title,
             time: log.created_at,
-            type: log.action
+            type: type as any
         };
     });
 

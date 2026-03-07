@@ -116,8 +116,9 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
         { day: 'Sun', active: Math.round(stats.activeStudents * 0.28), total: stats.totalStudents },
     ];
 
-    const courseStatusData = [
-        { name: 'Published', value: courseMetrics.filter(c => c.is_published).length || 0 },
+    const studentActivityData = [
+        { name: 'Active', value: stats.activeStudents },
+        { name: 'Inactive', value: stats.totalStudents - stats.activeStudents },
     ];
 
     const topCoursesRaw = courseMetrics.slice(0, 5);
@@ -221,16 +222,16 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                     </div>
                 </motion.div>
 
-                {/* Course Distribution */}
+                {/* Student Activity Distribution */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
                     className={`p-8 ${ts.card(isDark)} rounded-[32px] flex flex-col`}>
-                    <SectionHeader title="Course Availability" sub="Courses currently available to your students" icon={BarChart3} />
+                    <SectionHeader title="Student Engagement" sub="Active vs Inactive students overview" icon={BarChart3} />
                     <div className="flex-1 flex flex-col sm:flex-row items-center gap-8">
                         <div className="w-full sm:w-1/2 h-[200px]">
                             <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
                                 <PieChart>
-                                    <Pie data={courseStatusData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={8} strokeWidth={0}>
-                                        {courseStatusData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+                                    <Pie data={studentActivityData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={8} strokeWidth={0}>
+                                        {studentActivityData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i] || '#94a3b8'} />)}
                                     </Pie>
                                     <Tooltip
                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 20px rgba(0,0,0,0.1)' }}
@@ -239,10 +240,10 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                             </ResponsiveContainer>
                         </div>
                         <div className="w-full sm:w-1/2 space-y-4">
-                            {courseStatusData.map((item, i) => (
+                            {studentActivityData.map((item, i) => (
                                 <div key={item.name} className="flex items-center justify-between p-4 rounded-2xl bg-slate-500/5 border border-slate-200/40 dark:border-white/5">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[i] }} />
+                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[i] || '#94a3b8' }} />
                                         <p className={`text-[13px] font-black ${ts.textPrimary(isDark)}`}>{item.name}</p>
                                     </div>
                                     <p className={`text-[15px] font-black ${ts.textPrimary(isDark)}`}>{item.value}</p>

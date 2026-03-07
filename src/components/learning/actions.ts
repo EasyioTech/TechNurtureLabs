@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping, schools } from '@/db/schema';
+import { users, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping, schools, auditLogs } from '@/db/schema';
 import { eq, and, inArray, asc, desc, isNotNull } from 'drizzle-orm';
 
 // Auto-enroll a student in a course if not already enrolled
@@ -291,6 +291,20 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
     // Update cumulative XP on user
     const newXp = (Number(existingUser.cumulative_xp) || 0) + xpToAdd;
     await db.update(users).set({ cumulative_xp: newXp }).where(eq(users.id, userId));
+
+    // Record Activity in Audit Log
+    try {
+        await db.insert(auditLogs).values({
+            user_id: userId,
+            school_id: existingUser.school_id,
+            action: 'create',
+            entity_type: 'lesson_progress',
+            entity_id: lessonId,
+            new_values: { lesson_title: lesson.title, xp_earned: xpToAdd }
+        } as any);
+    } catch (e) {
+        console.error('Failed to log activity:', e);
+    }
 }
 
 export async function getLessonsByCourse(courseId: string) {

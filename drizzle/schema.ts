@@ -25,15 +25,15 @@ export const courseClassMapping = pgTable("course_class_mapping", {
 }, (table) => [
 	uniqueIndex("uq_course_class").using("btree", table.courseId.asc().nullsLast().op("uuid_ops"), table.classId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.courseId],
-			foreignColumns: [courses.id],
-			name: "course_class_mapping_course_id_courses_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.courseId],
+		foreignColumns: [courses.id],
+		name: "course_class_mapping_course_id_courses_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.classId],
-			foreignColumns: [classes.id],
-			name: "course_class_mapping_class_id_classes_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.classId],
+		foreignColumns: [classes.id],
+		name: "course_class_mapping_class_id_classes_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const classes = pgTable("classes", {
@@ -55,15 +55,15 @@ export const schoolClassMapping = pgTable("school_class_mapping", {
 }, (table) => [
 	uniqueIndex("uq_school_class").using("btree", table.schoolId.asc().nullsLast().op("uuid_ops"), table.classId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.schoolId],
-			foreignColumns: [schools.id],
-			name: "school_class_mapping_school_id_schools_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.schoolId],
+		foreignColumns: [schools.id],
+		name: "school_class_mapping_school_id_schools_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.classId],
-			foreignColumns: [classes.id],
-			name: "school_class_mapping_class_id_classes_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.classId],
+		foreignColumns: [classes.id],
+		name: "school_class_mapping_class_id_classes_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const invoices = pgTable("invoices", {
@@ -73,9 +73,9 @@ export const invoices = pgTable("invoices", {
 	transactionId: uuid("transaction_id"),
 	invoiceNumber: text("invoice_number").notNull(),
 	status: invoiceStatus().default('draft').notNull(),
-	subtotal: numeric({ precision: 12, scale:  2 }).notNull(),
-	taxAmount: numeric("tax_amount", { precision: 12, scale:  2 }).default('0').notNull(),
-	total: numeric({ precision: 12, scale:  2 }).notNull(),
+	subtotal: numeric({ precision: 12, scale: 2 }).notNull(),
+	taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }).default('0').notNull(),
+	total: numeric({ precision: 12, scale: 2 }).notNull(),
 	currency: text().default('INR').notNull(),
 	issuedAt: timestamp("issued_at", { withTimezone: true, mode: 'string' }),
 	dueDate: date("due_date"),
@@ -87,20 +87,20 @@ export const invoices = pgTable("invoices", {
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
-			columns: [table.schoolId],
-			foreignColumns: [schools.id],
-			name: "invoices_school_id_schools_id_fk"
-		}).onDelete("restrict"),
+		columns: [table.schoolId],
+		foreignColumns: [schools.id],
+		name: "invoices_school_id_schools_id_fk"
+	}).onDelete("restrict"),
 	foreignKey({
-			columns: [table.subscriptionId],
-			foreignColumns: [schoolSubscriptions.id],
-			name: "invoices_subscription_id_school_subscriptions_id_fk"
-		}).onDelete("restrict"),
+		columns: [table.subscriptionId],
+		foreignColumns: [schoolSubscriptions.id],
+		name: "invoices_subscription_id_school_subscriptions_id_fk"
+	}).onDelete("restrict"),
 	foreignKey({
-			columns: [table.transactionId],
-			foreignColumns: [paymentTransactions.id],
-			name: "invoices_transaction_id_payment_transactions_id_fk"
-		}).onDelete("set null"),
+		columns: [table.transactionId],
+		foreignColumns: [paymentTransactions.id],
+		name: "invoices_transaction_id_payment_transactions_id_fk"
+	}).onDelete("set null"),
 	unique("invoices_invoice_number_unique").on(table.invoiceNumber),
 ]);
 
@@ -108,7 +108,7 @@ export const promoCodes = pgTable("promo_codes", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	code: text().notNull(),
 	discountType: discountType("discount_type").notNull(),
-	discountValue: numeric("discount_value", { precision: 12, scale:  2 }).notNull(),
+	discountValue: numeric("discount_value", { precision: 12, scale: 2 }).notNull(),
 	maxUses: integer("max_uses"),
 	currentUses: integer("current_uses").default(0).notNull(),
 	validFrom: timestamp("valid_from", { withTimezone: true, mode: 'string' }),
@@ -139,10 +139,10 @@ export const courses = pgTable("courses", {
 }, (table) => [
 	index("idx_courses_published").using("btree", table.isPublished.asc().nullsLast().op("bool_ops")),
 	foreignKey({
-			columns: [table.createdBy],
-			foreignColumns: [users.id],
-			name: "courses_created_by_users_id_fk"
-		}).onDelete("restrict"),
+		columns: [table.createdBy],
+		foreignColumns: [users.id],
+		name: "courses_created_by_users_id_fk"
+	}).onDelete("restrict"),
 	unique("courses_slug_unique").on(table.slug),
 ]);
 
@@ -162,15 +162,15 @@ export const auditLogs = pgTable("audit_logs", {
 	index("idx_audit_created").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
 	index("idx_audit_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "audit_logs_user_id_users_id_fk"
-		}).onDelete("set null"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "audit_logs_user_id_users_id_fk"
+	}).onDelete("set null"),
 	foreignKey({
-			columns: [table.schoolId],
-			foreignColumns: [schools.id],
-			name: "audit_logs_school_id_schools_id_fk"
-		}).onDelete("set null"),
+		columns: [table.schoolId],
+		foreignColumns: [schools.id],
+		name: "audit_logs_school_id_schools_id_fk"
+	}).onDelete("set null"),
 ]);
 
 export const dailyChallenges = pgTable("daily_challenges", {
@@ -209,18 +209,18 @@ export const courseMetricsDaily = pgTable("course_metrics_daily", {
 	totalEnrollments: integer("total_enrollments").default(0).notNull(),
 	activeLearners: integer("active_learners").default(0).notNull(),
 	completions: integer().default(0).notNull(),
-	avgProgressPct: numeric("avg_progress_pct", { precision: 5, scale:  2 }),
-	avgQuizScore: numeric("avg_quiz_score", { precision: 5, scale:  2 }),
+	avgProgressPct: numeric("avg_progress_pct", { precision: 5, scale: 2 }),
+	avgQuizScore: numeric("avg_quiz_score", { precision: 5, scale: 2 }),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	totalXpAwarded: bigint("total_xp_awarded", { mode: "number" }).default(0).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	uniqueIndex("uq_course_metric_date").using("btree", table.courseId.asc().nullsLast().op("date_ops"), table.metricDate.asc().nullsLast().op("date_ops")),
 	foreignKey({
-			columns: [table.courseId],
-			foreignColumns: [courses.id],
-			name: "course_metrics_daily_course_id_courses_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.courseId],
+		foreignColumns: [courses.id],
+		name: "course_metrics_daily_course_id_courses_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const academicSessions = pgTable("academic_sessions", {
@@ -234,10 +234,10 @@ export const academicSessions = pgTable("academic_sessions", {
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
-			columns: [table.schoolId],
-			foreignColumns: [schools.id],
-			name: "academic_sessions_school_id_schools_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.schoolId],
+		foreignColumns: [schools.id],
+		name: "academic_sessions_school_id_schools_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const courseProgress = pgTable("course_progress", {
@@ -247,7 +247,7 @@ export const courseProgress = pgTable("course_progress", {
 	enrollmentId: uuid("enrollment_id").notNull(),
 	lessonsCompleted: integer("lessons_completed").default(0).notNull(),
 	totalLessons: integer("total_lessons").default(0).notNull(),
-	progressPct: numeric("progress_pct", { precision: 5, scale:  2 }).default('0').notNull(),
+	progressPct: numeric("progress_pct", { precision: 5, scale: 2 }).default('0').notNull(),
 	totalXpEarned: integer("total_xp_earned").default(0).notNull(),
 	totalTimeSecs: integer("total_time_secs").default(0).notNull(),
 	startedAt: timestamp("started_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
@@ -257,20 +257,20 @@ export const courseProgress = pgTable("course_progress", {
 }, (table) => [
 	uniqueIndex("uq_user_course_enrollment").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.courseId.asc().nullsLast().op("uuid_ops"), table.enrollmentId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "course_progress_user_id_users_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "course_progress_user_id_users_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.courseId],
-			foreignColumns: [courses.id],
-			name: "course_progress_course_id_courses_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.courseId],
+		foreignColumns: [courses.id],
+		name: "course_progress_course_id_courses_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.enrollmentId],
-			foreignColumns: [enrollments.id],
-			name: "course_progress_enrollment_id_enrollments_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.enrollmentId],
+		foreignColumns: [enrollments.id],
+		name: "course_progress_enrollment_id_enrollments_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const enrollments = pgTable("enrollments", {
@@ -288,25 +288,25 @@ export const enrollments = pgTable("enrollments", {
 	index("idx_enrollments_school").using("btree", table.schoolId.asc().nullsLast().op("uuid_ops")),
 	uniqueIndex("uq_enrollment").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.courseId.asc().nullsLast().op("uuid_ops"), table.sessionId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "enrollments_user_id_users_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "enrollments_user_id_users_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.courseId],
-			foreignColumns: [courses.id],
-			name: "enrollments_course_id_courses_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.courseId],
+		foreignColumns: [courses.id],
+		name: "enrollments_course_id_courses_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.schoolId],
-			foreignColumns: [schools.id],
-			name: "enrollments_school_id_schools_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.schoolId],
+		foreignColumns: [schools.id],
+		name: "enrollments_school_id_schools_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.sessionId],
-			foreignColumns: [academicSessions.id],
-			name: "enrollments_session_id_academic_sessions_id_fk"
-		}).onDelete("restrict"),
+		columns: [table.sessionId],
+		foreignColumns: [academicSessions.id],
+		name: "enrollments_session_id_academic_sessions_id_fk"
+	}).onDelete("restrict"),
 ]);
 
 export const emailVerificationTokens = pgTable("email_verification_tokens", {
@@ -318,10 +318,10 @@ export const emailVerificationTokens = pgTable("email_verification_tokens", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "email_verification_tokens_user_id_users_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "email_verification_tokens_user_id_users_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const paymentTransactions = pgTable("payment_transactions", {
@@ -331,12 +331,12 @@ export const paymentTransactions = pgTable("payment_transactions", {
 	razorpayOrderId: text("razorpay_order_id"),
 	razorpayPaymentId: text("razorpay_payment_id"),
 	razorpaySignature: text("razorpay_signature"),
-	amount: numeric({ precision: 12, scale:  2 }).notNull(),
+	amount: numeric({ precision: 12, scale: 2 }).notNull(),
 	currency: text().default('INR').notNull(),
 	status: paymentStatus().default('created').notNull(),
 	gatewayResponse: jsonb("gateway_response"),
 	failureReason: text("failure_reason"),
-	refundAmount: numeric("refund_amount", { precision: 12, scale:  2 }),
+	refundAmount: numeric("refund_amount", { precision: 12, scale: 2 }),
 	refundedAt: timestamp("refunded_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
@@ -345,20 +345,20 @@ export const paymentTransactions = pgTable("payment_transactions", {
 	index("idx_transactions_school").using("btree", table.schoolId.asc().nullsLast().op("uuid_ops")),
 	index("idx_transactions_status").using("btree", table.status.asc().nullsLast().op("enum_ops")),
 	foreignKey({
-			columns: [table.promoCodeId],
-			foreignColumns: [promoCodes.id],
-			name: "payment_transactions_promo_code_id_promo_codes_id_fk"
-		}).onDelete("set null"),
+		columns: [table.promoCodeId],
+		foreignColumns: [promoCodes.id],
+		name: "payment_transactions_promo_code_id_promo_codes_id_fk"
+	}).onDelete("set null"),
 	foreignKey({
-			columns: [table.schoolId],
-			foreignColumns: [schools.id],
-			name: "payment_transactions_school_id_schools_id_fk"
-		}).onDelete("restrict"),
+		columns: [table.schoolId],
+		foreignColumns: [schools.id],
+		name: "payment_transactions_school_id_schools_id_fk"
+	}).onDelete("restrict"),
 	foreignKey({
-			columns: [table.subscriptionId],
-			foreignColumns: [schoolSubscriptions.id],
-			name: "payment_transactions_subscription_id_school_subscriptions_id_fk"
-		}).onDelete("restrict"),
+		columns: [table.subscriptionId],
+		foreignColumns: [schoolSubscriptions.id],
+		name: "payment_transactions_subscription_id_school_subscriptions_id_fk"
+	}).onDelete("restrict"),
 ]);
 
 export const loginAttempts = pgTable("login_attempts", {
@@ -374,10 +374,10 @@ export const loginAttempts = pgTable("login_attempts", {
 	index("idx_login_created").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
 	index("idx_login_email").using("btree", table.email.asc().nullsLast().op("text_ops")),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "login_attempts_user_id_users_id_fk"
-		}).onDelete("set null"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "login_attempts_user_id_users_id_fk"
+	}).onDelete("set null"),
 ]);
 
 export const mediaAssets = pgTable("media_assets", {
@@ -398,10 +398,10 @@ export const mediaAssets = pgTable("media_assets", {
 	index("idx_media_created").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
 	index("idx_media_uploaded_by").using("btree", table.uploadedBy.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.uploadedBy],
-			foreignColumns: [users.id],
-			name: "media_assets_uploaded_by_users_id_fk"
-		}).onDelete("set null"),
+		columns: [table.uploadedBy],
+		foreignColumns: [users.id],
+		name: "media_assets_uploaded_by_users_id_fk"
+	}).onDelete("set null"),
 ]);
 
 export const passwordResetTokens = pgTable("password_reset_tokens", {
@@ -413,10 +413,10 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "password_reset_tokens_user_id_users_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "password_reset_tokens_user_id_users_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const quizAttempts = pgTable("quiz_attempts", {
@@ -425,8 +425,8 @@ export const quizAttempts = pgTable("quiz_attempts", {
 	quizId: uuid("quiz_id").notNull(),
 	enrollmentId: uuid("enrollment_id").notNull(),
 	attemptNumber: integer("attempt_number").default(1).notNull(),
-	score: numeric({ precision: 5, scale:  2 }).default('0').notNull(),
-	maxScore: numeric("max_score", { precision: 5, scale:  2 }).notNull(),
+	score: numeric({ precision: 5, scale: 2 }).default('0').notNull(),
+	maxScore: numeric("max_score", { precision: 5, scale: 2 }).notNull(),
 	passed: boolean().default(false).notNull(),
 	answers: jsonb().default([]).notNull(),
 	startedAt: timestamp("started_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
@@ -437,20 +437,20 @@ export const quizAttempts = pgTable("quiz_attempts", {
 }, (table) => [
 	uniqueIndex("uq_quiz_attempt").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.quizId.asc().nullsLast().op("uuid_ops"), table.enrollmentId.asc().nullsLast().op("int4_ops"), table.attemptNumber.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "quiz_attempts_user_id_users_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "quiz_attempts_user_id_users_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.quizId],
-			foreignColumns: [quizzes.id],
-			name: "quiz_attempts_quiz_id_quizzes_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.quizId],
+		foreignColumns: [quizzes.id],
+		name: "quiz_attempts_quiz_id_quizzes_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.enrollmentId],
-			foreignColumns: [enrollments.id],
-			name: "quiz_attempts_enrollment_id_enrollments_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.enrollmentId],
+		foreignColumns: [enrollments.id],
+		name: "quiz_attempts_enrollment_id_enrollments_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const lessonProgress = pgTable("lesson_progress", {
@@ -460,7 +460,7 @@ export const lessonProgress = pgTable("lesson_progress", {
 	enrollmentId: uuid("enrollment_id").notNull(),
 	startedAt: timestamp("started_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }),
-	progressPct: numeric("progress_pct", { precision: 5, scale:  2 }).default('0').notNull(),
+	progressPct: numeric("progress_pct", { precision: 5, scale: 2 }).default('0').notNull(),
 	timeSpentSecs: integer("time_spent_secs").default(0).notNull(),
 	xpEarned: integer("xp_earned").default(0).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
@@ -470,20 +470,20 @@ export const lessonProgress = pgTable("lesson_progress", {
 	index("idx_lp_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
 	uniqueIndex("uq_user_lesson").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.lessonId.asc().nullsLast().op("uuid_ops"), table.enrollmentId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "lesson_progress_user_id_users_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "lesson_progress_user_id_users_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.lessonId],
-			foreignColumns: [lessons.id],
-			name: "lesson_progress_lesson_id_lessons_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.lessonId],
+		foreignColumns: [lessons.id],
+		name: "lesson_progress_lesson_id_lessons_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.enrollmentId],
-			foreignColumns: [enrollments.id],
-			name: "lesson_progress_enrollment_id_enrollments_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.enrollmentId],
+		foreignColumns: [enrollments.id],
+		name: "lesson_progress_enrollment_id_enrollments_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const platformMetricsDaily = pgTable("platform_metrics_daily", {
@@ -496,7 +496,7 @@ export const platformMetricsDaily = pgTable("platform_metrics_daily", {
 	totalEnrollments: integer("total_enrollments").default(0).notNull(),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	totalXpAwarded: bigint("total_xp_awarded", { mode: "number" }).default(0).notNull(),
-	revenueTotal: numeric("revenue_total", { precision: 14, scale:  2 }).default('0').notNull(),
+	revenueTotal: numeric("revenue_total", { precision: 14, scale: 2 }).default('0').notNull(),
 	newSubscriptions: integer("new_subscriptions").default(0).notNull(),
 	churnedSubscriptions: integer("churned_subscriptions").default(0).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
@@ -506,7 +506,7 @@ export const platformMetricsDaily = pgTable("platform_metrics_daily", {
 
 export const platformSettings = pgTable("platform_settings", {
 	id: text().primaryKey().notNull(),
-	heroVideoUrl: text("hero_video_url").default(').notNull(),
+	heroVideoUrl: text("hero_video_url").default('').notNull(),
 	heroVideoType: text("hero_video_type").default('youtube').notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	logoUrl: text("logo_url"),
@@ -518,7 +518,7 @@ export const paymentPlans = pgTable("payment_plans", {
 	name: text().notNull(),
 	description: text(),
 	billingCycle: billingCycle("billing_cycle").notNull(),
-	price: numeric({ precision: 12, scale:  2 }).notNull(),
+	price: numeric({ precision: 12, scale: 2 }).notNull(),
 	currency: text().default('INR').notNull(),
 	maxStudents: integer("max_students"),
 	features: jsonb().default({}).notNull(),
@@ -548,10 +548,10 @@ export const lessons = pgTable("lessons", {
 	index("idx_lessons_course").using("btree", table.courseId.asc().nullsLast().op("uuid_ops")),
 	uniqueIndex("uq_lesson_sequence_per_course").using("btree", table.courseId.asc().nullsLast().op("int4_ops"), table.sequenceOrder.asc().nullsLast().op("int4_ops")),
 	foreignKey({
-			columns: [table.courseId],
-			foreignColumns: [courses.id],
-			name: "lessons_course_id_courses_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.courseId],
+		foreignColumns: [courses.id],
+		name: "lessons_course_id_courses_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const quizQuestions = pgTable("quiz_questions", {
@@ -569,10 +569,10 @@ export const quizQuestions = pgTable("quiz_questions", {
 }, (table) => [
 	uniqueIndex("uq_quiz_question_sequence").using("btree", table.quizId.asc().nullsLast().op("int4_ops"), table.sequenceOrder.asc().nullsLast().op("int4_ops")),
 	foreignKey({
-			columns: [table.quizId],
-			foreignColumns: [quizzes.id],
-			name: "quiz_questions_quiz_id_quizzes_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.quizId],
+		foreignColumns: [quizzes.id],
+		name: "quiz_questions_quiz_id_quizzes_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const quizzes = pgTable("quizzes", {
@@ -582,7 +582,7 @@ export const quizzes = pgTable("quizzes", {
 	title: text().notNull(),
 	description: text(),
 	timeLimitSecs: integer("time_limit_secs"),
-	passPercentage: numeric("pass_percentage", { precision: 5, scale:  2 }).default('60.00').notNull(),
+	passPercentage: numeric("pass_percentage", { precision: 5, scale: 2 }).default('60.00').notNull(),
 	maxAttempts: integer("max_attempts").default(3).notNull(),
 	xpReward: integer("xp_reward").default(20).notNull(),
 	isPublished: boolean("is_published").default(false).notNull(),
@@ -591,15 +591,15 @@ export const quizzes = pgTable("quizzes", {
 	deletedAt: timestamp("deleted_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	foreignKey({
-			columns: [table.lessonId],
-			foreignColumns: [lessons.id],
-			name: "quizzes_lesson_id_lessons_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.lessonId],
+		foreignColumns: [lessons.id],
+		name: "quizzes_lesson_id_lessons_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.courseId],
-			foreignColumns: [courses.id],
-			name: "quizzes_course_id_courses_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.courseId],
+		foreignColumns: [courses.id],
+		name: "quizzes_course_id_courses_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const schoolSubscriptions = pgTable("school_subscriptions", {
@@ -621,20 +621,20 @@ export const schoolSubscriptions = pgTable("school_subscriptions", {
 	index("idx_subscriptions_school").using("btree", table.schoolId.asc().nullsLast().op("uuid_ops")),
 	index("idx_subscriptions_status").using("btree", table.status.asc().nullsLast().op("enum_ops")),
 	foreignKey({
-			columns: [table.promoCodeId],
-			foreignColumns: [promoCodes.id],
-			name: "school_subscriptions_promo_code_id_promo_codes_id_fk"
-		}).onDelete("set null"),
+		columns: [table.promoCodeId],
+		foreignColumns: [promoCodes.id],
+		name: "school_subscriptions_promo_code_id_promo_codes_id_fk"
+	}).onDelete("set null"),
 	foreignKey({
-			columns: [table.schoolId],
-			foreignColumns: [schools.id],
-			name: "school_subscriptions_school_id_schools_id_fk"
-		}).onDelete("restrict"),
+		columns: [table.schoolId],
+		foreignColumns: [schools.id],
+		name: "school_subscriptions_school_id_schools_id_fk"
+	}).onDelete("restrict"),
 	foreignKey({
-			columns: [table.planId],
-			foreignColumns: [paymentPlans.id],
-			name: "school_subscriptions_plan_id_payment_plans_id_fk"
-		}).onDelete("restrict"),
+		columns: [table.planId],
+		foreignColumns: [paymentPlans.id],
+		name: "school_subscriptions_plan_id_payment_plans_id_fk"
+	}).onDelete("restrict"),
 ]);
 
 export const userAchievements = pgTable("user_achievements", {
@@ -646,15 +646,15 @@ export const userAchievements = pgTable("user_achievements", {
 }, (table) => [
 	uniqueIndex("uq_user_achievement").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.achievementId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "user_achievements_user_id_users_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "user_achievements_user_id_users_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.achievementId],
-			foreignColumns: [achievements.id],
-			name: "user_achievements_achievement_id_achievements_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.achievementId],
+		foreignColumns: [achievements.id],
+		name: "user_achievements_achievement_id_achievements_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const userDailyChallenges = pgTable("user_daily_challenges", {
@@ -667,15 +667,15 @@ export const userDailyChallenges = pgTable("user_daily_challenges", {
 }, (table) => [
 	uniqueIndex("uq_user_daily_challenge").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.challengeId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "user_daily_challenges_user_id_users_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "user_daily_challenges_user_id_users_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.challengeId],
-			foreignColumns: [dailyChallenges.id],
-			name: "user_daily_challenges_challenge_id_daily_challenges_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.challengeId],
+		foreignColumns: [dailyChallenges.id],
+		name: "user_daily_challenges_challenge_id_daily_challenges_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const certificates = pgTable("certificates", {
@@ -684,17 +684,17 @@ export const certificates = pgTable("certificates", {
 	title: text().notNull(),
 	description: text(),
 	templateUrl: text("template_url"),
-	minProgressPct: numeric("min_progress_pct", { precision: 5, scale:  2 }).default('100.00').notNull(),
-	minQuizScore: numeric("min_quiz_score", { precision: 5, scale:  2 }),
+	minProgressPct: numeric("min_progress_pct", { precision: 5, scale: 2 }).default('100.00').notNull(),
+	minQuizScore: numeric("min_quiz_score", { precision: 5, scale: 2 }),
 	isActive: boolean("is_active").default(true).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
-			columns: [table.courseId],
-			foreignColumns: [courses.id],
-			name: "certificates_course_id_courses_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.courseId],
+		foreignColumns: [courses.id],
+		name: "certificates_course_id_courses_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const schools = pgTable("schools", {
@@ -752,10 +752,10 @@ export const users = pgTable("users", {
 	index("idx_users_school").using("btree", table.schoolId.asc().nullsLast().op("uuid_ops")),
 	uniqueIndex("uq_users_email_active").using("btree", table.email.asc().nullsLast().op("text_ops")),
 	foreignKey({
-			columns: [table.schoolId],
-			foreignColumns: [schools.id],
-			name: "users_school_id_schools_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.schoolId],
+		foreignColumns: [schools.id],
+		name: "users_school_id_schools_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const schoolMetricsDaily = pgTable("school_metrics_daily", {
@@ -765,18 +765,18 @@ export const schoolMetricsDaily = pgTable("school_metrics_daily", {
 	activeStudents: integer("active_students").default(0).notNull(),
 	totalLessonsCompleted: integer("total_lessons_completed").default(0).notNull(),
 	totalQuizzesTaken: integer("total_quizzes_taken").default(0).notNull(),
-	avgQuizScore: numeric("avg_quiz_score", { precision: 5, scale:  2 }),
+	avgQuizScore: numeric("avg_quiz_score", { precision: 5, scale: 2 }),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	totalXpAwarded: bigint("total_xp_awarded", { mode: "number" }).default(0).notNull(),
-	avgSessionMinutes: numeric("avg_session_minutes", { precision: 8, scale:  2 }),
+	avgSessionMinutes: numeric("avg_session_minutes", { precision: 8, scale: 2 }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	uniqueIndex("uq_school_metric_date").using("btree", table.schoolId.asc().nullsLast().op("date_ops"), table.metricDate.asc().nullsLast().op("date_ops")),
 	foreignKey({
-			columns: [table.schoolId],
-			foreignColumns: [schools.id],
-			name: "school_metrics_daily_school_id_schools_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.schoolId],
+		foreignColumns: [schools.id],
+		name: "school_metrics_daily_school_id_schools_id_fk"
+	}).onDelete("cascade"),
 ]);
 
 export const studentAcademicRecords = pgTable("student_academic_records", {
@@ -796,30 +796,30 @@ export const studentAcademicRecords = pgTable("student_academic_records", {
 	index("idx_sar_school_session").using("btree", table.schoolId.asc().nullsLast().op("uuid_ops"), table.sessionId.asc().nullsLast().op("uuid_ops")),
 	uniqueIndex("uq_student_session").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.sessionId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.classId],
-			foreignColumns: [classes.id],
-			name: "student_academic_records_class_id_classes_id_fk"
-		}).onDelete("restrict"),
+		columns: [table.classId],
+		foreignColumns: [classes.id],
+		name: "student_academic_records_class_id_classes_id_fk"
+	}).onDelete("restrict"),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "student_academic_records_user_id_users_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "student_academic_records_user_id_users_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.schoolId],
-			foreignColumns: [schools.id],
-			name: "student_academic_records_school_id_schools_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.schoolId],
+		foreignColumns: [schools.id],
+		name: "student_academic_records_school_id_schools_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.sessionId],
-			foreignColumns: [academicSessions.id],
-			name: "student_academic_records_session_id_academic_sessions_id_fk"
-		}).onDelete("restrict"),
+		columns: [table.sessionId],
+		foreignColumns: [academicSessions.id],
+		name: "student_academic_records_session_id_academic_sessions_id_fk"
+	}).onDelete("restrict"),
 	foreignKey({
-			columns: [table.promotedBy],
-			foreignColumns: [users.id],
-			name: "student_academic_records_promoted_by_users_id_fk"
-		}).onDelete("set null"),
+		columns: [table.promotedBy],
+		foreignColumns: [users.id],
+		name: "student_academic_records_promoted_by_users_id_fk"
+	}).onDelete("set null"),
 ]);
 
 export const userCertificates = pgTable("user_certificates", {
@@ -834,20 +834,20 @@ export const userCertificates = pgTable("user_certificates", {
 }, (table) => [
 	uniqueIndex("uq_user_cert_enrollment").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.certificateId.asc().nullsLast().op("uuid_ops"), table.enrollmentId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "user_certificates_user_id_users_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "user_certificates_user_id_users_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.certificateId],
-			foreignColumns: [certificates.id],
-			name: "user_certificates_certificate_id_certificates_id_fk"
-		}).onDelete("restrict"),
+		columns: [table.certificateId],
+		foreignColumns: [certificates.id],
+		name: "user_certificates_certificate_id_certificates_id_fk"
+	}).onDelete("restrict"),
 	foreignKey({
-			columns: [table.enrollmentId],
-			foreignColumns: [enrollments.id],
-			name: "user_certificates_enrollment_id_enrollments_id_fk"
-		}).onDelete("restrict"),
+		columns: [table.enrollmentId],
+		foreignColumns: [enrollments.id],
+		name: "user_certificates_enrollment_id_enrollments_id_fk"
+	}).onDelete("restrict"),
 	unique("user_certificates_verification_code_unique").on(table.verificationCode),
 ]);
 
@@ -866,13 +866,13 @@ export const xpEvents = pgTable("xp_events", {
 	index("idx_xp_school").using("btree", table.schoolId.asc().nullsLast().op("uuid_ops")),
 	index("idx_xp_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "xp_events_user_id_users_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "xp_events_user_id_users_id_fk"
+	}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.schoolId],
-			foreignColumns: [schools.id],
-			name: "xp_events_school_id_schools_id_fk"
-		}).onDelete("cascade"),
+		columns: [table.schoolId],
+		foreignColumns: [schools.id],
+		name: "xp_events_school_id_schools_id_fk"
+	}).onDelete("cascade"),
 ]);

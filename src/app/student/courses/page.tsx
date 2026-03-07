@@ -9,6 +9,7 @@ import { getStudentDashboardData } from '@/modules/student/actions';
 import { CourseCard } from '@/modules/student/components/course-card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
 
 export default function MyCoursesPage() {
     const [data, setData] = useState<any>(null);
@@ -107,10 +108,11 @@ export default function MyCoursesPage() {
                             <Book size={40} />
                         </div>
                         <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 leading-none">No courses found</h2>
-                        <p className="text-sm text-slate-400 font-bold uppercase tracking-widest max-w-sm mb-10">Start your learning journey by exploring new courses.</p>
-                        <Button className="h-14 px-10 rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest text-[10px] hover:bg-indigo-700 shadow-xl shadow-indigo-200">
-                            Explore Courses
-                        </Button>
+                        <Link href="/student">
+                            <Button className="h-14 px-10 rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest text-[10px] hover:bg-indigo-700 shadow-xl shadow-indigo-200">
+                                Back to Dashboard
+                            </Button>
+                        </Link>
                     </div>
                 )}
             </main>

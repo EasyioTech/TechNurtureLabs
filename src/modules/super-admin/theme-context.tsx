@@ -23,11 +23,12 @@ interface AccentPalette {
     swatchLight: string;
     /** CSS custom property values (raw hex) */
     hoverText: string;
+    border: string;
 }
 
 export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
     lime: {
-        bg: 'bg-lime-400', bgHover: 'hover:bg-lime-300', text: 'text-lime-400',
+        bg: 'bg-lime-400', bgHover: 'hover:bg-lime-300', text: 'text-lime-400', border: 'border-lime-400',
         softDark: 'bg-lime-400/10 text-lime-400 border-lime-400/20',
         softLight: 'bg-lime-100/60 text-lime-800 border-lime-200',
         badgeDark: 'text-lime-400 bg-lime-400/10', badgeLight: 'text-lime-700 bg-lime-50',
@@ -35,7 +36,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
         swatchDark: '#a3e635', swatchLight: '#65a30d', hoverText: 'hover:text-lime-400',
     },
     violet: {
-        bg: 'bg-violet-400', bgHover: 'hover:bg-violet-300', text: 'text-violet-400',
+        bg: 'bg-violet-400', bgHover: 'hover:bg-violet-300', text: 'text-violet-400', border: 'border-violet-400',
         softDark: 'bg-violet-400/10 text-violet-400 border-violet-400/20',
         softLight: 'bg-violet-100/60 text-violet-800 border-violet-200',
         badgeDark: 'text-violet-400 bg-violet-400/10', badgeLight: 'text-violet-700 bg-violet-50',
@@ -43,7 +44,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
         swatchDark: '#a78bfa', swatchLight: '#7c3aed', hoverText: 'hover:text-violet-400',
     },
     ocean: {
-        bg: 'bg-cyan-400', bgHover: 'hover:bg-cyan-300', text: 'text-cyan-400',
+        bg: 'bg-cyan-400', bgHover: 'hover:bg-cyan-300', text: 'text-cyan-400', border: 'border-cyan-400',
         softDark: 'bg-cyan-400/10 text-cyan-400 border-cyan-400/20',
         softLight: 'bg-cyan-100/60 text-cyan-800 border-cyan-200',
         badgeDark: 'text-cyan-400 bg-cyan-400/10', badgeLight: 'text-cyan-700 bg-cyan-50',
@@ -51,7 +52,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
         swatchDark: '#22d3ee', swatchLight: '#0891b2', hoverText: 'hover:text-cyan-400',
     },
     rose: {
-        bg: 'bg-rose-400', bgHover: 'hover:bg-rose-300', text: 'text-rose-400',
+        bg: 'bg-rose-400', bgHover: 'hover:bg-rose-300', text: 'text-rose-400', border: 'border-rose-400',
         softDark: 'bg-rose-400/10 text-rose-400 border-rose-400/20',
         softLight: 'bg-rose-100/60 text-rose-800 border-rose-200',
         badgeDark: 'text-rose-400 bg-rose-400/10', badgeLight: 'text-rose-700 bg-rose-50',
@@ -59,7 +60,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
         swatchDark: '#fb7185', swatchLight: '#e11d48', hoverText: 'hover:text-rose-400',
     },
     amber: {
-        bg: 'bg-amber-400', bgHover: 'hover:bg-amber-300', text: 'text-amber-400',
+        bg: 'bg-amber-400', bgHover: 'hover:bg-amber-300', text: 'text-amber-400', border: 'border-amber-400',
         softDark: 'bg-amber-400/10 text-amber-400 border-amber-400/20',
         softLight: 'bg-amber-100/60 text-amber-800 border-amber-200',
         badgeDark: 'text-amber-400 bg-amber-400/10', badgeLight: 'text-amber-700 bg-amber-50',
@@ -67,7 +68,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
         swatchDark: '#fbbf24', swatchLight: '#d97706', hoverText: 'hover:text-amber-400',
     },
     emerald: {
-        bg: 'bg-emerald-400', bgHover: 'hover:bg-emerald-300', text: 'text-emerald-400',
+        bg: 'bg-emerald-400', bgHover: 'hover:bg-emerald-300', text: 'text-emerald-400', border: 'border-emerald-400',
         softDark: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20',
         softLight: 'bg-emerald-100/60 text-emerald-800 border-emerald-200',
         badgeDark: 'text-emerald-400 bg-emerald-400/10', badgeLight: 'text-emerald-700 bg-emerald-50',
@@ -75,7 +76,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, AccentPalette> = {
         swatchDark: '#34d399', swatchLight: '#059669', hoverText: 'hover:text-emerald-400',
     },
     indigo: {
-        bg: 'bg-indigo-400', bgHover: 'hover:bg-indigo-300', text: 'text-indigo-400',
+        bg: 'bg-indigo-400', bgHover: 'hover:bg-indigo-300', text: 'text-indigo-400', border: 'border-indigo-400',
         softDark: 'bg-indigo-400/10 text-indigo-400 border-indigo-400/20',
         softLight: 'bg-indigo-100/60 text-indigo-800 border-indigo-200',
         badgeDark: 'text-indigo-400 bg-indigo-400/10', badgeLight: 'text-indigo-700 bg-indigo-50',

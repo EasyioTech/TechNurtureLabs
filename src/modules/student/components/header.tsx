@@ -273,7 +273,6 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                             {/* Nav */}
                             <nav className="flex-1 overflow-y-auto py-3 px-3">
                                 <NavItem icon={LayoutDashboard} label="Dashboard" href="/student" active={pathname === '/student'} close={() => setMobileOpen(false)} />
-                                <NavItem icon={Compass} label="Explore Courses" href="/student/explore" close={() => setMobileOpen(false)} />
                                 <NavItem icon={User} label="My Profile" href="/student/profile" active={pathname === '/student/profile'} close={() => setMobileOpen(false)} />
                                 <NavItem icon={Crown} label="Achievements" href="/student/profile" close={() => setMobileOpen(false)} />
                                 <NavItem icon={Settings} label="Settings" href="/student/profile" close={() => setMobileOpen(false)} />
