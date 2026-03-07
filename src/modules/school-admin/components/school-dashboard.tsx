@@ -9,13 +9,14 @@ import { SchoolOverviewTab } from './tabs/school-overview-tab';
 import { SchoolStudentsTab } from './tabs/school-students-tab';
 import { SchoolCoursesTab } from './tabs/school-courses-tab';
 import { SchoolReportsTab } from './tabs/school-reports-tab';
+import { SchoolSettingsTab } from './tabs/school-settings-tab';
 import { SchoolProfileModal } from './school-profile-modal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
     LayoutDashboard, Users, BookOpen, BarChart2,
     Sun, Moon, LogOut, Building2, RefreshCw,
-    MapPin, Phone, Mail, Menu, X, GraduationCap, Sparkles
+    MapPin, Phone, Mail, Menu, X, GraduationCap, Sparkles, Settings
 } from 'lucide-react';
 
 const NAV = [
@@ -23,6 +24,7 @@ const NAV = [
     { id: 'students', label: 'Students', icon: Users },
     { id: 'courses', label: 'Courses', icon: BookOpen },
     { id: 'reports', label: 'Reports', icon: BarChart2 },
+    { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 type SchoolProfile = {
@@ -288,6 +290,7 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                         )}
                         {activePage === 'courses' && <SchoolCoursesTab courseMetrics={data.courseMetrics} />}
                         {activePage === 'reports' && <SchoolReportsTab courseMetrics={data.courseMetrics} />}
+                        {activePage === 'settings' && <SchoolSettingsTab stats={data.stats} schoolId={schoolId} />}
                     </motion.div>
                 </AnimatePresence>
             </main>

@@ -413,6 +413,19 @@ export async function getSchoolCourseAnalytics(schoolId: string) {
     const lessonsData = await db.query.lessons.findMany({ where: inArray(lessons.course_id, courseIds) });
     const cpData = await db.select().from(courseProgress).where(inArray(courseProgress.course_id, courseIds));
 
+    // Get actual mapped class data for tags
+    const courseClassMaps = await db.query.courseClassMapping.findMany({
+        where: inArray(courseClassMapping.course_id, courseIds),
+        with: { academicClass: true } as any
+    });
+
+    const ccmCache = new Map<string, string[]>();
+    courseClassMaps.forEach((ccm: any) => {
+        if (!ccm.academicClass) return;
+        const current = ccmCache.get(ccm.course_id) || [];
+        ccmCache.set(ccm.course_id, [...current, ccm.academicClass.name]);
+    });
+
     // Only include school's students
     const students = await db.query.users.findMany({
         where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student'))
@@ -439,6 +452,7 @@ export async function getSchoolCourseAnalytics(schoolId: string) {
             completion_rate: cpEntries.length > 0 ? Math.round((completed / cpEntries.length) * 100) : 0,
             avg_xp: cpEntries.length > 0 ? Math.round(totalXp / cpEntries.length) : 0,
             total_time_mins: Math.round(totalSecs / 60),
+            mapped_classes: course.all_classes ? ['All Classes'] : (ccmCache.get(courseId) || []),
         };
     });
 }
@@ -489,12 +503,27 @@ export async function updateSchoolBranding(schoolId: string, primaryColor: strin
     await db.update(schools).set({ website: primaryColor }).where(eq(schools.id, schoolId));
 }
 
-export async function promoteStudentsAction(schoolId: string) {
+export async function promoteStudentsAction(schoolId: string, newSessionName: string = 'Next Academic Year') {
     await verifySchoolAdminContext(schoolId);
+
+    // Find current session
     const currentSession = await db.query.academicSessions.findFirst({
         where: and(eq(academicSessions.school_id, schoolId), eq(academicSessions.is_current, true))
     });
-    if (!currentSession) return;
+    if (!currentSession) throw new Error('No active academic session found.');
+
+    // Find all classes & map levels
+    const allClasses = await db.query.classes.findMany();
+    const classLevelMap = new Map(allClasses.map(c => [c.id, c.level]));
+    const levelClassMap = new Map(allClasses.map(c => [c.level, c.id]));
+
+    // Find classes assigned to this school
+    const schoolClassesMap = await db.query.schoolClassMapping.findMany({
+        where: eq(schoolClassMapping.school_id, schoolId)
+    });
+    const schoolClassIds = new Set(schoolClassesMap.map(c => c.class_id));
+
+    // Get current records
     const records = await db.query.studentAcademicRecords.findMany({
         where: and(
             eq(studentAcademicRecords.school_id, schoolId),
@@ -502,9 +531,62 @@ export async function promoteStudentsAction(schoolId: string) {
             eq(studentAcademicRecords.is_promoted, false)
         )
     });
+
+    if (records.length === 0) throw new Error('No eligible students for promotion.');
+
+    // Complete the current session
+    await db.update(academicSessions)
+        .set({ is_current: false })
+        .where(eq(academicSessions.id, currentSession.id));
+
+    // Create the next session
+    const newSessionStartDate = new Date();
+    // E.g. session runs for one year minus one day from today
+    const newSessionEndDate = new Date(newSessionStartDate);
+    newSessionEndDate.setFullYear(newSessionEndDate.getFullYear() + 1);
+
+    const [newSession] = await db.insert(academicSessions).values({
+        school_id: schoolId,
+        name: newSessionName,
+        start_date: newSessionStartDate.toISOString(),
+        end_date: newSessionEndDate.toISOString(),
+        is_current: true,
+    }).returning();
+
+    // Prepare new records for next class
+    const newRecords = [];
     for (const record of records) {
-        await db.update(studentAcademicRecords).set({ is_promoted: true, promoted_at: new Date() }).where(eq(studentAcademicRecords.id, record.id));
+        // Mark as promoted in previous session
+        await db.update(studentAcademicRecords)
+            .set({ is_promoted: true, promoted_at: new Date() })
+            .where(eq(studentAcademicRecords.id, record.id));
+
+        const currentLevel = classLevelMap.get(record.class_id);
+        if (currentLevel !== undefined) {
+            const nextLevel = currentLevel + 1;
+            const nextClassId = levelClassMap.get(nextLevel);
+
+            if (nextClassId && schoolClassIds.has(nextClassId)) {
+                // Next class exists and belongs to school -> Promote!
+                newRecords.push({
+                    user_id: record.user_id,
+                    school_id: schoolId,
+                    session_id: newSession.id,
+                    class_id: nextClassId,
+                    is_promoted: false,
+                });
+            } else {
+                // Next class doesn't exist (e.g. Graduated). We leave them without a record, effectively finished.
+                // Or you could deactivate them depending on school policy
+            }
+        }
     }
+
+    if (newRecords.length > 0) {
+        await db.insert(studentAcademicRecords).values(newRecords);
+    }
+
+    return { success: true, message: `Successfully ended session and processed ${records.length} students into the new '${newSessionName}' session.` };
 }
 
 export async function fetchSchoolAdminCourseData(schoolId: string, courseId: string) {

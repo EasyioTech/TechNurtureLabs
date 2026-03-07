@@ -38,6 +38,7 @@ export type SchoolCourseMetric = {
     completion_rate: number;
     avg_xp: number;
     total_time_mins: number;
+    mapped_classes: string[];
 };
 
 export type SchoolLeaderboardEntry = {
