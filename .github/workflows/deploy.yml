@@ -1,0 +1,45 @@
+name: Production Deployment
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            cd ~/TechNurtureLabs
+            git pull origin main
+            
+            # Rebuild and restart the cluster
+            docker-compose down
+            docker-compose up -d --build
+            
+            # Wait for the app to be ready
+            echo "Waiting for application to start..."
+            sleep 15
+            
+            # Verification step: Trigger the seed/init API
+            # This ensures the DB is always in the correct state after a pull
+            curl -s http://localhost:3000/api/admin/seed
+            
+            echo "Deployment successful!"
+
+      - name: Success Notification
+        if: success()
+        run: echo "🚀 Deployment to Production (187.124.98.192:3000) was successful!"
+
+      - name: Failure Notification
+        if: failure()
+        run: echo "❌ Deployment failed. Please check the logs in GitHub Actions."
