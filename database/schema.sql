@@ -612,6 +612,15 @@ CREATE TABLE password_reset_tokens (
     CONSTRAINT chk_prt_expiry CHECK (expires_at > created_at)
 );
 
+CREATE TABLE platform_settings (
+    id              TEXT PRIMARY KEY,
+    logo_url        TEXT,
+    platform_name   TEXT NOT NULL DEFAULT 'TechNurture',
+    hero_video_url  TEXT NOT NULL DEFAULT '',
+    hero_video_type TEXT NOT NULL DEFAULT 'youtube',
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE email_verification_tokens (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -871,6 +880,11 @@ INSERT INTO classes (id, name, level) VALUES
     ('f0000000-0000-0000-0000-000000000011', 'Class 11', 11),
     ('f0000000-0000-0000-0000-000000000012', 'Class 12', 12)
 ON CONFLICT (level) DO NOTHING;
+
+-- Default platform settings
+INSERT INTO platform_settings (id, platform_name, hero_video_type, hero_video_url)
+VALUES ('global', 'TechNurture', 'youtube', '')
+ON CONFLICT (id) DO NOTHING;
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO technurture_app;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO technurture_app;
