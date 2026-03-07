@@ -55,7 +55,7 @@ export function CourseDialog({
             ? selectedClassIds.filter(id => id !== classId)
             : [...selectedClassIds, classId];
         setSelectedClassIds(newIds);
-        setEditingCourse({ ...editingCourse, classIds: newIds } as any);
+        setEditingCourse({ ...editingCourse, classIds: newIds, all_classes: newIds.length === classes.length } as any);
     };
 
     return (
@@ -247,7 +247,7 @@ export function CourseDialog({
                                         const allIds = classes.map(g => g.id);
                                         const newIds = selectedClassIds.length === allIds.length ? [] : allIds;
                                         setSelectedClassIds(newIds);
-                                        setEditingCourse({ ...editingCourse, classIds: newIds } as any);
+                                        setEditingCourse({ ...editingCourse, classIds: newIds, all_classes: newIds.length === allIds.length } as any);
                                     }}
                                     className={`h-7 px-3 rounded-full text-[10px] font-black border-2 ${t.btnOutline(isDark)}`}
                                 >

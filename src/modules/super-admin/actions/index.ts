@@ -155,6 +155,7 @@ export async function saveCourseAdmin(courseData: any) {
             description: courseData.description || '',
             thumbnail_url: courseData.thumbnail || courseData.thumbnail_url || '',
             is_published: courseData.published ?? courseData.is_published ?? false,
+            all_classes: courseData.all_classes ?? false,
         }).where(eq(courses.id, courseId));
     } else {
         const session = await verifySession();
@@ -167,6 +168,7 @@ export async function saveCourseAdmin(courseData: any) {
             description: courseData.description || '',
             thumbnail_url: courseData.thumbnail || courseData.thumbnail_url || '',
             is_published: courseData.published ?? courseData.is_published ?? false,
+            all_classes: courseData.all_classes ?? false,
             created_by: createdBy,
             total_lessons: 0,
             total_xp: 0,

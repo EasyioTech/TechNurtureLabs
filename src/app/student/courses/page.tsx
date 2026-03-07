@@ -25,9 +25,20 @@ export default function MyCoursesPage() {
         load();
     }, []);
 
-    const courses = (data?.courses || []).filter((c: any) =>
-        c.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const courses = (data?.courses || []).filter((c: any) => {
+        const matchesSearch = c.title.toLowerCase().includes(searchQuery.toLowerCase());
+        const completed = c.completedLessons || 0;
+        const total = c.totalLessons || 1;
+
+        let matchesFilter = true;
+        if (filter === 'active') {
+            matchesFilter = completed > 0 && completed < total;
+        } else if (filter === 'completed') {
+            matchesFilter = completed === total;
+        }
+
+        return matchesSearch && matchesFilter;
+    });
 
     if (loading) {
         return (
@@ -75,9 +86,9 @@ export default function MyCoursesPage() {
                     </div>
 
                     <div className="flex items-center gap-8 mt-12 pb-2 overflow-x-auto no-scrollbar">
-                        <FilterTab active={filter === 'all'} label="All Courses" count={courses.length} onClick={() => setFilter('all')} />
-                        <FilterTab active={filter === 'active'} label="In Progress" count={courses.filter((c: any) => (c.completed_lessons || 0) > 0 && (c.completed_lessons || 0) < (c.total_lessons || 1)).length} onClick={() => setFilter('active')} />
-                        <FilterTab active={filter === 'completed'} label="Completed" count={courses.filter((c: any) => (c.completed_lessons || 0) === (c.total_lessons || 1)).length} onClick={() => setFilter('completed')} />
+                        <FilterTab active={filter === 'all'} label="All Courses" count={(data?.courses || []).length} onClick={() => setFilter('all')} />
+                        <FilterTab active={filter === 'active'} label="In Progress" count={(data?.courses || []).filter((c: any) => (c.completedLessons || 0) > 0 && (c.completedLessons || 0) < (c.totalLessons || 1)).length} onClick={() => setFilter('active')} />
+                        <FilterTab active={filter === 'completed'} label="Completed" count={(data?.courses || []).filter((c: any) => (c.completedLessons || 0) === (c.totalLessons || 1)).length} onClick={() => setFilter('completed')} />
                     </div>
                 </div>
             </div>
