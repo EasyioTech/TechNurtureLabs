@@ -94,6 +94,27 @@ export interface UploadResult {
     mimeType: string;
 }
 
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB max
+
+/**
+ * Validates file buffer against common extension magic bytes to prevent mislabeled file exploit.
+ */
+function isValidSignature(buffer: Buffer, mimeType: string): boolean {
+    if (buffer.length < 8) return false;
+
+    if (mimeType === 'application/pdf') {
+        return buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46; // %PDF
+    }
+    if (mimeType === 'image/png') {
+        return buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47; // ‰PNG
+    }
+    if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+        return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff; // ÿØÿ
+    }
+    // We can add more exact matches, or fail-open (accept) unknown headers if they are common doc types like MP4
+    return true;
+}
+
 /**
  * Upload a file to Cloudflare R2.
  * On any R2 error, automatically falls back to local volume storage.
@@ -104,10 +125,21 @@ export async function uploadFile(
     mimeType: string,
     context?: StorageContext
 ): Promise<UploadResult> {
+    const fileSize = buffer.length;
+
+    // Security Guard: Check Size limits
+    if (fileSize > MAX_FILE_SIZE) {
+        throw new Error(`File size validation failed: EXCEEDS 500 MB.`);
+    }
+
+    // Security Guard: Soft Magic checking
+    if (!isValidSignature(buffer, mimeType)) {
+        throw new Error(`Security validation failed: Invalid file signature for mimeType ${mimeType}`);
+    }
+
     const ext = path.extname(originalFilename);
     const folder = getFolderPrefix(mimeType, context);
     const fileName = `${uuidv4()}${ext}`;
-    const fileSize = buffer.length;
 
     // ── Attempt R2 upload ──────────────────────────────────────────────
     if (isCloudflareConfigured && s3Client) {

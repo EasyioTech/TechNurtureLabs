@@ -144,15 +144,10 @@ export default function StudentRegistrationPage() {
           <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-indigo-50/40 to-transparent" />
 
           {/* Animated decorative elements */}
-          <motion.div
-            animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.3, 0.5, 0.3],
-              rotate: [0, 5, 0]
-            }}
-            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-20 -left-20 w-80 h-80 bg-indigo-200/20 rounded-full blur-[100px]"
-          />
+          {/* Animated decorative illustrations */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-[0.05] pointer-events-none">
+            <img src="/illustrations/interactive-courses.svg" className="w-full h-full object-contain rotate-12" alt="" />
+          </div>
         </div>
 
         <div className="relative z-10 w-full h-full flex flex-col justify-between p-12">
@@ -213,9 +208,9 @@ export default function StudentRegistrationPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 + (i * 0.1) }}
-                  className="flex items-start gap-4 p-4 rounded-2xl bg-white/50 border border-slate-100 hover:border-indigo-100 hover:bg-white transition-all group"
+                  className="flex items-start gap-4 p-4 rounded-2xl bg-white/40 hover:bg-white/60 transition-all group"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0 border border-slate-50">
+                  <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
                     {item.icon}
                   </div>
                   <div>
@@ -227,18 +222,23 @@ export default function StudentRegistrationPage() {
             </div>
           </motion.div>
 
-          <footer className="flex items-center justify-between pt-10 border-t border-slate-100">
-            <div className="flex -space-x-3">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="w-9 h-9 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center overflow-hidden">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=student${i}`} alt="Avatar" className="w-full h-full object-cover" />
+          <footer className="flex flex-col gap-6 pt-10 border-t border-slate-100">
+            <div className="flex items-center justify-between">
+              <div className="flex -space-x-3">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="w-9 h-9 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center overflow-hidden">
+                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=student${i}`} alt="Avatar" className="w-full h-full object-cover" />
+                  </div>
+                ))}
+                <div className="w-9 h-9 rounded-full border-2 border-white bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
+                  12k+
                 </div>
-              ))}
-              <div className="w-9 h-9 rounded-full border-2 border-white bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
-                12k+
               </div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Trusted by Schools globally</p>
             </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Trusted by Schools globally</p>
+            <div className="flex justify-center">
+              <img src="/illustrations/learning.svg" alt="Success Illustration" className="w-48 h-auto opacity-40 mix-blend-multiply" />
+            </div>
           </footer>
         </div>
       </div>

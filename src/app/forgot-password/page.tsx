@@ -33,12 +33,12 @@ export default function ForgotPasswordPage() {
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.8 }}
-                            className="relative p-12 rounded-[3.5rem] bg-white border border-slate-200 shadow-2xl overflow-hidden aspect-square flex items-center justify-center"
+                            className="relative flex items-center justify-center"
                         >
                             <img
                                 src={isSent ? "/assets/email.svg" : "/assets/forgot-password.svg"}
                                 alt="Account Recovery"
-                                className="w-full h-auto object-contain mix-blend-multiply opacity-90 transition-all duration-700 hover:scale-105"
+                                className="w-full h-auto object-contain mix-blend-multiply opacity-90 transition-all duration-700 hover:scale-110"
                             />
                         </motion.div>
                     </div>

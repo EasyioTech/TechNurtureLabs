@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
             order_id: razorpay_order_id,
         });
     } catch (error: any) {
-        console.error('Verify payment error:', error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        // Log critical payment failures to a proper aggregator or general structure without exposing stack traces blindly
+        return NextResponse.json({ success: false, error: 'Payment verification failed' }, { status: 500 });
     }
 }

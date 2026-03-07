@@ -83,7 +83,7 @@ export default function SchoolLoginPage() {
           >
             <div className="mb-4">
               <img
-                src="/assets/login-school.svg"
+                src="/illustrations/business-charts.svg"
                 alt="Institutional Data Security"
                 className="w-full h-auto max-h-[300px] object-contain mix-blend-multiply opacity-90 transition-transform hover:scale-105"
               />
@@ -103,7 +103,7 @@ export default function SchoolLoginPage() {
                 { icon: <BarChart3 size={16} />, label: "Live Stats" },
                 { icon: <Sparkles size={16} />, label: "AI Assisted" }
               ].map((item, i) => (
-                <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-100">
+                <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-slate-50/50">
                   <div className="text-slate-900">{item.icon}</div>
                   <span className="text-[10px] font-bold text-slate-700 tracking-tight uppercase">{item.label}</span>
                 </div>
@@ -137,7 +137,7 @@ export default function SchoolLoginPage() {
             <span className="text-xl font-bold tracking-tight text-slate-900">Schools</span>
           </div>
 
-          <div className="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-white border border-slate-200 shadow-sm mb-4">
+          <div className="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-slate-50/50 shadow-sm mb-4">
             <Building2 size={12} className="text-blue-600" />
             <span className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Administrator</span>
           </div>

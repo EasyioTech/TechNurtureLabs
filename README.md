@@ -1,40 +1,97 @@
-# EduQuest: Immersive Gamified Learning Platform
+# TechNurture: Deep Audit & Security Intelligence Report
 
-> **Learning that feels like play.**
-
-EduQuest is a next-generation Learning Management System (LMS) designed to transform traditional education into an engaging, gamified experience. By blending academic rigor with the mechanics of modern gaming, EduQuest ensures that students aren't just consuming content—they are embarking on a journey of discovery.
-
-## 🌟 Mission
-
-Our mission is simple: to make learning addictive. We believe that education should be as engaging as a video game, where progress is celebrated, challenges are rewarding, and every student feels motivated to reach the next level. EduQuest bridges the gap between classroom instruction and interactive digital experiences.
-
-## 🚀 Key Features
-
-### For Students: The Hero's Journey
-- **Gamified Progression**: Earn XP (Experience Points), maintain daily streaks, and unlock achievements for completing lessons and quizzes.
-- **Interactive Content**: Dive into immersive video lessons, hands-on activities, and 3D learning modules that bring subjects to life.
-- **Social Learning**: Collaborate with peers involving group projects and discussions in a safe, moderated environment.
-- **Personalized Dashboard**: A futuristic, student-centric interface that tracks progress, upcoming quests, and earned badges.
-
-### For Schools & Educators: The Command Center
-- **Real-Time Analytics**: Gain deep insights into student performance, identifying learning gaps and high achievers instantly.
-- **Seamless Onboarding**: A streamlined process to register schools and onboard thousands of students efficiently.
-- **White-Labeling**: Custom branding options allow schools to make the platform their own.
-- **Automated Tracking**: Effortless monitoring of attendance, assignment completions, and overall class engagement.
-
-## 🛠 How It Works
-
-1.  **Register Your School**: Schools sign up with verified credentials to create their dedicated digital campus.
-2.  **Onboard Students**: Students join using unique school codes, instantly accessing their personalized learning paths.
-3.  **Track & Grow**: Students earn rewards for learning, while teachers monitor growth through detailed performance dashboards.
-
-## 🎨 Design Philosophy
-
-EduQuest is built with a **"Student-First" aesthetic**. We veered away from the sterile, corporate look of traditional LMS platforms. Instead, we embraced:
-- **Immersive Dark Mode**: easy on the eyes for long study sessions.
-- **Vibrant Gradients & Motion**: Creating a dynamic interface that feels alive and responsive.
-- **Micro-Interactions**: Every click and achievement is celebrated with satisfying visual feedback.
+> **Learning that feels like play. Built like a fortress.**
 
 ---
 
-*EduQuest is not just a tool; it's the future of how we learn, grow, and play.*
+## 🏗️ Project Architecture & File Hierarchy
+
+```text
+TechNurture/
+├── src/                    # App Router + Modules
+│   ├── app/                # UI Routes (Admin, School, Student)
+│   ├── modules/            # Isolated Logic (Super-Admin, School-Admin, Student, Auth)
+│   ├── db/                 # Drizzle Schema
+│   ├── lib/                # Drivers (JWT Auth, Redis, Storage)
+│   └── middleware.ts       # Subdomain Routing
+├── database/               # SQL Dumps
+├── local_storage/          # Fallback Disk Storage
+└── README.md               # Technical Source of Truth
+```
+
+---
+
+## 🛰️ System Flow & Connectivity
+
+```mermaid
+graph TD
+    subgraph "Clients"
+        U1[Main User]
+        U2[School Admin]
+        U3[Global Platform Admin]
+    end
+
+    subgraph "Next.js Edge Runtime"
+        MW[Middleware: src/middleware.ts]
+        MW -->|Subdomain Mapping| SAP[Super Admin Portal]
+        MW -->|Institutional Rewrite| CAP[School Portal]
+        MW -->|Student Route| STU[Student Journey]
+    end
+
+    subgraph "Server Action Layer (src/modules)"
+        SAP --> SAA[Super Admin Actions]
+        CAP --> SCA[School Admin Actions]
+        STU --> STA[Student Actions]
+        
+        SAA -->|Clone/Create| DB[(PostgreSQL)]
+        SCA -->|Onboard Students| DB
+        STA -->|Earn XP| DB
+    end
+
+    subgraph "Infrastructure"
+        SAA & SCA & STA -->|Auth Check| JWT[src/lib/auth: JWT + Redis]
+        SAA & SCA & STA -->|File Handling| STR[src/lib/storage: R2 Proxy]
+        
+        JWT -.-> REDIS[(Redis Session Store)]
+        STR -.-> R2BUCKET[(Cloudflare R2 Bucket)]
+    end
+```
+
+---
+
+## 🛡️ Real-Code Security Review (Self-Correction)
+
+Based on a 30-point security checklist, we have audited the current **live code**. Here are the critical gaps identified:
+
+### 🔴 High Severity (Immediate Fix Required)
+| Task | Code Reality | Risk | Fix |
+| :--- | :--- | :--- | :--- |
+| **Server-Side Permission Checks** | `getSchoolProfile(schoolId)` in `school-admin/actions.ts` accepts raw IDs without verifying session ownership. | **Horizontal Privilege Escalation**: Any user can view/edit any school by guessing a UUID. | Validate `session.school_id === requestedId` in every action. |
+| **Established Auth Provider** | Custom implementation in `src/lib/auth.ts` (jose + redis). | **DIY Auth Risk**: Higher chance of implementation bugs compared to Clerk/Supabase. | Migrate to a managed provider (Clerk/Supabase) for production. |
+| **Rate Limiting** | No evidence of rate-limiters in `middleware.ts` or API routes. | **Brute-Force & DoS**: Login and Registration routes can be hammered indefinitely. | Implement `upstash/ratelimit` in the middleware. |
+| **Secret Exposure** | `src/lib/auth.ts` has a hardcoded string fallback for `JWT_SECRET`. | **Token Forgery**: If .env fails to load, the system uses a known key. | Throw an error if `process.env.JWT_SECRET` is missing. |
+
+### 🟡 Moderate Severity (Build Phase)
+| Task | Code Reality | Risk | Fix |
+| :--- | :--- | :--- | :--- |
+| **Row-Level Security (RLS)** | `schema.ts` defines tables but lacks RLS policies. | **Data Leakage**: Application bugs can leak data across tenants at the DB level. | Enable RLS on Postgres for `schools` and `users`. |
+| **Input Sanitization** | Server actions (e.g., `registerStudent`) use `any` types for payloads. | **Mass Assignment**: Attackers can inject fields (like `role: super_admin`) into updates. | Use **Zod schemas** in all Server Actions to whitelist fields. |
+| **Storage Security** | `storage.ts` lacks file signature (magic number) checking and size limits. | **Malicious Uploads**: Users can upload 1GB files or rename `.exe` to `.png`. | Add `MAX_FILE_SIZE` and use a buffer-signature validator. |
+| **Audit Logging** | `auditLogs` table exists but no code writes to it. | **Non-Repudiation**: No record of who deleted a course or changed a payment status. | Add `logAuditAction()` calls to all deletion/role-change actions. |
+
+### 🟢 Low Severity (Clean Up)
+| Task | Code Reality | Risk | Fix |
+| :--- | :--- | :--- | :--- |
+| **Account Deletion Flow** | No `deleteAccount` logic found in student or admin modules. | **GDPR Compliance**: Users cannot exercise their right to be forgotten. | Implement a cascaded deletion or "soft-delete" archival flow. |
+| **CORS Wildcards** | Wildcard/Default CORS behavior in API routes. | **Cross-Site Attacks**: Potential for unauthorized origin requests. | Explicitly define allowed production domains in `next.config.ts`. |
+| **Console Logs** | `console.error` found in `payment/verify/route.ts`. | **Infoleak**: Server errors might leak internal paths or stack traces. | Use a production logger (Winston/Pino) and remove raw logs. |
+
+---
+
+## 🚀 Identified Tech-Debt Highlights
+1.  **No Session Refresh Rotation**: Max 7-day token is set, but session hijacking protection (rotation) is absent.
+2.  **No Password Reset Logic**: UI exists but backend implementation/rate-limiting is missing.
+3.  **No Test/Prod Separation**: Current codebase relies on `.env` but lacks explicit configuration for separate staging webhooks.
+
+---
+*Deep Code Review & Audit report finalized on March 7, 2026.*

@@ -68,11 +68,6 @@ export default function StudentLoginPage() {
         </div>
 
         <div className="relative z-10 w-full h-full flex flex-col justify-between p-10">
-          <div className="relative mb-8 group">
-            <div className="absolute inset-0 bg-blue-400 opacity-20 blur-[60px] group-hover:blur-[80px] transition-all duration-700" />
-            <img src="/assets/forgot-password.svg" alt="Auth Hero" className="w-[380px] h-auto relative drop-shadow-2xl brightness-105 group-hover:scale-105 transition-transform duration-700" />
-          </div>
-
           {/* Value Propositions */}
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center transition-transform group-hover:scale-105 shadow-lg shadow-slate-900/10">
@@ -89,9 +84,9 @@ export default function StudentLoginPage() {
           >
             <div className="mb-4">
               <img
-                src="/assets/login-student.svg"
+                src="/illustrations/hero-learning.svg"
                 alt="Learning"
-                className="w-full h-auto max-h-[250px] object-contain mix-blend-multiply opacity-80 transition-transform hover:scale-105"
+                className="w-full h-auto max-h-[300px] object-contain mix-blend-multiply opacity-90 transition-transform hover:scale-105"
               />
             </div>
 
@@ -104,7 +99,7 @@ export default function StudentLoginPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+                <div className="w-8 h-8 rounded-lg bg-blue-50/50 flex items-center justify-center text-blue-600">
                   <Zap size={16} />
                 </div>
                 <div>
@@ -113,7 +108,7 @@ export default function StudentLoginPage() {
                 </div>
               </div>
               <div className="flex flex-col gap-1">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50/50 flex items-center justify-center text-emerald-600">
                   <Trophy size={16} />
                 </div>
                 <div>
@@ -138,7 +133,7 @@ export default function StudentLoginPage() {
           transition={{ duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="w-full max-w-sm my-auto shrink-0"
         >
-          <Link href="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 mb-8 transition-all font-bold group bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm hover:shadow-md w-fit">
+          <Link href="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 mb-8 transition-all font-bold group px-4 py-2 rounded-xl w-fit">
             <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
             Back to Home
           </Link>
@@ -250,9 +245,6 @@ export default function StudentLoginPage() {
         </motion.div>
       </div>
 
-      <style jsx global>{`
-        body { background-color: #f8fafc; }
-      `}</style>
     </div>
   );
 }

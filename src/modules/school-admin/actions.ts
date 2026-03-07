@@ -3,11 +3,46 @@
 import { db } from '@/lib/db';
 import { users, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts } from '@/db/schema';
 import { eq, asc, desc, inArray, and, sql } from 'drizzle-orm';
+import { verifySession } from '@/lib/auth';
+import { z } from 'zod';
+
+/**
+ * MIddleware Guard: Throws if the current session does not have access to targetSchoolId
+ */
+async function verifySchoolAdminContext(targetSchoolId: string) {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+    if (session.role === 'super_admin') return;
+
+    // School Admins can only view/edit their own school
+    const currentUser = await db.query.users.findFirst({ where: eq(users.id, session.userId) });
+    if (!currentUser || currentUser.school_id !== targetSchoolId) {
+        throw new Error('Forbidden: Privilege Escalation Attempt Detected.');
+    }
+}
+
+/**
+ * Middleware Guard: Throws if current session doesn't belong to the same school as targetUserId
+ */
+async function verifyStudentContext(targetUserId: string) {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+    if (session.role === 'super_admin') return;
+
+    const currentUser = await db.query.users.findFirst({ where: eq(users.id, session.userId) });
+    const targetStudent = await db.query.users.findFirst({ where: eq(users.id, targetUserId) });
+
+    if (!currentUser || !targetStudent || currentUser.school_id !== targetStudent.school_id) {
+        throw new Error('Forbidden: Privatized Learner Record.');
+    }
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCHOOL PROFILE
 // ─────────────────────────────────────────────────────────────────────────────
 export async function getSchoolProfile(schoolId: string) {
+    await verifySchoolAdminContext(schoolId);
     const school = await db.query.schools.findFirst({ where: eq(schools.id, schoolId) });
     if (!school) return null;
     return {
@@ -27,9 +62,32 @@ export async function getSchoolProfile(schoolId: string) {
     };
 }
 
+const updateSchoolSchema = z.object({
+    name: z.string().optional(),
+    email: z.string().email().optional(),
+    phone: z.string().optional().nullable(),
+    address: z.string().optional().nullable(),
+    city: z.string().optional().nullable(),
+    state: z.string().optional().nullable(),
+    country: z.string().optional().nullable(),
+    pincode: z.string().optional().nullable(),
+    logo_url: z.string().url().optional().nullable().or(z.literal('')),
+    website: z.string().url().optional().nullable().or(z.literal('')),
+    data_processing_consent: z.boolean().optional(),
+    minor_data_guardian_consent: z.boolean().optional(),
+    // Strictly whitelisted fields: fields like is_active or role are dropped.
+});
+
 export async function updateSchoolProfile(schoolId: string, data: any) {
+    await verifySchoolAdminContext(schoolId);
+
+    const parseResult = updateSchoolSchema.safeParse(data);
+    if (!parseResult.success) {
+        throw new Error('Validation failed: Invalid input fields.');
+    }
+
     await db.update(schools).set({
-        ...data,
+        ...parseResult.data,
         updated_at: new Date(),
     }).where(eq(schools.id, schoolId));
     return { success: true };
@@ -38,6 +96,7 @@ export async function updateSchoolProfile(schoolId: string, data: any) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getSchoolAdminDashboardData(schoolId: string) {
+    await verifySchoolAdminContext(schoolId);
     const students = await db.query.users.findMany({
         where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student'))
     });
@@ -125,6 +184,7 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getSchoolStats(schoolId: string) {
+    await verifySchoolAdminContext(schoolId);
     const students = await db.query.users.findMany({
         where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student'))
     });
@@ -209,6 +269,7 @@ export async function getSchoolStats(schoolId: string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getSchoolStudents(schoolId: string) {
+    await verifySchoolAdminContext(schoolId);
     const students = await db.query.users.findMany({
         where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student')),
         orderBy: [desc(users.cumulative_xp)],
@@ -245,6 +306,7 @@ export async function getSchoolStudents(schoolId: string) {
 }
 
 export async function getSchoolStudentDetails(userId: string) {
+    await verifyStudentContext(userId);
     const student = await db.query.users.findFirst({
         where: eq(users.id, userId)
     });
@@ -294,6 +356,7 @@ export async function getSchoolStudentDetails(userId: string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getSchoolCourseAnalytics(schoolId: string) {
+    await verifySchoolAdminContext(schoolId);
     // Only published courses
     const schoolEnrollments = await db.query.enrollments.findMany({
         where: eq(enrollments.school_id, schoolId),
@@ -374,6 +437,7 @@ export async function getSchoolCourseAnalytics(schoolId: string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getSchoolLeaderboard(schoolId: string, limit = 10) {
+    await verifySchoolAdminContext(schoolId);
     const students = await db.query.users.findMany({
         where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student')),
         orderBy: [desc(users.cumulative_xp)],
@@ -400,6 +464,7 @@ export async function getSchoolLeaderboard(schoolId: string, limit = 10) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function toggleStudentStatus(userId: string, isActive: boolean) {
+    await verifyStudentContext(userId);
     const [updated] = await db.update(users).set({ is_active: isActive }).where(eq(users.id, userId)).returning();
     return updated;
 }
@@ -409,10 +474,12 @@ export async function toggleStudentStatus(userId: string, isActive: boolean) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function updateSchoolBranding(schoolId: string, primaryColor: string) {
+    await verifySchoolAdminContext(schoolId);
     await db.update(schools).set({ website: primaryColor }).where(eq(schools.id, schoolId));
 }
 
 export async function promoteStudentsAction(schoolId: string) {
+    await verifySchoolAdminContext(schoolId);
     const currentSession = await db.query.academicSessions.findFirst({
         where: and(eq(academicSessions.school_id, schoolId), eq(academicSessions.is_current, true))
     });
@@ -430,6 +497,7 @@ export async function promoteStudentsAction(schoolId: string) {
 }
 
 export async function fetchSchoolAdminCourseData(schoolId: string, courseId: string) {
+    await verifySchoolAdminContext(schoolId);
     const course = await db.query.courses.findFirst({
         where: and(eq(courses.id, courseId), eq(courses.is_published, true))
     });

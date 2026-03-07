@@ -4,9 +4,22 @@ import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
+import { redis } from '@/lib/redis';
 
 export async function POST(request: NextRequest) {
     try {
+        const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+        const rateLimitKey = `rate-limit:login:${ip}`;
+        const reqCount = await redis.incr(rateLimitKey);
+
+        if (reqCount === 1) {
+            await redis.expire(rateLimitKey, 60 * 15); // 15 minute blackout window
+        }
+
+        if (reqCount > 10) {
+            return NextResponse.json({ error: 'Too many login attempts. Please try again in 15 minutes.' }, { status: 429, headers: { 'Retry-After': '900' } });
+        }
+
         const { email, password, role } = await request.json();
 
         if (!email || !password || !role) {

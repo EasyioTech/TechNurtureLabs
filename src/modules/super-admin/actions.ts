@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { courses, lessons, paymentPlans, users, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, classes, courseClassMapping, schoolClassMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions, promoCodes } from '@/db/schema';
+import { courses, lessons, paymentPlans, users, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, classes, courseClassMapping, schoolClassMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions, promoCodes, auditLogs } from '@/db/schema';
 import { eq, asc, desc, count, sql, and } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { addMonths } from 'date-fns';
@@ -97,7 +97,18 @@ export async function savePromoCode(data: any) {
 }
 
 export async function deletePromoCode(id: string) {
-    return await db.delete(promoCodes).where(eq(promoCodes.id, id));
+    const session = await verifySession();
+    const promo = await db.query.promoCodes.findFirst({ where: eq(promoCodes.id, id) });
+    await db.delete(promoCodes).where(eq(promoCodes.id, id));
+    if (session && promo) {
+        await db.insert(auditLogs).values({
+            user_id: session.userId,
+            action: 'delete',
+            entity_type: 'promoCode',
+            entity_id: id,
+            old_values: promo
+        } as any);
+    }
 }
 
 export async function validatePromoCode(code: string) {
@@ -190,7 +201,18 @@ async function updateCourseTotals(courseId: string) {
 }
 
 export async function deleteCourseAdmin(id: string) {
+    const session = await verifySession();
+    const course = await db.query.courses.findFirst({ where: eq(courses.id, id) });
     await db.delete(courses).where(eq(courses.id, id));
+    if (session && course) {
+        await db.insert(auditLogs).values({
+            user_id: session.userId,
+            action: 'delete',
+            entity_type: 'course',
+            entity_id: id,
+            old_values: course
+        } as any);
+    }
 }
 
 export async function fetchLessonAdmin(id: string) {
@@ -234,9 +256,21 @@ export async function saveLessonAdmin(lessonData: any) {
 }
 
 export async function deleteLessonAdmin(id: string) {
+    const session = await verifySession();
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, id) });
     await db.delete(lessons).where(eq(lessons.id, id));
-    if (lesson) await updateCourseTotals(lesson.course_id);
+    if (lesson) {
+        await updateCourseTotals(lesson.course_id);
+        if (session) {
+            await db.insert(auditLogs).values({
+                user_id: session.userId,
+                action: 'delete',
+                entity_type: 'lesson',
+                entity_id: id,
+                old_values: lesson
+            } as any);
+        }
+    }
 }
 
 export async function saveLessonOrderAdmin(updates: any[]) {
@@ -289,7 +323,18 @@ export async function deletePlanAdmin(id: string) {
     if (activeSubs.length > 0) {
         throw new Error("Cannot delete plan: This tier is currently being utilized by active institutions.");
     }
+    const session = await verifySession();
+    const plan = await db.query.paymentPlans.findFirst({ where: eq(paymentPlans.id, id) });
     await db.delete(paymentPlans).where(eq(paymentPlans.id, id));
+    if (session && plan) {
+        await db.insert(auditLogs).values({
+            user_id: session.userId,
+            action: 'delete',
+            entity_type: 'paymentPlan',
+            entity_id: id,
+            old_values: plan
+        } as any);
+    }
 }
 
 export async function toggleSchoolStatus(schoolId: string, isActive: boolean) {

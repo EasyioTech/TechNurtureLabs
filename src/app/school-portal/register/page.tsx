@@ -548,6 +548,10 @@ export default function SchoolRegistrationPage() {
             transition={{ delay: 0.2, duration: 0.8 }}
             className="max-w-md"
           >
+            <div className="mb-8">
+              <img src="/illustrations/undraw_system-update_gekm.svg" alt="Enterprise Update" className="w-64 h-auto opacity-80 mix-blend-multiply" />
+            </div>
+
             <h2 className="text-4xl font-black mb-6 text-slate-900 leading-[1.1] tracking-tight">
               Bring <span className="text-blue-600">innovation</span> to your classroom.
             </h2>
@@ -561,7 +565,7 @@ export default function SchoolRegistrationPage() {
                 { icon: <BarChart3 size={18} />, label: 'Live Stats', color: 'text-indigo-600' },
                 { icon: <Sparkles size={18} />, label: 'AI Assisted', color: 'text-amber-600' }
               ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/50 hover:bg-white transition-all">
                   <div className={item.color}>{item.icon}</div>
                   <span className="text-sm font-bold text-slate-700">{item.label}</span>
                 </div>

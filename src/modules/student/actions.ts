@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseClassMapping, quizAttempts } from '@/db/schema';
+import { users, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseClassMapping, quizAttempts, auditLogs } from '@/db/schema';
 import { eq, and, gt, inArray, asc, desc, isNotNull, sql } from 'drizzle-orm';
 
 export type DashboardData = {
@@ -230,4 +230,40 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         achievements: formattedAchievements,
         courses: coursesWithProgress.filter(Boolean)
     };
+}
+
+/**
+ * Account Deletion Flow (Right to Be Forgotten / GDPR Compliance)
+ * Soft-deletes user, obfuscates PII, and cascades session block.
+ */
+export async function deleteStudentAccountAction() {
+    const session = await verifySession();
+    if (!session || session.role !== 'student') {
+        throw new Error('Unauthorized account termination request.');
+    }
+
+    try {
+        await db.update(users).set({
+            first_name: 'Deleted',
+            last_name: 'User',
+            email: `deleted_${session.userId}@technurture.io`,
+            phone: null,
+            is_active: false,
+            deleted_at: new Date()
+        }).where(eq(users.id, session.userId));
+
+        await db.insert(auditLogs).values({
+            user_id: session.userId,
+            action: 'delete',
+            entity_type: 'user',
+            entity_id: session.userId,
+            old_values: { reason: "Self-deletion requested. PII scrubbed." }
+        } as any);
+
+        const { destroySession } = await import('@/lib/auth');
+        await destroySession();
+        return { success: true };
+    } catch (e) {
+        throw new Error("Unable to obfuscate and terminate user record safely.");
+    }
 }
