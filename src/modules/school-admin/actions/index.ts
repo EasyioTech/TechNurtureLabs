@@ -120,10 +120,10 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
     // 1. Get school classes
     const classMapping = await db.query.schoolClassMapping.findMany({
         where: eq(schoolClassMapping.school_id, schoolId),
-        with: { class: true } as any
+        with: { academicClass: true } as any
     });
     const classesDataFinal = classMapping.map((gm: any) => ({
-        id: gm.class_id, name: gm.class?.name || '', level_index: gm.class?.level || 0,
+        id: gm.class_id, name: gm.academicClass?.name || '', level_index: gm.academicClass?.level || 0,
         school_id: schoolId, created_at: gm.created_at,
     }));
     const schoolClassIds = classesDataFinal.map(g => g.id);
@@ -291,12 +291,12 @@ export async function getSchoolStudents(schoolId: string) {
     const classRecords = studentIds.length > 0
         ? await db.query.studentAcademicRecords.findMany({
             where: and(inArray(studentAcademicRecords.user_id, studentIds), eq(studentAcademicRecords.school_id, schoolId)),
-            with: { class: true } as any
+            with: { academicClass: true } as any
         })
         : [];
 
     const classMap = new Map<string, string>();
-    classRecords.forEach((r: any) => classMap.set(r.user_id, r.class?.name || ''));
+    classRecords.forEach((r: any) => classMap.set(r.user_id, r.academicClass?.name || ''));
 
     return students.map(s => ({
         id: s.id,
@@ -335,7 +335,7 @@ export async function getSchoolStudentDetails(userId: string) {
 
     const classMappingDetails = await db.query.studentAcademicRecords.findFirst({
         where: eq(studentAcademicRecords.user_id, userId),
-        with: { class: true } as any
+        with: { academicClass: true } as any
     });
 
     return {
@@ -344,7 +344,7 @@ export async function getSchoolStudentDetails(userId: string) {
             full_name: `${student.first_name} ${student.last_name}`,
             total_xp: Number(student.cumulative_xp),
             level: Math.floor(Number(student.cumulative_xp) / 1000) + 1,
-            class_name: (classMappingDetails as any)?.class?.name || 'N/A'
+            class_name: (classMappingDetails as any)?.academicClass?.name || 'N/A'
         },
         courses: courseProgressData.map(cp => {
             const c = enrolledCourses.find(cur => cur.id === cp.course_id);

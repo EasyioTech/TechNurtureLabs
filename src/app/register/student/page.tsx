@@ -48,6 +48,7 @@ export default function StudentRegistrationPage() {
   const [loadingSchools, setLoadingSchools] = useState(true);
   const [selectedSchool, setSelectedSchool] = useState<SchoolOption | null>(null);
   const [step, setStep] = useState(1);
+  const [emailVerified, setEmailVerified] = useState(false);
   const [schoolSearchOpen, setSchoolSearchOpen] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -143,7 +144,7 @@ export default function StudentRegistrationPage() {
   const availableClasses = selectedSchool?.classes_available || [];
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-50 text-slate-900 flex font-sans selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="h-screen overflow-hidden bg-slate-50 text-slate-900 flex font-sans selection:bg-indigo-100 selection:text-indigo-900 relative">
 
       {/* Background Grid & Ambient Glow */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -374,7 +375,7 @@ export default function StudentRegistrationPage() {
                   <div className="space-y-8">
                     {/* Sub-step 1: Email */}
                     <div className="space-y-2">
-                      <Label className={`text-xs ml-1 uppercase tracking-[0.2em] font-bold transition-colors ${errors.email ? 'text-rose-500' : 'text-slate-600'}`}>Institutional Email</Label>
+                      <Label className={`text-xs ml-1 uppercase tracking-[0.2em] font-black transition-colors ${errors.email ? 'text-rose-500' : 'text-slate-950'}`}>Institutional Email</Label>
                       <div className="relative group">
                         <Input
                           type="email"
@@ -383,32 +384,40 @@ export default function StudentRegistrationPage() {
                           onChange={(e) => {
                             setFormData({ ...formData, email: e.target.value });
                             if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                            if (emailVerified) setEmailVerified(false);
                           }}
                           className={`bg-white border-2 h-16 px-6 text-slate-900 placeholder:text-slate-300 focus:ring-4 transition-all font-bold text-lg rounded-2xl shadow-sm
-                            ${errors.email ? 'border-rose-400 ring-rose-500/10' : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) ? 'border-emerald-500 bg-emerald-50/10' : 'border-slate-200 focus:border-slate-950 focus:ring-slate-950/10'}
+                            ${errors.email ? 'border-rose-400 ring-rose-500/10' : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) ? 'border-indigo-500 bg-indigo-50/10' : 'border-slate-300 focus:border-slate-950 focus:ring-slate-950/10'}
                           `}
                           placeholder="student@school.com"
                         />
-                        {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && !errors.email && (
-                          <div className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center animate-in zoom-in">
-                            <Check size={14} className="text-white" />
-                          </div>
-                        )}
                       </div>
                       {errors.email && <p className="text-xs text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.email}</p>}
                     </div>
 
-                    {/* Sub-step 2: PIN (Revealed after valid Email) */}
-                    <AnimatePresence>
-                      {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="space-y-4"
-                        >
+                    {!emailVerified ? (
+                      <NeumorphicButton
+                        type="button"
+                        onClick={() => {
+                          if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+                            setEmailVerified(true);
+                            setErrors(prev => ({ ...prev, email: '' }));
+                          } else {
+                            setErrors(prev => ({ ...prev, email: 'Please enter a valid email' }));
+                          }
+                        }}
+                        variant="primary"
+                        className="w-full !h-14 !text-sm !rounded-2xl !bg-indigo-600 hover:!bg-indigo-700 text-white font-black uppercase tracking-widest cursor-pointer"
+                      >
+                        Continue to PIN
+                      </NeumorphicButton>
+                    ) : (
+                      <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                        {/* Sub-step 2: PIN */}
+                        <div className="space-y-4">
                           <div className="flex items-center justify-between px-1">
-                            <Label className={`text-xs uppercase tracking-[0.2em] font-bold transition-colors ${errors.password ? 'text-rose-500' : 'text-slate-600'}`}>Set 6-Digit PIN</Label>
-                            {formData.password.length === 6 && !errors.password && <Check size={16} className="text-emerald-500" />}
+                            <Label className={`text-xs uppercase tracking-[0.2em] font-black transition-colors ${errors.password ? 'text-rose-500' : 'text-slate-900'}`}>Create Secure PIN</Label>
+                            {formData.password.length === 6 && !errors.password && <Check size={18} className="text-indigo-600 stroke-[3px]" />}
                           </div>
 
                           <div className="relative">
@@ -436,98 +445,98 @@ export default function StudentRegistrationPage() {
                                       ? errors.password ? 'border-rose-400 bg-rose-50/20' : 'border-slate-900 bg-white shadow-md'
                                       : (i === formData.password.length && pinFocused)
                                         ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-500/10 scale-110'
-                                        : errors.password ? 'border-rose-200 bg-rose-50/10' : 'border-slate-200 bg-white'}
+                                        : errors.password ? 'border-rose-200 bg-rose-50/10' : 'border-slate-400 bg-slate-100'}
                                   `}
                                 >
                                   {formData.password[i] ? (
                                     <div className={`w-4 h-4 rounded-full animate-in zoom-in duration-300 ${errors.password ? 'bg-rose-500' : 'bg-slate-900'}`} />
                                   ) : (
-                                    <div className={`w-2 h-2 rounded-full transition-colors ${i === formData.password.length && pinFocused ? 'bg-indigo-400 animate-pulse' : errors.password ? 'bg-rose-200' : 'bg-slate-100'}`} />
+                                    <div className={`w-2 h-2 rounded-full transition-colors ${i === formData.password.length && pinFocused ? 'bg-indigo-400 animate-pulse' : errors.password ? 'bg-rose-200' : 'bg-slate-200'}`} />
                                   )}
                                 </div>
                               ))}
                             </div>
                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                        </div>
 
-                    {/* Sub-step 3: Confirm PIN (Revealed after 6 digit PIN) */}
-                    <AnimatePresence>
-                      {formData.password.length === 6 && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="space-y-4"
-                        >
-                          <div className="flex items-center justify-between px-1">
-                            <Label className="text-slate-600 font-bold text-xs uppercase tracking-[0.2em]">Confirm your PIN</Label>
-                            {formData.confirm_password && formData.password === formData.confirm_password && (
-                              <div className="flex items-center gap-1.5 text-emerald-600">
-                                <span className="text-[10px] font-black uppercase tracking-widest">Match</span>
-                                <Check size={14} className="stroke-[3]" />
+                        {/* Sub-step 3: Confirm PIN */}
+                        <AnimatePresence>
+                          {formData.password.length === 6 && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="space-y-4"
+                            >
+                              <div className="flex items-center justify-between px-1">
+                                <Label className="text-slate-900 font-black text-xs uppercase tracking-[0.2em]">Verify PIN</Label>
+                                {formData.confirm_password && formData.password === formData.confirm_password && (
+                                  <div className="flex items-center gap-1.5 text-indigo-600">
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Matches!</span>
+                                    <Check size={16} className="stroke-[3]" />
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
 
-                          <div className="relative">
-                            <input
-                              type="password"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              maxLength={6}
-                              value={formData.confirm_password}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                                setFormData({ ...formData, confirm_password: val });
-                              }}
-                              className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
-                              autoComplete="new-password"
-                            />
-                            <div className="flex justify-between gap-2 sm:gap-3">
-                              {[0, 1, 2, 3, 4, 5].map(i => (
-                                <div
-                                  key={i}
-                                  className={`flex-1 h-16 rounded-2xl border-2 flex items-center justify-center transition-all duration-300
-                                    ${formData.confirm_password[i]
-                                      ? formData.password === formData.confirm_password
-                                        ? 'border-emerald-500 bg-emerald-50/30'
-                                        : 'border-rose-400 bg-rose-50/30'
-                                      : 'border-slate-100 bg-slate-50/50'}
-                                  `}
-                                >
-                                  {formData.confirm_password[i] && (
-                                    <div className={`w-3 h-3 rounded-full ${formData.password === formData.confirm_password ? 'bg-emerald-600' : 'bg-rose-500'}`} />
-                                  )}
+                              <div className="relative">
+                                <input
+                                  type="password"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  maxLength={6}
+                                  value={formData.confirm_password}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                    setFormData({ ...formData, confirm_password: val });
+                                  }}
+                                  className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
+                                  autoComplete="new-password"
+                                />
+                                <div className="flex justify-between gap-2 sm:gap-3">
+                                  {[0, 1, 2, 3, 4, 5].map(i => (
+                                    <div
+                                      key={i}
+                                      className={`flex-1 h-16 rounded-2xl border-2 flex items-center justify-center transition-all duration-300
+                                        ${formData.confirm_password[i]
+                                          ? formData.password === formData.confirm_password
+                                            ? 'border-indigo-600 bg-indigo-50/30 shadow-sm transform scale-105'
+                                            : 'border-rose-400 bg-rose-50/30'
+                                          : 'border-slate-400 bg-slate-100'}
+                                      `}
+                                    >
+                                      {formData.confirm_password[i] && (
+                                        <div className={`w-3 h-3 rounded-full ${formData.password === formData.confirm_password ? 'bg-indigo-600' : 'bg-rose-500'}`} />
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
-                            {formData.confirm_password.length > 0 && formData.password !== formData.confirm_password && (
-                              <p className="text-[10px] text-rose-500 font-bold mt-2 ml-1 animate-in fade-in slide-in-from-top-1">PINs do not match. Please verify your entries.</p>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                                {formData.confirm_password.length > 0 && formData.password !== formData.confirm_password && (
+                                  <p className="text-[10px] text-rose-500 font-bold mt-2 ml-1 animate-in fade-in slide-in-from-top-1">PINs do not match. Please verify your entries.</p>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
 
-                  <div className="pt-8">
-                    <NeumorphicButton
-                      type="submit"
-                      disabled={loading}
-                      variant="primary"
-                      className={`w-full !h-16 !text-lg !rounded-2xl !bg-slate-950 hover:!bg-slate-900 shadow-2xl transition-all font-black uppercase tracking-[0.2em] cursor-pointer flex items-center justify-center gap-3 ${Object.keys(errors).length > 0 ? 'ring-4 ring-rose-500/20 border-rose-500' : ''
-                        }`}
-                    >
-                      {loading ? (
-                        <><Loader2 className="animate-spin" size={24} /> Submitting...</>
-                      ) : (
-                        <>
-                          Complete Registration
-                          <Check size={20} className="ml-2" />
-                        </>
-                      )}
-                    </NeumorphicButton>
+                        <div className="pt-8">
+                          <NeumorphicButton
+                            type="submit"
+                            disabled={loading}
+                            variant="primary"
+                            className={`w-full !h-16 !text-lg !rounded-2xl !bg-indigo-600 hover:!bg-indigo-700 !text-white shadow-2xl shadow-indigo-200 transition-all font-black uppercase tracking-[0.2em] cursor-pointer flex items-center justify-center gap-3 ${Object.keys(errors).length > 0 ? 'ring-4 ring-rose-500/20 border-rose-500' : ''
+                              }`}
+                          >
+                            {loading ? (
+                              <><Loader2 className="animate-spin" size={24} /> Creating...</>
+                            ) : (
+                              <>
+                                Ready to Learn!
+                                <ArrowRight size={20} className="ml-2" />
+                              </>
+                            )}
+                          </NeumorphicButton>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}

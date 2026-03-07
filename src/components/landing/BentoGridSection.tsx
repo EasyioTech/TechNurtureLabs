@@ -100,9 +100,9 @@ export const BentoGridSection = () => {
                                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-5">
                                     <Globe size={24} className="text-white" />
                                 </div>
-                                <h3 className="text-xl font-bold mb-3">Multi-tenant Base</h3>
+                                <h3 className="text-xl font-bold mb-3">Your Own Digital Campus</h3>
                                 <p className="text-sm text-white/50 leading-relaxed">
-                                    White-labeled solution for schools with completely custom branding.
+                                    Launch a private, fully-branded portal for your school in minutes. Stand out with custom logos and themes.
                                 </p>
                             </GlassCard>
                         </ScrollReveal>

@@ -282,7 +282,7 @@ export default function StudentProfile() {
                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Level {profile?.level} Expert</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Global Rank</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">School Rank</p>
                   <p className="text-xl font-black text-indigo-400">Top {rank.percentage}%</p>
                 </div>
               </div>

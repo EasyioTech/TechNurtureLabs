@@ -11,8 +11,9 @@ import {
   Flame, Star, Trophy, Zap, BookOpen, Clock, Target,
   ChevronRight, Sparkles, Award,
   Play, GraduationCap, Medal, Crown, Calendar, Bell,
-  User, Search, ArrowRight, Activity
+  User, Search, ArrowRight, Activity, LogOut, Settings
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { StudentHeader } from '../../modules/student/components/header';
 import { QuickStatCard } from '@/modules/student/components/stat-pill';
 import { ChallengeCard } from '@/modules/student/components/challenge-card';
@@ -31,6 +32,7 @@ export default function StudentDashboard() {
   const [resetTime, setResetTime] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [stats, setStats] = useState({
     xp: 0,
     streak: 0,
@@ -156,9 +158,50 @@ export default function StudentDashboard() {
               <button className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-100 transition-all">
                 <Bell size={20} />
               </button>
-              <Link href="/student/profile" className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-900 hover:text-white transition-all">
-                <User size={20} />
-              </Link>
+              <div className="relative">
+                <button
+                  onClick={() => setProfileMenuOpen(v => !v)}
+                  className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-900 hover:text-white transition-all outline-none"
+                >
+                  <User size={20} />
+                </button>
+                <AnimatePresence>
+                  {profileMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40 cursor-default" onClick={() => setProfileMenuOpen(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 6 }}
+                        transition={{ duration: 0.1 }}
+                        className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50 p-2 space-y-1"
+                      >
+                        <div className="px-3 py-2 mb-1 border-b border-slate-50 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                            {userProfile?.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'ST'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-800 truncate">{userProfile?.full_name}</p>
+                            <p className="text-[10px] uppercase font-bold text-indigo-500 tracking-widest mt-0.5">Student</p>
+                          </div>
+                        </div>
+                        <Link href="/student/profile" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold">
+                          <User size={16} /> My Profile
+                        </Link>
+                        <Link href="/student/profile" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold">
+                          <Settings size={16} /> Settings
+                        </Link>
+                        <div className="pt-1 pb-1">
+                          <div className="w-full h-px bg-slate-100" />
+                        </div>
+                        <button onClick={() => { setProfileMenuOpen(false); signOut(); }} className="flex items-center gap-3 w-full px-4 py-3 text-rose-500 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition-colors text-sm font-bold border-t border-slate-50/0">
+                          <LogOut size={16} /> Logout
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>
@@ -190,13 +233,13 @@ export default function StudentDashboard() {
                       <circle
                         cx="64" cy="64" r="56"
                         stroke="currentColor" strokeWidth="12" fill="none"
-                        strokeDasharray={`${(lastCourse.completed_lessons / (lastCourse.total_lessons || 1)) * 351.8} 351.8`}
+                        strokeDasharray={`${(lastCourse.completedLessons / (lastCourse.totalLessons || 1)) * 351.8} 351.8`}
                         className="text-white"
                         strokeLinecap="round"
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-black">{Math.round((lastCourse.completed_lessons / (lastCourse.total_lessons || 1)) * 100)}%</span>
+                      <span className="text-2xl font-black">{Math.round((lastCourse.completedLessons / (lastCourse.totalLessons || 1)) * 100)}%</span>
                       <span className="text-[8px] font-black text-white/50 uppercase tracking-widest mt-1">Sync</span>
                     </div>
                   </div>
@@ -254,9 +297,21 @@ export default function StudentDashboard() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {(courses || []).slice(0, 4).map((course) => (
-                  <CourseCard key={course.id} course={course} />
-                ))}
+                {courses.length > 0 ? (
+                  courses.slice(0, 4).map((course) => (
+                    <CourseCard key={course.id} course={course} />
+                  ))
+                ) : (
+                  <div className="md:col-span-2 py-12 px-6 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center text-center">
+                    <div className="w-16 h-16 rounded-3xl bg-slate-50 flex items-center justify-center text-slate-300 mb-6">
+                      <BookOpen size={32} />
+                    </div>
+                    <h4 className="text-lg font-black text-slate-900 uppercase">No courses found</h4>
+                    <p className="text-sm text-slate-400 font-medium mt-2 max-w-sm">
+                      We couldn't find any courses assigned to your class yet. Check back soon or contact your school administrator!
+                    </p>
+                  </div>
+                )}
               </div>
             </section>
           </div>

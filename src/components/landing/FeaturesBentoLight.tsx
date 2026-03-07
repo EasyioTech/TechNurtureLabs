@@ -114,9 +114,9 @@ export const FeaturesBentoLight = () => {
                                 <NeumorphicIconContainer color="teal">
                                     <Globe size={24} />
                                 </NeumorphicIconContainer>
-                                <h3 className="text-lg md:text-xl font-black mb-3 text-slate-900 tracking-tight">Multi-tenant Base</h3>
+                                <h3 className="text-lg md:text-xl font-black mb-3 text-slate-900 tracking-tight">Smart Academic Hub</h3>
                                 <p className="text-sm text-slate-600 font-medium leading-relaxed max-w-md">
-                                    Powerful white-labeled solution for schools with completely custom branding, isolated databases, and dedicated portals for every institution.
+                                    Centrally manage students, courses, and progress with AI-driven insights that help your institution grow effortlessly.
                                 </p>
                             </div>
                             <div className="absolute -right-4 -bottom-4 opacity-80 group-hover:opacity-100 transition-all duration-500 pointer-events-none">

@@ -8,16 +8,21 @@ const isBuild = process.env.NEXT_SKIP_TYPECHECK === '1' || process.env.npm_lifec
 
 export async function getPublicPricingPlans() {
     if (isBuild) return [];
-    const plans = await db.query.paymentPlans.findMany({
-        where: eq(paymentPlans.is_active, true),
-        orderBy: [asc(paymentPlans.price)]
-    });
+    try {
+        const plans = await db.query.paymentPlans.findMany({
+            where: eq(paymentPlans.is_active, true),
+            orderBy: (paymentPlans, { asc }) => [asc(paymentPlans.price)]
+        });
 
-    return plans.map(p => ({
-        ...p,
-        price: Number(p.price),
-        features: Array.isArray(p.features) ? p.features : (typeof p.features === 'object' && p.features ? Object.values(p.features as Record<string, string>) : []),
-    }));
+        return (plans || []).map(p => ({
+            ...p,
+            price: Number(p.price || 0),
+            features: Array.isArray(p.features) ? p.features : (typeof p.features === 'object' && p.features ? Object.values(p.features as Record<string, string>) : []),
+        }));
+    } catch (error) {
+        console.error('Error fetching public pricing plans:', error);
+        return [];
+    }
 }
 export async function getPlatformSettings() {
     if (isBuild) return {

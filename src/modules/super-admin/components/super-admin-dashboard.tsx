@@ -319,7 +319,7 @@ function DashboardContent() {
                             <>
                                 <Button variant="outline" size="sm"
                                     onClick={() => {
-                                        data.setEditingCourse({ published: false });
+                                        data.setEditingCourse({ published: true, all_classes: true });
                                         data.setShowCourseDialog(true);
                                     }}
                                     className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black border-2 transition-all ${t.btnOutline(isDark)}`}>

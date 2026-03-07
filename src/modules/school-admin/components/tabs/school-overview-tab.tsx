@@ -195,7 +195,7 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                     className={`p-8 ${ts.card(isDark)} rounded-[32px]`}>
                     <SectionHeader title="Learning Activity" sub="Student login and interaction frequency" icon={Activity} />
                     <div className="h-[260px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
                             <AreaChart data={activityData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
@@ -227,7 +227,7 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                     <SectionHeader title="Course Availability" sub="Courses currently available to your students" icon={BarChart3} />
                     <div className="flex-1 flex flex-col sm:flex-row items-center gap-8">
                         <div className="w-full sm:w-1/2 h-[200px]">
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
                                 <PieChart>
                                     <Pie data={courseStatusData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={8} strokeWidth={0}>
                                         {courseStatusData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}

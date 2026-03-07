@@ -103,12 +103,7 @@ export function StudentSidebar({
                 </div>
             </div>
 
-            <div className="p-4 border-t border-slate-50">
-                <button className="flex items-center gap-3 w-full px-4 py-3 text-slate-400 hover:text-rose-500 rounded-2xl hover:bg-rose-50 transition-colors text-sm font-bold">
-                    <Zap size={20} />
-                    Upgrade Pass
-                </button>
-            </div>
+
         </aside>
     );
 }

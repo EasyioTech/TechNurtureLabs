@@ -13,6 +13,7 @@ export type Course = {
     created_at: Date | string;
     lesson_count?: number;
     enrolled_count?: number;
+    all_classes: boolean;
 };
 
 export type Lesson = {

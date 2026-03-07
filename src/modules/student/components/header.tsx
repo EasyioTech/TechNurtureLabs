@@ -25,6 +25,7 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
     const [mobileOpen, setMobileOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
     const initials = profile?.full_name
@@ -33,7 +34,7 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
     // Keyboard shortcut: ESC closes everything
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') { setSearchOpen(false); setNotifOpen(false); setMobileOpen(false); }
+            if (e.key === 'Escape') { setSearchOpen(false); setNotifOpen(false); setMobileOpen(false); setProfileOpen(false); }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
@@ -113,24 +114,48 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                         <div className="hidden sm:block w-px h-7 bg-slate-100 mx-1" />
 
                         {/* Avatar + name (desktop) */}
-                        <Link href="/student/profile" className="hidden sm:flex items-center gap-2.5 pl-1 group">
-                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm ring-2 ring-white group-hover:ring-indigo-100 transition-all duration-150">
-                                {initials}
-                            </div>
-                            <div className="hidden lg:block leading-none">
-                                <p className="text-sm font-bold text-slate-800 truncate max-w-[120px]">{profile?.full_name?.split(' ')[0]}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5">Level {stats.level}</p>
-                            </div>
-                        </Link>
+                        <div className="relative hidden sm:block">
+                            <button
+                                onClick={() => setProfileOpen(v => !v)}
+                                className="flex items-center gap-2.5 pl-1 group outline-none"
+                            >
+                                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm ring-2 ring-white group-hover:ring-indigo-100 transition-all duration-150">
+                                    {initials}
+                                </div>
+                                <div className="hidden lg:block leading-none text-left">
+                                    <p className="text-sm font-bold text-slate-800 truncate max-w-[120px]">{profile?.full_name?.split(' ')[0]}</p>
+                                    <p className="text-[10px] text-slate-400 mt-0.5">Level {stats.level}</p>
+                                </div>
+                            </button>
 
-                        {/* Logout (desktop) */}
-                        <button
-                            onClick={doSignOut}
-                            aria-label="Sign out"
-                            className="hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 active:scale-95 transition-all duration-100"
-                        >
-                            <LogOut size={16} />
-                        </button>
+                            <AnimatePresence>
+                                {profileOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-40 cursor-default" onClick={() => setProfileOpen(false)} />
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 6 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 6 }}
+                                            transition={{ duration: 0.1 }}
+                                            className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50 p-2 space-y-1"
+                                        >
+                                            <Link href="/student/profile" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold">
+                                                <User size={16} /> My Profile
+                                            </Link>
+                                            <Link href="/student/profile" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold">
+                                                <Settings size={16} /> Settings
+                                            </Link>
+                                            <div className="pt-1 pb-1">
+                                                <div className="w-full h-px bg-slate-100" />
+                                            </div>
+                                            <button onClick={doSignOut} className="flex items-center gap-3 w-full px-4 py-3 text-rose-500 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition-colors text-sm font-bold border-t border-slate-50/0">
+                                                <LogOut size={16} /> Logout
+                                            </button>
+                                        </motion.div>
+                                    </>
+                                )}
+                            </AnimatePresence>
+                        </div>
 
                         {/* Hamburger (mobile) */}
                         <button

@@ -44,10 +44,15 @@ export async function fetchApprovedSchools() {
 }
 
 export async function fetchActivePaymentPlans() {
-    return await db.query.paymentPlans.findMany({
-        where: eq(paymentPlans.is_active, true),
-        orderBy: (paymentPlans, { asc }) => [asc(paymentPlans.price)]
-    });
+    try {
+        return await db.query.paymentPlans.findMany({
+            where: eq(paymentPlans.is_active, true),
+            orderBy: (paymentPlans, { asc }) => [asc(paymentPlans.price)]
+        });
+    } catch (error) {
+        console.error('Error fetching active payment plans:', error);
+        return [];
+    }
 }
 
 export async function registerStudent(formData: any) {
@@ -189,15 +194,15 @@ export async function registerSchool(formData: any) {
                 is_active: true,
             } as any);
 
-            // 4. Handle class mappings for school
-            if (formData.classes_available && Array.isArray(formData.classes_available)) {
-                await tx.insert(schoolClassMapping).values(
-                    formData.classes_available.map((cid: string) => ({
-                        school_id: newSchool.id,
-                        class_id: cid,
-                        is_active: true
-                    }))
-                );
+            // 4. Map ALL Global Classes to New School (Classes 1-12)
+            const globalClasses = await tx.query.classes.findMany();
+            if (globalClasses && globalClasses.length > 0) {
+                const mappings = globalClasses.map(cls => ({
+                    school_id: newSchool.id,
+                    class_id: cls.id,
+                    is_active: true
+                }));
+                await tx.insert(schoolClassMapping).values(mappings as any);
             }
 
             return { success: true, school: newSchool };
