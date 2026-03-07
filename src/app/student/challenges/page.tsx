@@ -10,6 +10,11 @@ import { getStudentDashboardData } from '@/modules/student/actions';
 import { ChallengeCard } from '@/modules/student/components/challenge-card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+    BookOpen as LucideBookOpen,
+    Clock,
+    Activity
+} from 'lucide-react';
 
 export default function ChallengesPage() {
     const [data, setData] = useState<any>(null);
@@ -33,6 +38,29 @@ export default function ChallengesPage() {
     }
 
     const { dailyChallenges = [], stats = { streak: 0, xp: 0, lessonsCompleted: 0, accuracy: 0, rank: 0, rankPercentage: 0 } } = data || {};
+
+    const getChallengeIcon = (iconName: string) => {
+        const icons: Record<string, any> = {
+            'book-open': LucideBookOpen,
+            'trophy': Trophy,
+            'clock': Clock,
+            'star': Star,
+            'target': Target,
+            'zap': Zap,
+            'flame': Flame,
+        };
+        return icons[iconName] || Target;
+    };
+
+    const getChallengeColor = (type: string) => {
+        const colors: Record<string, string> = {
+            'xp_gain': 'amber',
+            'learning_time': 'sky',
+            'quiz_complete': 'violet',
+            'streak': 'emerald'
+        };
+        return colors[type] || 'emerald';
+    };
 
     return (
         <div className="min-h-screen bg-slate-50/30 pb-32">
@@ -112,13 +140,13 @@ export default function ChallengesPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 {dailyChallenges.length > 0 ? dailyChallenges.map((challenge: any) => (
                                     <ChallengeCard
-                                        key={challenge.id}
+                                        key={challenge.id || challenge.title}
                                         title={challenge.title}
                                         progress={challenge.current_progress}
                                         total={challenge.target_value}
                                         reward={challenge.xp_reward}
-                                        icon={<Target className="text-white" size={24} />}
-                                        color="bg-slate-900"
+                                        icon={getChallengeIcon(challenge.icon)}
+                                        color={getChallengeColor(challenge.challenge_type)}
                                         unit={challenge.challenge_type === 'learning_time' ? 'm' : ''}
                                     />
                                 )) : (
@@ -134,7 +162,7 @@ export default function ChallengesPage() {
                         <section className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm">
                             <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none mb-10">Learning Stats</h3>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                                <StatItem label="Lessons Done" value={stats.lessonsCompleted} icon={BookOpen} color="text-indigo-600" />
+                                <StatItem label="Lessons Done" value={stats.lessonsCompleted} icon={LucideBookOpen} color="text-indigo-600" />
                                 <StatItem label="Accuracy" value={`${stats.accuracy}%`} icon={Target} color="text-emerald-600" />
                                 <StatItem label="XP Earned" value={stats.xp.toLocaleString()} icon={Star} color="text-amber-500" />
                             </div>
@@ -195,8 +223,4 @@ function StatItem({ label, value, icon: Icon, color }: any) {
             <p className="text-2xl font-black text-slate-900 leading-none">{value}</p>
         </div>
     );
-}
-
-function BookOpen(props: any) {
-    return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-book-open"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>;
 }
