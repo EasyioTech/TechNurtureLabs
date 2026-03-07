@@ -41,6 +41,7 @@ CREATE TYPE audit_action AS ENUM ('create', 'update', 'delete', 'login', 'logout
 CREATE TYPE invoice_status AS ENUM ('draft', 'issued', 'paid', 'void', 'overdue');
 CREATE TYPE storage_type AS ENUM ('r2', 'local');
 CREATE TYPE asset_type AS ENUM ('video', 'image', 'document');
+CREATE TYPE discount_type AS ENUM ('percentage', 'fixed');
 
 -- ============================================================================
 -- 2. CORE TENANT TABLES
@@ -110,6 +111,7 @@ CREATE TABLE users (
     last_active_at      TIMESTAMPTZ,
     is_active           BOOLEAN NOT NULL DEFAULT TRUE,
     bio                 TEXT,
+    gender              TEXT,
     email_verified_at   TIMESTAMPTZ,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -146,11 +148,27 @@ CREATE TABLE payment_plans (
     CONSTRAINT chk_trial_days_positive CHECK (trial_days >= 0)
 );
 
--- 4b. School subscriptions
+-- 4b. Promo codes
+CREATE TABLE promo_codes (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code            TEXT NOT NULL UNIQUE,
+    discount_type   discount_type NOT NULL,
+    discount_value  NUMERIC(12,2) NOT NULL,
+    max_uses        INT,
+    current_uses    INT NOT NULL DEFAULT 0,
+    valid_from      TIMESTAMPTZ,
+    valid_until     TIMESTAMPTZ,
+    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 4c. School subscriptions
 CREATE TABLE school_subscriptions (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     school_id           UUID NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
     plan_id             UUID NOT NULL REFERENCES payment_plans(id) ON DELETE RESTRICT,
+    promo_code_id       UUID REFERENCES promo_codes(id) ON DELETE SET NULL,
     status              subscription_status NOT NULL DEFAULT 'trialing',
     current_period_start TIMESTAMPTZ NOT NULL,
     current_period_end  TIMESTAMPTZ NOT NULL,
@@ -174,6 +192,7 @@ CREATE TABLE payment_transactions (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     school_id               UUID NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
     subscription_id         UUID NOT NULL REFERENCES school_subscriptions(id) ON DELETE RESTRICT,
+    promo_code_id           UUID REFERENCES promo_codes(id) ON DELETE SET NULL,
     razorpay_order_id       TEXT,
     razorpay_payment_id     TEXT,
     razorpay_signature      TEXT,
@@ -271,6 +290,8 @@ CREATE TABLE courses (
     all_classes     BOOLEAN NOT NULL DEFAULT FALSE,
     total_lessons   INT NOT NULL DEFAULT 0,
     total_xp        INT NOT NULL DEFAULT 0,
+    category        TEXT NOT NULL DEFAULT 'General',
+    topics          TEXT NOT NULL DEFAULT 'Technology',
     created_by      UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
