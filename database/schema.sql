@@ -636,12 +636,16 @@ CREATE TABLE password_reset_tokens (
 );
 
 CREATE TABLE platform_settings (
-    id              TEXT PRIMARY KEY,
-    logo_url        TEXT,
-    platform_name   TEXT NOT NULL DEFAULT 'TechNurture',
-    hero_video_url  TEXT NOT NULL DEFAULT '',
-    hero_video_type TEXT NOT NULL DEFAULT 'youtube',
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                  TEXT PRIMARY KEY,
+    logo_url            TEXT,
+    favicon_url         TEXT,
+    platform_name       TEXT NOT NULL DEFAULT 'TechNurture',
+    logo_layout         TEXT NOT NULL DEFAULT 'horizontal',
+    show_platform_name  BOOLEAN NOT NULL DEFAULT TRUE,
+    logo_height         INTEGER NOT NULL DEFAULT 40,
+    hero_video_url      TEXT NOT NULL DEFAULT '',
+    hero_video_type     TEXT NOT NULL DEFAULT 'youtube',
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE email_verification_tokens (
