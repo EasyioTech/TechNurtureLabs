@@ -70,10 +70,10 @@ export const FlatNavigation = ({ settings }: { settings?: any }) => {
                     {/* Actions */}
                     <div className="hidden md:flex items-center gap-4">
                         <Link href="/school-portal/login" className="text-[13px] font-bold text-slate-600 hover:text-slate-900 transition-colors uppercase tracking-widest px-4 py-2 border border-slate-200 rounded-lg bg-white/50 hover:bg-white shadow-sm">
-                            Platform Login
+                            School Login
                         </Link>
                         <Link href="/login" className="text-[13px] font-bold text-white bg-blue-600 hover:bg-blue-700 px-6 py-2.5 rounded-lg transition-all shadow-md hover:shadow-blue-100 hover:-translate-y-0.5 uppercase tracking-widest">
-                            Get Started
+                            Student Login
                         </Link>
                     </div>
 
