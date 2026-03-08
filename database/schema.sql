@@ -78,6 +78,9 @@ ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NUL
 -- quiz_questions: per-question time limit
 ALTER TABLE quiz_questions ADD COLUMN IF NOT EXISTS time_limit_secs INTEGER;
 
+-- achievements: category column
+ALTER TABLE achievements ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'Beginner';
+
 -- ============================================================================
 -- 1. SCHOOLS (top-level tenant)
 -- ============================================================================
@@ -625,6 +628,7 @@ CREATE TABLE IF NOT EXISTS achievements (
     description  TEXT,
     icon_url     TEXT,
     tier         achievement_tier NOT NULL DEFAULT 'bronze',
+    category     TEXT NOT NULL DEFAULT 'Beginner',
     xp_threshold INT,
     criteria     JSONB NOT NULL DEFAULT '{}',
     is_active    BOOLEAN NOT NULL DEFAULT TRUE,
