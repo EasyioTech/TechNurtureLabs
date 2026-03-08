@@ -8,7 +8,7 @@ node_modules
 .agent
 .gsd
 .gemini
-scripts
+# scripts (Removed to allow migration scripts in builder)
 docs
 gsd-template
 adapters
