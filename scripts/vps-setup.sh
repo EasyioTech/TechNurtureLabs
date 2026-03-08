@@ -1,28 +1,32 @@
 #!/bin/sh
+# ============================================================================
+# TechNurture LMS — VPS Setup Script
+# Runs inside the migration or app container (where psql is available via db).
+# Requires: DATABASE_URL environment variable
+# ============================================================================
 
-# LMS VPS Initialization Script
-# This runs INSIDE the docker container to handle DB setup on restricted VPS environments.
+echo "=================================================="
+echo " TechNurture LMS — Production DB Setup"
+echo "=================================================="
 
-echo "--------------------------------------------------"
-echo "🚀 Starting Production DB Initialization"
-echo "--------------------------------------------------"
+if [ -z "$DATABASE_URL" ]; then
+  echo "ERROR: DATABASE_URL is not set."
+  exit 1
+fi
 
-# 1. Apply Audit Fixes & Migration 0005
-echo "\n📦 Step 1: Applying Database Schema & Audit Fixes..."
-npx tsx scripts/apply-migrations.ts
+echo ""
+echo "Applying canonical schema (idempotent)..."
+psql "$DATABASE_URL" -f /app/database/schema.sql
 
-# 1.5 Emergency Column Fix (Favicon, 2FA, Sessions)
-echo "\n🩺 Step 1.5: Verifying Critical Columns..."
-npx tsx scripts/repair-schema.ts
-
-# 2. Seed Core Data (Classes, Plans, Achievements)
-echo "\n🌱 Step 2: Seeding Core Platforms Data..."
-npm run db:seed
-
-# 3. Ensure Super Admin Exists
-echo "\n👤 Step 3: Ensuring Super Admin Account..."
-npx tsx scripts/create-admin.ts
-
-echo "\n--------------------------------------------------"
-echo "✅ VPS Setup Complete!"
-echo "--------------------------------------------------"
+if [ $? -eq 0 ]; then
+  echo ""
+  echo "=================================================="
+  echo " Setup Complete!"
+  echo " Super Admin: admin@technurture.com"
+  echo " Password:    AdminPassword123!"
+  echo " CHANGE THIS PASSWORD AFTER FIRST LOGIN."
+  echo "=================================================="
+else
+  echo "ERROR: Schema application failed. Check logs."
+  exit 1
+fi

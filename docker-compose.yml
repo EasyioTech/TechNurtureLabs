@@ -44,22 +44,23 @@ services:
       - storage_data:/app/local_storage
 
   # ----------------------------
-  # Database Migration Runner
-  # Uses the builder stage which has all devDependencies
+  # Database Setup Runner
+  # Uses postgres image (has psql built in) — no Node.js needed
+  # Run with: docker compose --profile setup up migration
   # ----------------------------
   migration:
-    build:
-      context: .
-      target: builder
+    image: postgres:15
     container_name: LMS_migration
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:admin@db:5432/orchids}
+    volumes:
+      - ./database/schema.sql:/schema.sql:ro
     depends_on:
       db:
         condition: service_healthy
-    command: /bin/sh ./scripts/vps-setup.sh
-    profiles: 
-      - setup # Run with: docker compose --profile setup up migration
+    command: psql $DATABASE_URL -f /schema.sql
+    profiles:
+      - setup
 
   # ----------------------------
   # PostgreSQL Database
