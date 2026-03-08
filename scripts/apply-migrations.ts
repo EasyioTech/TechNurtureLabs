@@ -9,7 +9,16 @@ async function applyMigrations() {
         throw new Error('DATABASE_URL is missing');
     }
 
-    const sql = postgres(sqlUrl, { max: 1 });
+    const sql = postgres(sqlUrl, { max: 1, idle_timeout: 20 });
+
+    console.log('🔍 Checking database connectivity...');
+    try {
+        await sql`SELECT 1`;
+        console.log('✅ Database connected.');
+    } catch (err: any) {
+        console.error('❌ Database connection failed. Is the DB container healthy?');
+        process.exit(1);
+    }
 
     console.log('🔄 Applying Audit Fixes...');
     const auditFixesPath = path.join(process.cwd(), 'src', 'db', 'migrations', 'audit_fixes.sql');
@@ -45,7 +54,9 @@ async function applyMigrations() {
         if (!trimmed) continue;
 
         try {
+            console.log(`📡 Executing: ${trimmed.substring(0, 80)}${trimmed.length > 80 ? '...' : ''}`);
             await sql.unsafe(trimmed);
+            console.log('   ✅ Success');
             successCount++;
         } catch (sErr: any) {
             const msg = sErr.message.toLowerCase();
@@ -55,17 +66,15 @@ async function applyMigrations() {
                 msg.includes('is already') ||
                 msg.includes('already has a value')
             ) {
+                console.log(`   ⏭️  Skipped: ${sErr.message.substring(0, 80)}`);
                 skipCount++;
             } else {
                 failCount++;
-                console.error(`❌ Statement failed: ${sErr.message}`);
-                console.log('Statement:', trimmed);
+                console.error(`   ❌ FAIL: ${sErr.message}`);
+                console.log('   Statement:', trimmed);
 
-                // If a statement fails, it might abort the implicit transaction if we are in one.
-                // But sql.unsafe(trimmed) should be auto-commit.
-                // However, if it's NOT (e.g. if we are already in an aborted state), we must clean up.
                 if (msg.includes('current transaction is aborted')) {
-                    console.log('🔄 Aborted state detected. Rolling back...');
+                    console.log('   🔄 Aborted state detected. Rolling back...');
                     await sql`ROLLBACK`.catch(() => { });
                 }
             }

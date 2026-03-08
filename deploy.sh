@@ -13,14 +13,18 @@ docker-compose down
 echo "Pruning unused Docker assets..."
 docker system prune -f
 
-# Step 3: Build and start new containers
-echo "Starting build and containers (this will take time)..."
-docker-compose up -d --build
+# Step 3: Start Core Services (DB & Redis)
+echo "Starting Database and Redis..."
+docker compose up -d db redis
 
 # Step 3.5: Run Setup (Migrations + Seeding + Admin)
-# This uses the 'setup' profile which runs the builder container temporarily
+# This MUST run before the app starts to avoid column missing errors
 echo "Running database setup and migrations..."
 docker compose --profile setup up migration --abort-on-container-exit
+
+# Step 4: Build and start the App
+echo "Building and starting the Application..."
+docker compose up -d --build app
 
 # Step 4: Health Check (Wait for the app to respond)
 echo "Waiting for app healthcheck to pass..."
