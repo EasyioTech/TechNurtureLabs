@@ -124,12 +124,11 @@ export async function updateDailyChallengeProgress(userId: string, actionType: s
 
         // If this exact update completed it, reward the user with XP
         if (newProgress >= challenge.target_value && currentProgress < challenge.target_value) {
-            const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
-            if (user) {
-                await db.update(users).set({
-                    cumulative_xp: (Number(user.cumulative_xp) || 0) + challenge.xp_reward
-                }).where(eq(users.id, userId));
-            }
+            // ISSUE 12: Atomic increment — avoids race condition if two challenges complete simultaneously
+            const { sql } = await import('drizzle-orm');
+            await db.update(users)
+                .set({ cumulative_xp: sql`cumulative_xp + ${challenge.xp_reward}` })
+                .where(eq(users.id, userId));
         }
     }
 }

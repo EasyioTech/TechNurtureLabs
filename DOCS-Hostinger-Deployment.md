@@ -61,10 +61,31 @@ chmod +x deploy.sh
     ```bash
     docker-compose logs -f app
     ```
-3.  **Database Initialisation**:
-    The system auto-seeds the schema and super-admin (`admin@technurture.com / admin123`) on the first run of the database container via `schema.sql`.
 
-## 5. Security Recommendations
+## 5. Low-Resource VPS Strategy (Limited RAM/Storage) 🛠️
+
+If you are on a KVM with limited storage (e.g. 5GB - 20GB) and no `npm` installed, follow these rules:
+
+### A. Run Database Setup without npm/host tools
+Instead of running commands on your host, use the isolated builder container:
+```bash
+# This applies SQL migrations, Seeds data, and Creates the Super Admin
+docker compose --profile setup up migration --abort-on-container-exit
+```
+
+### B. Clean up Storage
+Docker builds can leave behind large intermediate layers. Run this after every successful deployment:
+```bash
+docker system prune -f
+```
+
+### C. Resource Monitoring
+Check your RAM usage to ensure Node.js is not hitting swap:
+```bash
+docker stats
+```
+
+## 6. Security Recommendations
 
 - **Firewall**: Ensure only ports 80, 443 (for a reverse proxy like Nginx) and 3000 (if exposing app directly) are open.
 - **SSL**: Usenix `certbot` and `Nginx` to provide HTTPS. Next.js standalone is best served behind a proxy.

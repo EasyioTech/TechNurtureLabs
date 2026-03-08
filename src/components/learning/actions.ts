@@ -3,12 +3,19 @@
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { users, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping, schools, auditLogs } from '@/db/schema';
-import { eq, and, inArray, asc, desc, isNotNull, sql } from 'drizzle-orm';
+import { eq, and, inArray, asc, desc, isNotNull, isNull, sql } from 'drizzle-orm';
 
-// Auto-enroll a student in a course if not already enrolled
+// Auto-enroll a student in a course if not already enrolled.
+// Uses UPSERT semantics (NEW BUG 1 fix): if a soft-deleted (unenrolled) enrollment exists
+// for the same user+course+session, it is reactivated instead of inserting a duplicate.
 async function ensureEnrollment(userId: string, courseId: string) {
+    // Check for active enrollment first
     const existingEnrollment = await db.query.enrollments.findFirst({
-        where: and(eq(enrollments.user_id, userId), eq(enrollments.course_id, courseId))
+        where: and(
+            eq(enrollments.user_id, userId),
+            eq(enrollments.course_id, courseId),
+            isNull(enrollments.deleted_at)
+        )
     });
 
     if (existingEnrollment) return existingEnrollment;
@@ -44,6 +51,25 @@ async function ensureEnrollment(userId: string, courseId: string) {
         }
     }
 
+    // Check for a soft-deleted enrollment for the same session (UPSERT: reactivate it)
+    const softDeleted = await db.query.enrollments.findFirst({
+        where: and(
+            eq(enrollments.user_id, userId),
+            eq(enrollments.course_id, courseId),
+            eq(enrollments.session_id, currentSession.id),
+            isNotNull(enrollments.deleted_at)
+        )
+    });
+
+    if (softDeleted) {
+        const [reactivated] = await db.update(enrollments)
+            .set({ deleted_at: null, is_active: true, updated_at: new Date() })
+            .where(eq(enrollments.id, softDeleted.id))
+            .returning();
+        return reactivated;
+    }
+
+    // No existing row at all — insert fresh
     const [newEnrollment] = await db.insert(enrollments).values({
         user_id: userId,
         course_id: courseId,
@@ -185,38 +211,38 @@ export async function getLessonData(lessonId: string) {
     const enrollment = await ensureEnrollment(userId, lesson.course_id);
     if (!enrollment) return null;
 
-    // Fetch quiz data if this is a quiz lesson
+    // NEW BUG 5: 'quiz' was removed from lessonContentTypeEnum because quizzes are a
+    // first-class entity in the quizzes table. Always look up by lesson_id instead of
+    // checking content_type === 'quiz'.
     let quizData: any = null;
-    if (lesson.content_type === 'quiz') {
-        const quiz = await db.query.quizzes.findFirst({
-            where: eq(quizzes.lesson_id, lessonId),
+    const quiz = await db.query.quizzes.findFirst({
+        where: eq(quizzes.lesson_id, lessonId),
+    });
+    if (quiz) {
+        const questions = await db.query.quizQuestions.findMany({
+            where: eq(quizQuestions.quiz_id, quiz.id),
+            orderBy: [asc(quizQuestions.sequence_order)]
         });
-        if (quiz) {
-            const questions = await db.query.quizQuestions.findMany({
-                where: eq(quizQuestions.quiz_id, quiz.id),
-                orderBy: [asc(quizQuestions.sequence_order)]
-            });
-            quizData = {
-                quiz: {
-                    id: quiz.id,
-                    title: quiz.title,
-                    time_limit_secs: quiz.time_limit_secs,
-                    pass_percentage: Number(quiz.pass_percentage),
-                    max_attempts: quiz.max_attempts,
-                    xp_reward: quiz.xp_reward,
-                },
-                questions: questions.map(q => ({
-                    id: q.id,
-                    text: q.question_text,
-                    question_type: q.question_type,
-                    options: Array.isArray(q.options) ? q.options : [],
-                    correct_answer: q.correct_answer, // could be index (number) or string
-                    explanation: q.explanation,
-                    points: q.points,
-                    time_limit_secs: q.time_limit_secs,
-                }))
-            };
-        }
+        quizData = {
+            quiz: {
+                id: quiz.id,
+                title: quiz.title,
+                time_limit_secs: quiz.time_limit_secs,
+                pass_percentage: Number(quiz.pass_percentage),
+                max_attempts: quiz.max_attempts,
+                xp_reward: quiz.xp_reward,
+            },
+            questions: questions.map(q => ({
+                id: q.id,
+                text: q.question_text,
+                question_type: q.question_type,
+                options: Array.isArray(q.options) ? q.options : [],
+                correct_answer: q.correct_answer, // could be index (number) or string
+                explanation: q.explanation,
+                points: q.points,
+                time_limit_secs: q.time_limit_secs,
+            }))
+        };
     }
 
     return {
@@ -269,6 +295,9 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
             user_id: userId,
             lesson_id: lessonId,
             enrollment_id: enrollment.id,
+            // ISSUE 17 + 25: pass session_id and school_id from the enrollment row
+            session_id: enrollment.session_id,
+            school_id: enrollment.school_id,
             completed_at: new Date(),
             progress_pct: '100',
             xp_earned: lesson.xp_reward || 10,
@@ -289,9 +318,11 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
         });
     }
 
-    // Update cumulative XP on user
-    const newXp = (Number(existingUser.cumulative_xp) || 0) + xpToAdd;
-    await db.update(users).set({ cumulative_xp: newXp }).where(eq(users.id, userId));
+    // ISSUE 12: Atomic XP increment — read-modify-write creates a race condition when
+    // two events (lesson + quiz) fire simultaneously. Always use SQL `+= x`, never `= x`.
+    await db.update(users)
+        .set({ cumulative_xp: sql`cumulative_xp + ${xpToAdd}` })
+        .where(eq(users.id, userId));
 
     // Record Activity in Audit Log
     try {
@@ -364,6 +395,9 @@ export async function saveVideoProgress(lessonId: string, position: number) {
             user_id: session.userId,
             lesson_id: lessonId,
             enrollment_id: enrollment.id,
+            // ISSUE 17 + 25: pass session_id and school_id from the enrollment row
+            session_id: enrollment.session_id,
+            school_id: enrollment.school_id,
             progress_pct: position.toString(),
         });
     }

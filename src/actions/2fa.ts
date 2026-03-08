@@ -2,6 +2,8 @@
 
 import { generateSecret, verify, generateURI } from 'otplib';
 import QRCode from 'qrcode';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { users, platformSettings } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -47,21 +49,28 @@ export async function enable2FA(secret: string, token: string) {
         return { success: false, error: 'Invalid verification code' };
     }
 
-    // Generate recovery codes
-    const recoveryCodes = Array.from({ length: 8 }, () =>
-        Math.random().toString(36).substring(2, 12).toUpperCase()
+    // APP ISSUE 2 (Issue 4): Hash backup codes before storing.
+    // Plain codes are returned ONCE to the caller for the user to save.
+    // Stored hashes cannot be reversed — only bcrypt.compare verification works.
+    const plainCodes = Array.from({ length: 8 }, () =>
+        crypto.randomBytes(4).toString('hex').toUpperCase() // e.g. "A1B2C3D4"
+    );
+    const hashedCodes = await Promise.all(
+        plainCodes.map(code => bcrypt.hash(code, 10))
     );
 
     await db.update(users)
         .set({
             two_factor_secret: secret,
             two_factor_enabled: true,
-            two_factor_backup_codes: recoveryCodes,
+            // Store HASHED codes — plain codes are shown to the user once and never stored
+            two_factor_backup_codes: hashedCodes,
         })
         .where(eq(users.id, session.userId));
 
     revalidatePath('/admin');
-    return { success: true, recoveryCodes };
+    // Return plain codes ONCE — frontend must prompt user to copy/download them
+    return { success: true, recoveryCodes: plainCodes };
 }
 
 export async function disable2FA(token: string) {
@@ -95,4 +104,38 @@ export async function disable2FA(token: string) {
 
     revalidatePath('/admin');
     return { success: true };
+}
+
+/**
+ * APP ISSUE 2 (Issue 4): Verify a 2FA backup code using bcrypt compare.
+ * Must be called at POST /auth/2fa/verify-backup.
+ *
+ * - Iterates hashed codes in DB and compares with bcrypt (not string equality).
+ * - Removes the used code after successful verification (one-time use).
+ * - Never returns the stored hashes to the client.
+ */
+export async function verify2FABackupCode(userId: string, inputCode: string): Promise<boolean> {
+    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!user) return false;
+
+    const storedHashes = (user.two_factor_backup_codes as string[]) ?? [];
+    let matchedIndex = -1;
+
+    for (let i = 0; i < storedHashes.length; i++) {
+        const isMatch = await bcrypt.compare(inputCode.trim().toUpperCase(), storedHashes[i]);
+        if (isMatch) {
+            matchedIndex = i;
+            break;
+        }
+    }
+
+    if (matchedIndex === -1) return false;
+
+    // Remove the used code — backup codes are single-use
+    const remainingCodes = storedHashes.filter((_, i) => i !== matchedIndex);
+    await db.update(users)
+        .set({ two_factor_backup_codes: remainingCodes })
+        .where(eq(users.id, userId));
+
+    return true;
 }

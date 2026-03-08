@@ -36,6 +36,13 @@
       "when": 1772904635731,
       "tag": "0004_add_achievement_category_and_tier",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1772946291567,
+      "tag": "0005_new_stature",
+      "breakpoints": true
     }
   ]
 }

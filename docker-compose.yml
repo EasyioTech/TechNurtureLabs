@@ -53,13 +53,13 @@ services:
       target: builder
     container_name: LMS_migration
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://technurture_app:technurture_secure_pass@db:5432/orchids}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:admin@db:5432/orchids}
     depends_on:
       db:
         condition: service_healthy
-    command: npm run db:push
+    command: /bin/sh ./scripts/vps-setup.sh
     profiles: 
-      - migration # Only runs when explicitly called
+      - setup # Run with: docker compose --profile setup up migration
 
   # ----------------------------
   # PostgreSQL Database

@@ -42,7 +42,8 @@ type QuizData = {
 type Lesson = {
   id: string;
   title: string;
-  content_type: 'video' | 'ppt' | 'pdf' | 'quiz';
+  description: string | null;
+  content_type: 'video' | 'ppt' | 'pdf';
   content_url: string | null;
   duration: number;
   xp_reward: number;
@@ -288,7 +289,8 @@ export default function LessonPlayerPage() {
           )}
 
           {/* ── QUIZ ── */}
-          {lesson.content_type === 'quiz' && (
+          {/* quiz_data presence drives quiz rendering — content_type is no longer 'quiz' */}
+          {lesson.quiz_data && (
             <QuizEngine
               quizData={lesson.quiz_data}
               lessonXp={lesson.xp_reward}
@@ -299,7 +301,7 @@ export default function LessonPlayerPage() {
         </div>
 
         {/* ── Completion Banner ── */}
-        {lessonComplete && lesson.content_type !== 'quiz' && (
+        {lessonComplete && !lesson.quiz_data && (
           <div className="mt-16 p-12 rounded-[4rem] bg-slate-950 text-white text-center shadow-[0_40px_80px_-20px_rgba(30,41,59,0.3)] relative overflow-hidden border border-white/5 animate-in zoom-in-95 duration-700">
             <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px]" />
             <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px]" />

@@ -3,167 +3,142 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, Presentation, Sparkles, CheckCircle2, Flame, Trophy, BookOpen, Gamepad2, TrendingUp } from 'lucide-react';
-import { ScrollReveal } from './ScrollReveal';
+import { ArrowRight, PlayCircle, Sparkles, ChevronRight } from 'lucide-react';
 
 export const HeroSectionLight = ({ settings }: { settings?: any }) => {
     return (
-        <section className="relative z-10 pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-white">
-            {/* Ultra-minimal Background */}
-            <div className="absolute inset-0 bg-[radial-gradient(#f1f5f9_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+        <section className="relative pt-36 pb-20 lg:pt-48 overflow-hidden bg-[#FAFAFA] min-h-[100svh] flex flex-col justify-start items-center">
 
-            <div className="max-w-7xl mx-auto px-6 relative z-10">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-12 items-center">
+            {/* Extremely Subtle Ambient Background */}
+            <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-blue-100/40 rounded-[100%] blur-[120px] pointer-events-none" />
 
-                    {/* Left Column: Copy & CTAs */}
-                    <div className="flex flex-col items-start text-left max-w-2xl mx-auto lg:mx-0">
+            <div className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col items-center text-center">
 
-                        <ScrollReveal delay={0.1} direction="up" duration={0.8}>
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-50 border border-slate-200 shadow-sm mb-6">
-                                {settings?.logo_url ? (
-                                    <img src={settings.logo_url} alt="Logo" className="w-4 h-4 object-contain grayscale" />
-                                ) : (
-                                    <Sparkles size={14} className="text-slate-900" />
-                                )}
-                                {settings?.show_platform_name !== false && (
-                                    <span className="text-[11px] font-bold text-slate-700 uppercase tracking-widest">{settings?.platform_name || 'TechNurture'} Labs</span>
-                                )}
-                            </div>
-                        </ScrollReveal>
-
-                        <ScrollReveal delay={0.2} direction="up" duration={0.8}>
-                            <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6 text-slate-900">
-                                Education <span className="font-[family-name:var(--font-playfair)] italic font-medium pr-0.5 text-slate-600">I</span>nfrastructure that <span className="text-blue-600"><span className="font-[family-name:var(--font-playfair)] italic font-medium pr-0.5">S</span>cales.</span>
-                            </h1>
-                        </ScrollReveal>
-
-                        <ScrollReveal delay={0.3} direction="up" duration={0.8}>
-                            <p className="text-lg text-slate-500 mb-10 leading-relaxed font-medium max-w-xl">
-                                A unified, architecturally clean operating system for K-12 institutions. Drive measurable student outcomes without the cognitive overload.
-                            </p>
-                        </ScrollReveal>
-
-                        <ScrollReveal delay={0.4} direction="up" duration={0.8}>
-                            <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
-                                <Link href="/register/student" className="w-full sm:w-auto">
-                                    <motion.button
-                                        whileHover={{ y: -1 }}
-                                        whileTap={{ y: 1 }}
-                                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold px-8 py-4 rounded-xl shadow-md transition-all text-sm tracking-wide cursor-pointer"
-                                    >
-                                        Start Free Trial
-                                        <ArrowRight size={16} />
-                                    </motion.button>
-                                </Link>
-                                <Link href="#demo" className="w-full sm:w-auto">
-                                    <motion.button
-                                        whileHover={{ y: -1, backgroundColor: '#f8fafc' }}
-                                        whileTap={{ y: 1 }}
-                                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-slate-700 font-semibold px-8 py-3.5 rounded-xl border border-slate-200 transition-all text-sm tracking-wide cursor-pointer"
-                                    >
-                                        <Presentation size={16} className="text-slate-400" />
-                                        Book a Demo
-                                    </motion.button>
-                                </Link>
-                            </div>
-                            <div className="flex items-center gap-6 mt-6 text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                                <div className="flex items-center gap-2"><CheckCircle2 size={14} className="text-slate-300" /> No credit card</div>
-                                <div className="flex items-center gap-2"><CheckCircle2 size={14} className="text-slate-300" /> 14-day trial</div>
-                            </div>
-                        </ScrollReveal>
+                {/* Top Announcement Badge */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                    className="inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-white border border-slate-200/60 shadow-[0_2px_8px_rgba(0,0,0,0.04)] mb-8"
+                >
+                    <div className="flex items-center gap-2">
+                        {settings?.logo_url ? (
+                            <img src={settings.logo_url} alt="Logo" className="w-3.5 h-3.5 object-contain grayscale opacity-80" />
+                        ) : (
+                            <Sparkles size={12} className="text-slate-400" />
+                        )}
+                        {settings?.show_platform_name !== false && (
+                            <span className="text-[11px] font-semibold text-slate-600 tracking-wider uppercase">
+                                {settings?.platform_name || 'TechNurture'} OS is live
+                            </span>
+                        )}
                     </div>
+                    <div className="w-px h-3 bg-slate-200" />
+                    <span className="text-[11px] font-medium text-blue-600 flex items-center gap-0.5 cursor-pointer hover:underline pr-1">
+                        Read announcement <ChevronRight size={10} />
+                    </span>
+                </motion.div>
 
-                    {/* Right Column: Minimalist Bento Grid */}
-                    <div className="w-full max-w-[560px] mx-auto lg:ml-auto">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.98 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.8 }}
-                            className="grid grid-cols-2 gap-4"
+                {/* Main Headline */}
+                <motion.h1
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                    className="text-6xl sm:text-7xl md:text-[88px] font-bold tracking-[-0.03em] leading-[1.05] text-slate-900 max-w-5xl mb-8"
+                >
+                    The operating system for <br className="hidden md:block" />
+                    <span className="font-[family-name:var(--font-playfair)] italic font-medium text-slate-500 pr-2">modern</span>
+                    learning.
+                </motion.h1>
+
+                {/* Subtitle */}
+                <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                    className="text-lg md:text-xl text-slate-500 max-w-2xl font-medium leading-relaxed mb-10"
+                >
+                    A unified, deeply psychological infrastructure for K-12. Elevate student outcomes with breathtaking design and frictionless administration.
+                </motion.p>
+
+                {/* CTAs */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                    className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto"
+                >
+                    <Link href="/register/student" className="w-full sm:w-auto">
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#0F172A] text-white font-medium px-8 py-4 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all text-sm tracking-wide"
                         >
-                            {/* Card 1: Consistency (Loss Aversion) */}
-                            <motion.div
-                                whileHover={{ y: -2 }}
-                                className="col-span-1 row-span-2 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between group cursor-default"
-                            >
-                                <div className="space-y-4">
-                                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 mb-6 group-hover:bg-blue-50 group-hover:border-blue-100 transition-colors">
-                                        <Flame size={18} className="text-slate-900 group-hover:text-blue-600 transition-colors" />
-                                    </div>
-                                    <h3 className="text-xl font-bold tracking-tight text-slate-900">Habit<br />Formation</h3>
-                                    <p className="text-xs font-medium text-slate-500 leading-relaxed">Leveraging the endowment effect. Students protect their streaks, driving daily engagement.</p>
-                                </div>
-                                <div className="mt-8 space-y-3">
-                                    <div className="flex items-end justify-between">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Streak</span>
-                                        <span className="text-sm font-black text-slate-900">14 Days</span>
-                                    </div>
-                                    <div className="flex gap-1 h-12 items-end">
-                                        {[40, 60, 30, 80, 50, 90, 100].map((height, i) => (
-                                            <div key={i} className="flex-1 bg-slate-100 rounded-sm relative overflow-hidden">
-                                                <motion.div
-                                                    initial={{ height: 0 }}
-                                                    animate={{ height: `${height}%` }}
-                                                    transition={{ duration: 1, delay: i * 0.1 }}
-                                                    className={`absolute bottom-0 left-0 right-0 rounded-sm ${i === 6 ? 'bg-blue-600' : 'bg-slate-300'}`}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </motion.div>
+                            Start building for free
+                            <ArrowRight size={16} />
+                        </motion.button>
+                    </Link>
+                    <Link href="#demo" className="w-full sm:w-auto">
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-slate-700 font-medium px-8 py-4 rounded-xl border border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all text-sm tracking-wide"
+                        >
+                            <PlayCircle size={18} className="text-slate-400" />
+                            Watch Demo
+                        </motion.button>
+                    </Link>
+                </motion.div>
 
-                            {/* Card 2: Status (Social Proof) - Dark focal point */}
-                            <motion.div
-                                whileHover={{ y: -2 }}
-                                className="col-span-1 bg-slate-900 rounded-3xl p-6 shadow-xl flex flex-col justify-between cursor-default relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">
-                                    <TrendingUp size={100} />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <TrendingUp size={16} className="text-blue-400" />
-                                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Percentile Rank</span>
-                                    </div>
-                                    <h3 className="text-3xl font-black text-white tracking-tighter mb-1">Top 1%</h3>
-                                    <p className="text-[11px] font-medium text-slate-400 leading-relaxed">Relative performance tracking establishes high-status social proof.</p>
-                                </div>
-                            </motion.div>
+                {/* Visual / Interface Mockup Area */}
+                <motion.div
+                    initial={{ opacity: 0, y: 40 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 1.2, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                    className="w-full max-w-5xl mt-24 relative"
+                >
+                    {/* Floating Interface Illusion */}
+                    <div className="relative w-full aspect-[16/9] rounded-[2rem] bg-white border border-slate-200/50 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] overflow-hidden">
 
-                            {/* Card 3: Mastery (Goal Gradient) */}
-                            <motion.div
-                                whileHover={{ y: -2 }}
-                                className="col-span-1 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between cursor-default"
-                            >
-                                <div>
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <BookOpen size={16} className="text-slate-400" />
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Knowledge Mastery</span>
-                                    </div>
-                                    <div className="space-y-2 mb-4">
-                                        <div className="flex justify-between items-baseline">
-                                            <span className="text-sm font-bold text-slate-900 tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">Advanced Calc</span>
-                                            <span className="text-[10px] font-bold text-slate-500">92%</span>
-                                        </div>
-                                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{ width: '92%' }}
-                                                transition={{ duration: 1.2, delay: 0.5 }}
-                                                className="h-full bg-blue-600 rounded-full"
-                                            />
-                                        </div>
-                                    </div>
-                                    <p className="text-[11px] font-medium text-slate-500 leading-relaxed">Visual completion proximity triggers the goal gradient effect.</p>
-                                </div>
-                            </motion.div>
+                        {/* Top Bar Fake UI */}
+                        <div className="h-14 border-b border-slate-100 flex items-center px-6 gap-4 bg-slate-50/50">
+                            <div className="flex gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+                                <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+                                <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+                            </div>
+                            <div className="ml-4 h-6 w-48 bg-white rounded-md border border-slate-200 shadow-sm" />
+                        </div>
 
-                        </motion.div>
+                        {/* Inner layout illusion */}
+                        <div className="flex h-[calc(100%-3.5rem)]">
+                            <div className="hidden sm:flex w-64 border-r border-slate-100 bg-slate-50/30 p-6 flex-col gap-4">
+                                <div className="h-4 w-24 bg-slate-200 rounded-sm mb-4" />
+                                <div className="h-8 w-full bg-slate-100 rounded-md" />
+                                <div className="h-8 w-full bg-slate-100 rounded-md" />
+                                <div className="h-8 w-3/4 bg-slate-100 rounded-md" />
+                            </div>
+                            <div className="flex-1 p-6 sm:p-10 flex flex-col gap-6 sm:gap-8 bg-white relative">
+                                {/* Gradient fade out at bottom of the preview */}
+                                <div className="absolute bottom-0 left-0 w-full h-40 bg-gradient-to-t from-white to-transparent" />
+
+                                <div className="h-8 w-48 sm:w-64 bg-slate-100 rounded-lg" />
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                    <div className="h-24 sm:h-32 bg-slate-50 border border-slate-100 rounded-xl" />
+                                    <div className="hidden sm:block h-32 bg-slate-50 border border-slate-100 rounded-xl" />
+                                    <div className="hidden sm:block h-32 bg-slate-50 border border-slate-100 rounded-xl" />
+                                </div>
+                                <div className="h-40 sm:h-64 w-full bg-slate-50 border border-slate-100 rounded-xl" />
+                            </div>
+                        </div>
+
                     </div>
+                </motion.div>
 
-                </div>
             </div>
+
+            {/* Bottom Gradient Fade Into Next Section */}
+            <div className="absolute bottom-0 left-0 w-full h-48 bg-gradient-to-t from-white to-transparent pointer-events-none z-20" />
         </section>
     );
 };

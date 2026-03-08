@@ -2,9 +2,8 @@ import {
     pgTable, pgEnum,
     text, timestamp, boolean, integer, bigint, numeric, jsonb, uuid, date, inet,
     uniqueIndex, index,
-    AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 // ============================================================================
 // ENUM TYPES
@@ -14,7 +13,9 @@ export const userRoleEnum = pgEnum('user_role', ['super_admin', 'school_admin', 
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'trialing', 'past_due', 'cancelled', 'expired']);
 export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'quarterly', 'semi_annual', 'annual']);
 export const paymentStatusEnum = pgEnum('payment_status', ['created', 'authorized', 'captured', 'failed', 'refunded']);
-export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['video', 'ppt', 'pdf', 'quiz']);
+// NEW BUG 5: removed 'quiz' — quizzes are a first-class entity (quizzes table). A lesson's quiz
+// is discovered via the quizzes relation (WHERE lesson_id = ?), not via content_type.
+export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['video', 'ppt', 'pdf']);
 export const questionTypeEnum = pgEnum('question_type', ['mcq', 'true_false', 'fill_blank', 'multi_select']);
 export const xpSourceEnum = pgEnum('xp_source', ['lesson_completion', 'quiz_score', 'daily_streak', 'challenge_win', 'badge_earned', 'bonus', 'manual_adjustment']);
 export const achievementTierEnum = pgEnum('achievement_tier', ['bronze', 'silver', 'gold', 'platinum']);
@@ -58,6 +59,8 @@ export const academicSessions = pgTable('academic_sessions', {
     start_date: date('start_date').notNull(),
     end_date: date('end_date').notNull(),
     is_current: boolean('is_current').notNull().default(false),
+    // ISSUE 16: soft delete added — hard-deleting a session destroys enrollment/progress history
+    deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -95,10 +98,21 @@ export const users = pgTable('users', {
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => [
-    uniqueIndex('uq_users_email_active').on(table.email),
+    // ISSUE 1: Multi-tenant email uniqueness — old global uniqueIndex was wrong.
+    // School-scoped users: unique email per-school (super_admins have no school_id).
+    uniqueIndex('uq_users_email_per_school')
+        .on(table.email, table.school_id)
+        .where(sql`school_id IS NOT NULL AND deleted_at IS NULL`),
+    uniqueIndex('uq_users_email_global')
+        .on(table.email)
+        .where(sql`school_id IS NULL AND deleted_at IS NULL`),
     index('idx_users_school').on(table.school_id),
     index('idx_users_role').on(table.role),
     index('idx_users_cumulative_xp').on(table.cumulative_xp),
+    // ISSUE 9: Partial index for active-record queries (soft-delete pattern)
+    index('idx_users_active').on(table.school_id).where(sql`deleted_at IS NULL`),
+    // ISSUE 11: Composite index for frequent "active students in school" query
+    index('idx_users_school_active').on(table.school_id, table.is_active),
 ]);
 
 // ============================================================================
@@ -154,6 +168,12 @@ export const schoolSubscriptions = pgTable('school_subscriptions', {
 }, (table) => [
     index('idx_subscriptions_school').on(table.school_id),
     index('idx_subscriptions_status').on(table.status),
+    // ISSUE 2: Prevent duplicate active/trialing subscriptions — race condition in checkout
+    uniqueIndex('uq_school_one_active_sub')
+        .on(table.school_id)
+        .where(sql`status IN ('active', 'trialing')`),
+    // ISSUE 11: Composite index for frequent "get active subscription for school" query
+    index('idx_sub_school_status').on(table.school_id, table.status),
 ]);
 
 export const paymentTransactions = pgTable('payment_transactions', {
@@ -207,6 +227,8 @@ export const classes = pgTable('classes', {
     id: uuid('id').defaultRandom().primaryKey(),
     name: text('name').notNull().unique(),
     level: integer('level').notNull().unique(),
+    // ISSUE 16: soft delete — hard deleting breaks all historical student records for the class
+    deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -215,9 +237,14 @@ export const schoolClassMapping = pgTable('school_class_mapping', {
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     class_id: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
     is_active: boolean('is_active').notNull().default(true),
+    // ISSUE 21: soft delete — unassigning a class must NOT permanently erase historical context
+    deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    uniqueIndex('uq_school_class').on(table.school_id, table.class_id),
+    // NEW BUG 1: Must be partial — otherwise a soft-deleted mapping blocks re-adding the same class
+    uniqueIndex('uq_school_class')
+        .on(table.school_id, table.class_id)
+        .where(sql`deleted_at IS NULL`),
 ]);
 
 export const studentAcademicRecords = pgTable('student_academic_records', {
@@ -253,22 +280,31 @@ export const courses = pgTable('courses', {
     total_lessons: integer('total_lessons').notNull().default(0),
     total_xp: integer('total_xp').notNull().default(0),
     category: text('category').notNull().default('General'),
-    topics: text('topics').notNull().default('Technology'),
+    // ISSUE 15: array column instead of plain text — enables proper multi-topic filtering with GIN index
+    topics: text('topics').array().notNull().default(sql`'{}'`),
     created_by: uuid('created_by').notNull().references(() => users.id, { onDelete: 'restrict' }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => [
     index('idx_courses_published').on(table.is_published),
+    // ISSUE 9: Partial index — only index active (non-deleted) published courses
+    index('idx_courses_active_published').on(table.is_published).where(sql`deleted_at IS NULL`),
 ]);
 
 export const courseClassMapping = pgTable('course_class_mapping', {
     id: uuid('id').defaultRandom().primaryKey(),
     course_id: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
     class_id: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+    // ISSUE 21: soft delete — de-mapping a course/class must not lose historical context
+    is_active: boolean('is_active').notNull().default(true),
+    deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    uniqueIndex('uq_course_class').on(table.course_id, table.class_id),
+    // NEW BUG 1: Must be partial — otherwise a soft-deleted mapping blocks re-adding the same class
+    uniqueIndex('uq_course_class')
+        .on(table.course_id, table.class_id)
+        .where(sql`deleted_at IS NULL`),
 ]);
 
 export const lessons = pgTable('lessons', {
@@ -286,8 +322,15 @@ export const lessons = pgTable('lessons', {
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => [
-    uniqueIndex('uq_lesson_sequence_per_course').on(table.course_id, table.sequence_order),
+    // ISSUE 6: uniqueIndex REMOVED from Drizzle — replaced by DEFERRABLE UNIQUE constraint in
+    // audit_fixes.sql so that reorder transactions don't violate the constraint on intermediate steps.
+    // Run: ALTER TABLE lessons ADD CONSTRAINT uq_lesson_sequence_per_course
+    //      UNIQUE (course_id, sequence_order) DEFERRABLE INITIALLY DEFERRED;
     index('idx_lessons_course').on(table.course_id),
+    // ISSUE 9: Partial index — only active (non-deleted) lessons
+    index('idx_lessons_active').on(table.course_id).where(sql`deleted_at IS NULL`),
+    // ISSUE 11: Composite index for "published lessons in course" queries
+    index('idx_lessons_course_published').on(table.course_id, table.is_published),
 ]);
 
 export const quizzes = pgTable('quizzes', {
@@ -320,7 +363,10 @@ export const quizQuestions = pgTable('quiz_questions', {
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    uniqueIndex('uq_quiz_question_sequence').on(table.quiz_id, table.sequence_order),
+    // NEW BUG 4: uniqueIndex REMOVED — same deferrable problem as lessons.sequence_order.
+    // Replaced by deferrable constraint in audit_fixes.sql:
+    // ALTER TABLE quiz_questions ADD CONSTRAINT uq_quiz_question_sequence
+    //     UNIQUE (quiz_id, sequence_order) DEFERRABLE INITIALLY DEFERRED;
 ]);
 
 // ============================================================================
@@ -336,11 +382,19 @@ export const enrollments = pgTable('enrollments', {
     enrolled_at: timestamp('enrolled_at', { withTimezone: true }).notNull().defaultNow(),
     completed_at: timestamp('completed_at', { withTimezone: true }),
     is_active: boolean('is_active').notNull().default(true),
+    // ISSUE 16: soft delete — distinguishes "unenrolled" from "archived" cleanly
+    deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    uniqueIndex('uq_enrollment').on(table.user_id, table.course_id, table.session_id),
+    // NEW BUG 1: Must be partial — a soft-deleted enrollment must not block re-enrollment
+    // in the same session. Re-enrollment API must UPSERT (reactivate row) not INSERT.
+    uniqueIndex('uq_enrollment')
+        .on(table.user_id, table.course_id, table.session_id)
+        .where(sql`deleted_at IS NULL`),
     index('idx_enrollments_school').on(table.school_id),
+    // ISSUE 11: Composite index for "active enrollments for a user" query
+    index('idx_enroll_user_active').on(table.user_id, table.is_active),
 ]);
 
 export const lessonProgress = pgTable('lesson_progress', {
@@ -348,6 +402,10 @@ export const lessonProgress = pgTable('lesson_progress', {
     user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     lesson_id: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
     enrollment_id: uuid('enrollment_id').notNull().references(() => enrollments.id, { onDelete: 'cascade' }),
+    // ISSUE 17: session_id added — avoids expensive JOIN through enrollments to filter by academic year
+    session_id: uuid('session_id').notNull().references(() => academicSessions.id, { onDelete: 'restrict' }),
+    // ISSUE 25: school_id added — enables direct school-scoped analytics without extra joins
+    school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     started_at: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     completed_at: timestamp('completed_at', { withTimezone: true }),
     progress_pct: numeric('progress_pct', { precision: 5, scale: 2 }).notNull().default('0'),
@@ -359,6 +417,8 @@ export const lessonProgress = pgTable('lesson_progress', {
     uniqueIndex('uq_user_lesson').on(table.user_id, table.lesson_id, table.enrollment_id),
     index('idx_lp_user').on(table.user_id),
     index('idx_lp_enrollment').on(table.enrollment_id),
+    index('idx_lp_session').on(table.session_id),
+    index('idx_lp_school').on(table.school_id),
 ]);
 
 export const courseProgress = pgTable('course_progress', {
@@ -366,6 +426,10 @@ export const courseProgress = pgTable('course_progress', {
     user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     course_id: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
     enrollment_id: uuid('enrollment_id').notNull().references(() => enrollments.id, { onDelete: 'cascade' }),
+    // ISSUE 17: session_id added — avoids expensive JOIN through enrollments to filter by academic year
+    session_id: uuid('session_id').notNull().references(() => academicSessions.id, { onDelete: 'restrict' }),
+    // ISSUE 25: school_id added — enables direct school-scoped analytics without extra joins
+    school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     lessons_completed: integer('lessons_completed').notNull().default(0),
     total_lessons: integer('total_lessons').notNull().default(0),
     progress_pct: numeric('progress_pct', { precision: 5, scale: 2 }).notNull().default('0'),
@@ -377,6 +441,8 @@ export const courseProgress = pgTable('course_progress', {
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
     uniqueIndex('uq_user_course_enrollment').on(table.user_id, table.course_id, table.enrollment_id),
+    index('idx_cp_session').on(table.session_id),
+    index('idx_cp_school').on(table.school_id),
 ]);
 
 export const quizAttempts = pgTable('quiz_attempts', {
@@ -396,6 +462,9 @@ export const quizAttempts = pgTable('quiz_attempts', {
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
     uniqueIndex('uq_quiz_attempt').on(table.user_id, table.quiz_id, table.enrollment_id, table.attempt_number),
+    // ISSUE 20: Missing FK indexes — without these, every quiz update/delete scans the whole attempts table
+    index('idx_qattempts_quiz').on(table.quiz_id),
+    index('idx_qattempts_user').on(table.user_id),
 ]);
 
 // ============================================================================
@@ -416,6 +485,8 @@ export const xpEvents = pgTable('xp_events', {
     index('idx_xp_user').on(table.user_id),
     index('idx_xp_school').on(table.school_id),
     index('idx_xp_created').on(table.created_at),
+    // ISSUE 11: Composite index for "XP events for a user in a date range" — the core leaderboard query
+    index('idx_xp_user_created').on(table.user_id, table.created_at),
 ]);
 
 export const achievements = pgTable('achievements', {
@@ -559,7 +630,8 @@ export const auditLogs = pgTable('audit_logs', {
     entity_id: uuid('entity_id'),
     old_values: jsonb('old_values'),
     new_values: jsonb('new_values'),
-    ip_address: text('ip_address'),
+    // ISSUE 5: inet type instead of text — prevents IPv4/IPv6 mismatch in rate-limiting/ban queries
+    ip_address: inet('ip_address'),
     user_agent: text('user_agent'),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
@@ -571,7 +643,8 @@ export const loginAttempts = pgTable('login_attempts', {
     id: uuid('id').defaultRandom().primaryKey(),
     email: text('email').notNull(),
     user_id: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
-    ip_address: text('ip_address').notNull(),
+    // ISSUE 5: inet type instead of text — prevents IPv4/IPv6 mismatch in rate-limiting/ban queries
+    ip_address: inet('ip_address').notNull(),
     user_agent: text('user_agent'),
     success: boolean('success').notNull(),
     failure_reason: text('failure_reason'),
@@ -589,6 +662,9 @@ export const mediaAssets = pgTable('media_assets', {
     id: uuid('id').defaultRandom().primaryKey(),
     file_name: text('file_name').notNull(),         // UUID-based storage key/filename
     original_name: text('original_name').notNull(), // Original filename from the user
+    // ISSUE 19 TODO: Remove file_url in a future migration once all API serializers compute
+    // the URL at runtime from file_path + storage_type (avoids CDN domain coupling).
+    // Until then, keep it to avoid breaking existing integrations.
     file_url: text('file_url').notNull(),            // Public URL (R2 or /api/media/...)
     file_path: text('file_path').notNull(),          // Storage key (R2) or relative local path
     mime_type: text('mime_type').notNull(),
@@ -624,7 +700,12 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
     expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
     used_at: timestamp('used_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+    // NEW BUG 3: every password reset verifies by token_hash — without an index this is a full scan
+    index('idx_prt_token').on(table.token_hash),
+    index('idx_prt_user').on(table.user_id),
+    index('idx_prt_expires').on(table.expires_at),
+]);
 
 export const emailVerificationTokens = pgTable('email_verification_tokens', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -633,7 +714,43 @@ export const emailVerificationTokens = pgTable('email_verification_tokens', {
     expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
     verified_at: timestamp('verified_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+    // NEW BUG 3: every email verify link verifies by token_hash — without an index this is a full scan
+    index('idx_evt_token').on(table.token_hash),
+    index('idx_evt_user').on(table.user_id),
+]);
+
+// ============================================================================
+// SECURITY — SESSION TRACKING (ISSUE 8)
+// ============================================================================
+
+/**
+ * ISSUE 8: User sessions / refresh tokens table.
+ * Without this there is NO way to:
+ *  - Invalidate a session after password change / account suspension
+ *  - Revoke individual device sessions ("log out everywhere")
+ *  - List active sessions per user
+ *
+ * Auth flow: on login, create a row here with a hashed refresh token.
+ * POST /auth/logout must set revoked_at, not just discard the JWT client-side.
+ */
+export const userSessions = pgTable('user_sessions', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    refresh_token_hash: text('refresh_token_hash').notNull(),
+    device_info: text('device_info'),
+    ip_address: inet('ip_address'),
+    expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revoked_at: timestamp('revoked_at', { withTimezone: true }),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    last_used_at: timestamp('last_used_at', { withTimezone: true }),
+}, (table) => [
+    index('idx_sessions_user').on(table.user_id),
+    index('idx_sessions_expires').on(table.expires_at),
+    // NEW BUG 2: unique index on token hash — enforces no hash collisions and makes
+    // POST /auth/refresh lookup O(1) instead of a full table scan
+    uniqueIndex('uq_sessions_token_hash').on(table.refresh_token_hash),
+]);
 
 // ============================================================================
 // RELATIONS (for Drizzle query API)
@@ -654,6 +771,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     achievements: many(userAchievements),
     dailyChallenges: many(userDailyChallenges),
     certificates: many(userCertificates),
+    // ISSUE 8: Sessions relation for active device tracking
+    sessions: many(userSessions),
 }));
 
 export const academicSessionsRelations = relations(academicSessions, ({ one }) => ({
@@ -678,13 +797,24 @@ export const enrollmentsRelations = relations(enrollments, ({ one, many }) => ({
     course: one(courses, { fields: [enrollments.course_id], references: [courses.id] }),
     school: one(schools, { fields: [enrollments.school_id], references: [schools.id] }),
     session: one(academicSessions, { fields: [enrollments.session_id], references: [academicSessions.id] }),
-    lessonProgress: many(lessonProgress),
 }));
 
 export const lessonProgressRelations = relations(lessonProgress, ({ one }) => ({
     user: one(users, { fields: [lessonProgress.user_id], references: [users.id] }),
     lesson: one(lessons, { fields: [lessonProgress.lesson_id], references: [lessons.id] }),
     enrollment: one(enrollments, { fields: [lessonProgress.enrollment_id], references: [enrollments.id] }),
+    // ISSUE 17 + 25: session and school relations added
+    session: one(academicSessions, { fields: [lessonProgress.session_id], references: [academicSessions.id] }),
+    school: one(schools, { fields: [lessonProgress.school_id], references: [schools.id] }),
+}));
+
+export const courseProgressRelations = relations(courseProgress, ({ one }) => ({
+    user: one(users, { fields: [courseProgress.user_id], references: [users.id] }),
+    course: one(courses, { fields: [courseProgress.course_id], references: [courses.id] }),
+    enrollment: one(enrollments, { fields: [courseProgress.enrollment_id], references: [enrollments.id] }),
+    // ISSUE 17 + 25: session and school relations added
+    session: one(academicSessions, { fields: [courseProgress.session_id], references: [academicSessions.id] }),
+    school: one(schools, { fields: [courseProgress.school_id], references: [schools.id] }),
 }));
 
 export const achievementsRelations = relations(achievements, ({ many }) => ({
@@ -756,4 +886,9 @@ export const schoolClassMappingRelations = relations(schoolClassMapping, ({ one 
 
 export const mediaAssetsRelations = relations(mediaAssets, ({ one }) => ({
     uploader: one(users, { fields: [mediaAssets.uploaded_by], references: [users.id] }),
+}));
+
+// ISSUE 8: Relation for the new user_sessions table
+export const userSessionsRelations = relations(userSessions, ({ one }) => ({
+    user: one(users, { fields: [userSessions.user_id], references: [users.id] }),
 }));

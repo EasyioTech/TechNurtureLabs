@@ -59,8 +59,9 @@ export default function SchoolAdminCourseView() {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user && user.role === 'school_admin' && user.school_id) {
-      if (courseId) fetchCourseData(user.school_id);
+    const u = user as any;
+    if (u && u.role === 'school_admin' && u.school_id) {
+      if (courseId) fetchCourseData(u.school_id);
     } else if (user) {
       setLoading(false);
     }
@@ -85,15 +86,22 @@ export default function SchoolAdminCourseView() {
       if (studentsData && data.lessonsData) {
         const progressByStudent = new Map<string, { completed: number; scores: number[]; lastActivity: string | null }>();
 
-        (progressData || []).forEach(p => {
+        (progressData || []).forEach((p: any) => {
           if (!progressByStudent.has(p.user_id)) {
             progressByStudent.set(p.user_id, { completed: 0, scores: [], lastActivity: null });
           }
           const entry = progressByStudent.get(p.user_id)!;
-          if (p.status === 'completed') entry.completed++;
-          if (p.score != null) entry.scores.push(p.score);
-          if (!entry.lastActivity || (p.updated_at && p.updated_at > entry.lastActivity)) {
-            entry.lastActivity = p.updated_at;
+          // Use completed_at to determine completion status (replaces non-existent p.status)
+          if (p.completed_at != null) entry.completed++;
+          // Use xp_earned as score proxy (replaces non-existent p.score)
+          const score = p.xp_earned != null ? Number(p.xp_earned) : null;
+          if (score != null) entry.scores.push(score);
+          // updated_at is a Date from DB — convert to ISO string for comparison
+          const updatedStr = p.updated_at instanceof Date
+            ? p.updated_at.toISOString()
+            : (p.updated_at as string | null);
+          if (!entry.lastActivity || (updatedStr && updatedStr > entry.lastActivity)) {
+            entry.lastActivity = updatedStr;
           }
         });
 

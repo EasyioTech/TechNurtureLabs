@@ -17,9 +17,10 @@ docker system prune -f
 echo "Starting build and containers (this will take time)..."
 docker-compose up -d --build
 
-# Step 3.5: Apply Database Migrations
-echo "Applying Drizzle schema migrations..."
-docker-compose exec -T app npm run db:push
+# Step 3.5: Run Setup (Migrations + Seeding + Admin)
+# This uses the 'setup' profile which runs the builder container temporarily
+echo "Running database setup and migrations..."
+docker compose --profile setup up migration --abort-on-container-exit
 
 # Step 4: Health Check (Wait for the app to respond)
 echo "Waiting for app healthcheck to pass..."
