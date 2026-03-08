@@ -46,10 +46,10 @@ export default function LeaderboardPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                         <div>
                             <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tight leading-none mb-8">
-                                Global <span className="text-indigo-500">Rankings</span>
+                                School <span className="text-indigo-500">Rankings</span>
                             </h1>
                             <p className="text-slate-400 font-medium text-lg max-w-lg mb-12">
-                                See how you stack up against your peers. Climb the ranks and earn exclusive badges.
+                                See how you stack up against your peers. Climb the ranks to prove your mastery.
                             </p>
 
                             <div className="flex items-center gap-4 bg-white/5 p-2 rounded-2xl max-w-sm backdrop-blur-md border border-white/10">
@@ -72,7 +72,7 @@ export default function LeaderboardPage() {
 
                         <div className="hidden lg:flex justify-end">
                             <div className="w-full max-w-sm aspect-square bg-white/5 rounded-[3rem] border border-white/10 p-10 flex flex-col items-center justify-center text-center backdrop-blur-sm">
-                                <div className="w-20 h-20 rounded-3xl bg-amber-500 flex items-center justify-center text-white mb-6 shadow-2xl shadow-amber-500/20">
+                                <div className="w-20 h-20 rounded-3xl bg-indigo-600 flex items-center justify-center text-white mb-6 shadow-2xl shadow-indigo-600/20">
                                     <Trophy size={40} />
                                 </div>
                                 <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Beat Your Best</h3>
@@ -99,12 +99,12 @@ export default function LeaderboardPage() {
                             {data.data.map((user: any) => {
                                 const isTop3 = user.rank <= 3;
                                 return (
-                                    <div key={user.id} className={`flex items-center gap-4 sm:gap-6 p-4 sm:p-5 rounded-2xl transition-all border ${user.isCurrentUser ? 'bg-indigo-50/50 border-indigo-200 shadow-md shadow-indigo-100/50' : 'bg-white border-slate-100 hover:border-slate-300 hover:shadow-lg hover:-translate-y-0.5'}`}>
+                                    <div key={user.id} className={`flex items-center gap-4 sm:gap-6 p-4 sm:p-5 rounded-2xl transition-all border ${user.isCurrentUser ? 'bg-indigo-50/50 border-indigo-200 shadow-md shadow-indigo-100/50' : 'bg-white border-slate-100 hover:border-slate-300 hover:shadow-sm hover:-translate-y-0.5'}`}>
 
                                         {/* Rank Number */}
                                         <div className="w-10 sm:w-16 flex justify-center shrink-0">
                                             {isTop3 ? (
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg ${user.rank === 1 ? 'bg-amber-400 shadow-amber-400/40' : user.rank === 2 ? 'bg-slate-300 shadow-slate-400/40' : 'bg-orange-400 shadow-orange-500/40'}`}>
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg ${user.rank === 1 ? 'bg-indigo-600 shadow-indigo-600/40' : user.rank === 2 ? 'bg-slate-700 shadow-slate-700/40' : 'bg-slate-400 shadow-slate-400/40'}`}>
                                                     <Trophy size={20} />
                                                 </div>
                                             ) : (
@@ -128,7 +128,7 @@ export default function LeaderboardPage() {
 
                                         {/* XP */}
                                         <div className="flex items-center gap-2 pr-2 sm:pr-4">
-                                            <Star size={18} className={user.isCurrentUser ? 'text-indigo-500' : 'text-amber-400'} />
+                                            <Star size={18} className={user.isCurrentUser ? 'text-indigo-500' : 'text-slate-300'} />
                                             <span className={`text-xl sm:text-2xl font-black ${user.isCurrentUser ? 'text-indigo-600' : 'text-slate-900'}`}>{user.xp.toLocaleString()}</span>
                                             <span className="hidden sm:block text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">XP</span>
                                         </div>
