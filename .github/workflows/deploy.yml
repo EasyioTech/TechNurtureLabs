@@ -27,16 +27,18 @@ jobs:
             git fetch --all
             git reset --hard origin/main
             
-            # Step 2: Shutdown and Build
-            docker compose down
+            # Step 2: Shutdown, Prune and Build
+            docker compose --profile setup down --remove-orphans || true
+            docker network prune -f
+            docker system prune -f
+            
             docker compose up -d --build
             
             # Step 3: Run Database Setup (Migrations + Seeding + Admin)
-            # Uses the 'setup' profile which runs the builder container temporarily
             echo "Running database setup and migrations..."
             docker compose --profile setup up migration --abort-on-container-exit
             
-            # Step 4: Storage Cleanup (CRITICAL for limited VPS storage)
+            # Step 4: Final Cleanup
             docker system prune -f
             
             echo "Deployment successful!"

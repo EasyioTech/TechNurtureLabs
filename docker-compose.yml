@@ -96,6 +96,11 @@ services:
     volumes:
       - redis_data:/data
 
+networks:
+  default:
+    name: technurture_net
+    driver: bridge
+
 volumes:
   postgres_data:
   redis_data:
