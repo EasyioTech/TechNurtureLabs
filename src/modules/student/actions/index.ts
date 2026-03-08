@@ -108,9 +108,23 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     const rank = usersWithMoreXp.length + 1;
     const rankPercentage = Math.min(100, Math.max(1, Math.round((rank / (totalSchoolStudents[0]?.count || 1)) * 100)));
 
+    // Helper to reflect true streak before background db updates
+    function getTrueStreak(user: any): number {
+        let activeStreak = user.current_streak || 0;
+        if (user.last_active_at && activeStreak > 0) {
+            const lastDate = new Date(user.last_active_at);
+            lastDate.setHours(0, 0, 0, 0);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const diffDays = Math.round(Math.abs(today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays > 1) activeStreak = 0;
+        }
+        return activeStreak;
+    }
+
     const stats = {
         xp: Number(profile.cumulative_xp) || 0,
-        streak: profile.current_streak || 0,
+        streak: getTrueStreak(profile),
         level: Math.floor((Number(profile.cumulative_xp) || 0) / 1000) + 1,
         lessonsCompleted: completedLessons.length,
         totalTime: totalHours,

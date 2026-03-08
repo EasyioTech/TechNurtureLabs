@@ -39,6 +39,22 @@ async function verifyStudentContext(targetUserId: string) {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+// STREAK HELPER
+// ─────────────────────────────────────────────────────────────────────────────
+function calculateTrueStreak(user: any): number {
+    let activeStreak = user.current_streak || 0;
+    if (user.last_active_at && activeStreak > 0) {
+        const lastDate = new Date(user.last_active_at);
+        lastDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diffDays = Math.round(Math.abs(today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays > 1) activeStreak = 0;
+    }
+    return activeStreak;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SCHOOL PROFILE
 // ─────────────────────────────────────────────────────────────────────────────
 export async function getSchoolProfile(schoolId: string) {
@@ -172,7 +188,7 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
     return {
         students: students.map(s => ({
             ...s, full_name: `${s.first_name} ${s.last_name}`,
-            total_xp: Number(s.cumulative_xp), current_streak: s.current_streak || 0,
+            total_xp: Number(s.cumulative_xp), current_streak: calculateTrueStreak(s),
             level: Math.floor(Number(s.cumulative_xp) / 1000) + 1,
             class_id: studentClassMap.get(s.id) || '',
         })),
@@ -304,7 +320,7 @@ export async function getSchoolStudents(schoolId: string) {
         email: s.email,
         total_xp: Number(s.cumulative_xp),
         level: Math.floor(Number(s.cumulative_xp) / 1000) + 1,
-        current_streak: s.current_streak || 0,
+        current_streak: calculateTrueStreak(s),
         longest_streak: s.longest_streak || 0,
         lessons_completed: progressData.filter(p => p.user_id === s.id && p.completed_at != null).length,
         is_active: s.is_active,
@@ -479,7 +495,7 @@ export async function getSchoolLeaderboard(schoolId: string, limit = 10) {
         email: s.email,
         total_xp: Number(s.cumulative_xp),
         level: Math.floor(Number(s.cumulative_xp) / 1000) + 1,
-        current_streak: s.current_streak || 0,
+        current_streak: calculateTrueStreak(s),
         lessons_completed: progressData.filter(p => p.user_id === s.id && p.completed_at != null).length,
     }));
 }

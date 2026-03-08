@@ -48,6 +48,7 @@ export function useAdminData() {
     const [classes, setClasses] = useState<any[]>([]);
     const [courseClassMappings, setCourseClassMappings] = useState<any[]>([]);
     const [platformSettings, setPlatformSettings] = useState<any | null>(null);
+    const [platformMetrics, setPlatformMetrics] = useState<any[]>([]);
     // Pagination
     const [userMetricsPage, setUserMetricsPage] = useState(0);
 
@@ -158,14 +159,26 @@ export function useAdminData() {
         setUserMetrics(students.map(s => {
             const school = schoolsRaw.find(sch => sch.id === s.school_id);
             const userProgress = progressData.filter(p => p.user_id === s.id);
+
+            let activeStreak = s.current_streak || 0;
+            const actTime = getUserLastActivity(s.id) || (s.last_active_at ? new Date(s.last_active_at).getTime() : 0);
+            if (actTime && activeStreak > 0) {
+                const lastDate = new Date(actTime);
+                lastDate.setHours(0, 0, 0, 0);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const diffDays = Math.round(Math.abs(today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+                if (diffDays > 1) activeStreak = 0; // Streak currently broken
+            }
+
             return {
                 id: s.id, full_name: s.full_name, email: s.email,
                 school_name: school?.name || 'Unassigned',
                 total_xp: s.total_xp || 0, level: s.level || 1,
-                current_streak: s.current_streak || 0,
+                current_streak: activeStreak,
                 longest_streak: s.longest_streak || 0,
                 lessons_completed: userProgress.filter(p => p.completed_at != null).length,
-                last_activity: getUserLastActivity(s.id) ? new Date(getUserLastActivity(s.id)!).toISOString() : null,
+                last_activity: actTime ? new Date(actTime).toISOString() : null,
             };
         }));
 
@@ -190,6 +203,8 @@ export function useAdminData() {
         setClasses(data.classes || []);
         setCourseClassMappings(data.courseClassMappings || []);
         setPlatformSettings(data.platformSettings || null);
+
+        setPlatformMetrics(data.platformMetrics || []);
 
         setLoading(false);
     }
@@ -367,7 +382,7 @@ export function useAdminData() {
     return {
         loading, stats, courses, selectedCourse, lessons, setLessons,
         paymentPlans, promoCodes, schoolsList, userMetrics, courseMetrics,
-        classes, courseClassMappings, platformSettings,
+        classes, courseClassMappings, platformSettings, platformMetrics,
         userMetricsPage, setUserMetricsPage,
         showCourseDialog, setShowCourseDialog, editingCourse, setEditingCourse,
         showLessonDialog, setShowLessonDialog, editingLesson, setEditingLesson,
