@@ -11,9 +11,9 @@ echo "--------------------------------------------------"
 echo "\n📦 Step 1: Applying Database Schema & Audit Fixes..."
 npx tsx scripts/apply-migrations.ts
 
-# 1.5 Emergency Column Fix (Favicon etc)
+# 1.5 Emergency Column Fix (Favicon, 2FA, Sessions)
 echo "\n🩺 Step 1.5: Verifying Critical Columns..."
-npx tsx scripts/fix-platform-settings.ts
+npx tsx scripts/repair-schema.ts
 
 # 2. Seed Core Data (Classes, Plans, Achievements)
 echo "\n🌱 Step 2: Seeding Core Platforms Data..."
