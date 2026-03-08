@@ -350,7 +350,12 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
             name: cat,
             count: validCourses.filter((c: any) => c?.category === cat).length
         })),
-        topics: Array.from(new Set(validCourses.flatMap((c: any) => c?.topics?.split(',').map((t: string) => t.trim())))).filter(Boolean) as string[]
+        topics: Array.from(new Set(validCourses.flatMap((c: any) => {
+            const t = c?.topics;
+            if (Array.isArray(t)) return t.map((s: string) => s?.trim()).filter(Boolean);
+            if (typeof t === 'string') return t.split(',').map((s: string) => s.trim()).filter(Boolean);
+            return [];
+        }))).filter(Boolean) as string[]
     };
 }
 
