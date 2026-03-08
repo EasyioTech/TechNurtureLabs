@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
     LayoutGrid, BookOpen, CreditCard, Users, BarChart3,
     Building2, Bell, Search, Sun, Moon, Filter, LogOut, Plus, Palette, Check, Settings,
-    Menu, X
+    Menu, X, Save
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useAdminData } from '../hooks/use-admin-data';
@@ -19,7 +19,7 @@ import { PaymentPlansTab } from './tabs/payment-plans-tab';
 import { SchoolsTab } from './tabs/schools-tab';
 import { SettingsTab } from './tabs/settings-tab';
 import { PromoCodesTab } from './tabs/promo-codes-tab';
-import { UserDialog } from './user-dialog';
+
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -30,6 +30,7 @@ import {
     DropdownMenuSub,
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
+    DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 
 const NAV_ITEMS = [
@@ -59,6 +60,7 @@ function DashboardContent() {
     const { isDark, toggle, colorScheme, setColorScheme, accent } = useAdminTheme();
     const [showColorPicker, setShowColorPicker] = useState(false);
     const colorPickerRef = useRef<HTMLDivElement>(null);
+    const settingsRef = useRef<{ handleSave: () => void } | null>(null);
 
     /* Close color picker on outside click */
     useEffect(() => {
@@ -104,7 +106,7 @@ function DashboardContent() {
                         {/* Left: Logo */}
                         <div className="flex items-center gap-3 group cursor-pointer flex-shrink-0 z-10" onClick={() => setActivePage('overview')}>
                             {data.platformSettings?.logo_url ? (
-                                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white flex items-center justify-center p-1.5 border border-white/10 shadow-lg overflow-hidden flex-shrink-0 transition-all group-hover:scale-105 group-hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                                <div className="w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center transition-all group-hover:scale-105 flex-shrink-0">
                                     <img src={data.platformSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
                                 </div>
                             ) : (
@@ -209,25 +211,27 @@ function DashboardContent() {
                                                     <span className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>{accent.label} SELECTED</span>
                                                 </div>
                                             </DropdownMenuSubTrigger>
-                                            <DropdownMenuSubContent className={`w-48 rounded-2xl p-2 border-0 shadow-2xl ${isDark ? 'bg-[#18181b] backdrop-blur-xl' : 'bg-white'}`}>
-                                                <div className="grid grid-cols-1 gap-1">
-                                                    {(Object.keys(COLOR_SCHEMES) as ColorScheme[]).map((key) => {
-                                                        const scheme = COLOR_SCHEMES[key];
-                                                        const isActive = colorScheme === key;
-                                                        return (
-                                                            <DropdownMenuItem
-                                                                key={key}
-                                                                onSelect={() => setColorScheme(key)}
-                                                                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer ${isActive ? (isDark ? 'bg-white/[0.1]' : 'bg-neutral-100') : (isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-neutral-50')}`}
-                                                            >
-                                                                <div className="w-4 h-4 rounded-full border border-white/10" style={{ backgroundColor: isDark ? scheme.swatchDark : scheme.swatchLight }} />
-                                                                <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? t.textPrimary(isDark) : t.textSecondary(isDark)}`}>{scheme.label}</span>
-                                                                {isActive && <Check size={12} className="ml-auto text-emerald-500" />}
-                                                            </DropdownMenuItem>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </DropdownMenuSubContent>
+                                            <DropdownMenuPortal>
+                                                <DropdownMenuSubContent className={`w-48 rounded-2xl p-2 border-0 shadow-2xl ${isDark ? 'bg-[#18181b] backdrop-blur-xl' : 'bg-white'}`}>
+                                                    <div className="grid grid-cols-1 gap-1">
+                                                        {(Object.keys(COLOR_SCHEMES) as ColorScheme[]).map((key) => {
+                                                            const scheme = COLOR_SCHEMES[key];
+                                                            const isActive = colorScheme === key;
+                                                            return (
+                                                                <DropdownMenuItem
+                                                                    key={key}
+                                                                    onSelect={() => setColorScheme(key)}
+                                                                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer ${isActive ? (isDark ? 'bg-white/[0.1]' : 'bg-neutral-100') : (isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-neutral-50')}`}
+                                                                >
+                                                                    <div className="w-4 h-4 rounded-full border border-white/10" style={{ backgroundColor: isDark ? scheme.swatchDark : scheme.swatchLight }} />
+                                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? t.textPrimary(isDark) : t.textSecondary(isDark)}`}>{scheme.label}</span>
+                                                                    {isActive && <Check size={12} className="ml-auto text-emerald-500" />}
+                                                                </DropdownMenuItem>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </DropdownMenuSubContent>
+                                            </DropdownMenuPortal>
                                         </DropdownMenuSub>
 
                                         <DropdownMenuSeparator className={`my-2 ${isDark ? 'bg-white/[0.05]' : 'bg-neutral-100'}`} />
@@ -349,32 +353,29 @@ function DashboardContent() {
                                     className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black border-2 transition-all ${t.btnOutline(isDark)}`}>
                                     <Filter size={isDark ? 14 : 16} />FILTER
                                 </Button>
-                                <Button size="sm"
-                                    className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black shadow-xl transition-all
-                                        ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
-                                    style={isDark ? t.glowStyle(isDark, accent) : {}}
-                                    onClick={() => {
-                                        if (activePage === 'plans') {
-                                            data.setEditingPlan({ billing_cycle: 'monthly', features: [], is_active: true, trial_days: 0 });
-                                            data.setShowPlanDialog(true);
-                                        } else if (activePage === 'promo') {
-                                            data.setEditingPromoCode({ discount_type: 'percentage', is_active: true, max_uses: null, current_uses: 0 });
-                                            data.setShowPromoCodeDialog(true);
-                                        } else if (activePage === 'schools') {
-                                            data.setEditingSchoolItem({ name: '', email: '', is_active: true, data_processing_consent: true, minor_data_guardian_consent: true });
-                                            data.setShowSchoolDialog(true);
-                                        } else if (activePage === 'users') {
-                                            data.setEditingUserItem({ first_name: '', last_name: '', email: '', role: 'student', password: '' });
-                                            data.setShowUserDialog(true);
-                                        }
-                                    }}>
-                                    <Plus size={20} strokeWidth={3} />
-                                    {activePage === 'plans' ? 'UPDATE TIERS' :
-                                        activePage === 'promo' ? 'ADD CODE' :
-                                            activePage === 'schools' ? 'ADD INSTITUTION' :
-                                                activePage === 'users' ? 'NEW STUDENT' :
+                                {activePage !== 'schools' && activePage !== 'users' && (
+                                    <Button size="sm"
+                                        className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black shadow-xl transition-all
+                                            ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
+                                        style={isDark ? t.glowStyle(isDark, accent) : {}}
+                                        onClick={() => {
+                                            if (activePage === 'plans') {
+                                                data.setEditingPlan({ billing_cycle: 'monthly', features: [], is_active: true, trial_days: 0 });
+                                                data.setShowPlanDialog(true);
+                                            } else if (activePage === 'promo') {
+                                                data.setEditingPromoCode({ discount_type: 'percentage', is_active: true, max_uses: null, current_uses: 0 });
+                                                data.setShowPromoCodeDialog(true);
+                                            } else if (activePage === 'settings') {
+                                                settingsRef.current?.handleSave();
+                                            }
+                                        }}>
+                                        {activePage === 'settings' ? <Save size={20} strokeWidth={3} /> : <Plus size={20} strokeWidth={3} />}
+                                        {activePage === 'plans' ? 'UPDATE TIERS' :
+                                            activePage === 'promo' ? 'ADD CODE' :
+                                                activePage === 'settings' ? 'SAVE SETTINGS' :
                                                     'QUICK ACTION'}
-                                </Button>
+                                    </Button>
+                                )}
                             </>
                         )}
                     </div>
@@ -388,7 +389,7 @@ function DashboardContent() {
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.3, ease: 'circOut' }}
                     >
-                        {activePage === 'overview' && <OverviewTab stats={data.stats} paymentPlans={data.paymentPlans} schoolsList={data.schoolsList} />}
+                        {activePage === 'overview' && <OverviewTab stats={data.stats} paymentPlans={data.paymentPlans} schoolsList={data.schoolsList} platformMetrics={data.platformMetrics} />}
                         {activePage === 'courses' && (
                             <CourseBuilderTab
                                 courses={data.courses} selectedCourse={data.selectedCourse}
@@ -438,19 +439,11 @@ function DashboardContent() {
                         )}
                         {activePage === 'users' && <MetricTables userMetrics={data.userMetrics} courseMetrics={[]} page={data.userMetricsPage} setPage={data.setUserMetricsPage} />}
                         {activePage === 'courseMetrics' && <MetricTables userMetrics={[]} courseMetrics={data.courseMetrics} />}
-                        {activePage === 'settings' && <SettingsTab />}
+                        {activePage === 'settings' && <SettingsTab ref={settingsRef} />}
                     </motion.div>
                 </AnimatePresence>
 
-                <UserDialog
-                    open={data.showUserDialog}
-                    onOpenChange={data.setShowUserDialog}
-                    editingUser={data.editingUserItem}
-                    setEditingUser={data.setEditingUserItem}
-                    onSave={data.saveStudent}
-                    schools={data.schoolsList}
-                    classes={data.classes}
-                />
+
             </main>
         </div>
     );

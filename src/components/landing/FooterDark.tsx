@@ -12,15 +12,22 @@ export const FooterDark = ({ settings }: { settings?: any }) => {
                     <div className="md:col-span-1">
                         <div className="flex items-center gap-3 mb-6">
                             {settings?.logo_url ? (
-                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center p-1">
-                                    <img src={settings.logo_url} alt="Platform Logo" className="w-full h-full object-contain" />
+                                <div
+                                    className="flex items-center justify-center"
+                                    style={{ height: settings?.logo_height ? `${settings.logo_height}px` : '32px' }}
+                                >
+                                    <img src={settings.logo_url} alt="Platform Logo" className="w-auto h-full object-contain" />
                                 </div>
                             ) : (
-                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-slate-900">
+                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-slate-900 shrink-0">
                                     <Sparkles size={16} />
                                 </div>
                             )}
-                            <span className="text-xl font-bold tracking-tight text-white">{settings?.platform_name || 'TechNurture'}</span>
+                            {settings?.show_platform_name !== false && (
+                                <span className="text-xl font-bold tracking-tight text-white">
+                                    {settings?.platform_name || 'TechNurture'}
+                                </span>
+                            )}
                         </div>
                         <p className="text-sm leading-relaxed mb-6 font-medium">
                             Redefining K-12 education through world-class immersive learning experiences.
@@ -57,8 +64,8 @@ export const FooterDark = ({ settings }: { settings?: any }) => {
                     </div>
                 </div>
 
-                <div className="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-slate-800 text-sm relative z-10">
-                    <p className="font-medium">© 2026 TechNurture Labs. All rights reserved.</p>
+                <div className="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-slate-800 text-sm relative z-10 font-sans">
+                    <p className="font-medium">© {new Date().getFullYear()} {settings?.platform_name || 'TechNurture'}. All rights reserved.</p>
                     <div className="flex items-center gap-6 mt-4 md:mt-0">
                         <a href="#" className="hover:text-white transition-colors font-medium">Twitter</a>
                         <a href="#" className="hover:text-white transition-colors font-medium">LinkedIn</a>

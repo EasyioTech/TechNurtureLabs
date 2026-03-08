@@ -26,9 +26,12 @@ interface ImageUploadProps {
     label?: string;
     description?: string;
     isDark?: boolean;
+    aspect?: 'video' | 'square';
+    compact?: boolean;
+    folder?: string;
 }
 
-export function ImageUpload({ value, onChange, label, description, isDark = false }: ImageUploadProps) {
+export function ImageUpload({ value, onChange, label, description, isDark = false, aspect = 'video', compact = false, folder }: ImageUploadProps) {
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [assets, setAssets] = useState<MediaAsset[]>([]);
     const [loading, setLoading] = useState(false);
@@ -38,7 +41,7 @@ export function ImageUpload({ value, onChange, label, description, isDark = fals
     const loadAssets = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/media/library?type=image');
+            const res = await fetch(`/api/media/library?type=image${folder ? `&folder=${folder}` : ''}`);
             if (res.ok) {
                 const data = await res.json();
                 setAssets(data);
@@ -54,10 +57,24 @@ export function ImageUpload({ value, onChange, label, description, isDark = fals
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Validation
+        const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/x-icon', 'image/vnd.microsoft.icon'];
+        if (!validTypes.includes(file.type) && !file.name.endsWith('.ico')) {
+            toast.error('Invalid file type. Please upload PNG, JPG, SVG, or ICO.');
+            return;
+        }
+
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            toast.error('File too large. Maximum size is 5MB.');
+            return;
+        }
+
         setUploading(true);
         const formData = new FormData();
         formData.append('file', file);
         formData.append('purpose', 'library');
+        if (folder) formData.append('folder', folder);
 
         try {
             const res = await fetch('/api/upload', {
@@ -96,27 +113,35 @@ export function ImageUpload({ value, onChange, label, description, isDark = fals
                     setIsPickerOpen(true);
                     loadAssets();
                 }}
-                className={`relative aspect-video rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden
-                    ${isDark
-                        ? 'border-white/10 bg-white/5 hover:border-indigo-500/50 hover:bg-white/[0.08]'
-                        : 'border-slate-200 bg-slate-50 hover:border-indigo-500 hover:bg-white'
+                className={`relative ${aspect === 'video' ? 'aspect-video' : 'aspect-square'} rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden
+                    ${value
+                        ? 'border-transparent bg-transparent'
+                        : isDark
+                            ? 'border-white/10 bg-white/5 hover:border-indigo-500/50 hover:bg-white/[0.08]'
+                            : 'border-slate-200 bg-slate-50 hover:border-indigo-500 hover:bg-white'
                     }
                 `}
             >
                 {value ? (
                     <>
                         <img src={value} alt="Preview" className="w-full h-full object-contain p-4" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <p className="text-white text-xs font-bold uppercase tracking-widest">Change Image</p>
-                        </div>
+                        {!compact && (
+                            <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <p className="text-white text-xs font-bold uppercase tracking-widest">Change Image</p>
+                            </div>
+                        )}
                     </>
                 ) : (
                     <>
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                            <ImageIcon size={24} />
+                        <div className={`${compact ? 'w-8 h-8 rounded-xl' : 'w-12 h-12 rounded-2xl'} flex items-center justify-center ${compact ? '' : 'mb-3'} ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                            <ImageIcon size={compact ? 16 : 24} />
                         </div>
-                        <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Click to upload or select logo</p>
-                        <p className={`text-[10px] mt-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>PNG, JPG, SVG up to 5MB</p>
+                        {!compact && (
+                            <>
+                                <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Click to upload or select logo</p>
+                                <p className={`text-[10px] mt-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>PNG, JPG, SVG up to 5MB</p>
+                            </>
+                        )}
                     </>
                 )}
             </div>

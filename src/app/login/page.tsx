@@ -95,7 +95,7 @@ export default function StudentLoginPage() {
 
           <div className="mb-6 lg:hidden flex items-center gap-3">
             {platformSettings?.logo_url ? (
-              <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center p-1 shadow-lg shadow-slate-900/5">
+              <div className="w-10 h-10 flex items-center justify-center">
                 <img src={platformSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
               </div>
             ) : (
@@ -196,7 +196,7 @@ export default function StudentLoginPage() {
 
           <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center gap-4">
             <p className="text-slate-500 font-medium text-center text-sm">
-              New to TechNurture Labs?
+              New to {platformSettings?.platform_name || 'TechNurture'}?
               <Link href="/register/student" className="text-blue-600 hover:text-blue-700 font-black ml-1 cursor-pointer">
                 Sign Up
               </Link>

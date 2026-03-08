@@ -223,7 +223,11 @@ export default function StudentDashboard() {
               <section className="relative overflow-hidden rounded-[3rem] bg-indigo-600 p-10 text-white shadow-xl shadow-indigo-200 group">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
                   <div>
-                    <Badge className="bg-white/20 text-white border-0 px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest mb-6">Continue Learning</Badge>
+                    <Badge className={`bg-white/20 text-white border-0 px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest mb-6`}>
+                      {lastCourse.completedLessons === lastCourse.totalLessons && lastCourse.totalLessons > 0
+                        ? 'Course Completed'
+                        : lastCourse.completedLessons > 0 ? 'Continue Learning' : 'Start Next Course'}
+                    </Badge>
                     <h2 className="text-3xl font-black uppercase tracking-tight leading-none mb-4">{lastCourse.title}</h2>
                     <div className="flex items-center gap-6 mb-8 text-[10px] font-black text-white/60 uppercase tracking-widest">
                       <span className="flex items-center gap-2"><BookOpen size={14} /> {lastCourse.totalLessons} Lessons</span>
@@ -231,7 +235,10 @@ export default function StudentDashboard() {
                     </div>
                     <Link href={`/student/course/${lastCourse.id}`}>
                       <Button className="h-14 px-10 rounded-2xl bg-white text-indigo-600 font-black uppercase tracking-widest text-[11px] hover:bg-slate-50 transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-black/5">
-                        Resume Course <ArrowRight size={16} className="ml-3" />
+                        {lastCourse.completedLessons === lastCourse.totalLessons && lastCourse.totalLessons > 0
+                          ? 'Review Course'
+                          : lastCourse.completedLessons > 0 ? 'Resume Course' : 'Start Course'}
+                        <ArrowRight size={16} className="ml-3" />
                       </Button>
                     </Link>
                   </div>

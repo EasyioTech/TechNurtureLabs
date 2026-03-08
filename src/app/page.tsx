@@ -1,4 +1,6 @@
 import React from 'react';
+export const dynamic = 'force-dynamic';
+import { Playfair_Display } from 'next/font/google';
 import { FlatNavigation } from '@/components/landing/FlatNavigation';
 import { HeroSectionLight } from '@/components/landing/HeroSectionLight';
 import { FeaturesBentoLight } from '@/components/landing/FeaturesBentoLight';
@@ -12,11 +14,18 @@ import { FooterDark } from '@/components/landing/FooterDark';
 
 import { getPlatformSettings } from '@/components/landing/actions';
 
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['700', '900'],
+  display: 'swap',
+  variable: '--font-playfair',
+});
+
 export default async function Home() {
   const settings = await getPlatformSettings();
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 selection:bg-blue-500/30 selection:text-blue-900 font-roboto overflow-x-clip">
+    <div className={`${playfair.variable} min-h-screen bg-white text-slate-800 selection:bg-blue-500/30 selection:text-blue-900 font-roboto overflow-x-clip`}>
 
       {/* 1. Flat Navigation Bar */}
       <FlatNavigation settings={settings} />

@@ -25,17 +25,24 @@ export const FlatNavigation = ({ settings }: { settings?: any }) => {
                 <div className="flex items-center justify-between">
 
                     {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2 group">
+                    <Link href="/" className={cn("flex items-center gap-2 group", settings?.logo_layout === 'portrait' ? 'flex-col items-center' : 'flex-row items-center')}>
                         {settings?.logo_url ? (
-                            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center p-1 border border-slate-100 shadow-sm transition-transform group-hover:scale-105">
-                                <img src={settings.logo_url} alt="Platform Logo" className="w-full h-full object-contain" />
+                            <div
+                                className="flex items-center justify-center transition-transform group-hover:scale-105"
+                                style={{ height: settings?.logo_height ? `${settings.logo_height}px` : '32px' }}
+                            >
+                                <img src={settings.logo_url} alt="Platform Logo" className="w-auto h-full object-contain" />
                             </div>
                         ) : (
-                            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center transition-transform group-hover:scale-105">
+                            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
                                 <Sparkles className="text-white" size={16} />
                             </div>
                         )}
-                        <span className="text-xl font-bold tracking-tight text-slate-900">TechNurture</span>
+                        {settings?.show_platform_name !== false && (
+                            <span className="text-xl font-bold tracking-tight text-slate-900 whitespace-nowrap">
+                                {settings?.platform_name || 'TechNurture'}
+                            </span>
+                        )}
                     </Link>
 
                     {/* Desktop Links */}

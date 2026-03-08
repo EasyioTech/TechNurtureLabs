@@ -29,6 +29,10 @@ export async function getPlatformSettings() {
         id: 'global',
         platform_name: 'TechNurture',
         logo_url: null,
+        favicon_url: null,
+        logo_layout: 'landscape',
+        show_platform_name: true,
+        logo_height: 32,
         hero_video_url: null,
         created_at: new Date(),
         updated_at: new Date()

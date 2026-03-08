@@ -60,7 +60,7 @@ function getFolderPrefix(mimeType: string, context?: StorageContext): string {
 
 /** Derive normalized asset_type from MIME type */
 export function getAssetType(mimeType: string): 'video' | 'image' | 'document' {
-    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('image/') || mimeType === 'image/x-icon' || mimeType === 'image/vnd.microsoft.icon') return 'image';
     if (mimeType.startsWith('video/')) return 'video';
     return 'document';
 }
@@ -100,7 +100,7 @@ const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB max
 /**
  * Validates file buffer against common extension magic bytes to prevent mislabeled file exploit.
  */
-function isValidSignature(buffer: Buffer, mimeType: string): boolean {
+function isValidSignature(buffer: Buffer, mimeType: string, originalFilename: string = ''): boolean {
     if (buffer.length < 8) return false;
 
     if (mimeType === 'application/pdf') {
@@ -134,6 +134,10 @@ function isValidSignature(buffer: Buffer, mimeType: string): boolean {
         const start = buffer.subarray(0, 100).toString('utf-8').trim();
         return start.startsWith('<svg') || start.startsWith('<?xml');
     }
+    if (mimeType === 'image/x-icon' || mimeType === 'image/vnd.microsoft.icon' || originalFilename.endsWith('.ico')) {
+        // ICO signature: 00 00 01 00 (icon) or 00 00 02 00 (cursor)
+        return buffer[0] === 0x00 && buffer[1] === 0x00 && (buffer[2] === 0x01 || buffer[2] === 0x02) && buffer[3] === 0x00;
+    }
 
     // Explicit rejection for unmapped or potentially malicious types
     return false;
@@ -157,7 +161,7 @@ export async function uploadFile(
     }
 
     // Security Guard: Soft Magic checking
-    if (!isValidSignature(buffer, mimeType)) {
+    if (!isValidSignature(buffer, mimeType, originalFilename)) {
         throw new Error(`Security validation failed: Invalid file signature for mimeType ${mimeType}`);
     }
 

@@ -174,10 +174,10 @@ export default function AchievementsPage() {
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-4 border-b border-slate-100">
                             <div>
                                 <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-4">Milestone Gallery</h2>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
                                     Authentication Secure • Real-time Sync Active
-                                </p>
+                                </div>
                             </div>
                         </div>
 

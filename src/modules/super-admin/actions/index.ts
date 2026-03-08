@@ -1,10 +1,10 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { courses, lessons, paymentPlans, users, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, classes, courseClassMapping, schoolClassMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions, promoCodes, auditLogs, platformSettings } from '@/db/schema';
-import { eq, asc, desc, count, sql, and } from 'drizzle-orm';
+import { courses, lessons, paymentPlans, users, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, classes, courseClassMapping, schoolClassMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions, promoCodes, auditLogs, platformSettings, platformMetricsDaily } from '@/db/schema';
+import { eq, asc, desc, count, sql, and, lte } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
-import { addMonths } from 'date-fns';
+import { addMonths, subDays, startOfDay, endOfDay, format } from 'date-fns';
 import bcrypt from 'bcryptjs';
 
 export async function fetchAllAdminData() {
@@ -25,6 +25,21 @@ export async function fetchAllAdminData() {
     const platformSettingsData = await db.query.platformSettings.findFirst({
         where: eq(platformSettings.id, 'global')
     });
+
+    // Ensure we have real platform metrics
+    let platformMetricsData = await db.query.platformMetricsDaily.findMany({
+        orderBy: [asc(platformMetricsDaily.metric_date)],
+        limit: 30
+    });
+
+    // If no metrics or very few, perform an on-the-fly aggregation and sync
+    if (platformMetricsData.length < 5) {
+        await syncPlatformMetrics();
+        platformMetricsData = await db.query.platformMetricsDaily.findMany({
+            orderBy: [asc(platformMetricsDaily.metric_date)],
+            limit: 30
+        });
+    }
 
     // Count enrollments per course
     const enrollmentCounts = new Map<string, number>();
@@ -72,6 +87,7 @@ export async function fetchAllAdminData() {
         courseProgress: courseProgressData,
         promoCodes: promoCodesData,
         platformSettings: platformSettingsData || null,
+        platformMetrics: platformMetricsData,
     };
 }
 
@@ -484,6 +500,7 @@ export async function saveQuizAdmin(quizData: any) {
                     correct_answer: q.correct_answer,
                     explanation: q.explanation || '',
                     points: q.points || 1,
+                    time_limit_secs: q.time_limit_secs || 0,
                     sequence_order: idx + 1,
                 }))
             );
@@ -540,106 +557,6 @@ export async function assignPlanToSchool(schoolId: string, planId: string, billi
     });
 }
 
-export async function saveStudentAdmin(userData: any) {
-    const email = userData.email.toLowerCase().trim();
-
-    return await db.transaction(async (tx) => {
-        let userId = userData.id;
-
-        if (userData.id) {
-            // Update
-            const checkEmail = await tx.query.users.findFirst({
-                where: and(eq(users.email, email), sql`${users.id} != ${userData.id}`)
-            });
-            if (checkEmail) throw new Error("A user with this email already exists.");
-
-            const updateData: any = {
-                first_name: userData.first_name,
-                last_name: userData.last_name,
-                email: email,
-                school_id: userData.school_id,
-            };
-            if (userData.password) {
-                updateData.password_hash = await bcrypt.hash(userData.password, 10);
-            }
-
-            await tx.update(users).set(updateData).where(eq(users.id, userData.id));
-        } else {
-            // Create
-            const checkEmail = await tx.query.users.findFirst({ where: eq(users.email, email) });
-            if (checkEmail) throw new Error("A user with this email already exists.");
-
-            if (!userData.password) throw new Error("Password is required for new students.");
-            const hashedPassword = await bcrypt.hash(userData.password, 10);
-            const [created] = await tx.insert(users).values({
-                email: email,
-                password_hash: hashedPassword,
-                first_name: userData.first_name,
-                last_name: userData.last_name,
-                school_id: userData.school_id,
-                role: 'student',
-                cumulative_xp: 0,
-                current_streak: 0,
-                is_active: true,
-            } as any).returning();
-            userId = created.id;
-        }
-
-        // Handle session and academic record
-        if (userData.class_id && userData.school_id) {
-            let session = await tx.query.academicSessions.findFirst({
-                where: and(
-                    eq(academicSessions.school_id, userData.school_id),
-                    eq(academicSessions.is_current, true)
-                )
-            });
-
-            if (!session) {
-                const startDate = new Date();
-                const endDate = new Date();
-                endDate.setFullYear(startDate.getFullYear() + 1);
-
-                const [newSession] = await tx.insert(academicSessions).values({
-                    name: `Session ${startDate.getFullYear()}-${startDate.getFullYear() + 1}`,
-                    school_id: userData.school_id,
-                    is_current: true,
-                    start_date: startDate.toISOString().split('T')[0],
-                    end_date: endDate.toISOString().split('T')[0]
-                } as any).returning();
-                session = newSession;
-            }
-
-            const existingRecord = await tx.query.studentAcademicRecords.findFirst({
-                where: and(
-                    eq(studentAcademicRecords.user_id, userId),
-                    eq(studentAcademicRecords.school_id, userData.school_id),
-                    eq(studentAcademicRecords.session_id, session.id)
-                )
-            });
-
-            if (existingRecord) {
-                await tx.update(studentAcademicRecords)
-                    .set({ class_id: userData.class_id })
-                    .where(eq(studentAcademicRecords.id, existingRecord.id));
-            } else {
-                await tx.insert(studentAcademicRecords).values({
-                    user_id: userId,
-                    school_id: userData.school_id,
-                    session_id: session.id,
-                    class_id: userData.class_id,
-                } as any).onConflictDoNothing();
-            }
-        }
-
-        const updated = await tx.query.users.findFirst({ where: eq(users.id, userId) });
-        return {
-            ...updated,
-            full_name: `${updated?.first_name} ${updated?.last_name}`,
-            total_xp: Number(updated?.cumulative_xp),
-            level: Math.floor((Number(updated?.cumulative_xp) || 0) / 500) + 1,
-        } as any;
-    });
-}
 
 /**
  * FETCH GLOBAL ENTITIES FOR REUSE
@@ -709,6 +626,7 @@ export async function cloneQuizAction(quizId: string, targetLessonId: string, ta
                     correct_answer: q.correct_answer,
                     explanation: q.explanation,
                     points: q.points,
+                    time_limit_secs: q.time_limit_secs,
                     sequence_order: q.sequence_order,
                 }))
             );
@@ -754,4 +672,70 @@ export async function cloneLessonAction(lessonId: string, targetCourseId: string
         await updateCourseTotals(targetCourseId);
         return clonedLesson;
     });
+}
+
+export async function syncPlatformMetrics() {
+    try {
+        const last30Days = [];
+        for (let i = 29; i >= 0; i--) {
+            const d = subDays(new Date(), i);
+            last30Days.push(format(d, 'yyyy-MM-dd'));
+        }
+
+        // Optimized grouping queries
+        const revenueByDay = await db.select({
+            date: sql`DATE(${paymentTransactions.created_at})::text`,
+            total: sql`SUM(CAST(amount AS NUMERIC))`
+        }).from(paymentTransactions)
+            .where(eq(paymentTransactions.status, 'captured'))
+            .groupBy(sql`DATE(${paymentTransactions.created_at})`);
+
+        const activeByDay = await db.select({
+            date: sql`DATE(${lessonProgress.updated_at})::text`,
+            count: count(sql`DISTINCT ${lessonProgress.user_id}`)
+        }).from(lessonProgress)
+            .groupBy(sql`DATE(${lessonProgress.updated_at})`);
+
+        // Get all students/enrollments/schools to compute cumulative counts in memory (efficient for current scale)
+        const allStudents = await db.select({ created_at: users.created_at }).from(users).where(and(eq(users.role, 'student'), eq(users.is_active, true)));
+        const allEnrollments = await db.select({ enrolled_at: enrollments.enrolled_at }).from(enrollments);
+        const allSchools = await db.select({ created_at: schools.created_at, is_active: schools.is_active }).from(schools);
+
+        for (const dateStr of last30Days) {
+            const dayEnd = endOfDay(new Date(dateStr));
+
+            const totalStudents = allStudents.filter(s => new Date(s.created_at) <= dayEnd).length;
+            const totalEnrollments = allEnrollments.filter(e => new Date(e.enrolled_at) <= dayEnd).length;
+            const totalSchoolsCount = allSchools.filter(s => new Date(s.created_at) <= dayEnd).length;
+            const activeSchoolsCount = allSchools.filter(s => s.is_active && new Date(s.created_at) <= dayEnd).length;
+
+            const revenueDay = revenueByDay.find(r => r.date === dateStr);
+            const activeDay = activeByDay.find(a => a.date === dateStr);
+
+            await db.insert(platformMetricsDaily).values({
+                metric_date: dateStr,
+                total_students: totalStudents,
+                active_students: Number(activeDay?.count || 0),
+                total_enrollments: totalEnrollments,
+                revenue_total: revenueDay?.total ? revenueDay.total.toString() : '0',
+                total_schools: totalSchoolsCount,
+                active_schools: activeSchoolsCount,
+            } as any).onConflictDoUpdate({
+                target: platformMetricsDaily.metric_date,
+                set: {
+                    total_students: totalStudents,
+                    active_students: Number(activeDay?.count || 0),
+                    total_enrollments: totalEnrollments,
+                    revenue_total: revenueDay?.total ? revenueDay.total.toString() : '0',
+                    total_schools: totalSchoolsCount,
+                    active_schools: activeSchoolsCount,
+                    created_at: new Date()
+                }
+            });
+        }
+        return { success: true };
+    } catch (error) {
+        console.error("Error syncing platform metrics:", error);
+        return { success: false, error };
+    }
 }

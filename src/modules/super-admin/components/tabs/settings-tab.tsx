@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,9 +8,14 @@ import { toast } from 'sonner';
 import { Loader2, Video, Save, Link2, UploadCloud, Film } from 'lucide-react';
 import { MediaLibraryPicker } from '../media-library-picker';
 import { ImageUpload } from '@/modules/shared/components/image-upload';
-import { Palette } from 'lucide-react';
+import { Palette, Shield, Settings2, Smartphone, Key, AlertCircle, CheckCircle, Columns, Rows, Square, Lock } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { generate2FASecret, enable2FA, disable2FA } from '@/actions/2fa';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Slider } from '@/components/ui/slider';
 
-export function SettingsTab() {
+export const SettingsTab = forwardRef<any, any>((props, ref) => {
     const { isDark, accent } = useAdminTheme();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -19,27 +24,28 @@ export function SettingsTab() {
     const [videoType, setVideoType] = useState<'youtube' | 'upload' | 'vimeo' | 'link'>('youtube');
     const [videoUrl, setVideoUrl] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
+    const [faviconUrl, setFaviconUrl] = useState('');
     const [platformName, setPlatformName] = useState('TechNurture');
+    const [logoLayout, setLogoLayout] = useState('landscape');
+    const [showPlatformName, setShowPlatformName] = useState(true);
+    const [logoHeight, setLogoHeight] = useState(40);
 
-    useEffect(() => {
-        // Fetch current settings
-        fetch('/api/admin/settings')
-            .then(res => res.json())
-            .then(data => {
-                if (data.settings) {
-                    setVideoType(data.settings.hero_video_type || 'youtube');
-                    setVideoUrl(data.settings.hero_video_url || '');
-                    setLogoUrl(data.settings.logo_url || '');
-                    setPlatformName(data.settings.platform_name || 'TechNurture');
-                }
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                toast.error('Failed to load platform settings');
-                setLoading(false);
-            });
-    }, []);
+    // 2FA States
+    const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+    const [show2FASetup, setShow2FASetup] = useState(false);
+    const [qrCode, setQrCode] = useState('');
+    const [tempSecret, setTempSecret] = useState('');
+    const [otpToken, setOtpToken] = useState('');
+
+    const [show2FADisable, setShow2FADisable] = useState(false);
+    const [disableToken, setDisableToken] = useState('');
+    const [disabling2FA, setDisabling2FA] = useState(false);
+    // Password States
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [changingPassword, setChangingPassword] = useState(false);
+
+    const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
 
     const handleSave = async () => {
         setSaving(true);
@@ -51,7 +57,11 @@ export function SettingsTab() {
                     hero_video_type: videoType,
                     hero_video_url: videoUrl,
                     logo_url: logoUrl,
+                    favicon_url: faviconUrl,
                     platform_name: platformName,
+                    logo_layout: logoLayout,
+                    show_platform_name: showPlatformName,
+                    logo_height: logoHeight,
                 })
             });
             const data = await res.json();
@@ -65,6 +75,115 @@ export function SettingsTab() {
             toast.error('Network error while saving');
         } finally {
             setSaving(false);
+        }
+    };
+
+    useImperativeHandle(ref, () => ({
+        handleSave
+    }));
+
+    useEffect(() => {
+        // Fetch current settings
+        fetch('/api/admin/settings')
+            .then(res => res.json())
+            .then(data => {
+                if (data.settings) {
+                    setVideoType(data.settings.hero_video_type || 'youtube');
+                    setVideoUrl(data.settings.hero_video_url || '');
+                    setLogoUrl(data.settings.logo_url || '');
+                    setFaviconUrl(data.settings.favicon_url || '');
+                    setPlatformName(data.settings.platform_name || 'TechNurture');
+                    setLogoLayout(data.settings.logo_layout || 'landscape');
+                    setShowPlatformName(data.settings.show_platform_name ?? true);
+                    setLogoHeight(data.settings.logo_height || 40);
+                }
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error(err);
+                toast.error('Failed to load platform settings');
+                setLoading(false);
+            });
+
+        // Check 2FA status
+        fetch('/api/auth/me')
+            .then(res => res.json())
+            .then(data => {
+                setTwoFactorEnabled(data.user?.two_factor_enabled || false);
+            });
+    }, []);
+
+
+    const handleSetup2FA = async () => {
+        try {
+            const data = await generate2FASecret();
+            setQrCode(data.qrCodeUrl);
+            setTempSecret(data.secret);
+            setShow2FASetup(true);
+        } catch (error) {
+            toast.error('Failed to initialize 2FA');
+        }
+    };
+
+    const handleVerifyAndEnable2FA = async () => {
+        if (otpToken.length !== 6) return;
+        try {
+            const result = await enable2FA(tempSecret, otpToken);
+            if (result.success) {
+                setTwoFactorEnabled(true);
+                setShow2FASetup(false);
+                setRecoveryCodes(result.recoveryCodes || []);
+                toast.success('Two-factor authentication enabled');
+            } else {
+                toast.error(result.error || 'Identity verification failed');
+            }
+        } catch (error) {
+            toast.error('Failed to enable 2FA');
+        }
+    };
+
+    const handleDisable2FA = async () => {
+        if (disableToken.length !== 6) return;
+        setDisabling2FA(true);
+        try {
+            const result = await disable2FA(disableToken);
+            if (result.success) {
+                setTwoFactorEnabled(false);
+                setShow2FADisable(false);
+                setDisableToken('');
+                setRecoveryCodes([]);
+                toast.success('Two-factor authentication disabled');
+            } else {
+                toast.error(result.error || 'Verification failed');
+            }
+        } catch (error) {
+            toast.error('Failed to disable 2FA');
+        } finally {
+            setDisabling2FA(false);
+        }
+    };
+
+    const handleChangePassword = async () => {
+        if (!currentPassword || !newPassword) return;
+        setChangingPassword(true);
+        try {
+            const res = await fetch('/api/auth/password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success('Password updated successfully');
+                setCurrentPassword('');
+                setNewPassword('');
+            } else {
+                toast.error(data.error || 'Failed to update password');
+            }
+        } catch (error) {
+            toast.error('Network error');
+        } finally {
+            setChangingPassword(false);
         }
     };
 
@@ -90,8 +209,8 @@ export function SettingsTab() {
                     </div>
                 </div>
 
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                         <div className="space-y-4">
                             <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>System Logo</Label>
                             <div className="max-w-xs">
@@ -99,24 +218,100 @@ export function SettingsTab() {
                                     value={logoUrl}
                                     onChange={setLogoUrl}
                                     isDark={isDark}
+                                    folder="branding"
                                 />
                             </div>
-                            <p className={`text-[11px] ${t.textMuted(isDark)} font-medium italic mt-2`}>
-                                This logo will be displayed on the main landing page, super admin dashboard, and default school portals.
+                            <p className={`text-[11px] ${t.textMuted(isDark)} font-medium italic mt-2 leading-relaxed`}>
+                                Primary branding asset. Used in headers, dashboards, and portals.
                             </p>
                         </div>
 
+                        <div className="space-y-4">
+                            <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>Favicon (Browser Icon)</Label>
+                            <div className="w-16 h-16">
+                                <ImageUpload
+                                    value={faviconUrl}
+                                    onChange={setFaviconUrl}
+                                    isDark={isDark}
+                                    aspect="square"
+                                    compact={true}
+                                    folder="branding"
+                                />
+                            </div>
+                            <p className={`text-[10px] ${t.textMuted(isDark)} font-medium italic mt-2 leading-tight`}>
+                                Square icon for browser tabs.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-10 pt-8 border-t ${t.border(isDark)}`}>
                         <div className="space-y-4">
                             <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>Platform Public Name</Label>
                             <Input
                                 value={platformName}
                                 onChange={(e) => setPlatformName(e.target.value)}
                                 placeholder="e.g. TechNurture Labs"
-                                className={`text-base font-bold h-14 rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/10 text-white shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                className={`text-base font-bold h-14 rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? '!bg-white/[0.08] border-white/10 text-white shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                             />
-                            <p className={`text-[11px] ${t.textMuted(isDark)} font-medium italic mt-2`}>
-                                The global brand name used in navigation bars, footers, and emails.
+                        </div>
+
+                        <div className="space-y-4">
+                            <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>Logo Layout</Label>
+                            <div className="grid grid-cols-3 gap-3">
+                                {[
+                                    { id: 'landscape', label: 'Landscape', icon: <Columns size={20} /> },
+                                    { id: 'portrait', label: 'Portrait', icon: <Rows size={20} /> },
+                                    { id: 'icon_only', label: 'Icon', icon: <Square size={16} /> },
+                                ].map((layout) => {
+                                    const isActive = logoLayout === layout.id;
+                                    return (
+                                        <button
+                                            key={layout.id}
+                                            onClick={() => setLogoLayout(layout.id)}
+                                            className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2
+                                                ${isActive
+                                                    ? `border-${accent.name}-500 ${isDark ? 'bg-white/[0.04]' : 'bg-slate-50'}`
+                                                    : `border-transparent ${isDark ? 'bg-white/[0.02] hover:bg-white/[0.05]' : 'bg-slate-100/50 hover:bg-slate-100'} ${t.border(isDark)}`
+                                                }`}
+                                        >
+                                            <div className={isActive ? accent.text : t.textMuted(isDark)}>
+                                                {layout.icon}
+                                            </div>
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? t.textPrimary(isDark) : t.textSecondary(isDark)}`}>
+                                                {layout.label}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>Logo Display Height</Label>
+                                <span className={`text-sm font-black px-3 py-1 rounded-lg ${accent.text} ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
+                                    {logoHeight}px
+                                </span>
+                            </div>
+                            <Slider
+                                value={[logoHeight]}
+                                min={20}
+                                max={120}
+                                step={1}
+                                onValueChange={(vals) => setLogoHeight(vals[0])}
+                                className="py-4"
+                            />
+                            <p className={`text-[10px] ${t.textMuted(isDark)} font-medium`}>
+                                Drag to adjust the logo scale in navigation and footers.
                             </p>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 rounded-2xl border border-dashed border-slate-200 dark:border-white/10">
+                            <div>
+                                <Label className={`text-sm font-black ${t.textPrimary(isDark)}`}>Show Name beside Logo</Label>
+                                <p className={`text-[10px] ${t.textMuted(isDark)} font-medium`}>Toggle platform name visibility in headers.</p>
+                            </div>
+                            <Switch checked={showPlatformName} onCheckedChange={setShowPlatformName} />
                         </div>
                     </div>
                 </div>
@@ -172,7 +367,7 @@ export function SettingsTab() {
                                         value={videoUrl}
                                         readOnly
                                         placeholder="Select a video from R2 library"
-                                        className={`text-base font-medium h-14 rounded-xl flex-1 ${isDark ? 'bg-white/[0.04] border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                        className={`text-base font-medium h-14 rounded-xl flex-1 ${isDark ? '!bg-white/[0.04] border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                                     />
                                     <Button
                                         onClick={() => setPickerOpen(true)}
@@ -206,15 +401,207 @@ export function SettingsTab() {
                 <div className={`mt-10 pt-8 border-t ${t.border(isDark)} flex justify-end`}>
                     <Button
                         onClick={handleSave}
-                        disabled={saving || !videoUrl}
+                        disabled={saving}
                         className={`h-12 px-8 rounded-xl font-bold uppercase tracking-widest transition-all
                             ${accent.bg} text-slate-100 hover:opacity-90 hover:scale-105`}
                     >
                         {saving ? <Loader2 className="animate-spin mr-2" size={18} /> : <Save className="mr-2" size={18} />}
-                        Save Configuration
+                        Save Branding Configuration
                     </Button>
+                </div>
+            </div>
+
+            {/* Password Management Section */}
+            <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
+                <div className="flex items-center gap-4 mb-8">
+                    <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
+                        <Lock className={accent.text} size={28} />
+                    </div>
+                    <div>
+                        <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Account Password</h2>
+                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Update your administrative account password.</p>
+                    </div>
+                </div>
+
+                <div className="space-y-6 max-w-md">
+                    <div className="space-y-4">
+                        <Label className={`text-xs font-bold uppercase tracking-wider ${t.textSecondary(isDark)}`}>Current Password</Label>
+                        <Input
+                            type="password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            className={`text-base font-medium h-14 rounded-xl ${isDark ? '!bg-white/[0.04] border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                            placeholder="••••••••"
+                        />
+                    </div>
+                    <div className="space-y-4">
+                        <Label className={`text-xs font-bold uppercase tracking-wider ${t.textSecondary(isDark)}`}>New Password</Label>
+                        <Input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className={`text-base font-medium h-14 rounded-xl ${isDark ? '!bg-white/[0.04] border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                            placeholder="••••••••"
+                        />
+                    </div>
+                    <Button
+                        onClick={handleChangePassword}
+                        disabled={changingPassword || !currentPassword || !newPassword}
+                        className={`h-12 w-full rounded-xl font-bold uppercase tracking-widest ${accent.bg} text-white`}
+                    >
+                        {changingPassword ? <Loader2 className="animate-spin mr-2" size={18} /> : null}
+                        Change Password
+                    </Button>
+                </div>
+            </div>
+
+            {/* Security & 2FA Section */}
+            <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
+                <div className="flex items-center gap-4 mb-8">
+                    <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
+                        <Shield className={accent.text} size={28} />
+                    </div>
+                    <div>
+                        <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Security & MFA</h2>
+                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Enhance your administrative account security with Two-Factor Authentication.</p>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <div className={`p-6 md:p-8 rounded-3xl border ${twoFactorEnabled ? 'border-emerald-500/20 bg-emerald-500/[0.02]' : 'border-amber-500/20 bg-amber-500/[0.02]'}`}>
+                        <div className="flex flex-col md:flex-row items-start md:items-center gap-5 md:gap-6">
+                            <div className={`p-4 rounded-2xl shrink-0 ${twoFactorEnabled ? 'bg-emerald-500/10 text-emerald-500 shadow-inner' : 'bg-amber-500/10 text-amber-500 shadow-inner'}`}>
+                                {twoFactorEnabled ? <CheckCircle size={28} /> : <AlertCircle size={28} />}
+                            </div>
+                            <div className="flex-1 space-y-2">
+                                <h3 className={`font-black uppercase tracking-[0.1em] text-sm ${t.textPrimary(isDark)}`}>
+                                    Two-Factor Authentication: <span className={twoFactorEnabled ? 'text-emerald-500' : 'text-amber-500'}>{twoFactorEnabled ? 'PROTECTED' : 'UNSECURED'}</span>
+                                </h3>
+                                <p className={`text-xs ${t.textSecondary(isDark)} font-medium leading-relaxed max-w-xl`}>
+                                    {twoFactorEnabled
+                                        ? 'Your account is secured with a secondary verification layer. Unauthorized infrastructure access is severely restricted.'
+                                        : 'We strongly recommend enabling 2FA to protect administrative actions and secure platform infrastructure.'}
+                                </p>
+                            </div>
+                            <div className={`w-full md:w-auto mt-6 md:mt-0 pt-6 md:pt-0 border-t ${isDark ? 'border-white/10' : 'border-slate-200'} md:border-0 flex gap-3 shrink-0`}>
+                                {!twoFactorEnabled && !show2FASetup && (
+                                    <Button onClick={handleSetup2FA} className={`w-full md:w-auto rounded-xl font-black ${accent.bg} text-white px-8 h-12 uppercase tracking-widest text-xs shadow-lg shadow-${accent.name}-500/20 hover:scale-105 transition-all`}>
+                                        Secure Now
+                                    </Button>
+                                )}
+                                {twoFactorEnabled && !show2FADisable && (
+                                    <Button variant="outline" onClick={() => setShow2FADisable(true)}
+                                        className={`w-full md:w-auto rounded-xl font-black uppercase tracking-widest text-xs px-8 h-12 border-2 transition-all !bg-transparent
+                                                ${isDark ? 'border-white/10 hover:!bg-white/5 text-slate-300' : 'border-slate-200 hover:!bg-slate-50 text-slate-700'}
+                                            `}>
+                                        Disable
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {show2FADisable && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className={`p-8 rounded-3xl border-2 ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100'} space-y-6 overflow-hidden`}>
+                            <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
+                                <div className="space-y-2 flex-1">
+                                    <div className="flex items-center gap-2 text-rose-500">
+                                        <AlertCircle size={20} />
+                                        <h4 className="font-black uppercase tracking-widest text-sm">Disable Two-Factor Authentication</h4>
+                                    </div>
+                                    <p className={`text-xs ${t.textSecondary(isDark)} font-medium leading-relaxed max-w-lg`}>
+                                        Warning: Disabling 2FA will remove the extra layer of security on your administrative account. Please enter your authenticator's 6-digit code to confirm this action.
+                                    </p>
+                                </div>
+                                <div className="flex flex-col gap-4 items-center shrink-0 w-full md:w-auto">
+                                    <InputOTP maxLength={6} value={disableToken} onChange={setDisableToken}>
+                                        <InputOTPGroup className="gap-2">
+                                            {[0, 1, 2, 3, 4, 5].map(i => (
+                                                <InputOTPSlot key={i} index={i} className={`w-12 h-14 rounded-xl border-2 font-black text-lg ${isDark ? '!bg-white/5 border-white/10 text-white' : '!bg-white border-slate-200 text-slate-900'} shadow-[none!important] outline-none`} />
+                                            ))}
+                                        </InputOTPGroup>
+                                    </InputOTP>
+                                    <div className="flex gap-3 w-full">
+                                        <Button variant="outline" onClick={() => setShow2FADisable(false)} className={`flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-xs border-2 !bg-transparent transition-all ${isDark ? 'border-white/10 text-slate-400 hover:text-white hover:!bg-white/5' : 'border-slate-200 text-slate-500 hover:text-slate-900 hover:!bg-slate-50'}`}>
+                                            Cancel
+                                        </Button>
+                                        <Button onClick={handleDisable2FA} disabled={disableToken.length !== 6 || disabling2FA} className="flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-xs bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20">
+                                            {disabling2FA ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
+                                            Confirm
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {show2FASetup && (
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className={`p-8 rounded-3xl border-2 ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100'} space-y-8`}>
+                            <div className="flex flex-col md:flex-row gap-10">
+                                <div className="p-4 bg-white rounded-2xl shadow-xl w-fit mx-auto md:mx-0">
+                                    {qrCode ? <img src={qrCode} alt="2FA QR Code" className="w-48 h-48" /> : <div className="w-48 h-48 flex items-center justify-center"><Loader2 className="animate-spin" /></div>}
+                                </div>
+                                <div className="flex-1 space-y-6">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 text-indigo-500">
+                                            <Smartphone size={18} />
+                                            <span className="text-xs font-black uppercase tracking-wider">Step 1: Scan QR</span>
+                                        </div>
+                                        <p className={`text-sm font-medium ${t.textSecondary(isDark)}`}>
+                                            Open your authenticator app (Google Authenticator, Authy, etc.) and scan the QR code on the left.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 text-indigo-500">
+                                            <Key size={18} />
+                                            <span className="text-xs font-black uppercase tracking-wider">Step 2: Verify Token</span>
+                                        </div>
+                                        <div className="flex flex-col items-center md:items-start gap-4">
+                                            <InputOTP maxLength={6} value={otpToken} onChange={setOtpToken}>
+                                                <InputOTPGroup className="gap-2">
+                                                    {[0, 1, 2, 3, 4, 5].map(i => (
+                                                        <InputOTPSlot key={i} index={i} className={`w-12 h-14 rounded-xl border-2 font-black text-lg ${isDark ? '!bg-white/5 border-white/10 text-white' : '!bg-white border-slate-200 text-slate-900'} shadow-[none!important] outline-none`} />
+                                                    ))}
+                                                </InputOTPGroup>
+                                            </InputOTP>
+                                            <Button
+                                                onClick={handleVerifyAndEnable2FA}
+                                                disabled={otpToken.length !== 6}
+                                                className={`h-12 px-10 rounded-xl font-bold uppercase tracking-widest ${accent.bg} text-white`}
+                                            >
+                                                Finalize Setup
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {recoveryCodes.length > 0 && (
+                        <div className={`p-8 rounded-3xl ${isDark ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'} border-2 space-y-6`}>
+                            <div className="flex items-center gap-3 text-indigo-500">
+                                <Key size={22} className="shrink-0" />
+                                <h4 className="text-sm font-black uppercase tracking-[0.15em]">Emergency Recovery Codes</h4>
+                            </div>
+                            <p className={`text-xs ${t.textMuted(isDark)} font-medium leading-relaxed max-w-2xl`}>
+                                Store these codes in a secure, offline location. They can be used to regain access to your administrative account if you lose your authentication device.
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
+                                {recoveryCodes.map(code => (
+                                    <div key={code} className={`p-4 rounded-xl border-2 text-center font-mono text-sm font-black tracking-[0.2em] transition-transform hover:scale-105 cursor-default
+                                        ${isDark
+                                            ? 'bg-white/[0.04] border-white/10 text-indigo-300 hover:border-indigo-400/50 hover:bg-indigo-500/10'
+                                            : 'bg-white border-indigo-100 text-indigo-700 hover:border-indigo-300 hover:shadow-md'}
+                                    `}>
+                                        {code}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
-}
+});

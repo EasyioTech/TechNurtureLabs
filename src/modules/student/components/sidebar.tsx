@@ -29,31 +29,38 @@ const NAV_ITEMS = [
 export function StudentSidebar({
     school,
     stats,
-    courses
+    courses,
+    settings
 }: {
     school?: { name: string; logo_url?: string | null };
     stats?: { xp: number; streak: number; level: number };
     courses?: any[];
+    settings?: any;
 }) {
     const pathname = usePathname();
 
+    const logoUrl = school?.logo_url || settings?.logo_url;
+    const displayName = school?.name || settings?.platform_name || 'TechNurture';
+
     return (
-        <aside className="hidden lg:flex flex-col w-64 h-screen bg-white border-r border-slate-100 sticky top-0">
+        <aside className="hidden lg:flex flex-col w-64 h-screen bg-white border-r border-slate-100 fixed top-0 left-0 z-50">
             <div className="p-6">
                 <Link href="/student" className="flex items-center gap-3 select-none">
-                    {school?.logo_url ? (
-                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-lg border border-slate-100 p-1">
-                            <img src={school.logo_url} alt={school.name} className="w-full h-full object-contain" />
+                    {logoUrl ? (
+                        <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
+                            <img src={logoUrl} alt={displayName} className="w-full h-full object-contain" />
                         </div>
                     ) : (
                         <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
                             <GraduationCap size={22} className="text-white" />
                         </div>
                     )}
-                    <div>
-                        <p className="text-base font-black text-slate-800 tracking-tight leading-none">{school?.name || 'TechNurture'}</p>
-                        <p className="text-[10px] font-bold text-indigo-500 tracking-[0.2em] mt-1 uppercase">Student Portal</p>
-                    </div>
+                    {(!school || settings?.show_platform_name !== false) && (
+                        <div className="min-w-0">
+                            <p className="text-base font-black text-slate-800 tracking-tight leading-none truncate">{displayName}</p>
+                            <p className="text-[10px] font-bold text-indigo-500 tracking-[0.2em] mt-1 uppercase">Student Portal</p>
+                        </div>
+                    )}
                 </Link>
             </div>
 

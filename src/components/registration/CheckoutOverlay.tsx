@@ -18,22 +18,14 @@ interface CheckoutOverlayProps {
     handleRazorpayPayment: () => void;
     loading: boolean;
     setPromoError: (val: string) => void;
+    settings?: any;
 }
 
 export const CheckoutOverlay: React.FC<CheckoutOverlayProps> = ({
-    showCheckout,
-    checkoutOrder,
-    setShowCheckout,
-    appliedPromo,
-    promoCodeInput,
-    setPromoCodeInput,
-    handleApplyPromo,
-    promoLoading,
-    promoError,
-    removePromo,
-    handleRazorpayPayment,
-    loading,
-    setPromoError
+    showCheckout, checkoutOrder, setShowCheckout, appliedPromo,
+    promoCodeInput, setPromoCodeInput, handleApplyPromo,
+    promoLoading, promoError, removePromo, handleRazorpayPayment,
+    loading, setPromoError, settings
 }) => {
     return (
         <AnimatePresence>
@@ -60,12 +52,18 @@ export const CheckoutOverlay: React.FC<CheckoutOverlayProps> = ({
                                 <X size={16} />
                             </button>
                             <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
-                                    <Lock size={18} />
+                                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center overflow-hidden">
+                                    {settings?.logo_url ? (
+                                        <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                                    ) : (
+                                        <Lock size={18} />
+                                    )}
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Secure Checkout</p>
-                                    <p className="text-sm font-bold text-white">TechNurture Labs</p>
+                                    {settings?.show_platform_name !== false && (
+                                        <p className="text-sm font-bold text-white">{settings?.platform_name || 'TechNurture Labs'}</p>
+                                    )}
                                 </div>
                             </div>
                             <h2 className="text-2xl font-black tracking-tight">{checkoutOrder.plan.name}</h2>

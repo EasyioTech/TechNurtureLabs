@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
 
         const contextType = formData.get('contextType') as 'course' | 'lesson' | null;
         const contextId = formData.get('contextId') as string | null;
+        const targetFolder = formData.get('folder') as string | null;
         const context = (contextType && contextId) ? { type: contextType, id: contextId } : undefined;
 
         const buffer = Buffer.from(await file.arrayBuffer());
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
             storage_type: result.storageType,
             asset_type: getAssetType(result.mimeType),
             uploaded_by: uploadedBy || undefined,
+            folder: targetFolder || undefined,
         } as any).returning();
 
         return NextResponse.json({

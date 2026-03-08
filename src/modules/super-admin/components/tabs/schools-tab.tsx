@@ -114,9 +114,17 @@ export function SchoolsTab({
                     {filteredSchools.map((school, i) => (
                         <motion.div key={school.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.22 + i * 0.04 }}
                             className={`px-6 py-4 flex items-center gap-4 transition-all group ${t.cardHover(isDark)}`}>
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[14px] font-black flex-shrink-0
-                                ${t.initialCircle(isDark, accent)}`}>
-                                {school.name.charAt(0).toUpperCase()}
+                            <div className="w-12 h-12 flex-shrink-0">
+                                {school.logo_url ? (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                        <img src={school.logo_url} alt={school.name} className="w-full h-full object-contain" />
+                                    </div>
+                                ) : (
+                                    <div className={`w-full h-full rounded-2xl flex items-center justify-center text-[14px] font-black
+                                        ${t.initialCircle(isDark, accent)}`}>
+                                        {school.name.charAt(0).toUpperCase()}
+                                    </div>
+                                )}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>{school.name}</p>

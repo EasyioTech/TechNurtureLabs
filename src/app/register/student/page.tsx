@@ -50,6 +50,7 @@ export default function StudentRegistrationPage() {
   const [step, setStep] = useState(1);
   const [emailVerified, setEmailVerified] = useState(false);
   const [schoolSearchOpen, setSchoolSearchOpen] = useState(false);
+  const [settings, setSettings] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -95,6 +96,7 @@ export default function StudentRegistrationPage() {
 
   useEffect(() => {
     fetchSchools();
+    import('@/components/landing/actions').then(m => m.getPlatformSettings()).then(setSettings);
   }, []);
 
   async function fetchSchools() {
@@ -155,7 +157,7 @@ export default function StudentRegistrationPage() {
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-indigo-100/40 rounded-full blur-[140px]" />
       </div>
 
-      <StudentRegistrationSidebar />
+      <StudentRegistrationSidebar settings={settings} />
 
       <div className="flex-1 flex flex-col items-center bg-white/50 lg:bg-transparent relative z-10 overflow-y-auto">
         <div className="w-full max-w-[440px] px-6 py-12 lg:py-0 lg:px-0 lg:my-auto scroll-smooth">
@@ -165,10 +167,16 @@ export default function StudentRegistrationPage() {
           </Link>
 
           <div className="mb-8 lg:hidden flex items-center justify-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center shadow-lg">
-              <School className="text-white" size={20} />
+            <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
+              {settings?.logo_url ? (
+                <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center shadow-lg">
+                  <School className="text-white" size={20} />
+                </div>
+              )}
             </div>
-            <span className="text-xl font-black tracking-tighter text-slate-950">TechNurture</span>
+            <span className="text-xl font-black tracking-tighter text-slate-950">{settings?.platform_name || 'TechNurture'}</span>
           </div>
 
           <div className="text-center lg:text-left space-y-3 mb-10">
@@ -546,7 +554,7 @@ export default function StudentRegistrationPage() {
           <div className="mt-12 pt-10 border-t border-slate-100/60 flex flex-col items-center gap-6">
             <div className="flex items-center gap-3 whitespace-nowrap">
               <p className="text-slate-500 font-medium text-sm">
-                Already using TechNurture?
+                Already using {settings?.platform_name || 'TechNurture'}?
               </p>
               <Link href="/login" className="px-4 py-2 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-black text-xs uppercase tracking-widest transition-all cursor-pointer">
                 Sign in

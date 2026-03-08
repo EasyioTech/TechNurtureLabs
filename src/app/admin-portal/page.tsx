@@ -11,7 +11,16 @@ import { Button } from '@/components/ui/button';
 import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
 import { ScrollReveal } from '@/components/landing/ScrollReveal';
 
+import { getPlatformSettings } from '@/components/landing/actions';
+import { useEffect, useState } from 'react';
+
 export default function AdminPortalLanding() {
+  const [settings, setSettings] = useState<any>(null);
+
+  useEffect(() => {
+    getPlatformSettings().then(setSettings);
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden font-sans">
       {/* High-Security Background Pattern */}
@@ -25,11 +34,17 @@ export default function AdminPortalLanding() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-900/10 transition-transform group-hover:scale-105">
-                <Crown className="text-white" size={20} />
-              </div>
+              {settings?.logo_url ? (
+                <div className="w-10 h-10 flex items-center justify-center transition-transform group-hover:scale-105 overflow-hidden">
+                  <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-900/10 transition-transform group-hover:scale-105">
+                  <Crown className="text-white" size={20} />
+                </div>
+              )}
               <div>
-                <span className="text-xl font-black tracking-tight text-slate-900 block leading-none">TechNurture</span>
+                <span className="text-xl font-black tracking-tight text-slate-900 block leading-none">{settings?.platform_name || 'TechNurture'}</span>
                 <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">System Console</span>
               </div>
             </Link>
@@ -154,7 +169,7 @@ export default function AdminPortalLanding() {
               </div>
               <h2 className="text-3xl md:text-5xl font-black mb-4 tracking-tight">Authorized Operation Only</h2>
               <p className="text-slate-500 font-medium mb-10 max-w-xl mx-auto">
-                Access to this portal is restricted to TechNurture system architects.
+                Access to this portal is restricted to {settings?.platform_name || 'TechNurture'} system architects.
                 Every packet transmitted is audited and encrypted using industry standard protocols.
               </p>
               <Link href="/admin-portal/login">
@@ -172,12 +187,18 @@ export default function AdminPortalLanding() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
-                <Crown className="text-white" size={16} />
-              </div>
-              <span className="font-black text-slate-900 tracking-tight">TechNurture Core Console</span>
+              {settings?.logo_url ? (
+                <div className="w-8 h-8 flex items-center justify-center overflow-hidden">
+                  <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
+                  <Crown className="text-white" size={16} />
+                </div>
+              )}
+              <span className="font-black text-slate-900 tracking-tight">{settings?.platform_name || 'TechNurture'} Core Console</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">© 2026 Platform Operations. Proprietary Infrastructure.</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">© {new Date().getFullYear()} Platform Operations. Proprietary Infrastructure.</p>
           </div>
         </div>
       </footer>

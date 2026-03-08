@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { UserCircle2, Zap, Trophy, School, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
-export const StudentRegistrationSidebar = () => {
+export const StudentRegistrationSidebar = ({ settings }: { settings?: any }) => {
     return (
         <div className="hidden lg:flex flex-[0.8] relative overflow-hidden bg-[#FDFDFF] border-r border-slate-200/50 z-20">
             {/* Dynamic Background */}
@@ -18,13 +18,21 @@ export const StudentRegistrationSidebar = () => {
             <div className="relative z-10 w-full h-full flex flex-col justify-between p-14">
                 <header>
                     <Link href="/" className="flex items-center gap-3 group w-fit transition-transform hover:scale-[1.02]">
-                        <div className="w-14 h-14 rounded-[1.25rem] bg-indigo-600 flex items-center justify-center shadow-2xl shadow-indigo-600/20 group-hover:rotate-3 transition-transform">
-                            <School className="text-white" size={28} />
-                        </div>
-                        <div>
-                            <span className="text-2xl font-black tracking-tighter text-slate-950 block leading-none">TechNurture</span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] ml-0.5 mt-1 block">Student Portal</span>
-                        </div>
+                        {settings?.logo_url ? (
+                            <div className="w-14 h-14 flex items-center justify-center transition-transform group-hover:rotate-3">
+                                <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                            </div>
+                        ) : (
+                            <div className="w-14 h-14 rounded-[1.25rem] bg-indigo-600 flex items-center justify-center shadow-2xl shadow-indigo-600/20 group-hover:rotate-3 transition-transform">
+                                <School className="text-white" size={28} />
+                            </div>
+                        )}
+                        {settings?.show_platform_name !== false && (
+                            <div>
+                                <span className="text-2xl font-black tracking-tighter text-slate-950 block leading-none">{settings?.platform_name || 'TechNurture'}</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] ml-0.5 mt-1 block">Student Portal</span>
+                            </div>
+                        )}
                     </Link>
                 </header>
 

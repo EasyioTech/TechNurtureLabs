@@ -24,6 +24,7 @@ interface Question {
     correct_answer: any;
     explanation: string;
     points: number;
+    time_limit_secs: number;
 }
 
 interface Quiz {
@@ -127,7 +128,8 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                     options: ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
                     correct_answer: 0,
                     explanation: '',
-                    points: 1
+                    points: 1,
+                    time_limit_secs: 30
                 }
             ]
         });
@@ -472,7 +474,28 @@ function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
                     </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pl-4 md:pl-6">
+                    <div className="space-y-3">
+                        <Label className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Time Limit (Secs)</Label>
+                        <Input
+                            type="number"
+                            value={q.time_limit_secs}
+                            onChange={(e) => onUpdate({ time_limit_secs: parseInt(e.target.value) || 0 })}
+                            className={`${isDark ? 'bg-white/[0.03] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} h-12 md:h-14 rounded-full px-5 md:px-6 text-[13px] font-black`}
+                        />
+                    </div>
+                    <div className="space-y-3">
+                        <Label className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Points</Label>
+                        <Input
+                            type="number"
+                            value={q.points}
+                            onChange={(e) => onUpdate({ points: parseInt(e.target.value) || 1 })}
+                            className={`${isDark ? 'bg-white/[0.03] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} h-12 md:h-14 rounded-full px-5 md:px-6 text-[13px] font-black`}
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-3 pl-4 md:pl-6">
                     <Label className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Explanation (Optional)</Label>
                     <Input
                         value={q.explanation}

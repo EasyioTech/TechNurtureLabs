@@ -89,7 +89,7 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                         {/* School Identity */}
                         <div className="flex items-center gap-4 flex-shrink-0 min-w-0">
                             {schoolProfile?.logo_url ? (
-                                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg bg-white border ${isDark ? 'border-indigo-500/20' : 'border-slate-100'} p-1 overflow-hidden`}>
+                                <div className="w-11 h-11 flex items-center justify-center flex-shrink-0">
                                     <img src={schoolProfile.logo_url} alt={schoolName} className="w-full h-full object-contain" />
                                 </div>
                             ) : (
@@ -199,12 +199,13 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                 <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-10 sm:py-14 relative z-10">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                            <div className={`w-20 h-20 rounded-[28px] flex items-center justify-center flex-shrink-0 shadow-2xl ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20 shadow-indigo-500/5' : 'bg-indigo-50 shadow-indigo-100'
-                                }`}>
+                            <div className="w-20 h-20 flex items-center justify-center flex-shrink-0">
                                 {schoolProfile?.logo_url ? (
-                                    <img src={schoolProfile.logo_url} alt={schoolName} className="w-14 h-14 object-contain" />
+                                    <img src={schoolProfile.logo_url} alt={schoolName} className="w-full h-full object-contain" />
                                 ) : (
-                                    <GraduationCap size={40} className={isDark ? 'text-indigo-400' : 'text-indigo-600'} />
+                                    <div className={`w-full h-full rounded-[28px] flex items-center justify-center shadow-2xl ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20 shadow-indigo-500/5' : 'bg-indigo-50 shadow-indigo-100'}`}>
+                                        <GraduationCap size={40} className={isDark ? 'text-indigo-400' : 'text-indigo-600'} />
+                                    </div>
                                 )}
                             </div>
                             <div className="flex-1 min-w-0">

@@ -59,6 +59,7 @@ export default function SchoolRegistrationPage() {
   const [checkoutOrder, setCheckoutOrder] = useState<any>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [settings, setSettings] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
     udise_code: '',
@@ -116,12 +117,14 @@ export default function SchoolRegistrationPage() {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [plans, classes] = await Promise.all([
+        const [plans, classes, s] = await Promise.all([
           fetchActivePaymentPlans(),
-          fetchGlobalClasses()
+          fetchGlobalClasses(),
+          import('@/components/landing/actions').then(m => m.getPlatformSettings())
         ]);
         setPaymentPlans(plans);
         setClassesData(classes);
+        setSettings(s);
         if (plans.length > 0) {
           setFormData(prev => ({ ...prev, plan_id: plans[0].id }));
         }
@@ -247,7 +250,7 @@ export default function SchoolRegistrationPage() {
       key: key,
       amount: checkoutOrder.amount,
       currency: checkoutOrder.currency,
-      name: 'TechNurture Labs',
+      name: settings?.platform_name || 'TechNurture Labs',
       description: `${checkoutOrder.plan.name} License`,
       image: '/favicon.ico',
       order_id: checkoutOrder.order_id,
@@ -369,9 +372,10 @@ export default function SchoolRegistrationPage() {
         handleRazorpayPayment={handleRazorpayPayment}
         loading={loading}
         setPromoError={setPromoError}
+        settings={settings}
       />
 
-      <SchoolRegistrationSidebar />
+      <SchoolRegistrationSidebar settings={settings} />
 
       <div className="flex-1 flex flex-col items-center p-6 lg:p-12 relative z-10 overflow-y-auto">
         <div className="w-full max-w-xl py-12 my-auto">
@@ -381,8 +385,14 @@ export default function SchoolRegistrationPage() {
           </Link>
 
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white border border-slate-200 shadow-sm mb-6">
-            <Landmark size={16} className="text-slate-900" />
-            <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">Portal Registration</span>
+            <div className="w-5 h-5 flex items-center justify-center overflow-hidden">
+              {settings?.logo_url ? (
+                <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <Landmark size={16} className="text-slate-900" />
+              )}
+            </div>
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">{settings?.platform_name || 'Portal'} Registration</span>
           </div>
 
           <h1 className="text-4xl font-black mb-3 text-slate-900 tracking-tight leading-tight">School Onboarding</h1>

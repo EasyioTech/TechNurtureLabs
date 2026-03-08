@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useAdminTheme, t } from '../theme-context';
 import {
     Film, FileText, ImageIcon, Search, Loader2,
-    Cloud, HardDrive, AlertCircle, Trash2, Check, Upload
+    Cloud, HardDrive, AlertCircle, Trash2, Check, Upload, Folder
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,6 +34,8 @@ interface MediaLibraryPickerProps {
     filterType?: 'video' | 'image' | 'document';
     /** Current selected URL to highlight */
     currentUrl?: string;
+    /** Filter by folder */
+    folder?: string;
 }
 
 function formatBytes(bytes: number): string {
@@ -58,13 +60,14 @@ const TABS: { id: AssetType; label: string; icon: React.ElementType }[] = [
 ];
 
 export function MediaLibraryPicker({
-    open, onOpenChange, onSelect, filterType, currentUrl
+    open, onOpenChange, onSelect, filterType, currentUrl, folder
 }: MediaLibraryPickerProps) {
     const { isDark, accent } = useAdminTheme();
     const [assets, setAssets] = React.useState<MediaAsset[]>([]);
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const [activeTab, setActiveTab] = React.useState<AssetType>(filterType ?? 'all');
+    const [activeFolder, setActiveFolder] = React.useState<string>(folder ?? 'all');
     const [search, setSearch] = React.useState('');
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
     const [uploading, setUploading] = React.useState(false);
@@ -77,13 +80,14 @@ export function MediaLibraryPicker({
         loadAssets(filterType ?? 'all');
     }, [open, filterType]);
 
-    async function loadAssets(type: AssetType) {
+    async function loadAssets(type: AssetType, targetFolder: string = activeFolder) {
         setLoading(true);
         setError(null);
         try {
+            const folderQuery = targetFolder !== 'all' ? `&folder=${targetFolder}` : '';
             const url = type === 'all'
-                ? '/api/media/library'
-                : `/api/media/library?type=${type}`;
+                ? `/api/media/library?_t=${Date.now()}${folderQuery}`
+                : `/api/media/library?type=${type}${folderQuery}`;
             const res = await fetch(url);
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({ error: 'Unknown server error' }));
@@ -125,11 +129,44 @@ export function MediaLibraryPicker({
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Validation
+        const isVideo = filterType === 'video';
+        const isImage = filterType === 'image';
+
+        if (isVideo) {
+            const validVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
+            if (!validVideoTypes.includes(file.type)) {
+                toast.error('Invalid video format. Please upload MP4 or WebM.');
+                return;
+            }
+        } else if (isImage) {
+            const validImageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+            if (!validImageTypes.includes(file.type)) {
+                toast.error('Invalid image type. Please upload PNG, JPG, or SVG.');
+                return;
+            }
+        }
+
+        const maxSize = 25 * 1024 * 1024; // 25MB for videos/other
+        const maxImageSize = 5 * 1024 * 1024; // 5MB limit requested for images specifically
+
+        if (isImage && file.size > maxImageSize) {
+            toast.error('Image too large. Maximum size is 5MB.');
+            return;
+        }
+
+        if (file.size > maxSize) {
+            toast.error('File too large. Maximum size is 25MB.');
+            return;
+        }
+
         setUploading(true);
         const formData = new FormData();
         formData.append('file', file);
         // Default to global purpose or user intent based on filter
         formData.append('purpose', filterType === 'video' ? 'system_video' : 'library');
+        const folderToSave = folder || (activeFolder !== 'all' ? activeFolder : 'library');
+        formData.append('folder', folderToSave);
 
         try {
             const res = await fetch('/api/upload', {
@@ -231,6 +268,34 @@ export function MediaLibraryPicker({
                             );
                         })}
                     </div>
+                    {/* Folders */}
+                    {!folder && (
+                        <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
+                            {[
+                                { id: 'all', label: 'All Folders' },
+                                { id: 'course', label: 'Courses' },
+                                { id: 'video', label: 'Videos' },
+                                { id: 'branding', label: 'Branding' },
+                                { id: 'asset', label: 'Assets' },
+                                { id: 'setting', label: 'Settings' },
+                            ].map(f => {
+                                const isActive = activeFolder === f.id;
+                                return (
+                                    <button
+                                        key={f.id}
+                                        onClick={() => { setActiveFolder(f.id); loadAssets(activeTab, f.id); }}
+                                        className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all whitespace-nowrap border
+                                            ${isActive
+                                                ? (isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/10')
+                                                : (isDark ? 'bg-white/[0.03] border-white/5 text-slate-500 hover:bg-white/[0.06]' : 'bg-slate-100 border-transparent text-slate-500 hover:bg-slate-200')}`}
+                                    >
+                                        <Folder size={12} className={isActive ? 'text-blue-400' : 'text-slate-400'} />
+                                        {f.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </SheetHeader>
 
                 {/* Content */}

@@ -1,15 +1,31 @@
 import type { Metadata } from "next";
+export const dynamic = 'force-dynamic';
+import { getPlatformSettings } from "@/components/landing/actions";
 import "./globals.css";
 import ErrorReporter from "@/components/ErrorReporter";
 import Script from "next/script";
 
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { Toaster } from 'sonner';
+import { Playfair_Display } from 'next/font/google';
 
-export const metadata: Metadata = {
-  title: "TechNurture Labs - Immersive Learning Platform",
-  description: "Next-gen immersive LMS",
-};
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+});
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getPlatformSettings();
+  return {
+    title: settings?.platform_name ? `${settings.platform_name} - Immersive Learning Platform` : "TechNurture Labs - Immersive Learning Platform",
+    description: "Next-gen immersive LMS",
+    icons: {
+      icon: settings?.favicon_url || "/favicon.ico",
+      shortcut: settings?.favicon_url || "/favicon.ico",
+      apple: settings?.favicon_url || "/favicon.ico",
+    }
+  };
+}
 
 export default function RootLayout({
   children,
@@ -18,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased font-sans">
+      <body className={`antialiased font-sans ${playfair.variable}`}>
         <Toaster position="top-center" expand={true} richColors closeButton />
         <AuthProvider>
           <ErrorReporter />

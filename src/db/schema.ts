@@ -88,6 +88,9 @@ export const users = pgTable('users', {
     is_active: boolean('is_active').notNull().default(true),
     bio: text('bio'),
     email_verified_at: timestamp('email_verified_at', { withTimezone: true }),
+    two_factor_secret: text('two_factor_secret'),
+    two_factor_enabled: boolean('two_factor_enabled').notNull().default(false),
+    two_factor_backup_codes: jsonb('two_factor_backup_codes').notNull().default([]),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
@@ -312,6 +315,7 @@ export const quizQuestions = pgTable('quiz_questions', {
     correct_answer: jsonb('correct_answer').notNull(),
     explanation: text('explanation'),
     points: integer('points').notNull().default(1),
+    time_limit_secs: integer('time_limit_secs'),
     sequence_order: integer('sequence_order').notNull(),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -592,6 +596,7 @@ export const mediaAssets = pgTable('media_assets', {
     storage_type: storageTypeEnum('storage_type').notNull().default('local'),
     asset_type: assetTypeEnum('asset_type').notNull().default('document'),
     uploaded_by: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
+    folder: text('folder'), // course, lesson, settings, etc
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
     index('idx_media_asset_type').on(table.asset_type),
@@ -602,7 +607,11 @@ export const mediaAssets = pgTable('media_assets', {
 export const platformSettings = pgTable('platform_settings', {
     id: text('id').primaryKey(), // Usually 'default'
     logo_url: text('logo_url'),
+    favicon_url: text('favicon_url'),
     platform_name: text('platform_name').notNull().default('TechNurture'),
+    logo_layout: text('logo_layout').notNull().default('horizontal'), // 'horizontal', 'stacked', 'icon_only'
+    show_platform_name: boolean('show_platform_name').notNull().default(true),
+    logo_height: integer('logo_height').notNull().default(40),
     hero_video_url: text('hero_video_url').notNull().default(''),
     hero_video_type: text('hero_video_type').notNull().default('youtube'), // 'upload', 'youtube', 'vimeo', 'link'
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

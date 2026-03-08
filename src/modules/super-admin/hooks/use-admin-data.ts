@@ -16,7 +16,6 @@ import {
     saveSchoolAdmin,
     deleteQuizAdmin,
     assignPlanToSchool,
-    saveStudentAdmin,
     savePromoCode as savePromoCodeAction,
     deletePromoCode as deletePromoCodeAction,
 } from '../actions';
@@ -63,8 +62,6 @@ export function useAdminData() {
     const [showPromoCodeDialog, setShowPromoCodeDialog] = useState(false);
     const [editingPromoCode, setEditingPromoCode] = useState<Partial<PromoCode> | null>(null);
     const [editingSchoolItem, setEditingSchoolItem] = useState<Partial<SchoolInfo> | null>(null);
-    const [showUserDialog, setShowUserDialog] = useState(false);
-    const [editingUserItem, setEditingUserItem] = useState<Partial<any> | null>(null);
 
     useEffect(() => { fetchAllData(true); }, []);
 
@@ -363,21 +360,7 @@ export function useAdminData() {
         } catch { toast.error('Failed to save institution'); }
     }
 
-    async function saveStudent() {
-        if (!editingUserItem?.email || !editingUserItem?.school_id || !editingUserItem?.class_id) {
-            toast.error('Required fields: Email, School, and Class');
-            return;
-        }
-        try {
-            await saveStudentAdmin(editingUserItem);
-            toast.success(editingUserItem.id ? 'Student updated' : 'Student created');
-            setShowUserDialog(false);
-            setEditingUserItem(null);
-            fetchAllData();
-        } catch (e: any) {
-            toast.error(e.message || 'Failed to save student');
-        }
-    }
+
 
     return {
         loading, stats, courses, selectedCourse, lessons, setLessons,
@@ -389,9 +372,9 @@ export function useAdminData() {
         showPlanDialog, setShowPlanDialog, editingPlan, setEditingPlan,
         showPromoCodeDialog, setShowPromoCodeDialog, editingPromoCode, setEditingPromoCode,
         showSchoolDialog, setShowSchoolDialog, editingSchoolItem, setEditingSchoolItem,
-        showUserDialog, setShowUserDialog, editingUserItem, setEditingUserItem,
+
         fetchAllData, selectCourse, saveCourse, deleteCourse,
         saveLesson, deleteLesson, saveLessonOrder, deleteQuiz,
-        savePlan, deletePlan, savePromoCode, deletePromoCode, toggleSchoolStatus, saveSchool, assignPlan, saveStudent,
+        savePlan, deletePlan, savePromoCode, deletePromoCode, toggleSchoolStatus, saveSchool, assignPlan,
     };
 }

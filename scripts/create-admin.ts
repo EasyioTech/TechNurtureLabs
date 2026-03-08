@@ -1,10 +1,8 @@
+import 'dotenv/config';
 import { db } from '../src/lib/db';
 import { users } from '../src/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
 
 async function main() {
     const adminEmail = 'admin@technurture.com';

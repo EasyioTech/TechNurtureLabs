@@ -31,7 +31,7 @@ type AuthContextType = {
   isTransitioning: boolean;
   setTransition: (val: boolean) => void;
   signOut: () => Promise<void>;
-  signIn: (email: string, password: string, role: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string, role: string) => Promise<{ success: boolean; error?: string; two_factor_required?: boolean; userId?: string }>;
   refreshProfile: () => Promise<void>;
 };
 
@@ -90,6 +90,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       const data = await res.json();
       if (!res.ok) return { success: false, error: data.error || 'Invalid credentials' };
+
+      if (data.two_factor_required) {
+        return {
+          success: true,
+          two_factor_required: true,
+          userId: data.userId
+        };
+      }
 
       await fetchProfile();
       return { success: true };

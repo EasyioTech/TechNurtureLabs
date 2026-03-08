@@ -83,7 +83,7 @@ export default function SchoolLoginPage() {
 
           <div className="mb-6 lg:hidden flex items-center gap-3">
             {platformSettings?.logo_url ? (
-              <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center p-1 shadow-lg shadow-slate-900/5">
+              <div className="w-10 h-10 flex items-center justify-center">
                 <img src={platformSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
               </div>
             ) : (

@@ -40,6 +40,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 
+        if (user.two_factor_enabled) {
+            return NextResponse.json({
+                success: true,
+                two_factor_required: true,
+                userId: user.id
+            });
+        }
+
         await createSession({ userId: user.id, role: user.role });
 
         const { password_hash, ...userData } = user;

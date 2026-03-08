@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { mediaAssets } from '@/db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
-        const type = searchParams.get('type'); // 'video' | 'image' | 'document' | null
+        const type = searchParams.get('type');
+        const folder = searchParams.get('folder');
 
-        let assets;
+        const filters: any[] = [];
         if (type && ['video', 'image', 'document'].includes(type)) {
-            assets = await db.select().from(mediaAssets)
-                .where(eq(mediaAssets.asset_type, type as 'video' | 'image' | 'document'))
-                .orderBy(desc(mediaAssets.created_at));
-        } else {
-            assets = await db.select().from(mediaAssets)
-                .orderBy(desc(mediaAssets.created_at));
+            filters.push(eq(mediaAssets.asset_type, type as any));
         }
+        if (folder) {
+            filters.push(eq(mediaAssets.folder, folder));
+        }
+
+        const assets = await db.select().from(mediaAssets)
+            .where(filters.length > 0 ? (filters.length > 1 ? and(...filters) : filters[0]) : undefined)
+            .orderBy(desc(mediaAssets.created_at));
 
         return NextResponse.json(assets);
     } catch (error) {

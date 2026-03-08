@@ -19,7 +19,7 @@ export const StudentLoginSidebar = ({ settings }: { settings?: any }) => {
                 <header>
                     <Link href="/" className="flex items-center gap-3 group w-fit transition-transform hover:scale-[1.02]">
                         {settings?.logo_url ? (
-                            <div className="w-14 h-14 rounded-[1.25rem] bg-white flex items-center justify-center shadow-2xl shadow-slate-950/20 group-hover:rotate-3 transition-all p-2 border border-slate-100">
+                            <div className="w-14 h-14 flex items-center justify-center transition-all">
                                 <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
                             </div>
                         ) : (
@@ -27,10 +27,12 @@ export const StudentLoginSidebar = ({ settings }: { settings?: any }) => {
                                 <GraduationCap className="text-white" size={28} />
                             </div>
                         )}
-                        <div>
-                            <span className="text-2xl font-black tracking-tighter text-slate-950 block leading-none">{settings?.platform_name || 'TechNurture'}</span>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] ml-0.5 mt-1 block">Student Portal</span>
-                        </div>
+                        {settings?.show_platform_name !== false && (
+                            <div>
+                                <span className="text-2xl font-black tracking-tighter text-slate-950 block leading-none">{settings?.platform_name || 'TechNurture'}</span>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] ml-0.5 mt-1 block">Student Portal</span>
+                            </div>
+                        )}
                     </Link>
                 </header>
 

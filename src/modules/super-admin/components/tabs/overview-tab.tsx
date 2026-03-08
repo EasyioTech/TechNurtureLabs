@@ -14,6 +14,7 @@ interface OverviewTabProps {
     stats: Stats;
     paymentPlans: PaymentPlan[];
     schoolsList: SchoolInfo[];
+    platformMetrics: any[];
 }
 
 function StatCard({ label, value, badge, icon: Icon, extra, delay = 0 }: {
@@ -90,18 +91,28 @@ function MiniStat({ label, value, icon: Icon, theme = 'accent', delay = 0 }: {
     );
 }
 
-export function OverviewTab({ stats, paymentPlans, schoolsList }: OverviewTabProps) {
+export function OverviewTab({ stats, paymentPlans, schoolsList, platformMetrics }: OverviewTabProps) {
     const { isDark, accent } = useAdminTheme();
 
-    const engagementData = [
-        { name: 'Students', students: stats.totalStudents, lessons: stats.totalLessons },
-        { name: 'Active', students: stats.activeStudents, lessons: stats.avgCompletion },
-        { name: 'Enrolled', students: stats.totalEnrollments, lessons: stats.totalCourses },
-    ];
+    const engagementData = platformMetrics.map(m => ({
+        name: new Date(m.metric_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+        students: m.active_students,
+        enrollments: m.total_enrollments,
+    }));
 
-    const revenueData = [
-        { month: 'Current Revenue', revenue: stats.totalRevenue },
-    ];
+    // Fallback if no engagement data
+    if (engagementData.length === 0) {
+        engagementData.push({ name: 'Active', students: stats.activeStudents, enrollments: stats.totalEnrollments });
+    }
+    const revenueData = platformMetrics.map(m => ({
+        month: new Date(m.metric_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+        revenue: Number(m.revenue_total),
+    }));
+
+    // Fallback if no revenue data
+    if (revenueData.length === 0) {
+        revenueData.push({ month: 'Total', revenue: stats.totalRevenue });
+    }
 
     const planDistribution = paymentPlans.length > 0
         ? paymentPlans.map(p => {

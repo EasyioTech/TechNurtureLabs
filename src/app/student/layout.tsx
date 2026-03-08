@@ -1,23 +1,30 @@
 import { StudentSidebar } from '@/modules/student/components/sidebar';
 import { getStudentDashboardData } from '@/modules/student/actions';
+import { getPlatformSettings } from '@/components/landing/actions';
+import { StudentLayoutShell } from '@/modules/student/components/layout-shell';
 
 export default async function StudentLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const data = await getStudentDashboardData().catch(() => null);
+    const [data, settings] = await Promise.all([
+        getStudentDashboardData().catch(() => null),
+        getPlatformSettings().catch(() => null)
+    ]);
+
+    const sidebar = (
+        <StudentSidebar
+            school={data?.school}
+            stats={data?.stats}
+            courses={data?.courses}
+            settings={settings}
+        />
+    );
 
     return (
-        <div className="flex min-h-screen bg-slate-50">
-            <StudentSidebar
-                school={data?.school}
-                stats={data?.stats}
-                courses={data?.courses}
-            />
-            <div className="flex-1 flex flex-col min-w-0">
-                {children}
-            </div>
-        </div>
+        <StudentLayoutShell sidebar={sidebar}>
+            {children}
+        </StudentLayoutShell>
     );
 }

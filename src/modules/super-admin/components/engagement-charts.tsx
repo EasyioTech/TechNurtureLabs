@@ -44,7 +44,7 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                             </div>
                             <div>
                                 <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>User Activity</h3>
-                                <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Monitor student engagement and lesson completion trends.</p>
+                                <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Monitor student engagement and enrollment trends.</p>
                             </div>
                         </div>
                     </div>
@@ -64,9 +64,12 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                                 <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
                                 <XAxis dataKey="name" stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />
                                 <YAxis stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />
-                                <Tooltip contentStyle={{ backgroundColor: ttBg, border: `1px solid ${ttBorder}`, borderRadius: '12px', color: ttColor, fontSize: '11px', fontWeight: 800, filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.1))' }} />
-                                <Area type="monotone" dataKey="students" stroke={areaStroke} fill="url(#grad1)" strokeWidth={3} dot={false} />
-                                <Area type="monotone" dataKey="lessons" stroke={isDark ? '#0ea5e9' : '#475569'} fill="url(#grad2)" strokeWidth={2} dot={false} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: ttBg, border: `1px solid ${ttBorder}`, borderRadius: '16px', color: ttColor, fontSize: '11px', fontWeight: 800, filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.1))', padding: '12px' }}
+                                    itemStyle={{ padding: '2px 0' }}
+                                />
+                                <Area type="monotone" dataKey="students" name="Active Students" stroke={areaStroke} fill="url(#grad1)" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: isDark ? '#1e293b' : '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                                <Area type="monotone" dataKey="enrollments" name="Total Enrollments" stroke={isDark ? '#0ea5e9' : '#0369a1'} fill="url(#grad2)" strokeWidth={3} dot={false} strokeDasharray="5 5" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -78,14 +81,14 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                             <PieChartIcon size={16} />
                         </div>
                         <div>
-                            <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>Subscription Breakdown</h3>
-                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Distribution of schools across pricing plans.</p>
+                            <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>Plan Distribution</h3>
+                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Current market share across pricing tiers.</p>
                         </div>
                     </div>
                     <div className="h-[200px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                                <Pie data={planDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={2} dataKey="value" strokeWidth={0}>
+                                <Pie data={planDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value" strokeWidth={0}>
                                     {planDistribution.map((_, i) => (
                                         <Cell key={`cell-${i}`} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                                     ))}
@@ -94,14 +97,14 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="flex flex-col gap-2 mt-4">
+                    <div className="flex flex-col gap-2 mt-4 max-h-[140px] overflow-y-auto no-scrollbar">
                         {planDistribution.map((item, i) => (
                             <div key={item.name} className="flex items-center justify-between p-2 rounded-xl border border-transparent hover:border-neutral-100 dark:hover:border-white/[0.02] hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors">
                                 <div className="flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
                                     <span className={`text-[11px] font-black uppercase tracking-tighter ${t.textPrimary(isDark)}`}>{item.name}</span>
                                 </div>
-                                <span className={`text-[11px] font-black ${t.textMuted(isDark)}`}>{item.value}%</span>
+                                <span className={`text-[11px] font-black ${t.textMuted(isDark)}`}>{item.value}</span>
                             </div>
                         ))}
                     </div>
@@ -116,8 +119,11 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                         </div>
                         <div>
                             <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>Revenue Performance</h3>
-                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Track monthly revenue growth and transactions.</p>
+                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Track daily revenue growth and incoming transactions.</p>
                         </div>
+                    </div>
+                    <div className={`px-3 py-1 rounded-full text-[10px] font-black ${isDark ? 'bg-white/[0.04] text-slate-400' : 'bg-neutral-50 text-neutral-500 shadow-inner'}`}>
+                        LAST 30 DAYS
                     </div>
                 </div>
                 <div className="h-[240px]">
@@ -125,13 +131,13 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                         <BarChart data={revenueData}>
                             <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
                             <XAxis dataKey="month" stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />
-                            <YAxis stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />
+                            <YAxis stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} tickFormatter={(val) => `₹${val >= 1000 ? (val / 1000).toFixed(1) + 'k' : val}`} />
                             <Tooltip
                                 cursor={{ fill: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' }}
-                                contentStyle={{ backgroundColor: ttBg, border: `1px solid ${ttBorder}`, borderRadius: '12px', color: ttColor, fontSize: '11px', fontWeight: 800 }}
+                                contentStyle={{ backgroundColor: ttBg, border: `1px solid ${ttBorder}`, borderRadius: '16px', color: ttColor, fontSize: '11px', fontWeight: 800, padding: '12px' }}
                                 formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Revenue']}
                             />
-                            <Bar dataKey="revenue" fill={barFill} radius={[8, 8, 0, 0]} barSize={24} />
+                            <Bar dataKey="revenue" fill={barFill} radius={[6, 6, 6, 6]} barSize={revenueData.length > 10 ? 12 : 32} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

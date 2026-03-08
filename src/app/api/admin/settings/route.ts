@@ -3,6 +3,9 @@ import { db } from '@/lib/db';
 import { platformSettings } from '@/db/schema';
 import { verifySession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
     try {
@@ -25,7 +28,16 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { hero_video_type, hero_video_url, logo_url, platform_name } = body;
+        const {
+            hero_video_type,
+            hero_video_url,
+            logo_url,
+            favicon_url,
+            platform_name,
+            logo_layout,
+            show_platform_name,
+            logo_height
+        } = body;
 
         // Ensure global settings row exists
         const existingInfo = await db.query.platformSettings.findFirst({
@@ -38,7 +50,11 @@ export async function POST(request: NextRequest) {
                     hero_video_type,
                     hero_video_url,
                     logo_url,
+                    favicon_url,
                     platform_name,
+                    logo_layout,
+                    show_platform_name,
+                    logo_height,
                     updated_at: new Date()
                 })
                 .where(eq(platformSettings.id, 'global'));
@@ -49,9 +65,17 @@ export async function POST(request: NextRequest) {
                     hero_video_type,
                     hero_video_url,
                     logo_url,
-                    platform_name
+                    favicon_url,
+                    platform_name,
+                    logo_layout,
+                    show_platform_name,
+                    logo_height
                 });
         }
+
+        revalidatePath('/', 'layout');
+        revalidatePath('/admin-portal', 'layout');
+        revalidatePath('/school-portal', 'layout');
 
         return NextResponse.json({ success: true });
     } catch (error) {

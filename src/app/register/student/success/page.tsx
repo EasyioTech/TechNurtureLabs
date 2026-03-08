@@ -5,8 +5,16 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, LogIn, Mail, Sparkles, Zap, Trophy } from 'lucide-react';
+import { getPlatformSettings } from '@/components/landing/actions';
+import { useEffect, useState } from 'react';
 
 export default function StudentRegistrationSuccess() {
+  const [platformSettings, setPlatformSettings] = useState<any>(null);
+
+  useEffect(() => {
+    getPlatformSettings().then(setPlatformSettings);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center p-6">
       <div className="fixed inset-0 pointer-events-none">
@@ -20,10 +28,16 @@ export default function StudentRegistrationSuccess() {
         className="relative z-10 w-full max-w-md text-center"
       >
         <div className="flex items-center justify-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-            <Sparkles className="text-white" size={20} />
-          </div>
-          <span className="text-xl font-black">TechNurture Labs</span>
+          {platformSettings?.logo_url ? (
+            <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
+              <img src={platformSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <Sparkles className="text-white" size={20} />
+            </div>
+          )}
+          <span className="text-xl font-black">{platformSettings?.platform_name || 'TechNurture'}</span>
         </div>
 
         <motion.div

@@ -46,24 +46,30 @@ export async function getStudentProfileData() {
         return 0;
     });
 
-    // Calculate rank at school level
+    // Calculate rank at school level - handle null school_id gracefully
+    const schoolFilter = profile?.school_id
+        ? eq(users.school_id, profile.school_id)
+        : sql`${users.school_id} IS NULL`;
+
     const usersWithMoreXp = await db.select().from(users).where(
         and(
             gt(users.cumulative_xp, Number(profile?.cumulative_xp) || 0),
             eq(users.role, 'student'),
-            eq(users.school_id, profile?.school_id || '')
+            schoolFilter
         )
     );
-    const totalSchoolStudents = await db.select({ count: sql<number>`count(*)` })
+
+    const totalSchoolStudentsResult = await db.select({ count: sql<number>`count(*)` })
         .from(users)
         .where(
             and(
                 eq(users.role, 'student'),
-                eq(users.school_id, profile?.school_id || '')
+                schoolFilter
             )
         );
+    const totalSchoolStudents = Number(totalSchoolStudentsResult[0]?.count) || 1;
     const rank = usersWithMoreXp.length + 1;
-    const rankPercentage = Math.min(100, Math.max(1, Math.round((rank / (totalSchoolStudents[0]?.count || 1)) * 100)));
+    const rankPercentage = Math.min(100, Math.max(1, Math.round((rank / totalSchoolStudents) * 100)));
 
     const lessonsData = await db.select({
         count: sql<number>`count(*)`,

@@ -268,6 +268,27 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         })
     );
 
+    const validCourses = coursesWithProgress.filter(Boolean) as any[];
+
+    // Sort: Active (partially completed) first, then Not Started, then Fully Completed last
+    validCourses.sort((a, b) => {
+        const aCompleted = a.completedLessons === a.totalLessons && a.totalLessons > 0;
+        const bCompleted = b.completedLessons === b.totalLessons && b.totalLessons > 0;
+
+        const aActive = a.completedLessons > 0 && a.completedLessons < a.totalLessons;
+        const bActive = b.completedLessons > 0 && b.completedLessons < b.totalLessons;
+
+        // Active first
+        if (aActive && !bActive) return -1;
+        if (!aActive && bActive) return 1;
+
+        // Completed last
+        if (aCompleted && !bCompleted) return 1;
+        if (!aCompleted && bCompleted) return -1;
+
+        return 0;
+    });
+
     // Fetch recent activity
     const recentActivities = await db.query.auditLogs.findMany({
         where: eq(auditLogs.user_id, userId),
@@ -323,13 +344,13 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         nextGoal,
         dailyChallenges: formattedChallenges,
         achievements: formattedAchievements,
-        courses: coursesWithProgress.filter(Boolean) as any[],
+        courses: validCourses,
         activities: formattedActivities,
-        categories: Array.from(new Set(coursesWithProgress.filter(Boolean).map(c => c?.category))).filter(Boolean).map(cat => ({
+        categories: Array.from(new Set(validCourses.map((c: any) => c?.category))).filter(Boolean).map(cat => ({
             name: cat,
-            count: coursesWithProgress.filter(Boolean).filter(c => c?.category === cat).length
+            count: validCourses.filter((c: any) => c?.category === cat).length
         })),
-        topics: Array.from(new Set(coursesWithProgress.filter(Boolean).flatMap(c => c?.topics?.split(',').map((t: string) => t.trim())))).filter(Boolean) as string[]
+        topics: Array.from(new Set(validCourses.flatMap((c: any) => c?.topics?.split(',').map((t: string) => t.trim())))).filter(Boolean) as string[]
     };
 }
 

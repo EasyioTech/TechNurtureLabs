@@ -11,7 +11,16 @@ import { Button } from '@/components/ui/button';
 import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
 import { ScrollReveal } from '@/components/landing/ScrollReveal';
 
+import { getPlatformSettings } from '@/components/landing/actions';
+import { useEffect, useState } from 'react';
+
 export default function SchoolPortalLanding() {
+  const [settings, setSettings] = useState<any>(null);
+
+  useEffect(() => {
+    getPlatformSettings().then(setSettings);
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden font-sans">
       {/* Dynamic Background Elements */}
@@ -26,11 +35,17 @@ export default function SchoolPortalLanding() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center transition-transform group-hover:scale-105 shadow-lg shadow-slate-900/10">
-                <School className="text-white" size={20} />
-              </div>
+              {settings?.logo_url ? (
+                <div className="w-10 h-10 flex items-center justify-center overflow-hidden transition-transform group-hover:scale-105">
+                  <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center transition-transform group-hover:scale-105 shadow-lg shadow-slate-900/10">
+                  <School className="text-white" size={20} />
+                </div>
+              )}
               <div>
-                <span className="text-xl font-black tracking-tight text-slate-900 block leading-none">TechNurture</span>
+                <span className="text-xl font-black tracking-tight text-slate-900 block leading-none">{settings?.platform_name || 'TechNurture'}</span>
                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Institutional Portal</span>
               </div>
             </Link>
@@ -189,17 +204,23 @@ export default function SchoolPortalLanding() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
-                <School className="text-white" size={16} />
-              </div>
-              <span className="font-black text-slate-900 tracking-tight">TechNurture Institutional</span>
+              {settings?.logo_url ? (
+                <div className="w-8 h-8 flex items-center justify-center overflow-hidden">
+                  <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
+                  <School className="text-white" size={16} />
+                </div>
+              )}
+              <span className="font-black text-slate-900 tracking-tight">{settings?.platform_name || 'TechNurture'} Institutional</span>
             </div>
             <div className="flex items-center gap-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">
               <Link href="#" className="hover:text-slate-900 transition-colors">Documentation</Link>
               <Link href="#" className="hover:text-slate-900 transition-colors">Privacy</Link>
               <Link href="#" className="hover:text-slate-900 transition-colors">Ethics</Link>
             </div>
-            <p className="text-[10px] text-slate-400 font-bold">© 2026 TechNurture Labs. Secure Institutional Endpoint.</p>
+            <p className="text-[10px] text-slate-400 font-bold">© {new Date().getFullYear()} {settings?.platform_name || 'TechNurture'}. Secure Institutional Endpoint.</p>
           </div>
         </div>
       </footer>
