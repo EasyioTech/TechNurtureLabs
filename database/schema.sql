@@ -394,7 +394,7 @@ CREATE TABLE IF NOT EXISTS courses (
 
 CREATE INDEX IF NOT EXISTS idx_courses_published  ON courses (is_published) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_courses_created_at ON courses (created_at);
-CREATE INDEX IF NOT EXISTS idx_courses_topics_gin ON courses USING GIN (topics);
+CREATE INDEX IF NOT EXISTS idx_courses_topics_gin ON courses USING GIN (topics array_ops);
 
 -- ============================================================================
 -- 14. COURSE-CLASS MAPPING
@@ -434,7 +434,7 @@ CREATE TABLE IF NOT EXISTS lessons (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_lesson_sequence_per_course
-    ON lessons (course_id, sequence_order) DEFERRABLE INITIALLY DEFERRED;
+    ON lessons (course_id, sequence_order);
 CREATE INDEX IF NOT EXISTS idx_lessons_course ON lessons (course_id) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_lessons_course_published ON lessons (course_id, is_published);
 
@@ -484,7 +484,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz_question_sequence
-    ON quiz_questions (quiz_id, sequence_order) DEFERRABLE INITIALLY DEFERRED;
+    ON quiz_questions (quiz_id, sequence_order);
 CREATE INDEX IF NOT EXISTS idx_qq_quiz ON quiz_questions (quiz_id);
 
 -- ============================================================================
