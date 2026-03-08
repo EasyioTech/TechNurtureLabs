@@ -71,22 +71,40 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     }).from(quizAttempts).where(eq(quizAttempts.user_id, userId));
     const accuracy = Math.round(Number(quizResult[0]?.avg_pct) || 0);
 
-    // Calculate rank at school level
-    const usersWithMoreXp = await db.select().from(users).where(
-        and(
-            gt(users.cumulative_xp, Number(profile.cumulative_xp) || 0),
-            eq(users.role, 'student'),
-            eq(users.school_id, profile.school_id || '')
-        )
-    );
-    const totalSchoolStudents = await db.select({ count: sql<number>`count(*)` })
-        .from(users)
-        .where(
+    // Calculate rank at school level (fallback to global if no school assigned)
+    let usersWithMoreXp;
+    let totalSchoolStudents;
+
+    if (profile.school_id) {
+        usersWithMoreXp = await db.select().from(users).where(
             and(
+                gt(users.cumulative_xp, Number(profile.cumulative_xp) || 0),
                 eq(users.role, 'student'),
-                eq(users.school_id, profile.school_id || '')
+                eq(users.school_id, profile.school_id)
             )
         );
+        totalSchoolStudents = await db.select({ count: sql<number>`count(*)` })
+            .from(users)
+            .where(
+                and(
+                    eq(users.role, 'student'),
+                    eq(users.school_id, profile.school_id)
+                )
+            );
+    } else {
+        usersWithMoreXp = await db.select().from(users).where(
+            and(
+                gt(users.cumulative_xp, Number(profile.cumulative_xp) || 0),
+                eq(users.role, 'student')
+            )
+        );
+        totalSchoolStudents = await db.select({ count: sql<number>`count(*)` })
+            .from(users)
+            .where(
+                eq(users.role, 'student')
+            );
+    }
+
     const rank = usersWithMoreXp.length + 1;
     const rankPercentage = Math.min(100, Math.max(1, Math.round((rank / (totalSchoolStudents[0]?.count || 1)) * 100)));
 
