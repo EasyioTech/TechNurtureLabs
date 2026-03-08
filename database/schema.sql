@@ -4,11 +4,9 @@
 -- Generated: 2026-03-08 | Version: 2.0.0
 -- ============================================================================
 
-BEGIN;
+-- Auto-commit mode: each statement runs independently.
+-- IF NOT EXISTS guards make this safe to re-run.
 
--- ============================================================================
--- EXTENSIONS
--- ============================================================================
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "citext";
 
@@ -890,4 +888,4 @@ INSERT INTO users (
     TRUE
 ) ON CONFLICT DO NOTHING;
 
-COMMIT;
+-- (All statements above run in auto-commit mode. No COMMIT needed.)
