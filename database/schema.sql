@@ -29,6 +29,56 @@ DO $$ BEGIN CREATE TYPE asset_type AS ENUM ('video', 'image', 'document'); EXCEP
 DO $$ BEGIN CREATE TYPE discount_type AS ENUM ('percentage', 'fixed'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ============================================================================
+-- PATCH: Add missing columns to existing tables (safe on fresh installs too)
+-- ============================================================================
+
+-- users table: 2FA columns + gender + deleted_at
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_secret TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_backup_codes JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+-- course_progress: school + session tracking
+ALTER TABLE course_progress ADD COLUMN IF NOT EXISTS school_id UUID REFERENCES schools(id) ON DELETE CASCADE;
+ALTER TABLE course_progress ADD COLUMN IF NOT EXISTS session_id UUID REFERENCES academic_sessions(id) ON DELETE RESTRICT;
+
+-- lesson_progress: school + session tracking
+ALTER TABLE lesson_progress ADD COLUMN IF NOT EXISTS school_id UUID REFERENCES schools(id) ON DELETE CASCADE;
+ALTER TABLE lesson_progress ADD COLUMN IF NOT EXISTS session_id UUID REFERENCES academic_sessions(id) ON DELETE RESTRICT;
+
+-- platform_settings: new config columns
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS favicon_url TEXT;
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS logo_layout TEXT NOT NULL DEFAULT 'horizontal';
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS show_platform_name BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS logo_height INTEGER NOT NULL DEFAULT 40;
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS support_email TEXT;
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS currency_default TEXT NOT NULL DEFAULT 'INR';
+
+-- course_class_mapping: soft-delete + active flag
+ALTER TABLE course_class_mapping ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE course_class_mapping ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+-- school_class_mapping: soft-delete
+ALTER TABLE school_class_mapping ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+-- classes: soft-delete
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+-- academic_sessions: soft-delete
+ALTER TABLE academic_sessions ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+-- enrollments: soft-delete
+ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+-- media_assets: folder field
+ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS folder TEXT;
+ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- quiz_questions: per-question time limit
+ALTER TABLE quiz_questions ADD COLUMN IF NOT EXISTS time_limit_secs INTEGER;
+
+-- ============================================================================
 -- 1. SCHOOLS (top-level tenant)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS schools (
