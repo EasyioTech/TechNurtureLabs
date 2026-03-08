@@ -134,36 +134,8 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     };
 
     // Daily Challenges
-    const allChallenges = await db.query.dailyChallenges.findMany({
-        where: eq(dailyChallenges.status, 'active'),
-        limit: 3
-    });
-
-    let formattedChallenges: any[] = [];
-    const userChallengesData = await db.query.userDailyChallenges.findMany({
-        where: eq(userDailyChallenges.user_id, userId)
-    });
-
-    const challengeMap = new Map(
-        userChallengesData.map(uc => [uc.challenge_id, uc])
-    );
-
-    if (allChallenges.length > 0) {
-        formattedChallenges = allChallenges.map(c => {
-            const uc = challengeMap.get(c.id);
-            const criteria = c.criteria as any;
-            return {
-                id: c.id,
-                title: c.title,
-                challenge_type: criteria?.type || 'unknown',
-                target_value: criteria?.target || 1,
-                xp_reward: c.xp_reward,
-                icon: criteria?.icon || 'zap',
-                current_progress: uc ? (uc.xp_earned || 0) : 0,
-                is_completed: !!uc?.completed_at
-            };
-        });
-    }
+    const { getOrGenerateDailyChallenges } = await import('./challenge-actions');
+    const formattedChallenges = await getOrGenerateDailyChallenges(userId);
 
     // Achievements
     const allAchvs = await db.query.achievements.findMany({

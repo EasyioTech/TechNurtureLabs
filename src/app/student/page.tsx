@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getStudentDashboardData } from '@/modules/student/actions';
+import { getPlatformSettings } from '@/components/landing/actions';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -73,6 +74,8 @@ export default function StudentDashboard() {
     return `${hours}h ${minutes}m`;
   };
 
+  const [platformSettings, setPlatformSettings] = useState<any>(null);
+
   useEffect(() => {
     setResetTime(calculateResetTime());
     const interval = setInterval(() => {
@@ -84,7 +87,10 @@ export default function StudentDashboard() {
   useEffect(() => {
     async function fetchUserAndCourses() {
       try {
-        const data = await getStudentDashboardData();
+        const [data, settings] = await Promise.all([
+          getStudentDashboardData(),
+          getPlatformSettings()
+        ]);
         setCourses((data.courses || []) as Course[]);
         setUserProfile(data.profile);
         setSchool(data.school);
@@ -92,6 +98,7 @@ export default function StudentDashboard() {
         setAchievements(data.achievements || []);
         setActivities(data.activities || []);
         setStats(data.stats);
+        setPlatformSettings(settings);
       } catch (err) {
         console.error(err);
       }
@@ -102,7 +109,7 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-8">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-8 font-sans">
         <div className="relative w-32 h-32">
           <div className="absolute inset-0 border-[6px] border-slate-100 rounded-full" />
           <div className="absolute inset-0 border-[6px] border-indigo-600 border-t-transparent rounded-full animate-spin" />
@@ -110,6 +117,7 @@ export default function StudentDashboard() {
             <GraduationCap size={40} className="text-slate-900" />
           </div>
         </div>
+        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 animate-pulse">Initializing Portal</p>
       </div>
     );
   }
@@ -128,6 +136,7 @@ export default function StudentDashboard() {
           stats={stats}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          settings={platformSettings}
         />
       </div>
 
@@ -359,6 +368,22 @@ export default function StudentDashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Quick Access Actions */}
+            <div className="grid grid-cols-2 gap-4">
+              <Link href="/student/analytics" className="w-full">
+                <Button className="w-full h-16 bg-white text-indigo-600 font-black uppercase tracking-widest text-[10px] rounded-3xl hover:bg-slate-50 transition-all border border-slate-100 shadow-sm shadow-slate-200/50 flex flex-col items-center justify-center gap-1 group">
+                  <Activity size={18} className="text-sky-500 group-hover:scale-110 transition-transform" />
+                  Analytics
+                </Button>
+              </Link>
+              <Link href="/student/leaderboard" className="w-full">
+                <Button className="w-full h-16 bg-white text-indigo-600 font-black uppercase tracking-widest text-[10px] rounded-3xl hover:bg-slate-50 transition-all border border-slate-100 shadow-sm shadow-slate-200/50 flex flex-col items-center justify-center gap-1 group">
+                  <Trophy size={18} className="text-amber-500 group-hover:scale-110 transition-transform" />
+                  Leaderboard
+                </Button>
+              </Link>
             </div>
 
             {/* Achievement Preview */}

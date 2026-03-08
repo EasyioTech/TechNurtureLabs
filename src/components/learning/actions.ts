@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { users, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping, schools, auditLogs } from '@/db/schema';
-import { eq, and, inArray, asc, desc, isNotNull } from 'drizzle-orm';
+import { eq, and, inArray, asc, desc, isNotNull, sql } from 'drizzle-orm';
 
 // Auto-enroll a student in a course if not already enrolled
 async function ensureEnrollment(userId: string, courseId: string) {
@@ -213,6 +213,7 @@ export async function getLessonData(lessonId: string) {
                     correct_answer: q.correct_answer, // could be index (number) or string
                     explanation: q.explanation,
                     points: q.points,
+                    time_limit_secs: q.time_limit_secs,
                 }))
             };
         }
@@ -303,9 +304,13 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
             new_values: { lesson_title: lesson.title, xp_earned: xpToAdd }
         } as any);
 
-        // Check for newly earned achievements
+        // Check for newly earned achievements and daily challenges
         const { checkAndAwardAchievements } = await import('@/modules/student/actions/achievement-actions');
         await checkAndAwardAchievements();
+
+        const { updateDailyChallengeProgress } = await import('@/modules/student/actions/challenge-actions');
+        await updateDailyChallengeProgress(userId, 'quiz_complete', xpToAdd);
+        await updateDailyChallengeProgress(userId, 'xp_gain', xpToAdd); // If it's an xp_gain challenge, it will add the xpToAdd amount
     } catch (e) {
         console.error('Failed to log activity or check achievements:', e);
     }
@@ -343,7 +348,10 @@ export async function saveVideoProgress(lessonId: string, position: number) {
 
     if (existing.length > 0) {
         await db.update(lessonProgress)
-            .set({ progress_pct: position.toString(), time_spent_secs: Math.round(position) })
+            .set({
+                progress_pct: position.toFixed(2),
+                updated_at: new Date()
+            })
             .where(and(eq(lessonProgress.user_id, session.userId), eq(lessonProgress.lesson_id, lessonId)));
     } else {
         const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
@@ -363,4 +371,16 @@ export async function saveVideoProgress(lessonId: string, position: number) {
 
 export async function markLessonComplete(lessonId: string) {
     return completeLessonAndReward(lessonId);
+}
+
+export async function updateTimeSpent(lessonId: string, seconds: number) {
+    const session = await verifySession();
+    if (!session) return;
+
+    await db.update(lessonProgress)
+        .set({
+            time_spent_secs: sql`${lessonProgress.time_spent_secs} + ${seconds}`,
+            updated_at: new Date()
+        })
+        .where(and(eq(lessonProgress.user_id, session.userId), eq(lessonProgress.lesson_id, lessonId)));
 }

@@ -113,9 +113,11 @@ export default function ChallengesPage() {
                                 </div>
                                 <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">My Rank</h3>
                                 <p className="text-sm font-bold text-slate-500 uppercase mb-8">Rank #{stats.rank} (Top {stats.rankPercentage}%)</p>
-                                <Button className="w-full h-14 bg-white text-slate-900 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-slate-100 transition-all">
-                                    View Leaderboard
-                                </Button>
+                                <Link href="/student/leaderboard" className="w-full">
+                                    <Button className="w-full h-14 bg-white text-slate-900 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-slate-100 transition-all">
+                                        View Leaderboard
+                                    </Button>
+                                </Link>
                             </div>
                         </div>
                     </div>
@@ -132,7 +134,7 @@ export default function ChallengesPage() {
                                 <div>
                                     <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">Active Tasks</h3>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                        <Timer size={14} className="text-indigo-600" /> Resets in 14 hours
+                                        <Timer size={14} className="text-indigo-600" /> Resets daily at midnight
                                     </p>
                                 </div>
                             </div>
@@ -183,9 +185,11 @@ export default function ChallengesPage() {
                                         <div className="h-full bg-white rounded-full" style={{ width: `${stats.accuracy}%` }} />
                                     </div>
                                 </div>
-                                <Button className="w-full h-14 bg-white text-indigo-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-slate-50 transition-all">
-                                    Daily Analytics
-                                </Button>
+                                <Link href="/student/analytics" className="w-full block">
+                                    <Button className="w-full h-14 bg-white text-indigo-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-slate-50 transition-all">
+                                        Daily Analytics
+                                    </Button>
+                                </Link>
                             </div>
                         </div>
 
