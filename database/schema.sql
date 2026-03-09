@@ -13,6 +13,7 @@ CREATE EXTENSION IF NOT EXISTS "citext";
 -- ============================================================================
 -- ENUM TYPES (idempotent)
 -- ============================================================================
+DO $$ BEGIN CREATE TYPE user_type AS ENUM ('super_admin', 'school_admin', 'student'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE user_role AS ENUM ('super_admin', 'school_admin', 'student'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE subscription_status AS ENUM ('active', 'trialing', 'past_due', 'cancelled', 'expired'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE billing_cycle AS ENUM ('monthly', 'quarterly', 'semi_annual', 'annual'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -197,28 +198,12 @@ CREATE TABLE IF NOT EXISTS students (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_students_email_per_school
     ON students (email, school_id) WHERE deleted_at IS NULL;
 
+-- Global indexes
 CREATE INDEX IF NOT EXISTS idx_students_school ON students(school_id);
 CREATE INDEX IF NOT EXISTS idx_students_xp ON students(cumulative_xp);
-CREATE INDEX IF NOT EXISTS idx_users_created_at  ON users (created_at);
+-- users table removed
 
--- ============================================================================
--- 4. USER SESSIONS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS user_sessions (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    refresh_token_hash  TEXT NOT NULL,
-    device_info         TEXT,
-    ip_address          INET,
-    expires_at          TIMESTAMPTZ NOT NULL,
-    revoked_at          TIMESTAMPTZ,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    last_used_at        TIMESTAMPTZ
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS uq_sessions_token_hash ON user_sessions (refresh_token_hash);
-CREATE INDEX IF NOT EXISTS idx_sessions_user    ON user_sessions (user_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_expires ON user_sessions (expires_at);
+-- user_sessions removed from here, defined later in polymorphic section
 
 -- ============================================================================
 -- 5. PAYMENT PLANS
@@ -788,6 +773,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     entity_id   UUID,
     old_values  JSONB,
     new_values  JSONB,
+    metadata    JSONB NOT NULL DEFAULT '{}',
     ip_address  INET,
     user_agent  TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
