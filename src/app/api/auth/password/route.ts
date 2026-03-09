@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { users, superAdmins, schoolAdmins, students, userSessions } from '@/db/schema';
+import { superAdmins, schoolAdmins, students, userSessions } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { redis } from '@/lib/redis';
