@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { dailyChallenges, userDailyChallenges, users } from '@/db/schema';
+import { dailyChallenges, userDailyChallenges, students } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 
@@ -126,9 +126,9 @@ export async function updateDailyChallengeProgress(userId: string, actionType: s
         if (newProgress >= challenge.target_value && currentProgress < challenge.target_value) {
             // ISSUE 12: Atomic increment — avoids race condition if two challenges complete simultaneously
             const { sql } = await import('drizzle-orm');
-            await db.update(users)
+            await db.update(students)
                 .set({ cumulative_xp: sql`cumulative_xp + ${challenge.xp_reward}` })
-                .where(eq(users.id, userId));
+                .where(eq(students.id, userId));
         }
     }
 }

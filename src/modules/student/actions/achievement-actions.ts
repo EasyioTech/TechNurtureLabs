@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import {
-    users,
+    students,
     achievements,
     userAchievements,
     lessonProgress,
@@ -156,8 +156,8 @@ export async function checkAndAwardAchievements() {
     // Ensure achievements exist
     await seedAchievementsData();
 
-    const user = await db.query.users.findFirst({
-        where: eq(users.id, userId)
+    const user = await db.query.students.findFirst({
+        where: eq(students.id, userId)
     });
     if (!user) return { success: false, error: 'User not found' };
 
@@ -245,6 +245,7 @@ export async function checkAndAwardAchievements() {
             // Log activity
             await db.insert(auditLogs).values({
                 user_id: userId,
+                user_type: 'student',
                 school_id: user.school_id,
                 action: 'create',
                 entity_type: 'user_achievement',
@@ -290,8 +291,8 @@ export async function getStudentAchievementsData() {
     }));
 
     // Fetch basic stats for the progress circle
-    const profile = await db.query.users.findFirst({
-        where: eq(users.id, userId)
+    const profile = await db.query.students.findFirst({
+        where: eq(students.id, userId)
     });
 
     return {

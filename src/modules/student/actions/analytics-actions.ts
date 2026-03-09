@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { lessonProgress, courseProgress, quizAttempts, users } from '@/db/schema';
+import { lessonProgress, courseProgress, quizAttempts, students } from '@/db/schema';
 import { eq, and, sql, gte } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 
@@ -10,8 +10,8 @@ export async function getStudentDailyAnalytics() {
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
 
-    const currentUser = await db.query.users.findFirst({
-        where: eq(users.id, userId)
+    const currentUser = await db.query.students.findFirst({
+        where: eq(students.id, userId)
     });
 
     if (!currentUser) throw new Error('User not found');

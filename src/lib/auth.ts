@@ -27,15 +27,16 @@ const REFRESH_TOKEN_EXPIRY_SECONDS = 60 * 60 * 24 * REFRESH_TOKEN_EXPIRY_DAYS;
 export type SessionPayload = {
     userId: string;
     userType: 'super_admin' | 'school_admin' | 'student';
+    role: 'super_admin' | 'school_admin' | 'student';
     sessionId: string;
 };
 
 /**
  * Creates a new session with Access Token (JWT) and Refresh Token (DB + Hash).
  */
-export async function createSession(payload: Omit<SessionPayload, 'sessionId'>) {
+export async function createSession(payload: Omit<SessionPayload, 'sessionId' | 'role'>) {
     const sessionId = crypto.randomUUID();
-    const sessionData: SessionPayload = { ...payload, sessionId };
+    const sessionData: SessionPayload = { ...payload, role: payload.userType, sessionId };
 
     // Generate Refresh Token
     const refreshToken = crypto.randomBytes(32).toString('hex');
@@ -139,6 +140,7 @@ export async function verifySession(): Promise<SessionPayload | null> {
         const sessionData: SessionPayload = {
             userId: sessionRow.user_id,
             userType: sessionRow.user_type as any,
+            role: sessionRow.user_type as any,
             sessionId: sessionId
         };
 

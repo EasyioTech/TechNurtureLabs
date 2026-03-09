@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, schools, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseClassMapping, quizAttempts, auditLogs } from '@/db/schema';
+import { students, schools, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseClassMapping, quizAttempts, auditLogs } from '@/db/schema';
 import { eq, and, gt, inArray, asc, desc, isNotNull, sql } from 'drizzle-orm';
 
 export type DashboardData = {
@@ -37,8 +37,8 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
 
     const userId = session.userId;
 
-    const profile = await db.query.users.findFirst({
-        where: eq(users.id, userId),
+    const profile = await db.query.students.findFirst({
+        where: eq(students.id, userId),
         with: {
             academicRecords: {
                 with: {
@@ -76,33 +76,27 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     let totalSchoolStudents;
 
     if (profile.school_id) {
-        usersWithMoreXp = await db.select().from(users).where(
+        usersWithMoreXp = await db.select().from(students).where(
             and(
-                gt(users.cumulative_xp, Number(profile.cumulative_xp) || 0),
-                eq(users.role, 'student'),
-                eq(users.school_id, profile.school_id)
+                gt(students.cumulative_xp, Number(profile.cumulative_xp) || 0),
+                eq(students.school_id, profile.school_id)
             )
         );
         totalSchoolStudents = await db.select({ count: sql<number>`count(*)` })
-            .from(users)
+            .from(students)
             .where(
                 and(
-                    eq(users.role, 'student'),
-                    eq(users.school_id, profile.school_id)
+                    eq(students.school_id, profile.school_id)
                 )
             );
     } else {
-        usersWithMoreXp = await db.select().from(users).where(
+        usersWithMoreXp = await db.select().from(students).where(
             and(
-                gt(users.cumulative_xp, Number(profile.cumulative_xp) || 0),
-                eq(users.role, 'student')
+                gt(students.cumulative_xp, Number(profile.cumulative_xp) || 0)
             )
         );
         totalSchoolStudents = await db.select({ count: sql<number>`count(*)` })
-            .from(users)
-            .where(
-                eq(users.role, 'student')
-            );
+            .from(students);
     }
 
     const rank = usersWithMoreXp.length + 1;
@@ -370,14 +364,14 @@ export async function deleteStudentAccountAction() {
     }
 
     try {
-        await db.update(users).set({
+        await db.update(students).set({
             first_name: 'Deleted',
             last_name: 'User',
             email: `deleted_${session.userId}@technurture.io`,
             phone: null,
             is_active: false,
             deleted_at: new Date()
-        }).where(eq(users.id, session.userId));
+        }).where(eq(students.id, session.userId));
 
         await db.insert(auditLogs).values({
             user_id: session.userId,

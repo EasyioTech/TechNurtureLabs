@@ -657,7 +657,7 @@ export const auditLogs = pgTable('audit_logs', {
     entity_id: uuid('entity_id'),
     old_values: jsonb('old_values'),
     new_values: jsonb('new_values'),
-    // ISSUE 5: inet type instead of text — prevents IPv4/IPv6 mismatch in rate-limiting/ban queries
+    metadata: jsonb('metadata').notNull().default({}),
     ip_address: inet('ip_address'),
     user_agent: text('user_agent'),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -669,7 +669,8 @@ export const auditLogs = pgTable('audit_logs', {
 export const loginAttempts = pgTable('login_attempts', {
     id: uuid('id').defaultRandom().primaryKey(),
     email: text('email').notNull(),
-    user_id: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    user_id: uuid('user_id'), // Polymorphic
+    user_type: userTypeEnum('user_type'),
     // ISSUE 5: inet type instead of text — prevents IPv4/IPv6 mismatch in rate-limiting/ban queries
     ip_address: inet('ip_address').notNull(),
     user_agent: text('user_agent'),
@@ -698,7 +699,7 @@ export const mediaAssets = pgTable('media_assets', {
     file_size: bigint('file_size', { mode: 'number' }).notNull().default(0),
     storage_type: storageTypeEnum('storage_type').notNull().default('local'),
     asset_type: assetTypeEnum('asset_type').notNull().default('document'),
-    uploaded_by: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
+    uploaded_by: uuid('uploaded_by'), // Polymorphic - students, school_admins, or super_admins
     folder: text('folder'), // course, lesson, settings, etc
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
@@ -722,13 +723,13 @@ export const platformSettings = pgTable('platform_settings', {
 
 export const passwordResetTokens = pgTable('password_reset_tokens', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull(), // Polymorphic
+    user_type: userTypeEnum('user_type').notNull(),
     token_hash: text('token_hash').notNull(),
     expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
     used_at: timestamp('used_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    // NEW BUG 3: every password reset verifies by token_hash — without an index this is a full scan
     index('idx_prt_token').on(table.token_hash),
     index('idx_prt_user').on(table.user_id),
     index('idx_prt_expires').on(table.expires_at),
@@ -736,13 +737,13 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
 
 export const emailVerificationTokens = pgTable('email_verification_tokens', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull(), // Polymorphic
+    user_type: userTypeEnum('user_type').notNull(),
     token_hash: text('token_hash').notNull(),
     expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
     verified_at: timestamp('verified_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    // NEW BUG 3: every email verify link verifies by token_hash — without an index this is a full scan
     index('idx_evt_token').on(table.token_hash),
     index('idx_evt_user').on(table.user_id),
 ]);
