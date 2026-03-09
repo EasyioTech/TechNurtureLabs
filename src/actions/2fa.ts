@@ -5,8 +5,22 @@ import QRCode from 'qrcode';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { db } from '@/lib/db';
-import { users, platformSettings } from '@/db/schema';
+import { platformSettings, students, schoolAdmins, superAdmins } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+
+async function findUserById(userId: string) {
+    let user: any = await db.query.students.findFirst({ where: eq(students.id, userId) });
+    let table: any = students;
+    if (!user) {
+        user = await db.query.schoolAdmins.findFirst({ where: eq(schoolAdmins.id, userId) });
+        table = schoolAdmins;
+    }
+    if (!user) {
+        user = await db.query.superAdmins.findFirst({ where: eq(superAdmins.id, userId) });
+        table = superAdmins;
+    }
+    return { user, table };
+}
 import { verifySession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
@@ -14,9 +28,7 @@ export async function generate2FASecret() {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
 
-    const user = await db.query.users.findFirst({
-        where: eq(users.id, session.userId),
-    });
+    const { user } = await findUserById(session.userId);
 
     if (!user) throw new Error('User not found');
 
@@ -59,14 +71,16 @@ export async function enable2FA(secret: string, token: string) {
         plainCodes.map(code => bcrypt.hash(code, 10))
     );
 
-    await db.update(users)
+    const { table } = await findUserById(session.userId);
+    if (!table) throw new Error('User not found');
+
+    await db.update(table)
         .set({
             two_factor_secret: secret,
             two_factor_enabled: true,
-            // Store HASHED codes — plain codes are shown to the user once and never stored
             two_factor_backup_codes: hashedCodes,
         })
-        .where(eq(users.id, session.userId));
+        .where(eq(table.id, session.userId));
 
     revalidatePath('/admin');
     // Return plain codes ONCE — frontend must prompt user to copy/download them
@@ -77,9 +91,7 @@ export async function disable2FA(token: string) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
 
-    const user = await db.query.users.findFirst({
-        where: eq(users.id, session.userId),
-    });
+    const { user, table } = await findUserById(session.userId);
 
     if (!user || !user.two_factor_secret) {
         throw new Error('2FA not enabled');
@@ -94,13 +106,15 @@ export async function disable2FA(token: string) {
         return { success: false, error: 'Invalid verification code' };
     }
 
-    await db.update(users)
+    if (!table) throw new Error('User not found');
+
+    await db.update(table)
         .set({
-            two_factor_secret: null,
+            two_factor_secret: null as any,
             two_factor_enabled: false,
             two_factor_backup_codes: [],
         })
-        .where(eq(users.id, session.userId));
+        .where(eq(table.id, session.userId));
 
     revalidatePath('/admin');
     return { success: true };
@@ -115,7 +129,7 @@ export async function disable2FA(token: string) {
  * - Never returns the stored hashes to the client.
  */
 export async function verify2FABackupCode(userId: string, inputCode: string): Promise<boolean> {
-    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    const { user, table } = await findUserById(userId);
     if (!user) return false;
 
     const storedHashes = (user.two_factor_backup_codes as string[]) ?? [];
@@ -133,9 +147,9 @@ export async function verify2FABackupCode(userId: string, inputCode: string): Pr
 
     // Remove the used code — backup codes are single-use
     const remainingCodes = storedHashes.filter((_, i) => i !== matchedIndex);
-    await db.update(users)
+    await db.update(table)
         .set({ two_factor_backup_codes: remainingCodes })
-        .where(eq(users.id, userId));
+        .where(eq(table.id, userId));
 
     return true;
 }

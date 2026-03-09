@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping, schools, auditLogs } from '@/db/schema';
+import { students, schoolAdmins, superAdmins, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping, schools, auditLogs } from '@/db/schema';
 import { eq, and, inArray, asc, desc, isNotNull, isNull, sql } from 'drizzle-orm';
 
 // Auto-enroll a student in a course if not already enrolled.
@@ -20,7 +20,18 @@ async function ensureEnrollment(userId: string, courseId: string) {
 
     if (existingEnrollment) return existingEnrollment;
 
-    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    const session = await verifySession();
+    if (!session) return null;
+
+    let user: any = null;
+    const role = session.userType;
+    if (role === 'student') {
+        user = await db.query.students.findFirst({ where: eq(students.id, userId) });
+    } else if (role === 'school_admin') {
+        user = await db.query.schoolAdmins.findFirst({ where: eq(schoolAdmins.id, userId) });
+    } else {
+        user = await db.query.superAdmins.findFirst({ where: eq(superAdmins.id, userId) });
+    }
     if (!user?.school_id) return null;
 
     const currentSession = await db.query.academicSessions.findFirst({
@@ -29,7 +40,7 @@ async function ensureEnrollment(userId: string, courseId: string) {
 
     if (!currentSession) return null;
 
-    if (user.role === 'student') {
+    if (role === 'student') {
         const course = await db.query.courses.findFirst({
             where: and(eq(courses.id, courseId), eq(courses.is_published, true))
         });
@@ -85,8 +96,17 @@ export async function getCourseDetailsData(courseId: string) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
+    const role = session.userType;
 
-    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    let user: any = null;
+    if (role === 'student') {
+        user = await db.query.students.findFirst({ where: eq(students.id, userId) });
+    } else if (role === 'school_admin') {
+        user = await db.query.schoolAdmins.findFirst({ where: eq(schoolAdmins.id, userId) });
+    } else {
+        user = await db.query.superAdmins.findFirst({ where: eq(superAdmins.id, userId) });
+    }
+
     if (!user) throw new Error('User not found');
 
     const course = await db.query.courses.findFirst({
@@ -96,11 +116,11 @@ export async function getCourseDetailsData(courseId: string) {
     if (!course) throw new Error('Course not found');
 
     // If not super admin, must be published
-    if (user.role !== 'super_admin' && !course.is_published) {
+    if (role !== 'super_admin' && !course.is_published) {
         throw new Error('Course not found');
     }
 
-    if (user.role === 'student') {
+    if (role === 'student') {
         // Validate access
         const existingEnrollment = await db.query.enrollments.findFirst({
             where: and(eq(enrollments.user_id, userId), eq(enrollments.course_id, courseId))
@@ -257,8 +277,16 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
+    const role = session.userType;
 
-    const existingUser = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    let existingUser: any = null;
+    if (role === 'student') {
+        existingUser = await db.query.students.findFirst({ where: eq(students.id, userId) });
+    } else if (role === 'school_admin') {
+        existingUser = await db.query.schoolAdmins.findFirst({ where: eq(schoolAdmins.id, userId) });
+    } else {
+        existingUser = await db.query.superAdmins.findFirst({ where: eq(superAdmins.id, userId) });
+    }
     if (!existingUser) return;
 
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
@@ -320,9 +348,11 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
 
     // ISSUE 12: Atomic XP increment — read-modify-write creates a race condition when
     // two events (lesson + quiz) fire simultaneously. Always use SQL `+= x`, never `= x`.
-    await db.update(users)
-        .set({ cumulative_xp: sql`cumulative_xp + ${xpToAdd}` })
-        .where(eq(users.id, userId));
+    if (role === 'student') {
+        await db.update(students)
+            .set({ cumulative_xp: sql`cumulative_xp + ${xpToAdd}` })
+            .where(eq(students.id, userId));
+    }
 
     // Record Activity in Audit Log
     try {

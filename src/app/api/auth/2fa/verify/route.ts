@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { users } from '@/db/schema';
+import { students, schoolAdmins, superAdmins } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import { verify } from 'otplib';
@@ -13,9 +13,20 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'User ID and token are required' }, { status: 400 });
         }
 
-        const user = await db.query.users.findFirst({
-            where: eq(users.id, userId)
-        });
+        let user: any = await db.query.students.findFirst({ where: eq(students.id, userId) });
+        let table: any = students;
+        let role = 'student';
+
+        if (!user) {
+            user = await db.query.schoolAdmins.findFirst({ where: eq(schoolAdmins.id, userId) });
+            table = schoolAdmins;
+            role = 'school_admin';
+        }
+        if (!user) {
+            user = await db.query.superAdmins.findFirst({ where: eq(superAdmins.id, userId) });
+            table = superAdmins;
+            role = 'super_admin';
+        }
 
         if (!user || !user.two_factor_enabled || !user.two_factor_secret) {
             return NextResponse.json({ error: '2FA not enabled for this user' }, { status: 403 });
@@ -36,15 +47,15 @@ export async function POST(request: NextRequest) {
                 const newBackupCodes = [...backupCodes];
                 newBackupCodes.splice(backupCodeIndex, 1);
 
-                await db.update(users)
+                await db.update(table)
                     .set({ two_factor_backup_codes: newBackupCodes })
-                    .where(eq(users.id, user.id));
+                    .where(eq(table.id, user.id));
             } else {
                 return NextResponse.json({ error: 'Invalid verification code' }, { status: 401 });
             }
         }
 
-        await createSession({ userId: user.id, role: user.role });
+        await createSession({ userId: user.id, role: role as any });
 
         const { password_hash, two_factor_secret, ...userData } = user;
         return NextResponse.json({ success: true, user: userData });
