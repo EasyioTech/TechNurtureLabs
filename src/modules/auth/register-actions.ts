@@ -60,8 +60,8 @@ export async function registerStudent(formData: any) {
             return { success: false, error: 'Missing required registration fields.' };
         }
 
-        if (formData.password.length < 8) {
-            return { success: false, error: 'Password must be at least 8 characters long.' };
+        if (formData.password.length < 6) {
+            return { success: false, error: 'Password must be at least 6 digits long.' };
         }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
