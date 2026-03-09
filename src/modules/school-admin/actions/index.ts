@@ -213,7 +213,7 @@ export async function getSchoolStats(schoolId: string) {
     const studentIds = studentsData.map(s => s.id);
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const activeStudents = students.filter(s => s.last_active_at && new Date(s.last_active_at) > sevenDaysAgo).length;
+    const activeStudents = studentsData.filter(s => s.last_active_at && new Date(s.last_active_at) > sevenDaysAgo).length;
 
     const progressData = studentIds.length > 0
         ? await db.select().from(lessonProgress).where(inArray(lessonProgress.user_id, studentIds))
