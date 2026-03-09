@@ -32,12 +32,7 @@ DO $$ BEGIN CREATE TYPE discount_type AS ENUM ('percentage', 'fixed'); EXCEPTION
 -- PATCH: Add missing columns to existing tables (safe on fresh installs too)
 -- ============================================================================
 
--- users table: 2FA columns + gender + deleted_at
-ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_secret TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_backup_codes JSONB NOT NULL DEFAULT '[]'::jsonb;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+-- Users table refactored into specialized tables.
 
 -- course_progress: school + session tracking
 ALTER TABLE course_progress ADD COLUMN IF NOT EXISTS school_id UUID REFERENCES schools(id) ON DELETE CASCADE;
@@ -80,6 +75,13 @@ ALTER TABLE quiz_questions ADD COLUMN IF NOT EXISTS time_limit_secs INTEGER;
 
 -- achievements: category column
 ALTER TABLE achievements ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'Beginner';
+
+-- payment_plans: add unique constraint to name (idempotent patch)
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_payment_plans_name') THEN
+        ALTER TABLE payment_plans ADD CONSTRAINT uq_payment_plans_name UNIQUE (name);
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 1. SCHOOLS (top-level tenant)
@@ -126,56 +128,77 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_school_current_session
     ON academic_sessions (school_id) WHERE is_current = TRUE AND deleted_at IS NULL;
 
 -- ============================================================================
--- 3. USERS (unified table — students, admins, super admins)
+-- 3. USER MANAGEMENT (Decoupled)
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS users (
+
+CREATE TABLE IF NOT EXISTS super_admins (
     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    school_id                UUID REFERENCES schools(id) ON DELETE CASCADE,
-    role                     user_role NOT NULL,
+    first_name               TEXT NOT NULL,
+    last_name                TEXT NOT NULL,
+    email                    CITEXT NOT NULL UNIQUE,
+    password_hash            TEXT NOT NULL,
+    avatar_url               TEXT,
+    two_factor_secret        TEXT,
+    two_factor_enabled       BOOLEAN NOT NULL DEFAULT FALSE,
+    two_factor_backup_codes  JSONB NOT NULL DEFAULT '[]'::jsonb,
+    is_active                BOOLEAN NOT NULL DEFAULT TRUE,
+    last_active_at           TIMESTAMPTZ,
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at               TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS school_admins (
+    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    school_id                UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
     first_name               TEXT NOT NULL,
     last_name                TEXT NOT NULL,
     email                    CITEXT NOT NULL,
     password_hash            TEXT NOT NULL,
     phone                    TEXT,
     avatar_url               TEXT,
+    bio                      TEXT,
+    is_active                BOOLEAN NOT NULL DEFAULT TRUE,
+    last_active_at           TIMESTAMPTZ,
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at               TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_school_admins_email_per_school
+    ON school_admins (email, school_id) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS students (
+    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    school_id                UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+    first_name               TEXT NOT NULL,
+    last_name                TEXT NOT NULL,
+    email                    CITEXT NOT NULL,
+    password_hash            TEXT NOT NULL, -- PIN
+    phone                    TEXT,
+    avatar_url               TEXT,
+    bio                      TEXT,
     date_of_birth            DATE,
+    gender                   TEXT,
     is_minor                 BOOLEAN NOT NULL DEFAULT FALSE,
     guardian_name            TEXT,
     guardian_email           CITEXT,
     guardian_consent         BOOLEAN NOT NULL DEFAULT FALSE,
     cumulative_xp            BIGINT NOT NULL DEFAULT 0,
-    current_streak           INT NOT NULL DEFAULT 0,
-    longest_streak           INT NOT NULL DEFAULT 0,
-    last_active_at           TIMESTAMPTZ,
+    current_streak           INTEGER NOT NULL DEFAULT 0,
+    longest_streak           INTEGER NOT NULL DEFAULT 0,
     is_active                BOOLEAN NOT NULL DEFAULT TRUE,
-    bio                      TEXT,
-    gender                   TEXT,
-    email_verified_at        TIMESTAMPTZ,
-    two_factor_secret        TEXT,
-    two_factor_enabled       BOOLEAN NOT NULL DEFAULT FALSE,
-    two_factor_backup_codes  JSONB NOT NULL DEFAULT '[]'::jsonb,
+    last_active_at           TIMESTAMPTZ,
     created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at               TIMESTAMPTZ,
-    CONSTRAINT chk_school_required_for_non_super
-        CHECK (role = 'super_admin' OR school_id IS NOT NULL),
-    CONSTRAINT chk_minor_guardian
-        CHECK (is_minor = FALSE OR (guardian_name IS NOT NULL AND guardian_email IS NOT NULL))
+    deleted_at               TIMESTAMPTZ
 );
 
--- Multi-tenant email uniqueness
-CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email_per_school
-    ON users (email, school_id) WHERE school_id IS NOT NULL AND deleted_at IS NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email_global
-    ON users (email) WHERE school_id IS NULL AND deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_students_email_per_school
+    ON students (email, school_id) WHERE deleted_at IS NULL;
 
--- Performance indexes
-CREATE INDEX IF NOT EXISTS idx_users_school      ON users (school_id) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_users_role        ON users (role) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_users_school_role ON users (school_id, role) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_users_xp          ON users (cumulative_xp DESC) WHERE deleted_at IS NULL AND role = 'student';
-CREATE INDEX IF NOT EXISTS idx_users_school_xp   ON users (school_id, cumulative_xp DESC) WHERE deleted_at IS NULL AND role = 'student';
-CREATE INDEX IF NOT EXISTS idx_users_school_active ON users (school_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_students_school ON students(school_id);
+CREATE INDEX IF NOT EXISTS idx_students_xp ON students(cumulative_xp);
 CREATE INDEX IF NOT EXISTS idx_users_created_at  ON users (created_at);
 
 -- ============================================================================
@@ -202,7 +225,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expires ON user_sessions (expires_at);
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS payment_plans (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name          TEXT NOT NULL,
+    name          TEXT NOT NULL UNIQUE,
     description   TEXT,
     billing_cycle billing_cycle NOT NULL,
     price         NUMERIC(12,2) NOT NULL,
@@ -356,7 +379,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_school_class
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS student_academic_records (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     school_id    UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
     session_id   UUID NOT NULL REFERENCES academic_sessions(id) ON DELETE RESTRICT,
     class_id     UUID NOT NULL REFERENCES classes(id) ON DELETE RESTRICT,
@@ -364,7 +387,7 @@ CREATE TABLE IF NOT EXISTS student_academic_records (
     section      TEXT,
     is_promoted  BOOLEAN NOT NULL DEFAULT FALSE,
     promoted_at  TIMESTAMPTZ,
-    promoted_by  UUID REFERENCES users(id) ON DELETE SET NULL,
+    promoted_by  UUID REFERENCES school_admins(id) ON DELETE SET NULL,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT uq_student_session UNIQUE (user_id, session_id)
@@ -389,7 +412,7 @@ CREATE TABLE IF NOT EXISTS courses (
     total_xp        INT NOT NULL DEFAULT 0,
     category        TEXT NOT NULL DEFAULT 'General',
     topics          TEXT[] NOT NULL DEFAULT '{}',
-    created_by      UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_by      UUID NOT NULL REFERENCES super_admins(id) ON DELETE RESTRICT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at      TIMESTAMPTZ
@@ -495,7 +518,7 @@ CREATE INDEX IF NOT EXISTS idx_qq_quiz ON quiz_questions (quiz_id);
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS enrollments (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     course_id    UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
     school_id    UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
     session_id   UUID NOT NULL REFERENCES academic_sessions(id) ON DELETE RESTRICT,
@@ -520,7 +543,7 @@ CREATE INDEX IF NOT EXISTS idx_enroll_user_active ON enrollments (user_id, is_ac
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS lesson_progress (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id          UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     lesson_id        UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
     enrollment_id    UUID NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
     school_id        UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
@@ -547,7 +570,7 @@ CREATE INDEX IF NOT EXISTS idx_lp_session    ON lesson_progress (session_id);
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS course_progress (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id           UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     course_id         UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
     enrollment_id     UUID NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
     school_id         UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
@@ -576,7 +599,7 @@ CREATE INDEX IF NOT EXISTS idx_cp_enrollment ON course_progress (enrollment_id);
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS quiz_attempts (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id         UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     quiz_id         UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
     enrollment_id   UUID NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
     attempt_number  INT NOT NULL DEFAULT 1,
@@ -603,7 +626,7 @@ CREATE INDEX IF NOT EXISTS idx_qa_enrollment  ON quiz_attempts (enrollment_id);
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS xp_events (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id         UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     school_id       UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
     source          xp_source NOT NULL,
     xp_amount       INT NOT NULL,
@@ -638,7 +661,7 @@ CREATE TABLE IF NOT EXISTS achievements (
 
 CREATE TABLE IF NOT EXISTS user_achievements (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id        UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     achievement_id UUID NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
     earned_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -667,7 +690,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_challenge_date ON daily_challenges (c
 
 CREATE TABLE IF NOT EXISTS user_daily_challenges (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     challenge_id UUID NOT NULL REFERENCES daily_challenges(id) ON DELETE CASCADE,
     completed_at TIMESTAMPTZ,
     xp_earned    INT NOT NULL DEFAULT 0,
@@ -694,7 +717,7 @@ CREATE TABLE IF NOT EXISTS certificates (
 
 CREATE TABLE IF NOT EXISTS user_certificates (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id           UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     certificate_id    UUID NOT NULL REFERENCES certificates(id) ON DELETE RESTRICT,
     enrollment_id     UUID NOT NULL REFERENCES enrollments(id) ON DELETE RESTRICT,
     certificate_url   TEXT,
@@ -757,7 +780,8 @@ CREATE TABLE IF NOT EXISTS course_metrics_daily (
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS audit_logs (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+    user_id     UUID,
+    user_type   user_type NOT NULL,
     school_id   UUID REFERENCES schools(id) ON DELETE SET NULL,
     action      audit_action NOT NULL,
     entity_type TEXT NOT NULL,
@@ -777,7 +801,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs (created_at);
 CREATE TABLE IF NOT EXISTS login_attempts (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email          CITEXT NOT NULL,
-    user_id        UUID REFERENCES users(id) ON DELETE SET NULL,
+    user_id        UUID,
+    user_type      user_type NOT NULL,
     ip_address     INET NOT NULL,
     user_agent     TEXT,
     success        BOOLEAN NOT NULL,
@@ -790,7 +815,8 @@ CREATE INDEX IF NOT EXISTS idx_login_created ON login_attempts (created_at);
 
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id     UUID NOT NULL,
+    user_type   user_type NOT NULL,
     token_hash  TEXT NOT NULL,
     expires_at  TIMESTAMPTZ NOT NULL,
     used_at     TIMESTAMPTZ,
@@ -804,12 +830,26 @@ CREATE INDEX IF NOT EXISTS idx_prt_expires ON password_reset_tokens (expires_at)
 
 CREATE TABLE IF NOT EXISTS email_verification_tokens (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id     UUID NOT NULL,
+    user_type   user_type NOT NULL,
     token_hash  TEXT NOT NULL,
     expires_at  TIMESTAMPTZ NOT NULL,
     verified_at TIMESTAMPTZ,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT chk_evt_expiry CHECK (expires_at > created_at)
+);
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id            UUID NOT NULL,
+    user_type          user_type NOT NULL,
+    refresh_token_hash TEXT NOT NULL UNIQUE,
+    device_info        TEXT,
+    ip_address         INET,
+    expires_at         TIMESTAMPTZ NOT NULL,
+    revoked_at         TIMESTAMPTZ,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_used_at       TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_evt_token ON email_verification_tokens (token_hash);
@@ -846,7 +886,7 @@ CREATE TABLE IF NOT EXISTS media_assets (
     file_size     BIGINT NOT NULL DEFAULT 0,
     storage_type  storage_type NOT NULL DEFAULT 'local',
     asset_type    asset_type NOT NULL DEFAULT 'document',
-    uploaded_by   UUID REFERENCES users(id) ON DELETE SET NULL,
+    uploaded_by   UUID,
     folder        TEXT,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -871,7 +911,8 @@ DO $$
 DECLARE t text;
 BEGIN
     FOR t IN SELECT unnest(ARRAY[
-        'schools', 'academic_sessions', 'users', 'payment_plans',
+        'schools', 'academic_sessions', 'super_admins', 'school_admins', 'students',
+        'payment_plans',
         'promo_codes', 'school_subscriptions', 'payment_transactions',
         'invoices', 'student_academic_records', 'courses', 'lessons',
         'quizzes', 'quiz_questions', 'enrollments', 'lesson_progress',
@@ -909,7 +950,7 @@ INSERT INTO payment_plans (name, description, billing_cycle, price, max_students
 VALUES
     ('Basic Education',  'Foundation for primary classes.',       'annual', 999,  50,  '{"lms": true, "analytics": false}'::jsonb, true),
     ('Pro Academy',      'Advanced tools for the whole school.',  'annual', 4999, 500, '{"lms": true, "analytics": true, "priority_support": true}'::jsonb, true)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (name) DO NOTHING;
 
 -- Achievements
 INSERT INTO achievements (name, description, tier, xp_threshold, criteria) VALUES
@@ -927,19 +968,16 @@ ON CONFLICT (name) DO NOTHING;
 -- ============================================================================
 -- 32. SUPER ADMIN
 -- Password is 'AdminPassword123!' hashed with bcrypt (10 rounds)
--- CHANGE THIS PASSWORD IMMEDIATELY AFTER FIRST LOGIN via the admin portal.
 -- ============================================================================
-INSERT INTO users (
-    id, school_id, role, first_name, last_name, email, password_hash, is_active
+INSERT INTO super_admins (
+    id, first_name, last_name, email, password_hash, is_active
 ) VALUES (
     gen_random_uuid(),
-    NULL,
-    'super_admin',
     'Super',
     'Admin',
     'admin@technurture.com',
     '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
     TRUE
-) ON CONFLICT DO NOTHING;
+) ON CONFLICT (email) DO NOTHING;
 
 -- (All statements above run in auto-commit mode. No COMMIT needed.)

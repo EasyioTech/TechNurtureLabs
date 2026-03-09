@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { users, superAdmins, schoolAdmins, students, userSessions } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
+import { redis } from '@/lib/redis';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
@@ -22,8 +23,23 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'New password must be at least 8 characters long' }, { status: 400 });
         }
 
-        const user = await db.query.users.findFirst({
-            where: eq(users.id, session.userId)
+        const { userId, userType } = session;
+        const tableMap: any = {
+            'super_admin': superAdmins,
+            'school_admin': schoolAdmins,
+            'student': students
+        };
+        const queryMap: any = {
+            'super_admin': db.query.superAdmins,
+            'school_admin': db.query.schoolAdmins,
+            'student': db.query.students
+        };
+
+        const targetTable = tableMap[userType];
+        if (!targetTable) return NextResponse.json({ error: 'Invalid user type' }, { status: 400 });
+
+        const user = await queryMap[userType].findFirst({
+            where: eq(targetTable.id, userId)
         });
 
         if (!user) {
@@ -37,9 +53,31 @@ export async function POST(request: NextRequest) {
 
         const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-        await db.update(users)
-            .set({ password_hash: newPasswordHash })
-            .where(eq(users.id, user.id));
+        await db.transaction(async (tx) => {
+            await tx.update(targetTable)
+                .set({ password_hash: newPasswordHash })
+                .where(eq(targetTable.id, userId));
+
+            // Invalidate all sessions for this user type + id
+            const sessions = await tx.query.userSessions.findMany({
+                where: and(
+                    eq(userSessions.user_id, userId),
+                    eq(userSessions.user_type, userType)
+                )
+            });
+
+            await tx.update(userSessions)
+                .set({ revoked_at: new Date() })
+                .where(and(
+                    eq(userSessions.user_id, userId),
+                    eq(userSessions.user_type, userType)
+                ));
+
+            // Clean up Redis
+            for (const s of sessions) {
+                await redis.del(`session:${s.id}`);
+            }
+        });
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { mediaAssets } from '@/db/schema';
 import { and, desc, eq } from 'drizzle-orm';
+import { verifySession } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
     try {
+        const session = await verifySession();
+        if (!session || (session.role !== 'admin' && session.role !== 'school_admin' && session.role !== 'super_admin')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { searchParams } = new URL(request.url);
         const type = searchParams.get('type');
         const folder = searchParams.get('folder');

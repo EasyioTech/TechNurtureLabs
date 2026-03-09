@@ -1,12 +1,11 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { users, schools, paymentPlans, studentAcademicRecords, academicSessions, schoolClassMapping } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { students, schoolAdmins, superAdmins, schools, paymentPlans, studentAcademicRecords, academicSessions, schoolClassMapping, classes } from '@/db/schema';
+import { eq, and, or } from 'drizzle-orm';
+import { asc } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { assignPlanToSchool } from '@/modules/super-admin/actions';
-import { classes } from '@/db/schema';
-import { asc } from 'drizzle-orm';
 
 export async function fetchGlobalClasses() {
     return await db.query.classes.findMany({
@@ -57,40 +56,46 @@ export async function fetchActivePaymentPlans() {
 
 export async function registerStudent(formData: any) {
     try {
-        // 1. Validation
         if (!formData.email || !formData.password || !formData.full_name || !formData.school_id || (!formData.class_id && !formData.grade)) {
             return { success: false, error: 'Missing required registration fields.' };
+        }
+
+        if (formData.password.length < 8) {
+            return { success: false, error: 'Password must be at least 8 characters long.' };
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            return { success: false, error: 'Invalid email address format.' };
         }
 
         const email = formData.email.toLowerCase().trim();
         const [firstName, ...lastNameParts] = formData.full_name.trim().split(/\s+/);
         const lastName = lastNameParts.join(' ');
 
-        const result = await db.transaction(async (tx) => {
-            // 2. Check for existing user
-            const existingUser = await tx.query.users.findFirst({
-                where: eq(users.email, email)
+        return await db.transaction(async (tx) => {
+            // Check for existing student with this email in THIS school
+            const existing = await tx.query.students.findFirst({
+                where: and(eq(students.email, email), eq(students.school_id, formData.school_id))
             });
 
-            if (existingUser) {
-                return { success: false, error: 'An account with this email already exists.' };
+            if (existing) {
+                return { success: false, error: 'An account with this email already exists in this school.' };
             }
 
-            // 3. Hash password and Create user
             const hashedPassword = await bcrypt.hash(formData.password, 10);
-            const [newUser] = await tx.insert(users).values({
+            const [newStudent] = await tx.insert(students).values({
                 email: email,
                 password_hash: hashedPassword,
                 first_name: firstName || '',
                 last_name: lastName || '',
                 school_id: formData.school_id,
-                role: 'student',
                 cumulative_xp: 0,
                 current_streak: 0,
                 is_active: true,
             } as any).returning();
 
-            // 4. Handle Academic Mapping
+            // Academic Mapping
             let session = await tx.query.academicSessions.findFirst({
                 where: and(
                     eq(academicSessions.school_id, formData.school_id),
@@ -113,22 +118,18 @@ export async function registerStudent(formData: any) {
                 session = newSession;
             }
 
-            // 5. Link student to the class in the session
             await tx.insert(studentAcademicRecords).values({
-                user_id: newUser.id,
-                school_id: newUser.school_id,
+                user_id: newStudent.id,
+                school_id: newStudent.school_id,
                 session_id: session.id,
                 class_id: formData.class_id || formData.grade,
             } as any).onConflictDoNothing();
 
-            return { success: true, user: newUser };
+            return { success: true, user: newStudent };
         });
-
-        return result;
     } catch (error: any) {
-        const detail = error?.cause?.detail || error?.cause?.message || error?.message || 'An unexpected error occurred during registration.';
-        console.error('Registration error details:', error);
-        return { success: false, error: detail };
+        console.error('Student registration error:', error);
+        return { success: false, error: error.message || 'An unexpected error occurred.' };
     }
 }
 
@@ -169,57 +170,54 @@ export async function registerSchool(formData: any) {
                 end_date: endDate.toISOString().split('T')[0]
             } as any);
 
-            // 3. Create School Admin User
-            const checkUser = await tx.query.users.findFirst({
-                where: eq(users.email, email)
+            // 3. Create School Admin User in school_admins table
+            const checkUser = await tx.query.schoolAdmins.findFirst({
+                where: and(eq(schoolAdmins.email, email), eq(schoolAdmins.school_id, newSchool.id))
             });
 
             if (checkUser) {
-                return { success: false, error: 'A user with this email already exists.' };
+                throw new Error('A school admin with this email already exists.');
             }
 
             const hashedPassword = await bcrypt.hash(formData.password, 10);
             const [firstName, ...lastNameParts] = (formData.principal_name || 'Admin').split(/\s+/);
             const lastName = lastNameParts.join(' ');
 
-            await tx.insert(users).values({
+            await tx.insert(schoolAdmins).values({
                 email: email,
+                school_id: newSchool.id,
                 password_hash: hashedPassword,
                 first_name: firstName,
                 last_name: lastName || '',
-                school_id: newSchool.id,
-                role: 'school_admin',
-                cumulative_xp: 0,
-                current_streak: 0,
                 is_active: true,
             } as any);
 
-            // 4. Map ALL Global Classes to New School (Classes 1-12)
-            const globalClasses = await tx.query.classes.findMany();
-            if (globalClasses && globalClasses.length > 0) {
-                const mappings = globalClasses.map(cls => ({
-                    school_id: newSchool.id,
-                    class_id: cls.id,
-                    is_active: true
-                }));
-                await tx.insert(schoolClassMapping).values(mappings as any);
+            // 4. Map ALL Global Classes to New School
+            const allGlobalClasses = await tx.query.classes.findMany();
+            if (allGlobalClasses.length > 0) {
+                await tx.insert(schoolClassMapping).values(
+                    allGlobalClasses.map(cls => ({
+                        school_id: newSchool.id,
+                        class_id: cls.id,
+                        is_active: true
+                    }))
+                );
             }
 
             return { success: true, school: newSchool };
         });
 
-        // 5. Assign Initial Plan if provided (Outside the transaction to avoid nested generic transaction deadlocks/fk issues)
         if (formData.plan_id && result?.school?.id) {
             try {
                 await assignPlanToSchool(result.school.id, formData.plan_id, 12, formData.promo_code_id);
-            } catch (error) {
-                console.error("Failed to assign plan during school registration", error);
+            } catch (err) {
+                console.error("Plan assignment failed during registration:", err);
             }
         }
 
         return result;
     } catch (error: any) {
-        console.error('School registration error details:', error);
-        return { success: false, error: error.message || 'An unexpected error occurred during school registration.' };
+        console.error('School registration error:', error);
+        return { success: false, error: error.message || 'An unexpected error occurred.' };
     }
 }

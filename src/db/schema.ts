@@ -10,6 +10,7 @@ import { relations, sql } from 'drizzle-orm';
 // ============================================================================
 
 export const userRoleEnum = pgEnum('user_role', ['super_admin', 'school_admin', 'student']);
+export const userTypeEnum = pgEnum('user_type', ['super_admin', 'school_admin', 'student']);
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'trialing', 'past_due', 'cancelled', 'expired']);
 export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'quarterly', 'semi_annual', 'annual']);
 export const paymentStatusEnum = pgEnum('payment_status', ['created', 'authorized', 'captured', 'failed', 'refunded']);
@@ -66,20 +67,60 @@ export const academicSessions = pgTable('academic_sessions', {
 });
 
 // ============================================================================
-// USER SYSTEM (unified)
+// USER SYSTEM (specialized)
 // ============================================================================
 
-export const users = pgTable('users', {
+export const superAdmins = pgTable('super_admins', {
     id: uuid('id').defaultRandom().primaryKey(),
-    school_id: uuid('school_id').references(() => schools.id, { onDelete: 'cascade' }),
-    role: userRoleEnum('role').notNull(),
+    first_name: text('first_name').notNull(),
+    last_name: text('last_name').notNull(),
+    email: text('email').notNull().unique(),
+    password_hash: text('password_hash').notNull(),
+    avatar_url: text('avatar_url'),
+    two_factor_secret: text('two_factor_secret'),
+    two_factor_enabled: boolean('two_factor_enabled').notNull().default(false),
+    two_factor_backup_codes: jsonb('two_factor_backup_codes').notNull().default([]),
+    is_active: boolean('is_active').notNull().default(true),
+    last_active_at: timestamp('last_active_at', { withTimezone: true }),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deleted_at: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const schoolAdmins = pgTable('school_admins', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     first_name: text('first_name').notNull(),
     last_name: text('last_name').notNull(),
     email: text('email').notNull(),
     password_hash: text('password_hash').notNull(),
     phone: text('phone'),
     avatar_url: text('avatar_url'),
+    is_active: boolean('is_active').notNull().default(true),
+    last_active_at: timestamp('last_active_at', { withTimezone: true }),
+    bio: text('bio'),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deleted_at: timestamp('deleted_at', { withTimezone: true }),
+}, (table) => [
+    uniqueIndex('uq_school_admins_email_per_school')
+        .on(table.email, table.school_id)
+        .where(sql`deleted_at IS NULL`),
+    index('idx_school_admins_school').on(table.school_id),
+]);
+
+export const students = pgTable('students', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+    first_name: text('first_name').notNull(),
+    last_name: text('last_name').notNull(),
+    email: text('email').notNull(),
+    password_hash: text('password_hash').notNull(), // Student PIN
+    phone: text('phone'),
+    avatar_url: text('avatar_url'),
+    bio: text('bio'),
     date_of_birth: date('date_of_birth'),
+    gender: text('gender'),
     is_minor: boolean('is_minor').notNull().default(false),
     guardian_name: text('guardian_name'),
     guardian_email: text('guardian_email'),
@@ -87,32 +128,17 @@ export const users = pgTable('users', {
     cumulative_xp: bigint('cumulative_xp', { mode: 'number' }).notNull().default(0),
     current_streak: integer('current_streak').notNull().default(0),
     longest_streak: integer('longest_streak').notNull().default(0),
-    last_active_at: timestamp('last_active_at', { withTimezone: true }),
     is_active: boolean('is_active').notNull().default(true),
-    bio: text('bio'),
-    email_verified_at: timestamp('email_verified_at', { withTimezone: true }),
-    two_factor_secret: text('two_factor_secret'),
-    two_factor_enabled: boolean('two_factor_enabled').notNull().default(false),
-    two_factor_backup_codes: jsonb('two_factor_backup_codes').notNull().default([]),
+    last_active_at: timestamp('last_active_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => [
-    // ISSUE 1: Multi-tenant email uniqueness — old global uniqueIndex was wrong.
-    // School-scoped users: unique email per-school (super_admins have no school_id).
-    uniqueIndex('uq_users_email_per_school')
+    uniqueIndex('uq_students_email_per_school')
         .on(table.email, table.school_id)
-        .where(sql`school_id IS NOT NULL AND deleted_at IS NULL`),
-    uniqueIndex('uq_users_email_global')
-        .on(table.email)
-        .where(sql`school_id IS NULL AND deleted_at IS NULL`),
-    index('idx_users_school').on(table.school_id),
-    index('idx_users_role').on(table.role),
-    index('idx_users_cumulative_xp').on(table.cumulative_xp),
-    // ISSUE 9: Partial index for active-record queries (soft-delete pattern)
-    index('idx_users_active').on(table.school_id).where(sql`deleted_at IS NULL`),
-    // ISSUE 11: Composite index for frequent "active students in school" query
-    index('idx_users_school_active').on(table.school_id, table.is_active),
+        .where(sql`deleted_at IS NULL`),
+    index('idx_students_school').on(table.school_id),
+    index('idx_students_xp').on(table.cumulative_xp),
 ]);
 
 // ============================================================================
@@ -121,7 +147,7 @@ export const users = pgTable('users', {
 
 export const paymentPlans = pgTable('payment_plans', {
     id: uuid('id').defaultRandom().primaryKey(),
-    name: text('name').notNull(),
+    name: text('name').notNull().unique(),
     description: text('description'),
     billing_cycle: billingCycleEnum('billing_cycle').notNull(),
     price: numeric('price', { precision: 12, scale: 2 }).notNull(),
@@ -249,7 +275,7 @@ export const schoolClassMapping = pgTable('school_class_mapping', {
 
 export const studentAcademicRecords = pgTable('student_academic_records', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     session_id: uuid('session_id').notNull().references(() => academicSessions.id, { onDelete: 'restrict' }),
     class_id: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'restrict' }),
@@ -257,7 +283,7 @@ export const studentAcademicRecords = pgTable('student_academic_records', {
     section: text('section'),
     is_promoted: boolean('is_promoted').notNull().default(false),
     promoted_at: timestamp('promoted_at', { withTimezone: true }),
-    promoted_by: uuid('promoted_by').references(() => users.id, { onDelete: 'set null' }),
+    promoted_by: uuid('promoted_by').references(() => schoolAdmins.id, { onDelete: 'set null' }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
@@ -282,7 +308,7 @@ export const courses = pgTable('courses', {
     category: text('category').notNull().default('General'),
     // ISSUE 15: array column instead of plain text — enables proper multi-topic filtering with GIN index
     topics: text('topics').array().notNull().default(sql`'{}'`),
-    created_by: uuid('created_by').notNull().references(() => users.id, { onDelete: 'restrict' }),
+    created_by: uuid('created_by').notNull().references(() => superAdmins.id, { onDelete: 'restrict' }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
@@ -375,7 +401,7 @@ export const quizQuestions = pgTable('quiz_questions', {
 
 export const enrollments = pgTable('enrollments', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
     course_id: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     session_id: uuid('session_id').notNull().references(() => academicSessions.id, { onDelete: 'restrict' }),
@@ -399,7 +425,7 @@ export const enrollments = pgTable('enrollments', {
 
 export const lessonProgress = pgTable('lesson_progress', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
     lesson_id: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
     enrollment_id: uuid('enrollment_id').notNull().references(() => enrollments.id, { onDelete: 'cascade' }),
     // ISSUE 17: session_id added — avoids expensive JOIN through enrollments to filter by academic year
@@ -423,7 +449,7 @@ export const lessonProgress = pgTable('lesson_progress', {
 
 export const courseProgress = pgTable('course_progress', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
     course_id: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
     enrollment_id: uuid('enrollment_id').notNull().references(() => enrollments.id, { onDelete: 'cascade' }),
     // ISSUE 17: session_id added — avoids expensive JOIN through enrollments to filter by academic year
@@ -447,7 +473,7 @@ export const courseProgress = pgTable('course_progress', {
 
 export const quizAttempts = pgTable('quiz_attempts', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
     quiz_id: uuid('quiz_id').notNull().references(() => quizzes.id, { onDelete: 'cascade' }),
     enrollment_id: uuid('enrollment_id').notNull().references(() => enrollments.id, { onDelete: 'cascade' }),
     attempt_number: integer('attempt_number').notNull().default(1),
@@ -473,7 +499,7 @@ export const quizAttempts = pgTable('quiz_attempts', {
 
 export const xpEvents = pgTable('xp_events', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     source: xpSourceEnum('source').notNull(),
     xp_amount: integer('xp_amount').notNull(),
@@ -505,7 +531,7 @@ export const achievements = pgTable('achievements', {
 
 export const userAchievements = pgTable('user_achievements', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
     achievement_id: uuid('achievement_id').notNull().references(() => achievements.id, { onDelete: 'cascade' }),
     earned_at: timestamp('earned_at', { withTimezone: true }).notNull().defaultNow(),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -529,7 +555,7 @@ export const dailyChallenges = pgTable('daily_challenges', {
 
 export const userDailyChallenges = pgTable('user_daily_challenges', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
     challenge_id: uuid('challenge_id').notNull().references(() => dailyChallenges.id, { onDelete: 'cascade' }),
     completed_at: timestamp('completed_at', { withTimezone: true }),
     xp_earned: integer('xp_earned').notNull().default(0),
@@ -557,7 +583,7 @@ export const certificates = pgTable('certificates', {
 
 export const userCertificates = pgTable('user_certificates', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
     certificate_id: uuid('certificate_id').notNull().references(() => certificates.id, { onDelete: 'restrict' }),
     enrollment_id: uuid('enrollment_id').notNull().references(() => enrollments.id, { onDelete: 'restrict' }),
     certificate_url: text('certificate_url'),
@@ -623,7 +649,8 @@ export const courseMetricsDaily = pgTable('course_metrics_daily', {
 
 export const auditLogs = pgTable('audit_logs', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    user_id: uuid('user_id'),
+    user_type: userTypeEnum('user_type'),
     school_id: uuid('school_id').references(() => schools.id, { onDelete: 'set null' }),
     action: auditActionEnum('action').notNull(),
     entity_type: text('entity_type').notNull(),
@@ -736,7 +763,8 @@ export const emailVerificationTokens = pgTable('email_verification_tokens', {
  */
 export const userSessions = pgTable('user_sessions', {
     id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull(),
+    user_type: userTypeEnum('user_type').notNull(),
     refresh_token_hash: text('refresh_token_hash').notNull(),
     device_info: text('device_info'),
     ip_address: inet('ip_address'),
@@ -757,22 +785,30 @@ export const userSessions = pgTable('user_sessions', {
 // ============================================================================
 
 export const schoolsRelations = relations(schools, ({ many }) => ({
-    users: many(users),
+    students: many(students),
+    schoolAdmins: many(schoolAdmins),
     academicSessions: many(academicSessions),
     subscriptions: many(schoolSubscriptions),
     classMapping: many(schoolClassMapping),
 }));
 
-export const usersRelations = relations(users, ({ one, many }) => ({
-    school: one(schools, { fields: [users.school_id], references: [schools.id] }),
+export const studentsRelations = relations(students, ({ one, many }) => ({
+    school: one(schools, { fields: [students.school_id], references: [schools.id] }),
     academicRecords: many(studentAcademicRecords),
     enrollments: many(enrollments),
     xpEvents: many(xpEvents),
     achievements: many(userAchievements),
     dailyChallenges: many(userDailyChallenges),
     certificates: many(userCertificates),
-    // ISSUE 8: Sessions relation for active device tracking
-    sessions: many(userSessions),
+}));
+
+export const schoolAdminsRelations = relations(schoolAdmins, ({ one, many }) => ({
+    school: one(schools, { fields: [schoolAdmins.school_id], references: [schools.id] }),
+    promotedRecords: many(studentAcademicRecords),
+}));
+
+export const superAdminsRelations = relations(superAdmins, ({ many }) => ({
+    createdCourses: many(courses),
 }));
 
 export const academicSessionsRelations = relations(academicSessions, ({ one }) => ({
@@ -780,7 +816,7 @@ export const academicSessionsRelations = relations(academicSessions, ({ one }) =
 }));
 
 export const coursesRelations = relations(courses, ({ one, many }) => ({
-    createdBy: one(users, { fields: [courses.created_by], references: [users.id] }),
+    createdBy: one(superAdmins, { fields: [courses.created_by], references: [superAdmins.id] }),
     classMapping: many(courseClassMapping),
     lessons: many(lessons),
     enrollments: many(enrollments),
@@ -793,26 +829,24 @@ export const lessonsRelations = relations(lessons, ({ one, many }) => ({
 }));
 
 export const enrollmentsRelations = relations(enrollments, ({ one, many }) => ({
-    user: one(users, { fields: [enrollments.user_id], references: [users.id] }),
+    student: one(students, { fields: [enrollments.user_id], references: [students.id] }),
     course: one(courses, { fields: [enrollments.course_id], references: [courses.id] }),
     school: one(schools, { fields: [enrollments.school_id], references: [schools.id] }),
     session: one(academicSessions, { fields: [enrollments.session_id], references: [academicSessions.id] }),
 }));
 
 export const lessonProgressRelations = relations(lessonProgress, ({ one }) => ({
-    user: one(users, { fields: [lessonProgress.user_id], references: [users.id] }),
+    student: one(students, { fields: [lessonProgress.user_id], references: [students.id] }),
     lesson: one(lessons, { fields: [lessonProgress.lesson_id], references: [lessons.id] }),
     enrollment: one(enrollments, { fields: [lessonProgress.enrollment_id], references: [enrollments.id] }),
-    // ISSUE 17 + 25: session and school relations added
     session: one(academicSessions, { fields: [lessonProgress.session_id], references: [academicSessions.id] }),
     school: one(schools, { fields: [lessonProgress.school_id], references: [schools.id] }),
 }));
 
 export const courseProgressRelations = relations(courseProgress, ({ one }) => ({
-    user: one(users, { fields: [courseProgress.user_id], references: [users.id] }),
+    student: one(students, { fields: [courseProgress.user_id], references: [students.id] }),
     course: one(courses, { fields: [courseProgress.course_id], references: [courses.id] }),
     enrollment: one(enrollments, { fields: [courseProgress.enrollment_id], references: [enrollments.id] }),
-    // ISSUE 17 + 25: session and school relations added
     session: one(academicSessions, { fields: [courseProgress.session_id], references: [academicSessions.id] }),
     school: one(schools, { fields: [courseProgress.school_id], references: [schools.id] }),
 }));
@@ -822,7 +856,7 @@ export const achievementsRelations = relations(achievements, ({ many }) => ({
 }));
 
 export const userAchievementsRelations = relations(userAchievements, ({ one }) => ({
-    user: one(users, { fields: [userAchievements.user_id], references: [users.id] }),
+    student: one(students, { fields: [userAchievements.user_id], references: [students.id] }),
     achievement: one(achievements, { fields: [userAchievements.achievement_id], references: [achievements.id] }),
 }));
 
@@ -831,7 +865,7 @@ export const dailyChallengesRelations = relations(dailyChallenges, ({ many }) =>
 }));
 
 export const userDailyChallengesRelations = relations(userDailyChallenges, ({ one }) => ({
-    user: one(users, { fields: [userDailyChallenges.user_id], references: [users.id] }),
+    student: one(students, { fields: [userDailyChallenges.user_id], references: [students.id] }),
     challenge: one(dailyChallenges, { fields: [userDailyChallenges.challenge_id], references: [dailyChallenges.id] }),
 }));
 
@@ -851,10 +885,11 @@ export const paymentTransactionsRelations = relations(paymentTransactions, ({ on
 }));
 
 export const studentAcademicRecordsRelations = relations(studentAcademicRecords, ({ one }) => ({
-    user: one(users, { fields: [studentAcademicRecords.user_id], references: [users.id] }),
+    student: one(students, { fields: [studentAcademicRecords.user_id], references: [students.id] }),
     school: one(schools, { fields: [studentAcademicRecords.school_id], references: [schools.id] }),
     session: one(academicSessions, { fields: [studentAcademicRecords.session_id], references: [academicSessions.id] }),
     academicClass: one(classes, { fields: [studentAcademicRecords.class_id], references: [classes.id] }),
+    promotedBy: one(schoolAdmins, { fields: [studentAcademicRecords.promoted_by], references: [schoolAdmins.id] }),
 }));
 
 export const courseClassMappingRelations = relations(courseClassMapping, ({ one }) => ({
@@ -874,7 +909,7 @@ export const quizQuestionsRelations = relations(quizQuestions, ({ one }) => ({
 }));
 
 export const quizAttemptsRelations = relations(quizAttempts, ({ one }) => ({
-    user: one(users, { fields: [quizAttempts.user_id], references: [users.id] }),
+    student: one(students, { fields: [quizAttempts.user_id], references: [students.id] }),
     quiz: one(quizzes, { fields: [quizAttempts.quiz_id], references: [quizzes.id] }),
     enrollment: one(enrollments, { fields: [quizAttempts.enrollment_id], references: [enrollments.id] }),
 }));
@@ -885,10 +920,9 @@ export const schoolClassMappingRelations = relations(schoolClassMapping, ({ one 
 }));
 
 export const mediaAssetsRelations = relations(mediaAssets, ({ one }) => ({
-    uploader: one(users, { fields: [mediaAssets.uploaded_by], references: [users.id] }),
+    // Use loose relation or specific if needed, for now uploader is plain UUID in table
 }));
 
-// ISSUE 8: Relation for the new user_sessions table
 export const userSessionsRelations = relations(userSessions, ({ one }) => ({
-    user: one(users, { fields: [userSessions.user_id], references: [users.id] }),
+    // Polymorphic, Drizzle relations don't support well without discriminator in one()
 }));

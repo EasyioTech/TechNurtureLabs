@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { users, achievements, userAchievements, lessonProgress, quizAttempts, studentAcademicRecords, classes } from '@/db/schema';
+import { students, achievements, userAchievements, lessonProgress, quizAttempts, studentAcademicRecords } from '@/db/schema';
 import { eq, and, gt, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -10,8 +10,8 @@ export async function getStudentProfileData() {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
 
-    const profile = await db.query.users.findFirst({
-        where: eq(users.id, session.userId),
+    const profile = await db.query.students.findFirst({
+        where: eq(students.id, session.userId),
         with: {
             academicRecords: {
                 where: eq(studentAcademicRecords.user_id, session.userId),
@@ -32,7 +32,6 @@ export async function getStudentProfileData() {
 
     const formattedAchievements = allAchievements.map(a => ({
         ...a,
-        // Backward-compatible aliases
         icon: a.icon_url || '',
         category: a.tier,
         is_hidden: false,
@@ -46,29 +45,24 @@ export async function getStudentProfileData() {
         return 0;
     });
 
-    // Calculate rank at school level - handle null school_id gracefully
+    // Calculate rank at school level
     const schoolFilter = profile?.school_id
-        ? eq(users.school_id, profile.school_id)
-        : sql`${users.school_id} IS NULL`;
+        ? eq(students.school_id, profile.school_id)
+        : sql`${students.school_id} IS NULL`;
 
-    const usersWithMoreXp = await db.select().from(users).where(
+    const studentsWithMoreXp = await db.select().from(students).where(
         and(
-            gt(users.cumulative_xp, Number(profile?.cumulative_xp) || 0),
-            eq(users.role, 'student'),
+            gt(students.cumulative_xp, Number(profile?.cumulative_xp) || 0),
             schoolFilter
         )
     );
 
     const totalSchoolStudentsResult = await db.select({ count: sql<number>`count(*)` })
-        .from(users)
-        .where(
-            and(
-                eq(users.role, 'student'),
-                schoolFilter
-            )
-        );
+        .from(students)
+        .where(schoolFilter);
+
     const totalSchoolStudents = Number(totalSchoolStudentsResult[0]?.count) || 1;
-    const rank = usersWithMoreXp.length + 1;
+    const rank = studentsWithMoreXp.length + 1;
     const rankPercentage = Math.min(100, Math.max(1, Math.round((rank / totalSchoolStudents) * 100)));
 
     const lessonsData = await db.select({
@@ -92,7 +86,6 @@ export async function getStudentProfileData() {
     return {
         profile: profile ? {
             ...profile,
-            // Indian context: Use Class instead of Grade
             className: (profile.academicRecords?.[0] as any)?.academicClass?.name || 'Unassigned',
             full_name: `${profile.first_name} ${profile.last_name}`,
             total_xp: Number(profile.cumulative_xp),
@@ -113,7 +106,7 @@ export async function getStudentProfileData() {
 export async function updateStudentBio(bio: string) {
     const session = await verifySession();
     if (!session) return;
-    await db.update(users).set({ bio }).where(eq(users.id, session.userId));
+    await db.update(students).set({ bio }).where(eq(students.id, session.userId));
     revalidatePath('/student/profile');
 }
 
@@ -125,12 +118,12 @@ export async function updateStudentProfile(data: {
 }) {
     const session = await verifySession();
     if (!session) return;
-    await db.update(users).set({
+    await db.update(students).set({
         first_name: data.first_name,
         last_name: data.last_name,
         bio: data.bio,
         phone: data.phone
-    }).where(eq(users.id, session.userId));
+    }).where(eq(students.id, session.userId));
 
     try {
         const { checkAndAwardAchievements } = await import('@/modules/student/actions/achievement-actions');
@@ -143,7 +136,7 @@ export async function updateStudentProfile(data: {
 export async function updateStudentAvatar(avatarStyle: string) {
     const session = await verifySession();
     if (!session) return;
-    await db.update(users).set({ avatar_url: avatarStyle }).where(eq(users.id, session.userId));
+    await db.update(students).set({ avatar_url: avatarStyle }).where(eq(students.id, session.userId));
     revalidatePath('/student/profile');
     revalidatePath('/student');
 }

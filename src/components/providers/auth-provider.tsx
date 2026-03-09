@@ -9,12 +9,14 @@ type UserProfile = {
   full_name: string;
   email: string;
   role: 'student' | 'school_admin' | 'super_admin' | 'admin';
-  school_id: string | null;
-  grade: number | null;
-  total_xp: number;
-  level: number;
-  current_streak: number;
+  school_id?: string | null;
+  grade?: number | null;
+  total_xp?: number;
+  level?: number;
+  current_streak?: number;
   avatar_style: string | null;
+  bio?: string | null;
+  phone?: string | null;
 };
 
 // We mock Supabase's user shape for legacy component compatibility

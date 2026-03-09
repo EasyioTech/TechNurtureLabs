@@ -1,14 +1,14 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { courses, lessons, paymentPlans, users, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, classes, courseClassMapping, schoolClassMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions, promoCodes, auditLogs, platformSettings, platformMetricsDaily } from '@/db/schema';
-import { eq, asc, desc, count, sql, and, lte } from 'drizzle-orm';
+import { courses, lessons, paymentPlans, superAdmins, schoolAdmins, students, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, classes, courseClassMapping, schoolClassMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions, promoCodes, auditLogs, platformSettings, platformMetricsDaily } from '@/db/schema';
+import { eq, asc, desc, count, sql, and, lte, inArray } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { addMonths, subDays, startOfDay, endOfDay, format } from 'date-fns';
 import bcrypt from 'bcryptjs';
 
 export async function fetchAllAdminData() {
-    const students = await db.query.users.findMany({ where: (u, { eq }) => eq(u.role, 'student') });
+    const studentsData = await db.query.students.findMany();
     const schoolsData = await db.query.schools.findMany({ orderBy: [asc(schools.name)] });
     const coursesData = await db.query.courses.findMany({ orderBy: [desc(courses.created_at)] });
     const lessonsData = await db.query.lessons.findMany({ orderBy: [asc(lessons.sequence_order)] });
@@ -48,7 +48,7 @@ export async function fetchAllAdminData() {
     });
 
     return {
-        students: students.map(s => ({
+        students: studentsData.map(s => ({
             ...s,
             full_name: `${s.first_name} ${s.last_name}`,
             total_xp: Number(s.cumulative_xp),
@@ -123,6 +123,7 @@ export async function deletePromoCode(id: string) {
     if (session && promo) {
         await db.insert(auditLogs).values({
             user_id: session.userId,
+            user_type: session.userType,
             action: 'delete',
             entity_type: 'promoCode',
             entity_id: id,
@@ -229,6 +230,7 @@ export async function deleteCourseAdmin(id: string) {
     if (session && course) {
         await db.insert(auditLogs).values({
             user_id: session.userId,
+            user_type: session.userType,
             action: 'delete',
             entity_type: 'course',
             entity_id: id,
@@ -286,6 +288,7 @@ export async function deleteLessonAdmin(id: string) {
         if (session) {
             await db.insert(auditLogs).values({
                 user_id: session.userId,
+                user_type: session.userType,
                 action: 'delete',
                 entity_type: 'lesson',
                 entity_id: id,
@@ -351,6 +354,7 @@ export async function deletePlanAdmin(id: string) {
     if (session && plan) {
         await db.insert(auditLogs).values({
             user_id: session.userId,
+            user_type: session.userType,
             action: 'delete',
             entity_type: 'paymentPlan',
             entity_id: id,
@@ -360,63 +364,98 @@ export async function deletePlanAdmin(id: string) {
 }
 
 export async function toggleSchoolStatus(schoolId: string, isActive: boolean) {
+    const session = await verifySession();
+    const oldSchool = await db.query.schools.findFirst({ where: eq(schools.id, schoolId) });
+
     const [updated] = await db.update(schools)
         .set({ is_active: isActive })
         .where(eq(schools.id, schoolId))
         .returning();
+
+    if (session && oldSchool) {
+        await db.insert(auditLogs).values({
+            user_id: session.userId,
+            user_type: session.userType,
+            action: 'update',
+            entity_type: 'school',
+            entity_id: schoolId,
+            old_values: oldSchool,
+            new_values: updated
+        } as any);
+    }
     return updated;
 }
 
-export async function saveSchoolAdmin(schoolData: any) {
-    if (!schoolData.name || !schoolData.email) {
-        throw new Error('Institution name and email are required.');
-    }
+const schoolAdminSchema = z.object({
+    id: z.string().uuid().optional(),
+    name: z.string().min(2, 'Institution name too short'),
+    email: z.string().email('Invalid contact email'),
+    phone: z.string().optional().nullable(),
+    address: z.string().optional().nullable(),
+    city: z.string().optional().nullable(),
+    state: z.string().optional().nullable(),
+    country: z.string().default('IN'),
+    pincode: z.string().optional().nullable(),
+    logo_url: z.string().url().optional().nullable().or(z.literal('')),
+    website: z.string().url().optional().nullable().or(z.literal('')),
+    is_active: z.boolean().default(true),
+    data_processing_consent: z.boolean().default(false),
+    minor_data_guardian_consent: z.boolean().default(false),
+    classIds: z.array(z.string().uuid()).optional(),
+    slug: z.string().optional(),
+});
 
-    const email = schoolData.email.toLowerCase().trim();
-    const slug = schoolData.slug || schoolData.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+export async function saveSchoolAdmin(schoolData: any) {
+    const session = await verifySession();
+    if (!session || session.userType !== 'super_admin') throw new Error('Unauthorized');
+
+    const validatedData = schoolAdminSchema.parse(schoolData);
+    const email = validatedData.email.toLowerCase().trim();
+    const slug = validatedData.slug || validatedData.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
     return await db.transaction(async (tx) => {
-        let schoolId = schoolData.id;
+        let schoolId = validatedData.id;
+        let oldSchool = null;
 
-        if (schoolData.id) {
-            // Update School
+        if (schoolId) {
+            oldSchool = await tx.query.schools.findFirst({ where: eq(schools.id, schoolId) });
             await tx.update(schools).set({
-                name: schoolData.name,
+                name: validatedData.name,
                 email: email,
-                phone: schoolData.phone || null,
-                address: schoolData.address || null,
-                city: schoolData.city || null,
-                state: schoolData.state || null,
-                country: schoolData.country || 'IN',
-                pincode: schoolData.pincode || null,
-                logo_url: schoolData.logo_url || null,
-                website: schoolData.website || null,
-                is_active: schoolData.is_active ?? true,
-                data_processing_consent: schoolData.data_processing_consent ?? false,
-                minor_data_guardian_consent: schoolData.minor_data_guardian_consent ?? false,
+                phone: validatedData.phone || null,
+                address: validatedData.address || null,
+                city: validatedData.city || null,
+                state: validatedData.state || null,
+                country: validatedData.country,
+                pincode: validatedData.pincode || null,
+                logo_url: validatedData.logo_url || null,
+                website: validatedData.website || null,
+                is_active: validatedData.is_active,
+                data_processing_consent: validatedData.data_processing_consent,
+                minor_data_guardian_consent: validatedData.minor_data_guardian_consent,
                 updated_at: new Date(),
-            }).where(eq(schools.id, schoolData.id));
+            }).where(eq(schools.id, schoolId));
         } else {
             // Create School
             const [created] = await tx.insert(schools).values({
-                name: schoolData.name,
+                name: validatedData.name,
                 slug: slug,
                 email: email,
-                phone: schoolData.phone || null,
-                address: schoolData.address || null,
-                city: schoolData.city || null,
-                state: schoolData.state || null,
-                country: schoolData.country || 'IN',
-                pincode: schoolData.pincode || null,
-                logo_url: schoolData.logo_url || null,
-                website: schoolData.website || null,
-                is_active: schoolData.is_active ?? true,
-                data_processing_consent: schoolData.data_processing_consent ?? false,
-                minor_data_guardian_consent: schoolData.minor_data_guardian_consent ?? false,
+                phone: validatedData.phone || null,
+                address: validatedData.address || null,
+                city: validatedData.city || null,
+                state: validatedData.state || null,
+                country: validatedData.country,
+                pincode: validatedData.pincode || null,
+                logo_url: validatedData.logo_url || null,
+                website: validatedData.website || null,
+                is_active: validatedData.is_active,
+                data_processing_consent: validatedData.data_processing_consent,
+                minor_data_guardian_consent: validatedData.minor_data_guardian_consent,
             } as any).returning();
             schoolId = created.id;
 
-            // Create Initial Academic Session for new schools
+            // Create Initial Academic Session
             const startDate = new Date();
             const endDate = new Date();
             endDate.setFullYear(startDate.getFullYear() + 1);
@@ -430,11 +469,11 @@ export async function saveSchoolAdmin(schoolData: any) {
         }
 
         // Handle Class Mappings
-        if (schoolData.classIds) {
-            await tx.delete(schoolClassMapping).where(eq(schoolClassMapping.school_id, schoolId));
-            if (schoolData.classIds.length > 0) {
+        if (validatedData.classIds) {
+            await tx.delete(schoolClassMapping).where(eq(schoolClassMapping.school_id, schoolId!));
+            if (validatedData.classIds.length > 0) {
                 await tx.insert(schoolClassMapping).values(
-                    schoolData.classIds.map((cid: string) => ({
+                    validatedData.classIds.map((cid: string) => ({
                         school_id: schoolId,
                         class_id: cid,
                         is_active: true
@@ -443,7 +482,21 @@ export async function saveSchoolAdmin(schoolData: any) {
             }
         }
 
-        const updated = await tx.query.schools.findFirst({ where: eq(schools.id, schoolId) });
+        const updated = await tx.query.schools.findFirst({ where: eq(schools.id, schoolId!) });
+
+        // Audit Logging
+        if (session && updated) {
+            await tx.insert(auditLogs).values({
+                user_id: session.userId,
+                user_type: session.userType,
+                action: validatedData.id ? 'update' : 'create',
+                entity_type: 'institution',
+                entity_id: updated.id,
+                old_values: oldSchool,
+                new_values: updated
+            } as any);
+        }
+
         return updated;
     });
 }
@@ -697,7 +750,7 @@ export async function syncPlatformMetrics() {
             .groupBy(sql`DATE(${lessonProgress.updated_at})`);
 
         // Get all students/enrollments/schools to compute cumulative counts in memory (efficient for current scale)
-        const allStudents = await db.select({ created_at: users.created_at }).from(users).where(and(eq(users.role, 'student'), eq(users.is_active, true)));
+        const allStudents = await db.select({ created_at: students.created_at }).from(students).where(eq(students.is_active, true));
         const allEnrollments = await db.select({ enrolled_at: enrollments.enrolled_at }).from(enrollments);
         const allSchools = await db.select({ created_at: schools.created_at, is_active: schools.is_active }).from(schools);
 

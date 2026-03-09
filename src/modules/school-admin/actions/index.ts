@@ -1,9 +1,10 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { users, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts } from '@/db/schema';
+import { superAdmins, schoolAdmins, students, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts, auditLogs, userSessions } from '@/db/schema';
 import { eq, asc, desc, inArray, and, sql, or } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
+import { redis } from '@/lib/redis';
 import { z } from 'zod';
 
 /**
@@ -12,10 +13,10 @@ import { z } from 'zod';
 async function verifySchoolAdminContext(targetSchoolId: string) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
-    if (session.role === 'super_admin') return;
+    if (session.userType === 'super_admin') return;
 
     // School Admins can only view/edit their own school
-    const currentUser = await db.query.users.findFirst({ where: eq(users.id, session.userId) });
+    const currentUser = await db.query.schoolAdmins.findFirst({ where: eq(schoolAdmins.id, session.userId) });
     if (!currentUser || currentUser.school_id !== targetSchoolId) {
         throw new Error('Forbidden: Privilege Escalation Attempt Detected.');
     }
@@ -27,12 +28,14 @@ async function verifySchoolAdminContext(targetSchoolId: string) {
 async function verifyStudentContext(targetUserId: string) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
-    if (session.role === 'super_admin') return;
+    if (session.userType === 'super_admin') return;
 
-    const currentUser = await db.query.users.findFirst({ where: eq(users.id, session.userId) });
-    const targetStudent = await db.query.users.findFirst({ where: eq(users.id, targetUserId) });
+    const currentUser = await db.query.schoolAdmins.findFirst({ where: eq(schoolAdmins.id, session.userId) });
+    if (!currentUser) throw new Error('Unauthorized');
 
-    if (!currentUser || !targetStudent || currentUser.school_id !== targetStudent.school_id) {
+    const targetStudent = await db.query.students.findFirst({ where: eq(students.id, targetUserId) });
+
+    if (!targetStudent || currentUser.school_id !== targetStudent.school_id) {
         throw new Error('Forbidden: Privatized Learner Record.');
     }
 }
@@ -113,10 +116,10 @@ export async function updateSchoolProfile(schoolId: string, data: any) {
 
 export async function getSchoolAdminDashboardData(schoolId: string) {
     await verifySchoolAdminContext(schoolId);
-    const students = await db.query.users.findMany({
-        where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student'))
+    const studentsData = await db.query.students.findMany({
+        where: eq(students.school_id, schoolId)
     });
-    const studentIds = students.map(s => s.id);
+    const studentIds = studentsData.map(s => s.id);
 
     const academicRecords = studentIds.length > 0 ? await db.query.studentAcademicRecords.findMany({
         where: and(inArray(studentAcademicRecords.user_id, studentIds), eq(studentAcademicRecords.school_id, schoolId)),
@@ -186,7 +189,7 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
         : [];
 
     return {
-        students: students.map(s => ({
+        students: studentsData.map(s => ({
             ...s, full_name: `${s.first_name} ${s.last_name}`,
             total_xp: Number(s.cumulative_xp), current_streak: calculateTrueStreak(s),
             level: Math.floor(Number(s.cumulative_xp) / 1000) + 1,
@@ -204,10 +207,10 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
 
 export async function getSchoolStats(schoolId: string) {
     await verifySchoolAdminContext(schoolId);
-    const students = await db.query.users.findMany({
-        where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student'))
+    const studentsData = await db.query.students.findMany({
+        where: eq(students.school_id, schoolId)
     });
-    const studentIds = students.map(s => s.id);
+    const studentIds = studentsData.map(s => s.id);
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const activeStudents = students.filter(s => s.last_active_at && new Date(s.last_active_at) > sevenDaysAgo).length;
@@ -262,8 +265,8 @@ export async function getSchoolStats(schoolId: string) {
     });
     totalActiveCourses = activeCourses.length;
 
-    const totalXp = students.reduce((a, s) => a + (Number(s.cumulative_xp) || 0), 0);
-    const avgXp = students.length > 0 ? Math.round(totalXp / students.length) : 0;
+    const totalXp = studentsData.reduce((a, s) => a + (Number(s.cumulative_xp) || 0), 0);
+    const avgXp = studentsData.length > 0 ? Math.round(totalXp / studentsData.length) : 0;
 
     // Subscription info
     const sub = await db.query.schoolSubscriptions.findFirst({ where: eq(schoolSubscriptions.school_id, schoolId) });
@@ -274,7 +277,7 @@ export async function getSchoolStats(schoolId: string) {
     }
 
     return {
-        totalStudents: students.length,
+        totalStudents: studentsData.length,
         activeStudents,
         avgXp,
         totalXp,
@@ -294,11 +297,11 @@ export async function getSchoolStats(schoolId: string) {
 
 export async function getSchoolStudents(schoolId: string) {
     await verifySchoolAdminContext(schoolId);
-    const students = await db.query.users.findMany({
-        where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student')),
-        orderBy: [desc(users.cumulative_xp)],
+    const studentsData = await db.query.students.findMany({
+        where: eq(students.school_id, schoolId),
+        orderBy: [desc(students.cumulative_xp)],
     });
-    const studentIds = students.map(s => s.id);
+    const studentIds = studentsData.map(s => s.id);
 
     const progressData = studentIds.length > 0
         ? await db.select().from(lessonProgress).where(inArray(lessonProgress.user_id, studentIds))
@@ -314,7 +317,7 @@ export async function getSchoolStudents(schoolId: string) {
     const classMap = new Map<string, string>();
     classRecords.forEach((r: any) => classMap.set(r.user_id, r.academicClass?.name || ''));
 
-    return students.map(s => ({
+    return studentsData.map(s => ({
         id: s.id,
         full_name: `${s.first_name} ${s.last_name}`,
         email: s.email,
@@ -331,8 +334,8 @@ export async function getSchoolStudents(schoolId: string) {
 
 export async function getSchoolStudentDetails(userId: string) {
     await verifyStudentContext(userId);
-    const student = await db.query.users.findFirst({
-        where: eq(users.id, userId)
+    const student = await db.query.students.findFirst({
+        where: eq(students.id, userId)
     });
     if (!student) return null;
 
@@ -443,10 +446,10 @@ export async function getSchoolCourseAnalytics(schoolId: string) {
     });
 
     // Only include school's students
-    const students = await db.query.users.findMany({
-        where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student'))
+    const studentsData = await db.query.students.findMany({
+        where: eq(students.school_id, schoolId)
     });
-    const studentIds = new Set(students.map(s => s.id));
+    const studentIds = new Set(studentsData.map(s => s.id));
     const schoolCpData = cpData.filter(cp => studentIds.has(cp.user_id));
 
     return courseIds.map(courseId => {
@@ -479,16 +482,17 @@ export async function getSchoolCourseAnalytics(schoolId: string) {
 
 export async function getSchoolLeaderboard(schoolId: string, limit = 10) {
     await verifySchoolAdminContext(schoolId);
-    const students = await db.query.users.findMany({
-        where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student')),
-        orderBy: [desc(users.cumulative_xp)],
+    const studentsData = await db.query.students.findMany({
+        where: eq(students.school_id, schoolId),
+        orderBy: [desc(students.cumulative_xp)],
+        limit
     });
-    const studentIds = students.slice(0, limit).map(s => s.id);
+    const studentIds = studentsData.map(s => s.id);
     const progressData = studentIds.length > 0
         ? await db.select().from(lessonProgress).where(inArray(lessonProgress.user_id, studentIds))
         : [];
 
-    return students.slice(0, limit).map((s, i) => ({
+    return studentsData.map((s, i) => ({
         rank: i + 1,
         id: s.id,
         full_name: `${s.first_name} ${s.last_name}`,
@@ -505,9 +509,68 @@ export async function getSchoolLeaderboard(schoolId: string, limit = 10) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function toggleStudentStatus(userId: string, isActive: boolean) {
+    const session = await verifySession();
     await verifyStudentContext(userId);
-    const [updated] = await db.update(users).set({ is_active: isActive }).where(eq(users.id, userId)).returning();
+    const oldStudent = await db.query.students.findFirst({ where: eq(students.id, userId) });
+
+    const [updated] = await db.update(students).set({ is_active: isActive }).where(eq(students.id, userId)).returning();
+
+    if (session && oldStudent) {
+        await db.insert(auditLogs).values({
+            user_id: session.userId,
+            user_type: session.userType,
+            action: 'update',
+            entity_type: 'student',
+            entity_id: userId,
+            old_values: oldStudent,
+            new_values: updated
+        } as any);
+    }
     return updated;
+}
+
+export async function deleteStudent(userId: string) {
+    const session = await verifySession();
+    await verifyStudentContext(userId);
+    const student = await db.query.students.findFirst({ where: eq(students.id, userId) });
+
+    if (!student) throw new Error('Student not found');
+
+    await db.transaction(async (tx) => {
+        // Soft delete the student
+        await tx.update(students)
+            .set({
+                deleted_at: new Date(),
+                is_active: false,
+                updated_at: new Date()
+            })
+            .where(eq(students.id, userId));
+
+        // Invalidate sessions
+        await tx.update(userSessions)
+            .set({ revoked_at: new Date() })
+            .where(eq(userSessions.user_id, userId));
+
+        // Cleanup Redis
+        const sessions = await tx.query.userSessions.findMany({ where: eq(userSessions.user_id, userId) });
+        for (const s of sessions) {
+            await redis.del(`session:${s.id}`);
+        }
+
+        // Audit Log
+        if (session) {
+            await tx.insert(auditLogs).values({
+                user_id: session.userId,
+                user_type: session.userType,
+                action: 'delete',
+                entity_type: 'student',
+                entity_id: userId,
+                old_values: student
+            } as any);
+        }
+    });
+
+    return { success: true };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -635,7 +698,7 @@ export async function fetchSchoolAdminCourseData(schoolId: string, courseId: str
     }
 
     const lessonsData = await db.query.lessons.findMany({ where: eq(lessons.course_id, courseId), orderBy: [asc(lessons.sequence_order)] });
-    const studentsData = await db.query.users.findMany({ where: (u, { and, eq }) => and(eq(u.school_id, schoolId), eq(u.role, 'student')) });
+    const studentsData = await db.query.students.findMany({ where: eq(students.school_id, schoolId) });
     const lessonIds = lessonsData.map(l => l.id);
     const progressData = lessonIds.length > 0 ? await db.select().from(lessonProgress).where(inArray(lessonProgress.lesson_id, lessonIds)) : [];
 

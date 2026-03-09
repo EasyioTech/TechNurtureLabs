@@ -49,6 +49,6 @@ export async function GET(req: NextRequest) {
         });
     } catch (e: any) {
         console.error('Superuser Database Reconstruction Error:', e);
-        return NextResponse.json({ success: false, error: e.message, stack: e.stack }, { status: 500 });
+        return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
 }

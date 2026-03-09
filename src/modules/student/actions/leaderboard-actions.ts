@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { users, studentAcademicRecords } from '@/db/schema';
+import { students, studentAcademicRecords } from '@/db/schema';
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 
@@ -10,8 +10,8 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
 
-    const currentUser = await db.query.users.findFirst({
-        where: eq(users.id, userId),
+    const currentUser = await db.query.students.findFirst({
+        where: eq(students.id, userId),
         with: {
             academicRecords: {
                 with: { academicClass: true },
@@ -24,34 +24,31 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
 
     const schoolId = currentUser.school_id;
     if (!schoolId) {
-        // Fallback to global if no school
-        const allUsers = await db.query.users.findMany({
-            where: eq(users.role, 'student'),
-            orderBy: [desc(users.cumulative_xp)],
+        const allStudents = await db.query.students.findMany({
+            orderBy: [desc(students.cumulative_xp)],
             limit: 50
         });
-        return { scope: 'global', data: serializeLeaderboard(allUsers, userId), title: 'Global' };
+        return { scope: 'global', data: serializeLeaderboard(allStudents, userId), title: 'Global' };
     }
 
     if (scope === 'school') {
-        const schoolUsers = await db.query.users.findMany({
-            where: and(eq(users.role, 'student'), eq(users.school_id, schoolId)),
-            orderBy: [desc(users.cumulative_xp)],
+        const schoolStudents = await db.query.students.findMany({
+            where: eq(students.school_id, schoolId),
+            orderBy: [desc(students.cumulative_xp)],
             limit: 50
         });
-        return { scope: 'school', data: serializeLeaderboard(schoolUsers, userId), title: 'School Rank' };
+        return { scope: 'school', data: serializeLeaderboard(schoolStudents, userId), title: 'School Rank' };
     }
 
     if (scope === 'class') {
         const currentRecord = currentUser.academicRecords?.[0];
         if (!currentRecord?.class_id) {
-            // Cannot find class, fallback to school
-            const schoolUsers = await db.query.users.findMany({
-                where: and(eq(users.role, 'student'), eq(users.school_id, schoolId)),
-                orderBy: [desc(users.cumulative_xp)],
+            const schoolStudents = await db.query.students.findMany({
+                where: eq(students.school_id, schoolId),
+                orderBy: [desc(students.cumulative_xp)],
                 limit: 50
             });
-            return { scope: 'school', data: serializeLeaderboard(schoolUsers, userId), title: 'School Rank (Class unset)' };
+            return { scope: 'school', data: serializeLeaderboard(schoolStudents, userId), title: 'School Rank (Class unset)' };
         }
 
         const classRecords = await db.query.studentAcademicRecords.findMany({
@@ -64,13 +61,13 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
             return { scope: 'class', data: [], title: currentRecord.academicClass?.name || 'Class Rank' };
         }
 
-        const classUsers = await db.query.users.findMany({
-            where: inArray(users.id, classUserIds),
-            orderBy: [desc(users.cumulative_xp)],
+        const classStudents = await db.query.students.findMany({
+            where: inArray(students.id, classUserIds),
+            orderBy: [desc(students.cumulative_xp)],
             limit: 50
         });
 
-        const sorted = classUsers.sort((a: any, b: any) => (Number(b.cumulative_xp) || 0) - (Number(a.cumulative_xp) || 0));
+        const sorted = classStudents.sort((a: any, b: any) => (Number(b.cumulative_xp) || 0) - (Number(a.cumulative_xp) || 0));
 
         return { scope: 'class', data: serializeLeaderboard(sorted, userId), title: currentRecord.academicClass?.name || 'Class Rank' };
     }
