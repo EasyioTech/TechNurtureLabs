@@ -175,11 +175,11 @@ export default function AdminLoginPage() {
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 animate-spin" size={24} />
-                        Validating Credentials...
+                        Validating...
                       </>
                     ) : (
                       <>
-                        Initialize Admin Session
+                        Login
                         <Shield size={20} className="ml-2" />
                       </>
                     )}

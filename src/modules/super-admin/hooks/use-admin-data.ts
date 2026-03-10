@@ -82,45 +82,45 @@ export function useAdminData() {
         const promoCodesData = data.promoCodes || [];
 
         const getUserLastActivity = (studentId: string) => {
-            const userProgress = progressData.filter(p => p.user_id === studentId);
+            const userProgress = progressData.filter((p: any) => p.user_id === studentId);
             if (userProgress.length === 0) return null;
-            return userProgress.reduce((latest, p) => {
+            return userProgress.reduce((latest: number, p: any) => {
                 const pDate = p.updated_at ? new Date(p.updated_at).getTime() : 0;
                 return pDate > latest ? pDate : latest;
             }, 0);
         };
 
-        const activeCount = students.filter(s =>
+        const activeCount = students.filter((s: any) =>
             getUserLastActivity(s.id) && getUserLastActivity(s.id)! > Date.now() - 7 * 24 * 60 * 60 * 1000
         ).length;
 
-        const completedLessons = progressData.filter(p => p.completed_at != null).length;
+        const completedLessons = progressData.filter((p: any) => p.completed_at != null).length;
         const avgCompletion = progressData.length > 0
             ? Math.round((completedLessons / progressData.length) * 100) : 0;
 
-        const activeSubs = subscriptionsData.filter(s => s.status === 'active' || s.status === 'trialing').length;
+        const activeSubs = subscriptionsData.filter((s: any) => s.status === 'active' || s.status === 'trialing').length;
         const totalRevenue = transactionsData
-            .filter(t => t.status === 'captured')
-            .reduce((a, t) => a + Number(t.amount || 0), 0);
+            .filter((t: any) => t.status === 'captured')
+            .reduce((a: number, t: any) => a + Number(t.amount || 0), 0);
 
         setStats({
             totalStudents: students.length,
             activeStudents: activeCount,
             totalSchools: schoolsRaw.length,
-            activeSchools: schoolsRaw.filter(s => s.is_active).length,
+            activeSchools: schoolsRaw.filter((s: any) => s.is_active).length,
             totalCourses: coursesData.length,
-            publishedCourses: coursesData.filter(c => c.is_published).length,
+            publishedCourses: coursesData.filter((c: any) => c.is_published).length,
             totalLessons: lessonsData.length,
-            totalXp: students.reduce((a, s) => a + (s.total_xp || 0), 0),
+            totalXp: students.reduce((a: number, s: any) => a + (s.total_xp || 0), 0),
             avgCompletion,
             totalRevenue,
             activeSubscriptions: activeSubs,
             totalEnrollments: enrollmentsData.length,
         });
 
-        setCourses(coursesData.map(c => {
-            const courseLessonIds = lessonsData.filter(l => l.course_id === c.id).map(l => l.id);
-            const enrolledUsers = new Set(enrollmentsData.filter(e => e.course_id === c.id).map(e => e.user_id));
+        setCourses(coursesData.map((c: any) => {
+            const courseLessonIds = lessonsData.filter((l: any) => l.course_id === c.id).map((l: any) => l.id);
+            const enrolledUsers = new Set(enrollmentsData.filter((e: any) => e.course_id === c.id).map((e: any) => e.user_id));
             return {
                 ...c,
                 lesson_count: courseLessonIds.length,
@@ -139,23 +139,23 @@ export function useAdminData() {
             currency: p.currency || 'INR',
         })));
 
-        setSchoolsList(schoolsRaw.map(s => {
-            const sub = subscriptionsData.find(sub => sub.school_id === s.id);
-            const plan = sub ? plansData.find(p => p.id === sub.plan_id) : null;
+        setSchoolsList(schoolsRaw.map((s: any) => {
+            const sub = subscriptionsData.find((sub: any) => sub.school_id === s.id);
+            const plan = sub ? plansData.find((p: any) => p.id === sub.plan_id) : null;
             return {
                 ...s,
                 plan_name: plan?.name || 'No Plan',
                 subscription_status: sub?.status || 'inactive',
-                student_count: students.filter(st => st.school_id === s.id).length,
+                student_count: students.filter((st: any) => st.school_id === s.id).length,
                 data_processing_consent: true,
                 minor_data_guardian_consent: true,
             };
         }));
         setPromoCodes(promoCodesData);
         setUserMetricsPage(0); // reset to page 1 on data refresh
-        setUserMetrics(students.map(s => {
-            const school = schoolsRaw.find(sch => sch.id === s.school_id);
-            const userProgress = progressData.filter(p => p.user_id === s.id);
+        setUserMetrics(students.map((s: any) => {
+            const school = schoolsRaw.find((sch: any) => sch.id === s.school_id);
+            const userProgress = progressData.filter((p: any) => p.user_id === s.id);
 
             let activeStreak = s.current_streak || 0;
             const actTime = getUserLastActivity(s.id) || (s.last_active_at ? new Date(s.last_active_at).getTime() : 0);
@@ -174,18 +174,18 @@ export function useAdminData() {
                 total_xp: s.total_xp || 0, level: s.level || 1,
                 current_streak: activeStreak,
                 longest_streak: s.longest_streak || 0,
-                lessons_completed: userProgress.filter(p => p.completed_at != null).length,
+                lessons_completed: userProgress.filter((p: any) => p.completed_at != null).length,
                 last_activity: actTime ? new Date(actTime).toISOString() : null,
             };
         }));
 
-        setCourseMetrics(coursesData.map(c => {
-            const courseLessons = lessonsData.filter(l => l.course_id === c.id);
-            const courseProgressEntry = courseProgressData.filter(cp => cp.course_id === c.id);
-            const uniqueEnrolled = new Set(enrollmentsData.filter(e => e.course_id === c.id).map(e => e.user_id));
-            const completed = courseProgressEntry.filter(cp => cp.completed_at != null).length;
-            const totalTimeSecs = courseProgressEntry.reduce((sum, cp) => sum + (cp.total_time_secs || 0), 0);
-            const totalXpEarned = courseProgressEntry.reduce((sum, cp) => sum + (cp.total_xp_earned || 0), 0);
+        setCourseMetrics(coursesData.map((c: any) => {
+            const courseLessons = lessonsData.filter((l: any) => l.course_id === c.id);
+            const courseProgressEntry = courseProgressData.filter((cp: any) => cp.course_id === c.id);
+            const uniqueEnrolled = new Set(enrollmentsData.filter((e: any) => e.course_id === c.id).map((e: any) => e.user_id));
+            const completed = courseProgressEntry.filter((cp: any) => cp.completed_at != null).length;
+            const totalTimeSecs = courseProgressEntry.reduce((sum: number, cp: any) => sum + (cp.total_time_secs || 0), 0);
+            const totalXpEarned = courseProgressEntry.reduce((sum: number, cp: any) => sum + (cp.total_xp_earned || 0), 0);
             return {
                 id: c.id, title: c.title,
                 is_published: c.is_published,

@@ -85,11 +85,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string, role: string) => {
     try {
-      const res = await fetch('/api/auth/login', {
+      let endpoint = '/api/auth/login';
+      if (role === 'student') {
+        endpoint = '/api/auth/student/login';
+      } else if (role === 'school_admin') {
+        endpoint = '/api/auth/school/login';
+      } else if (role === 'super_admin' || role === 'admin') {
+        endpoint = '/api/admin/login';
+      }
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role })
+        body: JSON.stringify({ email, password })
       });
+
       const data = await res.json();
       if (!res.ok) return { success: false, error: data.error || 'Invalid credentials' };
 

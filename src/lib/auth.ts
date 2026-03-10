@@ -88,6 +88,21 @@ export async function createSession(payload: Omit<SessionPayload, 'sessionId' | 
 }
 
 /**
+ * Track user activity for DAU analytics using Redis Sets
+ */
+async function trackActivity(userId: string) {
+    const today = new Date().toISOString().split('T')[0];
+    const key = `dau:${today}`;
+    try {
+        await redis.sadd(key, userId);
+        // Set expiry to 30 days
+        await redis.expire(key, 2592000, 'NX');
+    } catch (err) {
+        console.error("Redis DAU tracking error:", err);
+    }
+}
+
+/**
  * Verifies session and performs automatic rotation if access token is expired but refresh token is valid.
  */
 export async function verifySession(): Promise<SessionPayload | null> {
@@ -110,7 +125,11 @@ export async function verifySession(): Promise<SessionPayload | null> {
 
             // Optional: Check Redis to ensure it hasn't been revoked
             const exists = await redis.get(`session:${sessionData.sessionId}`);
-            if (exists) return sessionData;
+            if (exists) {
+                // Background track activity
+                trackActivity(sessionData.userId);
+                return sessionData;
+            }
         } catch (error: any) {
             // If expired, fall through to refresh logic
             if (error.code !== 'ERR_JWT_EXPIRED') return null;
@@ -198,6 +217,7 @@ export async function verifySession(): Promise<SessionPayload | null> {
             maxAge: REFRESH_TOKEN_EXPIRY_SECONDS,
         });
 
+        trackActivity(finalSessionData.userId); // Track activity
         return finalSessionData;
     } catch (error) {
         return null;

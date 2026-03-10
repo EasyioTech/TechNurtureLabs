@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { superAdmins, schoolAdmins, students, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts, auditLogs, userSessions } from '@/db/schema';
 import { eq, asc, desc, inArray, and, sql, or } from 'drizzle-orm';
+import bcrypt from 'bcryptjs';
 import { verifySession } from '@/lib/auth';
 import { redis } from '@/lib/redis';
 import { z } from 'zod';
@@ -109,12 +110,29 @@ export async function updateSchoolProfile(schoolId: string, data: any) {
         ...parseResult.data,
         updated_at: new Date(),
     } as any).where(eq(schools.id, schoolId));
+
+    await invalidateSchoolCache(schoolId);
     return { success: true };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+const SCHOOL_DASHBOARD_CACHE_TTL = 300; // 5 mins
+
+export async function invalidateSchoolCache(schoolId: string) {
+    await redis.del(`cache:school:${schoolId}:dashboard`);
+    await redis.del(`cache:school:${schoolId}:stats`);
+}
+
 export async function getSchoolAdminDashboardData(schoolId: string) {
+    const cacheKey = `cache:school:${schoolId}:dashboard`;
+    try {
+        const cached = await redis.get(cacheKey);
+        if (cached) return JSON.parse(cached);
+    } catch (err) {
+        console.error("Redis cache read error (school dashboard):", err);
+    }
+
     await verifySchoolAdminContext(schoolId);
     const studentsData = await db.query.students.findMany({
         where: eq(students.school_id, schoolId)
@@ -188,7 +206,7 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
         ? await db.select().from(lessonProgress).where(inArray(lessonProgress.user_id, studentIds))
         : [];
 
-    return {
+    const result = {
         students: studentsData.map(s => ({
             ...s, full_name: `${s.first_name} ${s.last_name}`,
             total_xp: Number(s.cumulative_xp), current_streak: calculateTrueStreak(s),
@@ -199,6 +217,14 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
         lessonsData: lessonsData.map(l => ({ ...l, sequence_index: l.sequence_order, duration: l.duration_minutes || 10 })),
         progressData
     };
+
+    try {
+        await redis.set(cacheKey, JSON.stringify(result), 'EX', SCHOOL_DASHBOARD_CACHE_TTL);
+    } catch (err) {
+        console.error("Redis cache write error (school dashboard):", err);
+    }
+
+    return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -206,6 +232,14 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getSchoolStats(schoolId: string) {
+    const cacheKey = `cache:school:${schoolId}:stats`;
+    try {
+        const cached = await redis.get(cacheKey);
+        if (cached) return JSON.parse(cached);
+    } catch (err) {
+        console.error("Redis cache read error (school stats):", err);
+    }
+
     await verifySchoolAdminContext(schoolId);
     const studentsData = await db.query.students.findMany({
         where: eq(students.school_id, schoolId)
@@ -276,7 +310,7 @@ export async function getSchoolStats(schoolId: string) {
         planName = plan?.name || null;
     }
 
-    return {
+    const result = {
         totalStudents: studentsData.length,
         activeStudents,
         avgXp,
@@ -289,6 +323,14 @@ export async function getSchoolStats(schoolId: string) {
         subscriptionStatus: sub?.status || null,
         planExpiry: sub?.current_period_end?.toISOString() || null,
     };
+
+    try {
+        await redis.set(cacheKey, JSON.stringify(result), 'EX', SCHOOL_DASHBOARD_CACHE_TTL);
+    } catch (err) {
+        console.error("Redis cache write error (school stats):", err);
+    }
+
+    return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -472,6 +514,7 @@ export async function getSchoolCourseAnalytics(schoolId: string) {
             avg_xp: cpEntries.length > 0 ? Math.round(totalXp / cpEntries.length) : 0,
             total_time_mins: Math.round(totalSecs / 60),
             mapped_classes: course.all_classes ? ['All Classes'] : (ccmCache.get(courseId) || []),
+            description: course.description,
         };
     });
 }
@@ -525,6 +568,7 @@ export async function toggleStudentStatus(userId: string, isActive: boolean) {
             old_values: oldStudent,
             new_values: updated
         } as any);
+        invalidateSchoolCache(oldStudent.school_id);
     }
     return updated;
 }
@@ -568,6 +612,7 @@ export async function deleteStudent(userId: string) {
                 old_values: student
             } as any);
         }
+        invalidateSchoolCache(student.school_id);
     });
 
     return { success: true };
@@ -665,6 +710,8 @@ export async function promoteStudentsAction(schoolId: string, newSessionName: st
         await db.insert(studentAcademicRecords).values(newRecords);
     }
 
+    await invalidateSchoolCache(schoolId);
+
     return { success: true, message: `Successfully ended session and processed ${records.length} students into the new '${newSessionName}' session.` };
 }
 
@@ -708,4 +755,117 @@ export async function fetchSchoolAdminCourseData(schoolId: string, courseId: str
         studentsData: studentsData.map(s => ({ ...s, full_name: `${s.first_name} ${s.last_name}`, total_xp: Number(s.cumulative_xp) })),
         progressData
     };
+}
+
+export async function getGlobalClasses() {
+    return await db.query.classes.findMany({
+        orderBy: (classes, { asc }) => [asc(classes.level)]
+    });
+}
+
+export async function fetchSchoolClasses(schoolId: string) {
+    const mappings = await db.query.schoolClassMapping.findMany({
+        where: and(
+            eq(schoolClassMapping.school_id, schoolId),
+            eq(schoolClassMapping.is_active, true)
+        )
+    });
+    return mappings.map(m => m.class_id);
+}
+
+export async function updateSchoolClasses(schoolId: string, classIds: string[]) {
+    await verifySchoolAdminContext(schoolId);
+
+    return await db.transaction(async (tx) => {
+        // Deactivate all existing mappings
+        await tx.update(schoolClassMapping)
+            .set({ is_active: false })
+            .where(eq(schoolClassMapping.school_id, schoolId));
+
+        if (classIds.length > 0) {
+            for (const classId of classIds) {
+                // Check if mapping exists (including inactive ones)
+                const existing = await tx.query.schoolClassMapping.findFirst({
+                    where: and(
+                        eq(schoolClassMapping.school_id, schoolId),
+                        eq(schoolClassMapping.class_id, classId)
+                    )
+                });
+
+                if (existing) {
+                    await tx.update(schoolClassMapping)
+                        .set({ is_active: true })
+                        .where(eq(schoolClassMapping.id, existing.id));
+                } else {
+                    await tx.insert(schoolClassMapping)
+                        .values({
+                            school_id: schoolId,
+                            class_id: classId,
+                            is_active: true
+                        } as any);
+                }
+            }
+        }
+
+        await invalidateSchoolCache(schoolId);
+        return { success: true, message: 'School classes updated successfully' };
+    });
+}
+
+export async function updateSchoolAdminPassword(schoolId: string, adminEmail: string, currentPass: string, newPass: string) {
+    await verifySchoolAdminContext(schoolId);
+
+    const admin = await db.query.schoolAdmins.findFirst({
+        where: and(
+            eq(schoolAdmins.school_id, schoolId),
+            eq(schoolAdmins.email, adminEmail)
+        )
+    });
+
+    if (!admin) return { success: false, message: 'Admin not found' };
+
+    const isValid = await bcrypt.compare(currentPass, admin.password_hash);
+    if (!isValid) return { success: false, message: 'Current password is incorrect' };
+
+    const newHash = await bcrypt.hash(newPass, 10);
+    await db.update(schoolAdmins)
+        .set({ password_hash: newHash })
+        .where(eq(schoolAdmins.id, admin.id));
+
+    return { success: true, message: 'Password updated successfully' };
+}
+
+export async function updateSchoolAdminProfile(schoolId: string, adminId: string, data: { first_name: string, last_name: string }) {
+    await verifySchoolAdminContext(schoolId);
+
+    await db.update(schoolAdmins)
+        .set({
+            first_name: data.first_name,
+            last_name: data.last_name,
+            updated_at: new Date()
+        } as any)
+        .where(and(
+            eq(schoolAdmins.id, adminId),
+            eq(schoolAdmins.school_id, schoolId)
+        ));
+
+    return { success: true, message: 'Profile updated successfully' };
+}
+
+export async function getSchoolInvoices(schoolId: string) {
+    await verifySchoolAdminContext(schoolId);
+    return await db.query.invoices.findMany({
+        where: eq(invoices.school_id, schoolId),
+        orderBy: [desc(invoices.created_at)],
+        with: {
+            transaction: true
+        }
+    });
+}
+
+export async function getAvailablePlans() {
+    return await db.query.paymentPlans.findMany({
+        where: eq(paymentPlans.is_active, true),
+        orderBy: [asc(paymentPlans.price)]
+    });
 }

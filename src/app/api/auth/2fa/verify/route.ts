@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        await createSession({ userId: user.id, role: role as any });
+        await createSession({ userId: user.id, userType: role as any });
 
         const { password_hash, two_factor_secret, ...userData } = user;
         return NextResponse.json({ success: true, user: userData });

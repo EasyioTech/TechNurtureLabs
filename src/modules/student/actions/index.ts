@@ -4,6 +4,11 @@ import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { students, schools, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseClassMapping, quizAttempts, auditLogs } from '@/db/schema';
 import { eq, and, gt, inArray, asc, desc, isNotNull, sql } from 'drizzle-orm';
+import { redis, safeRedis } from '@/lib/redis';
+
+export const invalidateStudentDashboardCache = async (userId: string) => {
+    await redis.del(`cache:student:${userId}:dashboard`);
+};
 
 export type DashboardData = {
     profile: any;
@@ -36,6 +41,13 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     if (!session) throw new Error('Unauthorized');
 
     const userId = session.userId;
+    const cacheKey = `cache:student:${userId}:dashboard`;
+    try {
+        const cached = await safeRedis.get<DashboardData>(cacheKey);
+        if (cached) return cached;
+    } catch (err) {
+        console.error("Redis student dashboard read error:", err);
+    }
 
     const profile = await db.query.students.findFirst({
         where: eq(students.id, userId),
@@ -322,7 +334,7 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         };
     });
 
-    return {
+    const result: DashboardData = {
         profile: {
             ...profile,
             className: (profile.academicRecords?.[0] as any)?.academicClass?.name || 'Class Unassigned',
@@ -351,6 +363,11 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
             return [];
         }))).filter(Boolean) as string[]
     };
+
+    // Cache the result
+    await safeRedis.set(cacheKey, result, 600); // 10 mins
+
+    return result;
 }
 
 /**

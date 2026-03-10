@@ -1,100 +1,163 @@
 'use server';
 
+import { getSystemHealth } from './redis-monitoring';
+export { getSystemHealth };
+
 import { db } from '@/lib/db';
+import { z } from 'zod';
+import { format, subDays, endOfDay, addMonths } from 'date-fns';
 import { courses, lessons, paymentPlans, superAdmins, schoolAdmins, students, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, classes, courseClassMapping, schoolClassMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions, promoCodes, auditLogs, platformSettings, platformMetricsDaily } from '@/db/schema';
 import { eq, asc, desc, count, sql, and, lte, inArray } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
-import { addMonths, subDays, startOfDay, endOfDay, format } from 'date-fns';
-import bcrypt from 'bcryptjs';
-import { z } from 'zod';
+import { redis, safeRedis } from '@/lib/redis';
+
+const CACHE_TTL = 300; // 5 minutes
+const CACHE_KEYS = {
+    STUDENTS: 'cache:admin:students',
+    SCHOOLS: 'cache:admin:schools',
+    COURSES: 'cache:admin:courses',
+    META: 'cache:admin:meta' // Plans, Codes, Settings, Metrics
+};
+
+export async function invalidateAdminCache() {
+    await redis.del(...Object.values(CACHE_KEYS));
+}
 
 export async function fetchAllAdminData() {
-    const studentsData = await db.query.students.findMany();
-    const schoolsData = await db.query.schools.findMany({ orderBy: [asc(schools.name)] });
-    const coursesData = await db.query.courses.findMany({ orderBy: [desc(courses.created_at)] });
-    const lessonsData = await db.query.lessons.findMany({ orderBy: [asc(lessons.sequence_order)] });
-    const plansData = await db.query.paymentPlans.findMany({ orderBy: [asc(paymentPlans.price)] });
-    const classesData = await db.query.classes.findMany({ orderBy: [asc(classes.level)] });
-    const courseClassMappingsData = await db.query.courseClassMapping.findMany();
-    const schoolClassMappingsData = await db.query.schoolClassMapping.findMany();
-    const progressData = await db.select().from(lessonProgress);
-    const enrollmentsData = await db.select().from(enrollments);
-    const subscriptionsData = await db.select().from(schoolSubscriptions);
-    const transactionsData = await db.select().from(paymentTransactions);
-    const courseProgressData = await db.select().from(courseProgress);
-    const promoCodesData = await db.select().from(promoCodes);
-    const platformSettingsData = await db.query.platformSettings.findFirst({
-        where: eq(platformSettings.id, 'global')
-    });
+    // Attempt fragmented cache hit
+    try {
+        const [students, schools, courses, meta] = await Promise.all([
+            safeRedis.get<any[]>(CACHE_KEYS.STUDENTS),
+            safeRedis.get<any[]>(CACHE_KEYS.SCHOOLS),
+            safeRedis.get<any[]>(CACHE_KEYS.COURSES),
+            safeRedis.get<any>(CACHE_KEYS.META),
+        ]);
 
-    // Ensure we have real platform metrics
-    let platformMetricsData = await db.query.platformMetricsDaily.findMany({
-        orderBy: [asc(platformMetricsDaily.metric_date)],
-        limit: 30
-    });
+        if (students && schools && courses && meta) {
+            return { students, schools, courses, ...meta };
+        }
+    } catch (err) {
+        console.error("Redis fragmented cache read error:", err);
+    }
 
-    // If no metrics or very few, perform an on-the-fly aggregation and sync
-    if (platformMetricsData.length < 5) {
-        await syncPlatformMetrics();
-        platformMetricsData = await db.query.platformMetricsDaily.findMany({
+    // PRODUCTION GUARD: Cache Stampede Mutex (Wait if someone else is rebuilding)
+    const lockKey = 'lock:admin:rebuild';
+    const isLocked = await redis.set(lockKey, '1', 'EX', 10, 'NX');
+
+    if (!isLocked) {
+        // Wait 1s and try cache again before falling through to DB
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return fetchAllAdminData();
+    }
+
+    let result: any = null;
+    try {
+        const studentsData = await db.query.students.findMany();
+        const schoolsData = await db.query.schools.findMany({ orderBy: [asc(schools.name)] });
+        const coursesData = await db.query.courses.findMany({ orderBy: [desc(courses.created_at)] });
+        const lessonsData = await db.query.lessons.findMany({ orderBy: [asc(lessons.sequence_order)] });
+        const plansData = await db.query.paymentPlans.findMany({ orderBy: [asc(paymentPlans.price)] });
+        const classesData = await db.query.classes.findMany({ orderBy: [asc(classes.level)] });
+        const courseClassMappingsData = await db.query.courseClassMapping.findMany();
+        const schoolClassMappingsData = await db.query.schoolClassMapping.findMany();
+        const progressData = await db.select().from(lessonProgress);
+        const enrollmentsData = await db.select().from(enrollments);
+        const subscriptionsData = await db.select().from(schoolSubscriptions);
+        const transactionsData = await db.select().from(paymentTransactions);
+        const courseProgressData = await db.select().from(courseProgress);
+        const promoCodesData = await db.select().from(promoCodes);
+        const platformSettingsData = await db.query.platformSettings.findFirst({
+            where: eq(platformSettings.id, 'global')
+        });
+
+        // Ensure we have real platform metrics
+        let platformMetricsData = await db.query.platformMetricsDaily.findMany({
             orderBy: [asc(platformMetricsDaily.metric_date)],
             limit: 30
         });
+
+        // If no metrics or very few, perform an on-the-fly aggregation and sync
+        if (platformMetricsData.length < 5) {
+            await syncPlatformMetrics();
+            platformMetricsData = await db.query.platformMetricsDaily.findMany({
+                orderBy: [asc(platformMetricsDaily.metric_date)],
+                limit: 30
+            });
+        }
+
+        // Count enrollments per course
+        const enrollmentCounts = new Map<string, number>();
+        enrollmentsData.forEach(e => {
+            enrollmentCounts.set(e.course_id, (enrollmentCounts.get(e.course_id) || 0) + 1);
+        });
+
+        result = {
+            students: studentsData.map(s => ({
+                ...s,
+                full_name: `${s.first_name} ${s.last_name}`,
+                total_xp: Number(s.cumulative_xp),
+                level: Math.floor((Number(s.cumulative_xp) || 0) / 500) + 1,
+            })),
+            schools: schoolsData.map(s => ({
+                ...s,
+                classIds: schoolClassMappingsData.filter(m => m.school_id === s.id).map(m => m.class_id)
+            })),
+            courses: coursesData.map(c => ({
+                ...c,
+                thumbnail: c.thumbnail_url,
+                published: c.is_published,
+                enrolled_count: enrollmentCounts.get(c.id) || 0,
+            })),
+            lessons: lessonsData.map(l => ({
+                ...l,
+                sequence_index: l.sequence_order,
+                duration: l.duration_minutes || 10,
+            })),
+            classes: classesData,
+            courseClassMappings: courseClassMappingsData,
+            plans: plansData.map(p => ({
+                ...p,
+                price: Number(p.price),
+                trial_days: p.trial_days || 0,
+                currency: p.currency || 'INR',
+                is_active: p.is_active ?? true,
+                is_popular: p.is_popular ?? false,
+                features: Array.isArray(p.features) ? p.features : (typeof p.features === 'object' && p.features ? Object.values(p.features as Record<string, string>) : []),
+            })),
+            progress: progressData,
+            enrollments: enrollmentsData,
+            subscriptions: subscriptionsData,
+            transactions: transactionsData,
+            courseProgress: courseProgressData,
+            promoCodes: promoCodesData,
+            platformSettings: platformSettingsData || null,
+            platformMetrics: platformMetricsData,
+        };
+
+        //Fragmented Cache Write for memory safety
+        try {
+            const { students, schools, courses, ...meta } = result;
+            await Promise.all([
+                safeRedis.set(CACHE_KEYS.STUDENTS, students, CACHE_TTL),
+                safeRedis.set(CACHE_KEYS.SCHOOLS, schools, CACHE_TTL),
+                safeRedis.set(CACHE_KEYS.COURSES, courses, CACHE_TTL),
+                safeRedis.set(CACHE_KEYS.META, meta, CACHE_TTL),
+            ]);
+        } catch (err) {
+            console.error("Redis fragmented cache write error:", err);
+        }
+
+    } finally {
+        // Release lock
+        await redis.del('lock:admin:rebuild');
     }
 
-    // Count enrollments per course
-    const enrollmentCounts = new Map<string, number>();
-    enrollmentsData.forEach(e => {
-        enrollmentCounts.set(e.course_id, (enrollmentCounts.get(e.course_id) || 0) + 1);
-    });
-
-    return {
-        students: studentsData.map(s => ({
-            ...s,
-            full_name: `${s.first_name} ${s.last_name}`,
-            total_xp: Number(s.cumulative_xp),
-            level: Math.floor((Number(s.cumulative_xp) || 0) / 500) + 1,
-        })),
-        schools: schoolsData.map(s => ({
-            ...s,
-            classIds: schoolClassMappingsData.filter(m => m.school_id === s.id).map(m => m.class_id)
-        })),
-        courses: coursesData.map(c => ({
-            ...c,
-            thumbnail: c.thumbnail_url,
-            published: c.is_published,
-            enrolled_count: enrollmentCounts.get(c.id) || 0,
-        })),
-        lessons: lessonsData.map(l => ({
-            ...l,
-            sequence_index: l.sequence_order,
-            duration: l.duration_minutes || 10,
-        })),
-        classes: classesData,
-        courseClassMappings: courseClassMappingsData,
-        plans: plansData.map(p => ({
-            ...p,
-            price: Number(p.price),
-            trial_days: p.trial_days || 0,
-            currency: p.currency || 'INR',
-            is_active: p.is_active ?? true,
-            is_popular: p.is_popular ?? false,
-            features: Array.isArray(p.features) ? p.features : (typeof p.features === 'object' && p.features ? Object.values(p.features as Record<string, string>) : []),
-        })),
-        progress: progressData,
-        enrollments: enrollmentsData,
-        subscriptions: subscriptionsData,
-        transactions: transactionsData,
-        courseProgress: courseProgressData,
-        promoCodes: promoCodesData,
-        platformSettings: platformSettingsData || null,
-        platformMetrics: platformMetricsData,
-    };
+    return result;
 }
 
 export async function savePromoCode(data: any) {
     if (data.id) {
-        return await db.update(promoCodes).set({
+        const [updated] = await db.update(promoCodes).set({
             code: data.code,
             discount_type: data.discount_type,
             discount_value: data.discount_value?.toString(),
@@ -104,8 +167,10 @@ export async function savePromoCode(data: any) {
             is_active: data.is_active ?? true,
             updated_at: new Date()
         }).where(eq(promoCodes.id, data.id)).returning();
+        invalidateAdminCache();
+        return [updated];
     } else {
-        return await db.insert(promoCodes).values({
+        const [inserted] = await db.insert(promoCodes).values({
             code: data.code,
             discount_type: data.discount_type,
             discount_value: data.discount_value?.toString(),
@@ -114,6 +179,8 @@ export async function savePromoCode(data: any) {
             valid_until: data.valid_until ? new Date(data.valid_until) : null,
             is_active: data.is_active ?? true,
         }).returning();
+        invalidateAdminCache();
+        return [inserted];
     }
 }
 
@@ -130,6 +197,7 @@ export async function deletePromoCode(id: string) {
             entity_id: id,
             old_values: promo
         } as any);
+        invalidateAdminCache();
     }
 }
 
@@ -222,6 +290,7 @@ async function updateCourseTotals(courseId: string) {
     const totalLessons = courseLessons.length;
     const totalXp = courseLessons.reduce((sum, l) => sum + (l.xp_reward || 0), 0);
     await db.update(courses).set({ total_lessons: totalLessons, total_xp: totalXp }).where(eq(courses.id, courseId));
+    invalidateAdminCache();
 }
 
 export async function deleteCourseAdmin(id: string) {
@@ -237,6 +306,7 @@ export async function deleteCourseAdmin(id: string) {
             entity_id: id,
             old_values: course
         } as any);
+        invalidateAdminCache();
     }
 }
 
@@ -305,6 +375,7 @@ export async function saveLessonOrderAdmin(updates: any[]) {
             .set({ sequence_order: update.sequence_index || update.sequence_order })
             .where(eq(lessons.id, update.id));
     }
+    invalidateAdminCache();
 }
 
 export async function savePlanAdmin(planData: any) {
@@ -326,7 +397,9 @@ export async function savePlanAdmin(planData: any) {
             is_active: planData.is_active ?? true,
             is_popular: planData.is_popular ?? false,
         }).where(eq(paymentPlans.id, planData.id)).returning();
-        return { ...updated, price: Number(updated.price) };
+        const result = { ...updated, price: Number(updated.price) };
+        invalidateAdminCache();
+        return result;
     } else {
         const [created] = await db.insert(paymentPlans).values({
             name: planData.name,
@@ -340,7 +413,9 @@ export async function savePlanAdmin(planData: any) {
             is_active: planData.is_active ?? true,
             is_popular: planData.is_popular ?? false,
         } as any).returning();
-        return { ...created, price: Number(created.price) };
+        const result = { ...created, price: Number(created.price) };
+        invalidateAdminCache();
+        return result;
     }
 }
 
@@ -361,6 +436,7 @@ export async function deletePlanAdmin(id: string) {
             entity_id: id,
             old_values: plan
         } as any);
+        invalidateAdminCache();
     }
 }
 
@@ -383,6 +459,7 @@ export async function toggleSchoolStatus(schoolId: string, isActive: boolean) {
             old_values: oldSchool,
             new_values: updated
         } as any);
+        invalidateAdminCache();
     }
     return updated;
 }
@@ -498,6 +575,7 @@ export async function saveSchoolAdmin(schoolData: any) {
             } as any);
         }
 
+        invalidateAdminCache();
         return updated;
     });
 }
@@ -561,12 +639,14 @@ export async function saveQuizAdmin(quizData: any) {
         }
     }
 
+    invalidateAdminCache();
     return await fetchQuizAdmin(quizData.lesson_id);
 }
 
 export async function deleteQuizAdmin(quizId: string) {
     // quiz_questions cascade via FK — only need to delete the quiz
     await db.delete(quizzes).where(eq(quizzes.id, quizId));
+    invalidateAdminCache();
 }
 
 export async function assignPlanToSchool(schoolId: string, planId: string, billingMonths: number = 12, promoCodeId?: string | null) {
@@ -580,6 +660,8 @@ export async function assignPlanToSchool(schoolId: string, planId: string, billi
                 .set({ current_uses: sql`${promoCodes.current_uses} + 1` })
                 .where(eq(promoCodes.id, promoCodeId));
         }
+
+        invalidateAdminCache();
 
         // Check if subscription already exists for this school
         const existing = await tx.query.schoolSubscriptions.findFirst({
@@ -787,9 +869,128 @@ export async function syncPlatformMetrics() {
                 }
             });
         }
+        invalidateAdminCache();
         return { success: true };
     } catch (error) {
         console.error("Error syncing platform metrics:", error);
         return { success: false, error };
+    }
+}
+
+// ============================================================================
+// CLASS MANAGEMENT
+// ============================================================================
+
+const DEFAULT_CLASSES = Array.from({ length: 12 }, (_, i) => ({
+    name: `Class ${i + 1}`,
+    level: i + 1,
+}));
+
+/**
+ * Auto-seed: ensures Class 1–12 always exist.
+ * Safe to call repeatedly (skips existing names).
+ */
+export async function ensureDefaultClasses() {
+    try {
+        const existing = await db.select({ name: classes.name }).from(classes);
+        const existingNames = new Set(existing.map(c => c.name));
+        const missing = DEFAULT_CLASSES.filter(c => !existingNames.has(c.name));
+
+        if (missing.length > 0) {
+            await db.insert(classes).values(
+                missing.map(c => ({ name: c.name, level: c.level }))
+            );
+            console.log(`✅ Auto-seeded ${missing.length} default classes`);
+        }
+        return { success: true, seeded: missing.length };
+    } catch (error: any) {
+        console.error('Failed to auto-seed classes:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function fetchAllClasses() {
+    try {
+        const allClasses = await db.select().from(classes).orderBy(asc(classes.level));
+        return allClasses;
+    } catch (error: any) {
+        console.error('Failed to fetch classes:', error);
+        return [];
+    }
+}
+
+export async function createClass(name: string, level: number) {
+    try {
+        const session = await verifySession();
+        if (!session || session.role !== 'super_admin') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        if (!name || !name.trim()) {
+            return { success: false, error: 'Class name is required' };
+        }
+        if (!level || level < 0) {
+            return { success: false, error: 'A valid level number is required' };
+        }
+
+        // Check duplicates
+        const existing = await db.select().from(classes)
+            .where(eq(classes.name, name.trim()));
+        if (existing.length > 0) {
+            return { success: false, error: `A class named "${name.trim()}" already exists` };
+        }
+
+        const existingLevel = await db.select().from(classes)
+            .where(eq(classes.level, level));
+        if (existingLevel.length > 0) {
+            return { success: false, error: `Level ${level} is already assigned to "${existingLevel[0].name}"` };
+        }
+
+        const [newClass] = await db.insert(classes).values({
+            name: name.trim(),
+            level: level,
+        }).returning();
+
+        return { success: true, data: newClass };
+    } catch (error: any) {
+        console.error('Failed to create class:', error);
+        return { success: false, error: error.message || 'Failed to create class' };
+    }
+}
+
+export async function deleteClass(classId: string) {
+    try {
+        const session = await verifySession();
+        if (!session || session.role !== 'super_admin') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        // Check if any school is using this class
+        const mappings = await db.select().from(schoolClassMapping)
+            .where(eq(schoolClassMapping.class_id, classId));
+
+        if (mappings.length > 0) {
+            return {
+                success: false,
+                error: `This class is assigned to ${mappings.length} school(s). Unassign it from all schools first.`
+            };
+        }
+
+        // Check if any student academic records reference this class
+        const studentRecords = await db.select().from(studentAcademicRecords)
+            .where(eq(studentAcademicRecords.class_id, classId));
+
+        if (studentRecords.length > 0) {
+            return {
+                success: false,
+                error: `This class has ${studentRecords.length} student record(s). It cannot be deleted.`
+            };
+        }
+
+        await db.delete(classes).where(eq(classes.id, classId));
+        return { success: true };
+    } catch (error: any) {
+        console.error('Failed to delete class:', error);
+        return { success: false, error: error.message || 'Failed to delete class' };
     }
 }

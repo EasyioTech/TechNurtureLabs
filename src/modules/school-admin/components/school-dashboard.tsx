@@ -79,7 +79,7 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
     }
 
     return (
-        <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0c0f1a]' : 'bg-slate-50'}`}>
+        <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0c0f1a] dark' : 'bg-slate-50'}`}>
 
             {/* ─── Header ─── */}
             <header className={`sticky top-0 z-50 ${ts.headerBg(isDark)}`}>
@@ -289,9 +289,9 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                                 onToggleStudent={data.toggleStudent}
                             />
                         )}
-                        {activePage === 'courses' && <SchoolCoursesTab courseMetrics={data.courseMetrics} />}
+                        {activePage === 'courses' && <SchoolCoursesTab courseMetrics={data.courseMetrics} schoolClasses={data.classesData} />}
                         {activePage === 'reports' && <SchoolReportsTab courseMetrics={data.courseMetrics} />}
-                        {activePage === 'settings' && <SchoolSettingsTab stats={data.stats} schoolId={schoolId} />}
+                        {activePage === 'settings' && <SchoolSettingsTab stats={data.stats} schoolId={schoolId} classesData={data.classesData} globalClasses={data.globalClasses} onRefresh={data.refreshData} onOpenSchoolProfile={() => setIsProfileModalOpen(true)} />}
                     </motion.div>
                 </AnimatePresence>
             </main>

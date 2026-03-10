@@ -20,6 +20,8 @@ export function useSchoolData(schoolId: string) {
     const [students, setStudents] = useState<SchoolStudentMetric[]>([]);
     const [courseMetrics, setCourseMetrics] = useState<SchoolCourseMetric[]>([]);
     const [leaderboard, setLeaderboard] = useState<SchoolLeaderboardEntry[]>([]);
+    const [classesData, setClassesData] = useState<{ id: string; name: string }[]>([]);
+    const [globalClasses, setGlobalClasses] = useState<{ id: string; name: string; level: number }[]>([]);
     const [studentsPage, setStudentsPage] = useState(0);
     const [studentSearch, setStudentSearch] = useState('');
 
@@ -27,16 +29,27 @@ export function useSchoolData(schoolId: string) {
         if (!schoolId) return;
         setLoading(true);
         try {
-            const [statsData, studentsData, metricsData, boardData] = await Promise.all([
+            const { getGlobalClasses, fetchSchoolClasses } = await import('../actions');
+
+            const [statsData, studentsData, metricsData, boardData, allGlobalClasses, schoolClassIds] = await Promise.all([
                 getSchoolStats(schoolId),
                 getSchoolStudents(schoolId),
                 getSchoolCourseAnalytics(schoolId),
                 getSchoolLeaderboard(schoolId, 10),
+                getGlobalClasses(),
+                fetchSchoolClasses(schoolId),
             ]);
+
             setStats(statsData as SchoolStats);
             setStudents(studentsData as SchoolStudentMetric[]);
             setCourseMetrics(metricsData as SchoolCourseMetric[]);
             setLeaderboard(boardData as SchoolLeaderboardEntry[]);
+            setGlobalClasses(allGlobalClasses as any);
+
+            // Map schoolClassIds to objects
+            const schoolClasses = (allGlobalClasses as any[]).filter(gc => schoolClassIds.includes(gc.id));
+            setClassesData(schoolClasses);
+
             setStudentsPage(0);
         } catch (err) {
             console.error('School data fetch error:', err);
@@ -69,6 +82,7 @@ export function useSchoolData(schoolId: string) {
 
     return {
         loading, stats, students, courseMetrics, leaderboard,
+        classesData, globalClasses,
         studentsPage, setStudentsPage, studentSearch, setStudentSearch,
         filteredStudents, pagedStudents, totalStudentPages,
         toggleStudent, refreshData: fetchAll,

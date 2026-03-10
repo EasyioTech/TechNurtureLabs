@@ -19,6 +19,7 @@ import { PaymentPlansTab } from './tabs/payment-plans-tab';
 import { SchoolsTab } from './tabs/schools-tab';
 import { SettingsTab } from './tabs/settings-tab';
 import { PromoCodesTab } from './tabs/promo-codes-tab';
+import { SystemHealthTab } from './tabs/system-health-tab';
 
 import {
     DropdownMenu,
@@ -41,6 +42,7 @@ const NAV_ITEMS = [
     { id: 'schools', label: 'SCHOOLS', icon: Building2 },
     { id: 'users', label: 'STUDENTS', icon: Users },
     { id: 'courseMetrics', label: 'REPORTS', icon: BarChart3, iconOnly: true },
+    { id: 'system', label: 'SYSTEM', icon: LayoutGrid, iconOnly: true },
     { id: 'settings', label: 'SETTINGS', icon: Settings, iconOnly: true },
 ];
 
@@ -52,6 +54,7 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
     schools: { title: 'Schools & Partners', subtitle: 'View and manage all registered school accounts.' },
     users: { title: 'Student Management', subtitle: 'Track student progress and overall engagement.' },
     courseMetrics: { title: 'Performance Reports', subtitle: 'Analyze course effectiveness and student success.' },
+    system: { title: 'Engine Status', subtitle: 'Monitor Redis performance and infrastructure health.' },
     settings: { title: 'Platform Settings', subtitle: 'Manage global platform configuration and hero video.' },
 };
 
@@ -349,11 +352,13 @@ function DashboardContent() {
                             </>
                         ) : (
                             <>
-                                <Button variant="outline" size="sm"
-                                    className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black border-2 transition-all ${t.btnOutline(isDark)}`}>
-                                    <Filter size={isDark ? 14 : 16} />FILTER
-                                </Button>
-                                {activePage !== 'schools' && activePage !== 'users' && (
+                                {activePage !== 'system' && (
+                                    <Button variant="outline" size="sm"
+                                        className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black border-2 transition-all ${t.btnOutline(isDark)}`}>
+                                        <Filter size={isDark ? 14 : 16} />FILTER
+                                    </Button>
+                                )}
+                                {activePage !== 'schools' && activePage !== 'users' && activePage !== 'system' && activePage !== 'courseMetrics' && (
                                     <Button size="sm"
                                         className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black shadow-xl transition-all
                                             ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
@@ -439,6 +444,7 @@ function DashboardContent() {
                         )}
                         {activePage === 'users' && <MetricTables userMetrics={data.userMetrics} courseMetrics={[]} page={data.userMetricsPage} setPage={data.setUserMetricsPage} />}
                         {activePage === 'courseMetrics' && <MetricTables userMetrics={[]} courseMetrics={data.courseMetrics} />}
+                        {activePage === 'system' && <SystemHealthTab />}
                         {activePage === 'settings' && <SettingsTab ref={settingsRef} />}
                     </motion.div>
                 </AnimatePresence>

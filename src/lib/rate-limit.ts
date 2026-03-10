@@ -9,11 +9,19 @@ import { NextResponse } from 'next/server';
  */
 export async function checkRateLimit(key: string, limit: number, windowSeconds: number) {
     const rateLimitKey = `rate-limit:${key}`;
-    const reqCount = await redis.incr(rateLimitKey);
-
-    if (reqCount === 1) {
-        await redis.expire(rateLimitKey, windowSeconds);
-    }
+    // Use Lua script for atomic increment + initial expiry
+    const reqCount = await redis.eval(
+        `
+        local current = redis.call("INCR", KEYS[1])
+        if tonumber(current) == 1 then
+            redis.call("EXPIRE", KEYS[1], ARGV[1])
+        end
+        return current
+        `,
+        1,
+        rateLimitKey,
+        windowSeconds
+    ) as number;
 
     if (reqCount > limit) {
         return {

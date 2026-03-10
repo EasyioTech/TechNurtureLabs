@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { dailyChallenges, userDailyChallenges, students } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
+import { awardXP } from '@/lib/gamification';
 
 // Helper to get today's date string in YYYY-MM-DD format
 function getTodayString() {
@@ -124,11 +125,11 @@ export async function updateDailyChallengeProgress(userId: string, actionType: s
 
         // If this exact update completed it, reward the user with XP
         if (newProgress >= challenge.target_value && currentProgress < challenge.target_value) {
-            // ISSUE 12: Atomic increment — avoids race condition if two challenges complete simultaneously
-            const { sql } = await import('drizzle-orm');
-            await db.update(students)
-                .set({ cumulative_xp: sql`cumulative_xp + ${challenge.xp_reward}` })
-                .where(eq(students.id, userId));
+            // Get student metadata for school_id
+            const stud = await db.query.students.findFirst({
+                where: eq(students.id, userId)
+            });
+            await awardXP(userId, challenge.xp_reward, stud?.school_id);
         }
     }
 }

@@ -14,6 +14,7 @@ import {
 } from '@/db/schema';
 import { eq, and, gt, sql, count, isNotNull, asc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { getProgressCounter, isAchievementCheckNeeded, clearAchievementDirtyBit } from '@/lib/gamification';
 
 /**
  * Idempotent achievement seeding
@@ -153,6 +154,10 @@ export async function checkAndAwardAchievements() {
     if (!session) return { success: false, error: 'Unauthorized' };
     const userId = session.userId;
 
+    // OPTIMIZATION: Check dirty bit first. If no new XP or progress event, skip heavy DB checks.
+    const needed = await isAchievementCheckNeeded(userId);
+    if (!needed) return { success: true, unlocked: [] };
+
     // Ensure achievements exist
     await seedAchievementsData();
 
@@ -170,26 +175,12 @@ export async function checkAndAwardAchievements() {
         where: eq(achievements.is_active, true)
     });
 
-    // Fetch user stats for criteria checking
-    const lessonCountResult = await db.select({ count: count() })
-        .from(lessonProgress)
-        .where(and(eq(lessonProgress.user_id, userId), isNotNull(lessonProgress.completed_at)));
-    const lessonsCompleted = Number(lessonCountResult[0]?.count) || 0;
+    // OPTIMIZED: Use Redis counters instead of heavy SQL count(*) queries
+    const lessonsCompleted = await getProgressCounter(userId, 'lessons');
+    const quizzesPassed = await getProgressCounter(userId, 'quizzes');
+    const perfectQuizzes = await getProgressCounter(userId, 'perfect_quizzes');
 
-    const quizCountResult = await db.select({ count: count() })
-        .from(quizAttempts)
-        .where(and(eq(quizAttempts.user_id, userId), eq(quizAttempts.passed, true)));
-    const quizzesPassed = Number(quizCountResult[0]?.count) || 0;
-
-    const perfectQuizResult = await db.select({ count: count() })
-        .from(quizAttempts)
-        .where(and(
-            eq(quizAttempts.user_id, userId),
-            eq(quizAttempts.passed, true),
-            sql`${quizAttempts.score} = ${quizAttempts.max_score}`
-        ));
-    const perfectQuizzes = Number(perfectQuizResult[0]?.count) || 0;
-
+    // These still need DB for now as they are complex/long-term, but they are less frequent
     const timeSpentResult = await db.select({ total: sql<number>`sum(${lessonProgress.time_spent_secs})` })
         .from(lessonProgress)
         .where(eq(lessonProgress.user_id, userId));
@@ -256,6 +247,9 @@ export async function checkAndAwardAchievements() {
             newlyUnlocked.push(ach.name);
         }
     }
+
+    // Clear the dirty bit
+    await clearAchievementDirtyBit(userId);
 
     if (newlyUnlocked.length > 0) {
         revalidatePath('/student/achievements');

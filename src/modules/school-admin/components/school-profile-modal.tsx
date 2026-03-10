@@ -119,7 +119,7 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                         required
                                         value={formData.name}
                                         onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all focus:ring-4 focus:ring-indigo-500/10 ${isDark ? 'border-white/5 focus:bg-white/[0.05] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
                                             }`}
                                     />
                                 </div>
@@ -135,7 +135,7 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                         required
                                         value={formData.email}
                                         onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all focus:ring-4 focus:ring-indigo-500/10 ${isDark ? 'border-white/5 focus:bg-white/[0.05] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
                                             }`}
                                     />
                                 </div>
@@ -150,7 +150,7 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                         type="text"
                                         value={formData.phone}
                                         onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all focus:ring-4 focus:ring-indigo-500/10 ${isDark ? 'border-white/5 focus:bg-white/[0.05] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
                                             }`}
                                     />
                                 </div>
@@ -177,7 +177,7 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                         value={formData.website}
                                         placeholder="www.your-school.com"
                                         onChange={e => setFormData({ ...formData, website: e.target.value })}
-                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all focus:ring-4 focus:ring-indigo-500/10 ${isDark ? 'border-white/5 focus:bg-white/[0.05] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
                                             }`}
                                     />
                                 </div>
@@ -192,7 +192,7 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                         type="text"
                                         value={formData.address}
                                         onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all focus:ring-4 focus:ring-indigo-500/10 ${isDark ? 'border-white/5 focus:bg-white/[0.05] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
                                             }`}
                                     />
                                 </div>
@@ -205,7 +205,7 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                     type="text"
                                     value={formData.city}
                                     onChange={e => setFormData({ ...formData, city: e.target.value })}
-                                    className={`w-full h-12 px-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all focus:ring-4 focus:ring-indigo-500/10 ${isDark ? 'border-white/5 focus:bg-white/[0.05] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                    className={`w-full h-12 px-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
                                         }`}
                                 />
                             </div>
@@ -217,7 +217,7 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                     type="text"
                                     value={formData.state}
                                     onChange={e => setFormData({ ...formData, state: e.target.value })}
-                                    className={`w-full h-12 px-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all focus:ring-4 focus:ring-indigo-500/10 ${isDark ? 'border-white/5 focus:bg-white/[0.05] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                    className={`w-full h-12 px-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
                                         }`}
                                 />
                             </div>
@@ -229,7 +229,7 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                 type="button"
                                 variant="ghost"
                                 onClick={onClose}
-                                className={`flex-1 rounded-2xl h-12 font-black text-[13px] ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100'}`}
+                                className={`flex-1 rounded-2xl h-12 font-black text-[13px] border ${isDark ? 'border-white/10 text-slate-100 hover:bg-white/5' : 'border-slate-200 text-slate-800 hover:bg-slate-100'}`}
                             >
                                 Cancel
                             </Button>

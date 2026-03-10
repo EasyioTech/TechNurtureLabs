@@ -118,3 +118,62 @@ export type PromoCode = {
     valid_until: Date | string | null;
     is_active: boolean;
 };
+
+export type RedisHealthMetrics = {
+    used_memory: string;
+    used_memory_human: string;
+    maxmemory: string;
+    maxmemory_human: string;
+    mem_fragmentation_ratio: number;
+    evicted_keys: number;
+    keyspace_hits: number;
+    keyspace_misses: number;
+    hit_ratio: number;
+    connected_clients: number;
+    blocked_clients: number;
+    dbsize: number;
+    uptime_in_seconds: number;
+    total_commands_processed: number;
+    namespace_counts: Record<string, number>;
+    leaderboard_health: Array<{ key: string; size: number; is_safe: boolean }>;
+    health_score: number;
+    alerts: string[];
+};
+
+export type ServerHealthMetrics = {
+    cpuCount: number;
+    loadAvg1m: number;
+    loadAvg5m: number;
+    loadAvg15m: number;
+    totalMemMb: number;
+    usedMemMb: number;
+    freeMemMb: number;
+    memUsagePercent: number;
+    uptimeHours: number;
+    platform: string;
+    arch: string;
+    nodeVersion: string;
+    nodeEnv: string;
+    appUptimeHours: number;
+    heapUsedMb: number;
+    heapTotalMb: number;
+    heapUsagePercent: number;
+    cloudflare?: {
+        status: string;
+        bucket: string;
+        pingMs: number;
+    };
+};
+
+export type DatabaseHealthMetrics = {
+    status: string;
+    pingMs: number;
+    activeConnections: number;
+    totalSize: string;
+};
+
+export type SystemHealthData = {
+    redis: RedisHealthMetrics;
+    server: ServerHealthMetrics;
+    database: DatabaseHealthMetrics;
+};

@@ -139,7 +139,7 @@ export function ImageUpload({ value, onChange, label, description, isDark = fals
                         {!compact && (
                             <>
                                 <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Click to upload or select logo</p>
-                                <p className={`text-[10px] mt-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>PNG, JPG, SVG up to 5MB</p>
+                                <p className={`text-[10px] mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>PNG, JPG, SVG up to 5MB</p>
                             </>
                         )}
                     </>
@@ -147,7 +147,7 @@ export function ImageUpload({ value, onChange, label, description, isDark = fals
             </div>
 
             {description && (
-                <p className={`text-[10px] font-medium leading-relaxed ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                <p className={`text-[10px] font-medium leading-relaxed ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                     {description}
                 </p>
             )}

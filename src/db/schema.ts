@@ -927,3 +927,9 @@ export const mediaAssetsRelations = relations(mediaAssets, ({ one }) => ({
 export const userSessionsRelations = relations(userSessions, ({ one }) => ({
     // Polymorphic, Drizzle relations don't support well without discriminator in one()
 }));
+
+export const invoicesRelations = relations(invoices, ({ one }) => ({
+    school: one(schools, { fields: [invoices.school_id], references: [schools.id] }),
+    subscription: one(schoolSubscriptions, { fields: [invoices.subscription_id], references: [schoolSubscriptions.id] }),
+    transaction: one(paymentTransactions, { fields: [invoices.transaction_id], references: [paymentTransactions.id] }),
+}));

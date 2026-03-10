@@ -4,6 +4,9 @@ import { db } from '@/lib/db';
 import { students, studentAcademicRecords } from '@/db/schema';
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
+import { redis } from '@/lib/redis';
+
+const LEADERBOARD_CACHE_TTL = 3600; // 1 hour for sync logic
 
 export async function getStudentLeaderboard(scope: 'school' | 'class') {
     const session = await verifySession();
@@ -23,56 +26,66 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     if (!currentUser) throw new Error('User not found');
 
     const schoolId = currentUser.school_id;
-    if (!schoolId) {
-        const allStudents = await db.query.students.findMany({
-            orderBy: [desc(students.cumulative_xp)],
-            limit: 50
-        });
-        return { scope: 'global', data: serializeLeaderboard(allStudents, userId), title: 'Global' };
-    }
+    const cacheKey = schoolId ? `lb:school:${schoolId}` : `lb:global`;
 
-    if (scope === 'school') {
-        const schoolStudents = await db.query.students.findMany({
-            where: eq(students.school_id, schoolId),
-            orderBy: [desc(students.cumulative_xp)],
-            limit: 50
-        });
-        return { scope: 'school', data: serializeLeaderboard(schoolStudents, userId), title: 'School Rank' };
-    }
-
-    if (scope === 'class') {
-        const currentRecord = currentUser.academicRecords?.[0];
-        if (!currentRecord?.class_id) {
-            const schoolStudents = await db.query.students.findMany({
-                where: eq(students.school_id, schoolId),
+    // 1. Check if Redis has data for this scope
+    let topUserIdsWithScores: string[] = [];
+    try {
+        const count = await redis.zcard(cacheKey);
+        if (count === 0) {
+            // Lazy sync: If Redis is empty, sync from DB
+            const allInScope = await db.query.students.findMany({
+                where: schoolId ? eq(students.school_id, schoolId) : undefined,
                 orderBy: [desc(students.cumulative_xp)],
-                limit: 50
+                limit: 1000 // Only sync top 1000
             });
-            return { scope: 'school', data: serializeLeaderboard(schoolStudents, userId), title: 'School Rank (Class unset)' };
+            if (allInScope.length > 0) {
+                const pipeline = redis.pipeline();
+                allInScope.forEach(s => {
+                    pipeline.zadd(cacheKey, Number(s.cumulative_xp) || 0, s.id);
+                });
+                await pipeline.exec();
+            }
         }
-
-        const classRecords = await db.query.studentAcademicRecords.findMany({
-            where: eq(studentAcademicRecords.class_id, currentRecord.class_id),
-        });
-
-        const classUserIds = classRecords.map(r => r.user_id);
-
-        if (classUserIds.length === 0) {
-            return { scope: 'class', data: [], title: currentRecord.academicClass?.name || 'Class Rank' };
-        }
-
-        const classStudents = await db.query.students.findMany({
-            where: inArray(students.id, classUserIds),
-            orderBy: [desc(students.cumulative_xp)],
-            limit: 50
-        });
-
-        const sorted = classStudents.sort((a: any, b: any) => (Number(b.cumulative_xp) || 0) - (Number(a.cumulative_xp) || 0));
-
-        return { scope: 'class', data: serializeLeaderboard(sorted, userId), title: currentRecord.academicClass?.name || 'Class Rank' };
+        // Get top 50
+        topUserIdsWithScores = await redis.zrevrange(cacheKey, 0, 49);
+    } catch (err) {
+        console.error("Redis leaderboard error:", err);
     }
 
-    return { scope: 'unknown', data: [], title: 'Unknown' };
+    // 2. Fetch metadata from SQL for the top IDs
+    if (topUserIdsWithScores.length > 0) {
+        const dbStudents = await db.query.students.findMany({
+            where: inArray(students.id, topUserIdsWithScores)
+        });
+
+        // Re-sort to match Redis order (by XP desc)
+        const mapped = dbStudents.map(s => {
+            const xp = Number(s.cumulative_xp) || 0;
+            return {
+                ...s,
+                cumulative_xp: xp
+            };
+        }).sort((a, b) => b.cumulative_xp - a.cumulative_xp);
+
+        return {
+            scope: schoolId ? 'school' : 'global',
+            data: serializeLeaderboard(mapped, userId),
+            title: schoolId ? 'Institution Leaderboard' : 'Global Leaderboard'
+        };
+    }
+
+    // Fallback to legacy SQL if Redis fails
+    const fallbackStudents = await db.query.students.findMany({
+        where: schoolId ? eq(students.school_id, schoolId) : undefined,
+        orderBy: [desc(students.cumulative_xp)],
+        limit: 50
+    });
+    return {
+        scope: schoolId ? 'school' : 'global',
+        data: serializeLeaderboard(fallbackStudents, userId),
+        title: schoolId ? 'Institution Leaderboard (SQL)' : 'Global Leaderboard'
+    };
 }
 
 function serializeLeaderboard(usersList: any[], currentUserId: string) {

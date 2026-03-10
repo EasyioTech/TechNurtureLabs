@@ -39,6 +39,7 @@ export type SchoolCourseMetric = {
     avg_xp: number;
     total_time_mins: number;
     mapped_classes: string[];
+    description: string | null;
 };
 
 export type SchoolLeaderboardEntry = {

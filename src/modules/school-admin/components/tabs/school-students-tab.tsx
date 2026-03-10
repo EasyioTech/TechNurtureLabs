@@ -88,7 +88,8 @@ export function SchoolStudentsTab({
 
                         <Button
                             onClick={handleExport}
-                            className={`rounded-2xl h-12 px-6 font-black text-[13px] ${ts.btnPrimary(isDark)}`}>
+                            variant="ghost"
+                            className={`rounded-2xl h-12 px-6 font-black text-[13px] border ${isDark ? 'bg-white/5 text-slate-100 border-white/10 hover:bg-white/10' : 'bg-transparent text-slate-800 border-slate-200 hover:bg-slate-50'}`}>
                             <FileDown size={16} className="mr-2" />
                             Export Roster
                         </Button>
@@ -176,7 +177,7 @@ export function SchoolStudentsTab({
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => router.push(`/school-admin/student/${s.id}`)}
-                                                className={`w-9 h-9 rounded-xl ${ts.btnOutline(isDark)} border-0`}>
+                                                className={`w-9 h-9 rounded-xl border ${isDark ? 'border-white/10 text-slate-400 hover:bg-white/5 hover:text-indigo-400' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                                                 <ExternalLink size={18} />
                                             </Button>
                                         </div>
@@ -205,14 +206,14 @@ export function SchoolStudentsTab({
                         </p>
                         <div className="flex items-center gap-3">
                             <Button variant="ghost" size="sm" disabled={studentsPage === 0} onClick={() => setStudentsPage(studentsPage - 1)}
-                                className={`rounded-xl h-10 px-4 text-[12px] font-black transition-all ${ts.btnOutline(isDark)} disabled:opacity-30`}>
+                                className={`rounded-xl h-10 px-4 text-[12px] font-black transition-all border ${isDark ? 'border-white/10 text-slate-100 hover:bg-white/5' : 'border-slate-200 text-slate-700 hover:bg-slate-50'} disabled:opacity-30`}>
                                 <ChevronLeft size={16} className="mr-2" /> Previous
                             </Button>
                             <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg font-black text-[12px] ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
                                 {studentsPage + 1} <span className="opacity-30 mx-1">/</span> {totalStudentPages}
                             </div>
                             <Button variant="ghost" size="sm" disabled={studentsPage >= totalStudentPages - 1} onClick={() => setStudentsPage(studentsPage + 1)}
-                                className={`rounded-xl h-10 px-4 text-[12px] font-black transition-all ${ts.btnOutline(isDark)} disabled:opacity-30`}>
+                                className={`rounded-xl h-10 px-4 text-[12px] font-black transition-all border ${isDark ? 'border-white/10 text-slate-100 hover:bg-white/5' : 'border-slate-200 text-slate-700 hover:bg-slate-50'} disabled:opacity-30`}>
                                 Next <ChevronRight size={16} className="ml-2" />
                             </Button>
                         </div>

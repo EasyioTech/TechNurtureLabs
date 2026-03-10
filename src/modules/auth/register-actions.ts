@@ -8,10 +8,30 @@ import bcrypt from 'bcryptjs';
 import { assignPlanToSchool } from '@/modules/super-admin/actions';
 
 export async function fetchGlobalClasses() {
-    return await db.query.classes.findMany({
+    let allClasses = await db.query.classes.findMany({
         orderBy: [asc(classes.level)]
     });
+
+    // Auto-seed: if the table is empty, create Class 1–12 automatically
+    if (allClasses.length === 0) {
+        const defaults = Array.from({ length: 12 }, (_, i) => ({
+            name: `Class ${i + 1}`,
+            level: i + 1,
+        }));
+        try {
+            await db.insert(classes).values(defaults);
+            allClasses = await db.query.classes.findMany({
+                orderBy: [asc(classes.level)]
+            });
+            console.log('✅ Auto-seeded 12 default classes');
+        } catch (err) {
+            console.error('Auto-seed classes failed:', err);
+        }
+    }
+
+    return allClasses;
 }
+
 
 export async function fetchApprovedSchools() {
     const schoolsData = await db.query.schools.findMany({
@@ -192,13 +212,12 @@ export async function registerSchool(formData: any) {
                 is_active: true,
             } as any);
 
-            // 4. Map ALL Global Classes to New School
-            const allGlobalClasses = await tx.query.classes.findMany();
-            if (allGlobalClasses.length > 0) {
+            // 4. Map Selected Classes to New School
+            if (formData.classes_available && Array.isArray(formData.classes_available) && formData.classes_available.length > 0) {
                 await tx.insert(schoolClassMapping).values(
-                    allGlobalClasses.map(cls => ({
+                    formData.classes_available.map((classId: string) => ({
                         school_id: newSchool.id,
-                        class_id: cls.id,
+                        class_id: classId,
                         is_active: true
                     }))
                 );

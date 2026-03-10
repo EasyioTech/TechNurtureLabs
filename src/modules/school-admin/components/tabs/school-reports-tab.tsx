@@ -60,7 +60,8 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                     </div>
                     <Button
                         onClick={handleDownload}
-                        className={`rounded-2xl h-12 px-6 font-black text-[13px] ${ts.btnOutline(isDark)}`}>
+                        variant="ghost"
+                        className={`rounded-2xl h-12 px-6 font-black text-[13px] border ${isDark ? 'bg-white/5 text-slate-100 border-white/10 hover:bg-white/10' : 'bg-transparent text-slate-800 border-slate-200 hover:bg-slate-50'}`}>
                         <FileDown size={16} className="mr-2" />
                         Download Report
                     </Button>
@@ -149,7 +150,7 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => router.push(`/school-admin/course/${c.id}`)}
-                                            className={`w-9 h-9 rounded-xl ${ts.btnOutline(isDark)} border-0 group-hover:bg-indigo-500 group-hover:text-white`}>
+                                            className={`w-9 h-9 rounded-xl border ${isDark ? 'border-white/10 text-slate-400 hover:bg-white/5 hover:text-indigo-400' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                                             <ExternalLink size={18} />
                                         </Button>
                                     </td>

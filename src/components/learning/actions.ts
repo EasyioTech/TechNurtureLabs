@@ -4,6 +4,9 @@ import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { students, schoolAdmins, superAdmins, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping, schools, auditLogs } from '@/db/schema';
 import { eq, and, inArray, asc, desc, isNotNull, isNull, sql } from 'drizzle-orm';
+import { awardXP, incrementProgressCounter } from '@/lib/gamification';
+import { redis, safeRedis } from '@/lib/redis';
+import { invalidateStudentDashboardCache } from '@/modules/student/actions';
 
 // Auto-enroll a student in a course if not already enrolled.
 // Uses UPSERT semantics (NEW BUG 1 fix): if a soft-deleted (unenrolled) enrollment exists
@@ -89,6 +92,10 @@ async function ensureEnrollment(userId: string, courseId: string) {
         is_active: true,
     } as any).returning();
 
+    if (role === 'student') {
+        await invalidateStudentDashboardCache(userId);
+    }
+
     return newEnrollment;
 }
 
@@ -97,6 +104,14 @@ export async function getCourseDetailsData(courseId: string) {
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
     const role = session.userType;
+
+    const cacheKey = `cache:student:${userId}:course:${courseId}`;
+    try {
+        const cached = await redis.get(cacheKey);
+        if (cached) return JSON.parse(cached);
+    } catch (err) {
+        console.error("Redis cache read error (course details):", err);
+    }
 
     let user: any = null;
     if (role === 'student') {
@@ -200,7 +215,7 @@ export async function getCourseDetailsData(courseId: string) {
         where: eq(schools.id, user.school_id)
     }) : null;
 
-    return {
+    const result = {
         course: {
             ...course,
             thumbnail: course.thumbnail_url,
@@ -210,6 +225,14 @@ export async function getCourseDetailsData(courseId: string) {
         school,
         enrolledCount
     };
+
+    try {
+        await redis.set(cacheKey, JSON.stringify(result), 'EX', 600); // 10 mins
+    } catch (err) {
+        console.error("Redis cache write error (course details):", err);
+    }
+
+    return result;
 }
 
 export async function getCourseJourneyData(courseId: string) {
@@ -346,12 +369,22 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
         });
     }
 
-    // ISSUE 12: Atomic XP increment — read-modify-write creates a race condition when
-    // two events (lesson + quiz) fire simultaneously. Always use SQL `+= x`, never `= x`.
-    if (role === 'student') {
-        await db.update(students)
-            .set({ cumulative_xp: sql`cumulative_xp + ${xpToAdd}` })
-            .where(eq(students.id, userId));
+    // Centered Gamification Logic (Updates DB, Redis LB, and Progress Counters)
+    if (role === 'student' || role === 'school_admin' || role === 'super_admin') {
+        const typeMap: Record<string, 'student' | 'school_admin' | 'super_admin'> = {
+            'student': 'student',
+            'school_admin': 'school_admin',
+            'super_admin': 'super_admin'
+        };
+        await awardXP(userId, xpToAdd, existingUser.school_id, typeMap[role]);
+
+        if (role === 'student') {
+            await incrementProgressCounter(userId, 'lessons');
+            if (quizScore !== undefined) {
+                await incrementProgressCounter(userId, 'quizzes');
+                if (isPerfect) await incrementProgressCounter(userId, 'perfect_quizzes');
+            }
+        }
     }
 
     // Record Activity in Audit Log
@@ -371,7 +404,10 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
 
         const { updateDailyChallengeProgress } = await import('@/modules/student/actions/challenge-actions');
         await updateDailyChallengeProgress(userId, 'quiz_complete', xpToAdd);
-        await updateDailyChallengeProgress(userId, 'xp_gain', xpToAdd); // If it's an xp_gain challenge, it will add the xpToAdd amount
+        await updateDailyChallengeProgress(userId, 'xp_gain', xpToAdd);
+
+        // Invalidate course cache for this user
+        await redis.del(`cache:student:${userId}:course:${lesson.course_id}`);
     } catch (e) {
         console.error('Failed to log activity or check achievements:', e);
     }

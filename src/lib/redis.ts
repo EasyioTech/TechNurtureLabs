@@ -20,3 +20,39 @@ export const redis =
     );
 
 if (serverEnv.NODE_ENV !== 'production') globalForRedis.redis = redis;
+
+/**
+ * PRODUCTION-GRADE REDIS UTILITIES
+ * Implements Large Payload Guard and Safe Serialization
+ */
+const MAX_PAYLOAD_SIZE = 1024 * 1024; // 1MB Guard
+
+export const safeRedis = {
+    /** Sets a value with a 1MB size safety check to prevent memory spikes */
+    set: async (key: string, value: any, ttlSeconds: number = 300) => {
+        try {
+            const stringified = typeof value === 'string' ? value : JSON.stringify(value);
+            if (stringified.length > MAX_PAYLOAD_SIZE) {
+                console.warn(`[Redis Guard] Payload for key ${key} skipped (${Math.round(stringified.length / 1024)}KB > 1MB)`);
+                return false;
+            }
+            await redis.set(key, stringified, 'EX', ttlSeconds);
+            return true;
+        } catch (err) {
+            console.error(`[Redis Error] Failed to set key ${key}:`, err);
+            return false;
+        }
+    },
+
+    /** Gets and parses JSON values safely */
+    get: async <T>(key: string): Promise<T | null> => {
+        try {
+            const val = await redis.get(key);
+            if (!val) return null;
+            return JSON.parse(val) as T;
+        } catch (err) {
+            console.error(`[Redis Error] Failed to get/parse key ${key}:`, err);
+            return null;
+        }
+    }
+};
