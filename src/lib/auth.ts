@@ -103,6 +103,11 @@ export async function verifySession(): Promise<SessionPayload | null> {
             const { payload } = await jwtVerify(accessToken, JWT_SECRET);
             const sessionData = payload as SessionPayload;
 
+            // Ensure role is present
+            if (!sessionData.role && sessionData.userType) {
+                sessionData.role = sessionData.userType;
+            }
+
             // Optional: Check Redis to ensure it hasn't been revoked
             const exists = await redis.get(`session:${sessionData.sessionId}`);
             if (exists) return sessionData;
@@ -150,6 +155,11 @@ export async function verifySession(): Promise<SessionPayload | null> {
         // Let's check Redis for existing metadata before we proceed.
         const cachedData = await redis.get(`session:${sessionId}`);
         const finalSessionData = cachedData ? JSON.parse(cachedData) : sessionData;
+
+        // Ensure role is present for backward compatibility or if missing in cache
+        if (!finalSessionData.role && finalSessionData.userType) {
+            finalSessionData.role = finalSessionData.userType;
+        }
 
         await db.update(userSessions)
             .set({

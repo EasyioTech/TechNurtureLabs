@@ -25,11 +25,16 @@ export async function POST(request: NextRequest) {
         // Derive the bare filename from the path (e.g. "videos/uuid.mp4" → "uuid.mp4")
         const fileName = path.basename(result.path);
 
-        // Enforce authentication to prevent anonymous file upload abuse
+        // Enforce authentication for administrative roles
         let uploadedBy: string | null = null;
         try {
             const session = await verifySession();
-            if (!session || !session.userId) {
+            const allowedRoles = ['super_admin', 'school_admin', 'admin'];
+
+            if (!session || !session.userId || (
+                !allowedRoles.includes(session.role as string) &&
+                !allowedRoles.includes(session.userType as string)
+            )) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
             uploadedBy = session.userId;

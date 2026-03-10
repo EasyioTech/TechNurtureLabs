@@ -11,7 +11,13 @@ export async function DELETE(
 ) {
     try {
         const session = await verifySession();
-        if (!session || (session.role !== 'admin' && session.role !== 'school_admin' && session.role !== 'super_admin')) {
+        const allowedRoles = ['super_admin', 'school_admin', 'admin'];
+        const isAuthorized = session && (
+            allowedRoles.includes(session.role as string) ||
+            allowedRoles.includes(session.userType as string)
+        );
+
+        if (!isAuthorized) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

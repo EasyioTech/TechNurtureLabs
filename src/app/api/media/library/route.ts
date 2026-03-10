@@ -7,7 +7,18 @@ import { verifySession } from '@/lib/auth';
 export async function GET(request: NextRequest) {
     try {
         const session = await verifySession();
-        if (!session || (session.role !== 'admin' && session.role !== 'school_admin' && session.role !== 'super_admin')) {
+        const allowedRoles = ['super_admin', 'school_admin', 'admin'];
+        const isAuthorized = session && (
+            allowedRoles.includes(session.role as string) ||
+            allowedRoles.includes(session.userType as string)
+        );
+
+        if (!isAuthorized) {
+            console.warn('[Media Library] Unauthorized access attempt:', {
+                userId: session?.userId,
+                role: session?.role,
+                userType: session?.userType
+            });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
