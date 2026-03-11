@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { students, schoolAdmins, superAdmins, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping, schools, auditLogs } from '@/db/schema';
 import { eq, and, inArray, asc, desc, isNotNull, isNull, sql } from 'drizzle-orm';
-import { awardXP, incrementProgressCounter } from '@/lib/gamification';
+import { awardXP, incrementProgressCounter, handleStudentEngagement } from '@/lib/gamification';
 import { redis, safeRedis } from '@/lib/redis';
 import { invalidateStudentDashboardCache } from '@/modules/student/actions';
 
@@ -384,6 +384,8 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
                 await incrementProgressCounter(userId, 'quizzes');
                 if (isPerfect) await incrementProgressCounter(userId, 'perfect_quizzes');
             }
+            // Update streak and activity
+            await handleStudentEngagement(userId);
         }
     }
 

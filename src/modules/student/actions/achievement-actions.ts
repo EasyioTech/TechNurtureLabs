@@ -24,7 +24,7 @@ export async function seedAchievementsData() {
         // Beginner Badges
         {
             name: 'First Steps',
-            description: 'Completed your first lesson',
+            description: 'Complete your very first lesson to start your journey',
             icon_url: 'award',
             tier: 'bronze' as const,
             category: 'Beginner',
@@ -32,7 +32,7 @@ export async function seedAchievementsData() {
         },
         {
             name: 'Quiz Starter',
-            description: 'Passed your first quiz',
+            description: 'Pass any 1 quiz to prove your basic knowledge',
             icon_url: 'target',
             tier: 'bronze' as const,
             category: 'Beginner',
@@ -40,7 +40,7 @@ export async function seedAchievementsData() {
         },
         {
             name: 'XP Earner',
-            description: 'Reached 500 total XP',
+            description: 'Accumulate a total of 500 XP through lessons and quizzes',
             icon_url: 'zap',
             tier: 'bronze' as const,
             category: 'Beginner',
@@ -48,7 +48,7 @@ export async function seedAchievementsData() {
         },
         {
             name: 'Profile Pro',
-            description: 'Added a bio to your profile',
+            description: 'Go to your profile and add a bio to introduce yourself',
             icon_url: 'user',
             tier: 'bronze' as const,
             category: 'Beginner',
@@ -58,7 +58,7 @@ export async function seedAchievementsData() {
         // Advanced Badges
         {
             name: 'Perfect Score',
-            description: 'Achieved 100% on a quiz',
+            description: 'Score exactly 100% on any quiz to earn this golden star',
             icon_url: 'star',
             tier: 'gold' as const,
             category: 'Advanced',
@@ -66,7 +66,7 @@ export async function seedAchievementsData() {
         },
         {
             name: 'Course Master',
-            description: 'Completed a full learning module',
+            description: 'Finish all lessons in a single complete learning module',
             icon_url: 'award',
             tier: 'gold' as const,
             category: 'Advanced',
@@ -74,7 +74,7 @@ export async function seedAchievementsData() {
         },
         {
             name: 'Expert Learner',
-            description: 'Earned over 5,000 XP',
+            description: 'Reach an elite milestone of 5,000 total XP',
             icon_url: 'shield',
             tier: 'platinum' as const,
             category: 'Advanced',
@@ -82,7 +82,7 @@ export async function seedAchievementsData() {
         },
         {
             name: 'Elite Scholar',
-            description: 'Passed 10 complex quizzes',
+            description: 'Successfully pass 10 different quizzes with high scores',
             icon_url: 'trophy',
             tier: 'platinum' as const,
             category: 'Advanced',
@@ -92,7 +92,7 @@ export async function seedAchievementsData() {
         // Persistence Badges
         {
             name: 'Consistency King',
-            description: 'Maintained a 3-day learning streak',
+            description: 'Maintain a learning streak for 3 consecutive days',
             icon_url: 'flame',
             tier: 'silver' as const,
             category: 'Persistence',
@@ -100,7 +100,7 @@ export async function seedAchievementsData() {
         },
         {
             name: 'Weekly Warrior',
-            description: 'Maintained a 7-day learning streak',
+            description: 'Keep your momentum alive for 7 straight days',
             icon_url: 'flame',
             tier: 'silver' as const,
             category: 'Persistence',
@@ -108,7 +108,7 @@ export async function seedAchievementsData() {
         },
         {
             name: 'Dedicated Student',
-            description: 'Completed 20 lessons total',
+            description: 'Complete a total of 20 lessons across any courses',
             icon_url: 'medal',
             tier: 'silver' as const,
             category: 'Persistence',
@@ -116,7 +116,7 @@ export async function seedAchievementsData() {
         },
         {
             name: 'Learning Marathon',
-            description: 'Spent over 5 hours learning',
+            description: 'Spend more than 5 hours (300 mins) actively learning',
             icon_url: 'clock',
             tier: 'silver' as const,
             category: 'Persistence',
@@ -156,15 +156,20 @@ export async function checkAndAwardAchievements() {
 
     // OPTIMIZATION: Check dirty bit first. If no new XP or progress event, skip heavy DB checks.
     const needed = await isAchievementCheckNeeded(userId);
+    
+    // Ensure achievements exist in DB even if we don't need to check user progress yet
+    await seedAchievementsData();
+    
     if (!needed) return { success: true, unlocked: [] };
 
-    // Ensure achievements exist
-    await seedAchievementsData();
+    if (session.role !== 'student') {
+        return { success: false, error: 'Student access only' };
+    }
 
     const user = await db.query.students.findFirst({
-        where: eq(students.id, userId)
+        where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`)
     });
-    if (!user) return { success: false, error: 'User not found' };
+    if (!user) return { success: false, error: 'Student profile not found' };
 
     const unlockedAchvs = await db.query.userAchievements.findMany({
         where: eq(userAchievements.user_id, userId)
@@ -259,10 +264,41 @@ export async function checkAndAwardAchievements() {
     return { success: true, unlocked: [] };
 }
 
+async function getStudentRankMetrics(userId: string, schoolId: string) {
+    if (!schoolId) return { rank: 1, rankPercentage: 100 };
+
+    const totalSchoolStudents = await db.select({ count: count() })
+        .from(students)
+        .where(eq(students.school_id, schoolId));
+
+    const currentUser = await db.query.students.findFirst({
+        where: eq(students.id, userId)
+    });
+
+    if (!currentUser) return { rank: 1, rankPercentage: 100 };
+
+    const usersWithMoreXp = await db.select({ count: count() })
+        .from(students)
+        .where(and(
+            eq(students.school_id, schoolId),
+            gt(students.cumulative_xp, currentUser.cumulative_xp)
+        ));
+
+    const rank = usersWithMoreXp[0].count + 1;
+    const totalCount = totalSchoolStudents[0].count || 1;
+    const rankPercentage = Math.min(100, Math.max(1, Math.round((rank / totalCount) * 100)));
+
+    return { rank, rankPercentage };
+}
+
 export async function getStudentAchievementsData() {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
+
+    if (session.role !== 'student') {
+        throw new Error('Access denied: Student access only');
+    }
 
     // Trigger check/seed on load to ensure sync
     await checkAndAwardAchievements();
@@ -286,14 +322,19 @@ export async function getStudentAchievementsData() {
 
     // Fetch basic stats for the progress circle
     const profile = await db.query.students.findFirst({
-        where: eq(students.id, userId)
+        where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`)
     });
+
+    // Fetch rank metrics
+    const rankMetrics = await getStudentRankMetrics(userId, profile?.school_id || '');
 
     return {
         achievements: formattedAchievements,
         stats: {
             xp: Number(profile?.cumulative_xp) || 0,
-            level: Math.floor((Number(profile?.cumulative_xp) || 0) / 1000) + 1
+            level: Math.floor((Number(profile?.cumulative_xp) || 0) / 1000) + 1,
+            rank: rankMetrics.rank,
+            rankPercentage: rankMetrics.rankPercentage
         }
     };
 }

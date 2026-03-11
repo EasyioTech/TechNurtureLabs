@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 import { getStudentAchievementsData } from '@/modules/student/actions/achievement-actions';
 import { AchievementBadge } from '@/modules/student/components/achievement-badge';
+import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 
 export default function AchievementsPage() {
@@ -30,17 +30,7 @@ export default function AchievementsPage() {
     }, []);
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-slate-50/10 p-12 lg:p-24 flex items-center justify-center">
-                <div className="max-w-2xl w-full space-y-8 text-center">
-                    <div className="relative w-32 h-32 mx-auto">
-                        <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
-                        <div className="absolute inset-0 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Synchronizing learning milestones...</p>
-                </div>
-            </div>
-        );
+        return <StudentDashboardLoader message="Synchronizing learning milestones..." />;
     }
 
     const { achievements = [], stats = { xp: 0, level: 0 } } = data || {};
@@ -50,7 +40,7 @@ export default function AchievementsPage() {
     const beginnerBadges = achievements.filter((a: any) => a.category === 'Beginner');
     const advancedBadges = achievements.filter((a: any) => a.category === 'Advanced');
     const persistenceBadges = achievements.filter((a: any) => a.category === 'Persistence');
-    const rankPercentage = Math.max(1, 100 - Math.floor(stats.xp / 100)); // Simulated for UI feel
+    const rankPercentage = stats.rankPercentage || 100;
 
     // Find next locked achievement as goal
     const nextGoalAch = achievements.find((a: any) => !a.unlocked);

@@ -12,13 +12,15 @@ import {
   Flame, Star, Trophy, Zap, BookOpen, Clock, Target,
   ChevronRight, Sparkles, Award,
   Play, GraduationCap, Medal, Crown, Calendar, Bell,
-  User, Search, ArrowRight, Activity, LogOut, Settings
+  User, Search, ArrowRight, Activity, LogOut, Settings, Lock
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { StudentHeader } from '../../modules/student/components/header';
 import { QuickStatCard } from '@/modules/student/components/stat-pill';
 import { ChallengeCard } from '@/modules/student/components/challenge-card';
 import { CourseCard } from '@/modules/student/components/course-card';
+import { AchievementBadge } from '@/modules/student/components/achievement-badge';
+import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import { Course, UserProfile, DailyChallenge, Achievement } from '@/modules/student/types';
 
 export default function StudentDashboard() {
@@ -108,18 +110,7 @@ export default function StudentDashboard() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-8 font-sans">
-        <div className="relative w-32 h-32">
-          <div className="absolute inset-0 border-[6px] border-slate-100 rounded-full" />
-          <div className="absolute inset-0 border-[6px] border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <GraduationCap size={40} className="text-slate-900" />
-          </div>
-        </div>
-        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 animate-pulse">Initializing Portal</p>
-      </div>
-    );
+    return <StudentDashboardLoader message="Initializing Portal" />;
   }
 
   const currentLevelXp = stats.xp % 1000;
@@ -401,11 +392,17 @@ export default function StudentDashboard() {
                 <Link href="/student/achievements" className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 uppercase tracking-widest">View All</Link>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 relative z-10">
-                {(achievements || []).filter(a => a.unlocked).slice(0, 4).map((achievement) => (
-                  <div key={achievement.id} className="aspect-square rounded-[2rem] bg-slate-50 border border-slate-100 flex items-center justify-center p-6 hover:border-amber-200 transition-all cursor-pointer overflow-hidden group/badge">
-                    <Trophy size={28} className="text-amber-500 group-hover/badge:scale-110 transition-transform" />
-                  </div>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-12 relative z-10 scale-90 sm:scale-100 origin-center py-4">
+                {(achievements || []).slice(0, 4).map((achievement) => (
+                  <AchievementBadge
+                    key={achievement.id}
+                    title={achievement.name}
+                    description={achievement.description || ''}
+                    unlocked={achievement.unlocked}
+                    locked={!achievement.unlocked}
+                    category={achievement.tier}
+                    icon={achievement.icon_url}
+                  />
                 ))}
               </div>
             </div>

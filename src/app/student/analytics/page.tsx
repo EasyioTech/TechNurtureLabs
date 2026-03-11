@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Target, TrendingUp, Award, BarChart3, Clock } from 'lucide-react';
 import { getStudentDailyAnalytics } from '@/modules/student/actions/analytics-actions';
-import { Skeleton } from '@/components/ui/skeleton';
+import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import {
     LineChart,
     Line,
@@ -35,7 +35,7 @@ export default function AnalyticsPage() {
     }, []);
 
     if (loading || !data) {
-        return <div className="p-12 min-h-screen bg-slate-50/30"><Skeleton className="h-[400px] w-full rounded-[3rem]" /></div>;
+        return <StudentDashboardLoader message="Fetching learning insights..." />;
     }
 
     const { profile, chartData, summary } = data;

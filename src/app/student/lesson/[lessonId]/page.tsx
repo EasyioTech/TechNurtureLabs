@@ -14,6 +14,7 @@ import {
   HelpCircle, BookOpen, User, Star, Maximize2, Minimize2, ShieldAlert,
   Timer
 } from 'lucide-react';
+import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import Link from 'next/link';
 // ─── Types ────────────────────────────────────────────────────────
 type Question = {
@@ -143,17 +144,7 @@ export default function LessonPlayerPage() {
   const DynamicIcon = currentConfig.icon;
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-8 font-sans">
-        <div className="relative w-32 h-32">
-          <div className="absolute inset-0 border-[6px] border-slate-100 rounded-full" />
-          <div className="absolute inset-0 border-[6px] border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <DynamicIcon size={40} className="text-slate-900" />
-          </div>
-        </div>
-      </div>
-    );
+    return <StudentDashboardLoader message={`Synchronizing ${currentConfig.label.toLowerCase()} content...`} />;
   }
 
   if (!lesson) {

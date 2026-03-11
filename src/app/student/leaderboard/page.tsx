@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Trophy, Star, Target, Shield, Users } from 'lucide-react';
 import { getStudentLeaderboard } from '@/modules/student/actions/leaderboard-actions';
-import { Skeleton } from '@/components/ui/skeleton';
+import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import { Button } from '@/components/ui/button';
 
 export default function LeaderboardPage() {
@@ -26,6 +26,10 @@ export default function LeaderboardPage() {
         });
         return () => { isMounted = false; };
     }, [scope]);
+
+    if (loading) {
+        return <StudentDashboardLoader message="Fetching global rankings..." />;
+    }
 
     return (
         <div className="min-h-screen bg-slate-50/30 pb-32">
@@ -90,11 +94,7 @@ export default function LeaderboardPage() {
                         {data?.title || (scope === 'school' ? 'School Leaderboard' : 'Class Leaderboard')}
                     </h3>
 
-                    {loading ? (
-                        <div className="space-y-4">
-                            {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)}
-                        </div>
-                    ) : data?.data && data.data.length > 0 ? (
+                    {data?.data && data.data.length > 0 ? (
                         <div className="space-y-4">
                             {data.data.map((user: any) => {
                                 const isTop3 = user.rank <= 3;

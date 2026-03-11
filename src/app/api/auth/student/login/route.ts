@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { handleStudentEngagement } from '@/lib/gamification';
 
 export async function POST(request: NextRequest) {
     try {
@@ -18,8 +19,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Email and PIN are required' }, { status: 400 });
         }
 
+        const identifier = email.toLowerCase().trim();
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+
         const user = await db.query.students.findFirst({
-            where: eq(students.email, email.toLowerCase())
+            where: isEmail 
+                ? eq(students.email, identifier)
+                : eq(students.phone, identifier)
         });
 
         if (!user) {
@@ -33,6 +39,9 @@ export async function POST(request: NextRequest) {
         }
 
         await createSession({ userId: user.id, userType: 'student' });
+        
+        // Handle streak and login challenges
+        await handleStudentEngagement(user.id);
 
         const { password_hash, ...userData } = user;
         return NextResponse.json({ success: true, user: { ...userData, role: 'student' } });

@@ -127,7 +127,7 @@ export async function updateDailyChallengeProgress(userId: string, actionType: s
         if (newProgress >= challenge.target_value && currentProgress < challenge.target_value) {
             // Get student metadata for school_id
             const stud = await db.query.students.findFirst({
-                where: eq(students.id, userId)
+                where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`)
             });
             await awardXP(userId, challenge.xp_reward, stud?.school_id);
         }

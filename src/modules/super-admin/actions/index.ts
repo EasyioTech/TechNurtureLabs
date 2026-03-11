@@ -7,7 +7,7 @@ import { db } from '@/lib/db';
 import { z } from 'zod';
 import { format, subDays, endOfDay, addMonths } from 'date-fns';
 import { courses, lessons, paymentPlans, superAdmins, schoolAdmins, students, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, classes, courseClassMapping, schoolClassMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions, promoCodes, auditLogs, platformSettings, platformMetricsDaily } from '@/db/schema';
-import { eq, asc, desc, count, sql, and, lte, inArray } from 'drizzle-orm';
+import { eq, asc, desc, count, sql, and, lte, inArray, not } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { redis, safeRedis } from '@/lib/redis';
 
@@ -481,6 +481,8 @@ const schoolAdminSchema = z.object({
     minor_data_guardian_consent: z.boolean().default(false),
     classIds: z.array(z.string().uuid()).optional(),
     slug: z.string().optional(),
+    password: z.string().min(6, 'Password too short').optional().nullable(),
+    principal_name: z.string().optional().nullable(),
 });
 
 export async function saveSchoolAdmin(schoolData: any) {
@@ -494,6 +496,17 @@ export async function saveSchoolAdmin(schoolData: any) {
     return await db.transaction(async (tx) => {
         let schoolId = validatedData.id;
         let oldSchool = null;
+
+        // Check for existing admin with this email (Platform-wide)
+        const conflictAdmin = await tx.query.schoolAdmins.findFirst({
+            where: schoolId 
+                ? and(eq(schoolAdmins.email, email), not(eq(schoolAdmins.school_id, schoolId)))
+                : eq(schoolAdmins.email, email)
+        });
+
+        if (conflictAdmin) {
+            throw new Error('This email address is already associated with another school account.');
+        }
 
         if (schoolId) {
             oldSchool = await tx.query.schools.findFirst({ where: eq(schools.id, schoolId) });
@@ -558,6 +571,40 @@ export async function saveSchoolAdmin(schoolData: any) {
                     }))
                 );
             }
+        }
+
+        // 3. Sync/Create School Admin User
+        const existingAdmin = await tx.query.schoolAdmins.findFirst({
+            where: eq(schoolAdmins.school_id, schoolId!)
+        });
+
+        const [firstName, ...lastNameParts] = (validatedData.principal_name || validatedData.name || 'Admin').split(/\s+/);
+        const lastName = lastNameParts.join(' ');
+
+        if (existingAdmin) {
+            const updateData: any = {
+                email: email,
+                first_name: firstName,
+                last_name: lastName || '',
+                is_active: validatedData.is_active,
+                updated_at: new Date(),
+            };
+            if (validatedData.password) {
+                updateData.password_hash = await bcrypt.hash(validatedData.password, 10);
+            }
+            await tx.update(schoolAdmins).set(updateData).where(eq(schoolAdmins.id, existingAdmin.id));
+        } else {
+            // New School requires a password either provided or default
+            const passwordToUse = validatedData.password || 'Admin@123';
+            const hashedPassword = await bcrypt.hash(passwordToUse, 10);
+            await tx.insert(schoolAdmins).values({
+                email: email,
+                school_id: schoolId!,
+                password_hash: hashedPassword,
+                first_name: firstName,
+                last_name: lastName || '',
+                is_active: true,
+            } as any);
         }
 
         const updated = await tx.query.schools.findFirst({ where: eq(schools.id, schoolId!) });

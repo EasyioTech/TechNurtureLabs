@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { getStudentDashboardData } from '@/modules/student/actions';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import { Badge } from '@/components/ui/badge';
 
 export default function ExplorePage() {
@@ -31,7 +31,7 @@ export default function ExplorePage() {
     }, []);
 
     if (loading) {
-        return <div className="p-12"><Skeleton className="h-96 w-full rounded-[3rem]" /></div>;
+        return <StudentDashboardLoader message="Searching for new opportunities..." />;
     }
 
     const categoryStyles: any = {

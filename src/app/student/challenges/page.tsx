@@ -9,7 +9,7 @@ import {
 import { getStudentDashboardData } from '@/modules/student/actions';
 import { ChallengeCard } from '@/modules/student/components/challenge-card';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import {
     BookOpen as LucideBookOpen,
     Clock,
@@ -34,7 +34,7 @@ export default function ChallengesPage() {
     }, []);
 
     if (loading) {
-        return <div className="p-12"><Skeleton className="h-96 w-full rounded-[3rem]" /></div>;
+        return <StudentDashboardLoader message="Loading Challenges Library..." />;
     }
 
     const { dailyChallenges = [], stats = { streak: 0, xp: 0, lessonsCompleted: 0, accuracy: 0, rank: 0, rankPercentage: 0 } } = data || {};

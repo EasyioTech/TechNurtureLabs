@@ -84,32 +84,39 @@ export async function registerStudent(formData: any) {
             return { success: false, error: 'Password must be at least 6 digits long.' };
         }
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.email)) {
-            return { success: false, error: 'Invalid email address format.' };
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
+        const isPhone = /^\+?[1-9]\d{1,14}$/.test(formData.email.replace(/[-\s]/g, ''));
+        
+        if (!isEmail && !isPhone) {
+            return { success: false, error: 'Please enter a valid email or phone number.' };
         }
 
-        const email = formData.email.toLowerCase().trim();
         const [firstName, ...lastNameParts] = formData.full_name.trim().split(/\s+/);
         const lastName = lastNameParts.join(' ');
+        const email = isEmail ? formData.email.toLowerCase().trim() : '';
+        const phone = isEmail ? '' : formData.email.trim();
 
         return await db.transaction(async (tx) => {
-            // Check for existing student with this email in THIS school
-            const existing = await tx.query.students.findFirst({
-                where: and(eq(students.email, email), eq(students.school_id, formData.school_id))
+            // Check for existing student with this email (Platform-wide)
+            const existingGlobally = await tx.query.students.findFirst({
+                where: isEmail 
+                    ? eq(students.email, email)
+                    : eq(students.phone, phone)
             });
 
-            if (existing) {
-                return { success: false, error: 'An account with this email already exists in this school.' };
+            if (existingGlobally) {
+                return { success: false, error: `A user with this ${isEmail ? 'email' : 'phone number'} already exists on the platform.` };
             }
 
             const hashedPassword = await bcrypt.hash(formData.password, 10);
             const [newStudent] = await tx.insert(students).values({
                 email: email,
+                phone: phone,
                 password_hash: hashedPassword,
                 first_name: firstName || '',
                 last_name: lastName || '',
                 school_id: formData.school_id,
+                gender: formData.gender,
                 cumulative_xp: 0,
                 current_streak: 0,
                 is_active: true,
@@ -190,13 +197,13 @@ export async function registerSchool(formData: any) {
                 end_date: endDate.toISOString().split('T')[0]
             } as any);
 
-            // 3. Create School Admin User in school_admins table
+            // 3. Check for existing school admin with this email (Platform-wide)
             const checkUser = await tx.query.schoolAdmins.findFirst({
-                where: and(eq(schoolAdmins.email, email), eq(schoolAdmins.school_id, newSchool.id))
+                where: eq(schoolAdmins.email, email)
             });
 
             if (checkUser) {
-                throw new Error('A school admin with this email already exists.');
+                throw new Error('A school admin with this email already exists on the platform.');
             }
 
             const hashedPassword = await bcrypt.hash(formData.password, 10);
@@ -238,5 +245,25 @@ export async function registerSchool(formData: any) {
     } catch (error: any) {
         console.error('School registration error:', error);
         return { success: false, error: error.message || 'An unexpected error occurred.' };
+    }
+}
+
+export async function checkIdentifierExists(value: string) {
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    const identifier = value.toLowerCase().trim();
+
+    if (isEmail) {
+        const student = await db.query.students.findFirst({
+            where: eq(students.email, identifier)
+        });
+        const admin = await db.query.schoolAdmins.findFirst({
+            where: eq(schoolAdmins.email, identifier)
+        });
+        return !!student || !!admin;
+    } else {
+        const student = await db.query.students.findFirst({
+            where: eq(students.phone, identifier)
+        });
+        return !!student;
     }
 }

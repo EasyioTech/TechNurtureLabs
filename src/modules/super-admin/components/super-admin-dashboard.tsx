@@ -34,6 +34,12 @@ import {
     DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+
 const NAV_ITEMS = [
     { id: 'overview', label: 'DASHBOARD', icon: LayoutGrid },
     { id: 'courses', label: 'COURSES', icon: BookOpen },
@@ -123,58 +129,82 @@ function DashboardContent() {
                         </div>
 
                         {/* Center: Desktop Nav - Hidden on mobile, visible from medium screens */}
-                        <div className="hidden lg:flex flex-1 items-center justify-center min-w-0 max-w-full">
-                            <nav className={`flex items-center ${isDark ? 'bg-neutral-900/60' : 'bg-neutral-100/80'} rounded-full p-1 border ${t.border(isDark)} shadow-inner overflow-hidden max-w-full`}>
+                        <div className="hidden lg:flex flex-1 items-center justify-center min-w-0">
+                            <nav className={`flex items-center ${isDark ? 'bg-neutral-900/60' : 'bg-neutral-100/80'} rounded-full p-1 border ${t.border(isDark)} shadow-inner overflow-auto no-scrollbar max-w-full`}>
                                 <div className="flex items-center overflow-x-auto no-scrollbar scroll-smooth px-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                     {NAV_ITEMS.map(item => {
-                                        const isActive = activePage === item.id;
-                                        return (
-                                            <button
-                                                key={item.id}
-                                                onClick={() => setActivePage(item.id)}
-                                                className={`relative px-4 py-2.5 sm:px-5 rounded-full text-[11px] font-black uppercase tracking-widest cursor-pointer transition-all duration-300 whitespace-nowrap flex-shrink-0
-                                                    ${isActive ? '' : t.navInactive(isDark)} hover:opacity-80`}
-                                            >
-                                                {isActive && (
-                                                    <motion.div
-                                                        layoutId="nav-pill-active"
-                                                        className={`absolute inset-0 rounded-full ${accent.bg} text-slate-900 shadow-xl shadow-black/10`}
-                                                        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                                                    />
-                                                )}
-                                                <span className={`relative z-10 transition-colors duration-300 flex items-center justify-center gap-2 ${isActive ? 'text-slate-900' : ''}`}>
-                                                    {item.iconOnly ? (
-                                                        <item.icon size={16} strokeWidth={3} />
-                                                    ) : (
-                                                        <>
-                                                            {isActive && <item.icon size={14} strokeWidth={3} className="hidden xl:block" />}
-                                                            {item.label}
-                                                        </>
-                                                    )}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                         const isActive = activePage === item.id;
+                                         return (
+                                             <button
+                                                 key={item.id}
+                                                 id={`nav-item-${item.id}`}
+                                                 onClick={() => {
+                                                     setActivePage(item.id);
+                                                     document.getElementById(`nav-item-${item.id}`)?.scrollIntoView({
+                                                         behavior: 'smooth',
+                                                         block: 'nearest',
+                                                         inline: 'center'
+                                                     });
+                                                 }}
+                                                 className={`relative px-4 py-2.5 sm:px-5 rounded-full text-[11px] font-black uppercase tracking-widest cursor-pointer transition-all duration-300 whitespace-nowrap flex-shrink-0
+                                                     ${isActive ? '' : t.navInactive(isDark)} hover:opacity-80`}
+                                             >
+                                                 {isActive && (
+                                                     <motion.div
+                                                         layoutId="nav-pill-active"
+                                                         className={`absolute inset-0 rounded-full ${accent.bg} text-slate-900 shadow-xl shadow-black/10`}
+                                                         transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                                                     />
+                                                 )}
+                                                 <span className={`relative z-10 transition-colors duration-300 flex items-center justify-center gap-2 ${isActive ? 'text-slate-900' : ''}`}>
+                                                     {item.iconOnly ? (
+                                                         <item.icon size={16} strokeWidth={3} />
+                                                     ) : (
+                                                         <>
+                                                             {isActive && <item.icon size={14} strokeWidth={3} className="hidden xl:block" />}
+                                                             {item.label}
+                                                         </>
+                                                     )}
+                                                 </span>
+                                             </button>
+                                         );
+                                     })}
+                                 </div>
                             </nav>
                         </div>
 
                         {/* Right: Actions */}
                         <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 justify-end z-10">
-                            {/* Search */}
-                            <div className={`hidden sm:flex items-center rounded-full px-4 py-2 sm:py-2.5 gap-3 max-w-[280px] lg:max-w-[320px] flex-1 border transition-all duration-300 focus-within:ring-4 focus-within:ring-${accent.name}-400/20 focus-within:border-${accent.name}-400/30 ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-neutral-50 shadow-sm'}`}>
-                                <Search size={16} className={`flex-shrink-0 transition-colors ${isDark ? `text-slate-400` : 'text-neutral-500'}`} />
-                                <input
-                                    type="text"
-                                    placeholder="Search..."
-                                    value={searchQuery}
-                                    onChange={e => setSearchQuery(e.target.value)}
-                                    className={`bg-transparent text-[13px] font-bold outline-none w-full placeholder:font-bold ${t.textPrimary(isDark)}`}
-                                />
-                                {searchQuery && (
-                                    <button onClick={() => setSearchQuery('')} className={`text-[10px] font-black px-2 py-0.5 rounded-md border transition-colors ${isDark ? 'border-white/10 text-slate-400 hover:text-white hover:bg-white/5' : 'border-neutral-200 text-neutral-400 hover:text-slate-900 hover:bg-neutral-50'}`}>✕</button>
-                                )}
-                            </div>
+                            {/* Search Popover */}
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <button className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center cursor-pointer transition-all border ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] hover:border-white/10 bg-white/[0.02]' : 'hover:bg-neutral-50 hover:shadow-md bg-neutral-100/50'}`}>
+                                        <Search size={18} className={`transition-all ${t.textSecondary(isDark)}`} />
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent className={`w-72 sm:w-96 rounded-[28px] p-3 border-0 shadow-2xl ${isDark ? 'bg-[#121214]/98 backdrop-blur-xl' : 'bg-white'}`} align="end" sideOffset={12}>
+                                    <div className={`flex items-center rounded-2xl px-4 py-3 gap-3 border transition-all duration-300 focus-within:ring-4 focus-within:ring-${accent.name}-400/20 focus-within:border-${accent.name}-400/30 ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-neutral-50'}`}>
+                                        <Search size={16} className={`flex-shrink-0 ${isDark ? accent.text : 'text-neutral-500'}`} />
+                                        <input
+                                            type="text"
+                                            placeholder="Search students, schools, courses..."
+                                            autoFocus
+                                            value={searchQuery}
+                                            onChange={e => setSearchQuery(e.target.value)}
+                                            className={`bg-transparent text-[13px] font-bold outline-none w-full placeholder:font-bold ${t.textPrimary(isDark)}`}
+                                        />
+                                        {searchQuery && (
+                                            <button 
+                                                onClick={() => setSearchQuery('')} 
+                                                className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/10 text-slate-400' : 'hover:bg-neutral-200 text-neutral-400'}`}
+                                            >
+                                                ✕
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p className={`text-[10px] font-black tracking-widest uppercase mt-4 px-1 ${t.textMuted(isDark)}`}>Quick Search</p>
+                                </PopoverContent>
+                            </Popover>
 
                             {/* Settings Buttons */}
                             <div className="flex items-center gap-1.5 sm:gap-2">

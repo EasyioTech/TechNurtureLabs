@@ -8,8 +8,8 @@ import {
 import { motion } from 'framer-motion';
 import { getStudentDashboardData } from '@/modules/student/actions';
 import { CourseCard } from '@/modules/student/components/course-card';
+import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 
 export default function MyCoursesPage() {
@@ -44,20 +44,7 @@ export default function MyCoursesPage() {
     });
 
     if (loading) {
-        return (
-            <div className="p-8 lg:p-12 space-y-12">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="space-y-4">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-10 w-64" />
-                    </div>
-                    <Skeleton className="h-12 w-full md:w-80 rounded-2xl" />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-64 rounded-[3rem]" />)}
-                </div>
-            </div>
-        );
+        return <StudentDashboardLoader message="Loading Learning Library..." />;
     }
 
     return (

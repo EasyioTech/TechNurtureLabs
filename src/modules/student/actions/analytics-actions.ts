@@ -10,11 +10,15 @@ export async function getStudentDailyAnalytics() {
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
 
+    if (session.role !== 'student') {
+        throw new Error('Access denied: Student account required');
+    }
+
     const currentUser = await db.query.students.findFirst({
-        where: eq(students.id, userId)
+        where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`)
     });
 
-    if (!currentUser) throw new Error('User not found');
+    if (!currentUser) throw new Error('Student profile not found');
 
     // 7-day trailing analytics
     const sevenDaysAgo = new Date();

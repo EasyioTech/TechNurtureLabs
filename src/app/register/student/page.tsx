@@ -26,9 +26,9 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { fetchApprovedSchools, registerStudent } from '@/modules/auth/register-actions';
+import { fetchApprovedSchools, registerStudent, checkIdentifierExists } from '@/modules/auth/register-actions';
 import { toast } from 'sonner';
-import { GraduationCap, ArrowLeft, User, School, Loader2, Check, ChevronsUpDown, Search, UserCircle2, ArrowRight, Trophy } from 'lucide-react';
+import { GraduationCap, ArrowLeft, User, School, Loader2, Check, ChevronsUpDown, Search, UserCircle2, ArrowRight, Trophy, Eye, EyeOff } from 'lucide-react';
 import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
 import { StudentRegistrationSidebar } from '@/components/registration/StudentRegistrationSidebar';
 import { ManIcon, WomanIcon } from '@/components/registration/GenderIcons';
@@ -62,6 +62,7 @@ export default function StudentRegistrationPage() {
     gender: '',
   });
   const [pinFocused, setPinFocused] = useState(false);
+  const [showPin, setShowPin] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateStep1 = () => {
@@ -77,8 +78,12 @@ export default function StudentRegistrationPage() {
 
   const validateStep2 = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email format';
+    if (!formData.email.trim()) newErrors.email = 'Email or Phone is required';
+    else {
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
+      const isPhone = /^\+?[1-9]\d{1,14}$/.test(formData.email.replace(/[-\s]/g, ''));
+      if (!isEmail && !isPhone) newErrors.email = 'Invalid email or phone format';
+    }
 
     if (formData.password.length !== 6) newErrors.password = 'PIN must be 6 digits';
     if (formData.confirm_password !== formData.password) newErrors.confirm_password = 'PINs do not match';
@@ -382,55 +387,82 @@ export default function StudentRegistrationPage() {
 
                   <div className="space-y-8">
                     {/* Sub-step 1: Email */}
-                    <div className="space-y-2">
-                      <Label className={`text-xs ml-1 uppercase tracking-[0.2em] font-black transition-colors ${errors.email ? 'text-rose-500' : 'text-slate-950'}`}>Institutional Email</Label>
-                      <div className="relative group">
-                        <Input
-                          type="email"
-                          autoFocus
-                          value={formData.email}
-                          onChange={(e) => {
-                            setFormData({ ...formData, email: e.target.value });
-                            if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
-                            if (emailVerified) setEmailVerified(false);
-                          }}
-                          className={`bg-white border-2 h-16 px-6 text-slate-900 placeholder:text-slate-300 focus:ring-4 transition-all font-bold text-lg rounded-2xl shadow-sm
-                            ${errors.email ? 'border-rose-400 ring-rose-500/10' : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) ? 'border-indigo-500 bg-indigo-50/10' : 'border-slate-300 focus:border-slate-950 focus:ring-slate-950/10'}
-                          `}
-                          placeholder="student@school.com"
-                        />
-                      </div>
+                  <div className="space-y-2">
+                    <Label className={`text-[10px] ml-1 uppercase tracking-[0.2em] font-black transition-colors ${errors.email ? 'text-rose-500' : 'text-slate-950'}`}>Email or Phone</Label>
+                    <div className="relative group">
+                      <Input
+                        type="text"
+                        autoFocus
+                        value={formData.email}
+                        onChange={(e) => {
+                          setFormData({ ...formData, email: e.target.value });
+                          if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                          if (emailVerified) setEmailVerified(false);
+                        }}
+                        className={`bg-white border-2 h-16 px-6 text-slate-900 placeholder:text-slate-300 focus:ring-4 transition-all font-bold text-lg rounded-2xl shadow-sm
+                          ${errors.email ? 'border-rose-400 ring-rose-500/10' : (formData.email.includes('@') || formData.email.length > 8) ? 'border-indigo-500 bg-indigo-50/10' : 'border-slate-300 focus:border-slate-950 focus:ring-slate-950/10'}
+                        `}
+                        placeholder="e.g. Phone or Email"
+                      />
+                    </div>
                       {errors.email && <p className="text-xs text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.email}</p>}
                     </div>
 
                     {!emailVerified ? (
                       <NeumorphicButton
                         type="button"
-                        onClick={() => {
-                          if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-                            setEmailVerified(true);
-                            setErrors(prev => ({ ...prev, email: '' }));
-                          } else {
-                            setErrors(prev => ({ ...prev, email: 'Please enter a valid email' }));
+                        onClick={async () => {
+                          const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
+                          const isPhone = /^\+?[1-9]\d{1,14}$/.test(formData.email.replace(/[-\s]/g, ''));
+                          
+                          if (!isEmail && !isPhone) {
+                            setErrors(prev => ({ ...prev, email: 'Please enter a valid email or phone number' }));
+                            return;
+                          }
+
+                          setLoading(true);
+                          try {
+                            const exists = await checkIdentifierExists(formData.email);
+                            if (exists) {
+                              setErrors(prev => ({ ...prev, email: 'A user with this info already exists' }));
+                              toast.error('Identity already registered');
+                            } else {
+                              setEmailVerified(true);
+                              setErrors(prev => ({ ...prev, email: '' }));
+                            }
+                          } catch (err) {
+                            console.error('Email check failed:', err);
+                          } finally {
+                            setLoading(false);
                           }
                         }}
+                        disabled={loading}
                         variant="primary"
                         className="w-full !h-14 !text-sm !rounded-2xl !bg-indigo-600 hover:!bg-indigo-700 text-white font-black uppercase tracking-widest cursor-pointer"
                       >
-                        Continue to PIN
+                        {loading ? <Loader2 className="animate-spin" size={18} /> : "Continue to PIN"}
                       </NeumorphicButton>
                     ) : (
                       <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
                         {/* Sub-step 2: PIN */}
                         <div className="space-y-4">
                           <div className="flex items-center justify-between px-1">
-                            <Label className={`text-xs uppercase tracking-[0.2em] font-black transition-colors ${errors.password ? 'text-rose-500' : 'text-slate-900'}`}>Create Secure PIN</Label>
-                            {formData.password.length === 6 && !errors.password && <Check size={18} className="text-indigo-600 stroke-[3px]" />}
+                            <Label className={`text-[10px] uppercase tracking-[0.2em] font-black transition-colors ${errors.password ? 'text-rose-500' : 'text-slate-900'}`}>Security PIN</Label>
+                            <div className="flex items-center gap-3">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowPin(!showPin)}
+                                    className="text-slate-400 hover:text-slate-600 transition-colors"
+                                >
+                                    {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                                {formData.password.length === 6 && !errors.password && <Check size={18} className="text-indigo-600 stroke-[3px]" />}
+                            </div>
                           </div>
 
                           <div className="relative">
                             <input
-                              type="password"
+                              type={showPin ? "text" : "password"}
                               inputMode="numeric"
                               pattern="[0-9]*"
                               maxLength={6}
@@ -457,7 +489,9 @@ export default function StudentRegistrationPage() {
                                   `}
                                 >
                                   {formData.password[i] ? (
-                                    <div className={`w-4 h-4 rounded-full animate-in zoom-in duration-300 ${errors.password ? 'bg-rose-500' : 'bg-slate-900'}`} />
+                                    <div className={`w-full h-full flex items-center justify-center animate-in zoom-in duration-300 ${errors.password ? 'text-rose-500' : 'text-slate-900'}`}>
+                                        {showPin ? <span className="text-xl font-black">{formData.password[i]}</span> : <div className={`w-4 h-4 rounded-full ${errors.password ? 'bg-rose-500' : 'bg-slate-900'}`} />}
+                                    </div>
                                   ) : (
                                     <div className={`w-2 h-2 rounded-full transition-colors ${i === formData.password.length && pinFocused ? 'bg-indigo-400 animate-pulse' : errors.password ? 'bg-rose-200' : 'bg-slate-200'}`} />
                                   )}
@@ -487,7 +521,7 @@ export default function StudentRegistrationPage() {
 
                               <div className="relative">
                                 <input
-                                  type="password"
+                                  type={showPin ? "text" : "password"}
                                   inputMode="numeric"
                                   pattern="[0-9]*"
                                   maxLength={6}
@@ -512,7 +546,9 @@ export default function StudentRegistrationPage() {
                                       `}
                                     >
                                       {formData.confirm_password[i] && (
-                                        <div className={`w-3 h-3 rounded-full ${formData.password === formData.confirm_password ? 'bg-indigo-600' : 'bg-rose-500'}`} />
+                                        <div className={`w-full h-full flex items-center justify-center animate-in zoom-in duration-300 ${formData.password === formData.confirm_password ? 'text-indigo-600' : 'text-rose-500'}`}>
+                                            {showPin ? <span className="text-xl font-black">{formData.confirm_password[i]}</span> : <div className={`w-3 h-3 rounded-full ${formData.password === formData.confirm_password ? 'bg-indigo-600' : 'bg-rose-500'}`} />}
+                                        </div>
                                       )}
                                     </div>
                                   ))}

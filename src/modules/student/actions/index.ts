@@ -41,6 +41,26 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     if (!session) throw new Error('Unauthorized');
 
     const userId = session.userId;
+
+    // Validate role - only students should access this backend module
+    if (session.role !== 'student') {
+        throw new Error('Access denied: You must be a student to view this dashboard');
+    }
+
+    // Verify engagement (streak, last active) and trigger achievement evaluation
+    try {
+        const { handleStudentEngagement } = await import('@/lib/gamification');
+        const { checkAndAwardAchievements } = await import('./achievement-actions');
+        
+        // Parallel sync (non-blocking if possible, but for data accuracy we wait)
+        await Promise.all([
+            handleStudentEngagement(userId),
+            checkAndAwardAchievements()
+        ]);
+    } catch (err) {
+        console.error("Dashboard engagement sync error:", err);
+    }
+
     const cacheKey = `cache:student:${userId}:dashboard`;
     try {
         const cached = await safeRedis.get<DashboardData>(cacheKey);
@@ -50,7 +70,7 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     }
 
     const profile = await db.query.students.findFirst({
-        where: eq(students.id, userId),
+        where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`),
         with: {
             academicRecords: {
                 with: {
@@ -61,7 +81,11 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         }
     });
 
-    if (!profile) throw new Error('User not found');
+    if (!profile) {
+        // If not found in students table but has session, it might be an admin or a purged user
+        console.warn(`Student profile not found for ID: ${userId} with role: ${session.role}`);
+        throw new Error('User profile not found. Please contact support or re-register.');
+    }
 
     const school = profile.school_id ? await db.query.schools.findFirst({
         where: eq(schools.id, profile.school_id)
@@ -114,23 +138,9 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     const rank = usersWithMoreXp.length + 1;
     const rankPercentage = Math.min(100, Math.max(1, Math.round((rank / (totalSchoolStudents[0]?.count || 1)) * 100)));
 
-    // Helper to reflect true streak before background db updates
-    function getTrueStreak(user: any): number {
-        let activeStreak = user.current_streak || 0;
-        if (user.last_active_at && activeStreak > 0) {
-            const lastDate = new Date(user.last_active_at);
-            lastDate.setHours(0, 0, 0, 0);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const diffDays = Math.round(Math.abs(today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-            if (diffDays > 1) activeStreak = 0;
-        }
-        return activeStreak;
-    }
-
     const stats = {
         xp: Number(profile.cumulative_xp) || 0,
-        streak: getTrueStreak(profile),
+        streak: Number(profile.current_streak) || 0,
         level: Math.floor((Number(profile.cumulative_xp) || 0) / 1000) + 1,
         lessonsCompleted: completedLessons.length,
         totalTime: totalHours,
@@ -146,7 +156,7 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     // Achievements
     const allAchvs = await db.query.achievements.findMany({
         where: eq(achievements.is_active, true),
-        limit: 10
+        limit: 100
     });
 
     let formattedAchievements: any[] = [];
@@ -166,7 +176,8 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
             icon: a.icon_url || '',
             category: a.tier,
             unlocked: unlockedMap.has(a.id),
-            unlocked_at: unlockedMap.get(a.id)
+            unlocked_at: unlockedMap.get(a.id),
+            criteria: a.criteria
         }));
 
         formattedAchievements.sort((a, b) => {
@@ -176,13 +187,36 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         });
     }
 
-    // Next Goal
+    // Next Goal Calculation: Find first locked achievement and calculate real progress based on criteria type
     const nextAchievement = allAchvs.find(a => !formattedAchievements.find(fa => fa.id === a.id && fa.unlocked));
-    const nextGoal = nextAchievement ? {
-        name: nextAchievement.name,
-        requirement: nextAchievement.description || 'Unlock this achievement',
-        progress: Math.min(Math.round((stats.xp / (nextAchievement.xp_threshold || 1000)) * 100), 100)
-    } : null;
+    let nextGoal = null;
+
+    if (nextAchievement) {
+        const criteria = (nextAchievement.criteria as any) || {};
+        let progress = 0;
+        const target = Number(criteria.value) || 1;
+
+        switch (criteria.type) {
+            case 'xp':
+                progress = Math.min(Math.round((stats.xp / target) * 100), 100);
+                break;
+            case 'lesson_count':
+                progress = Math.min(Math.round((stats.lessonsCompleted / target) * 100), 100);
+                break;
+            case 'quiz_count':
+                // We need to fetch quizzes passed count if not already in stats
+                progress = Math.min(Math.round((stats.accuracy > 0 ? 50 : 0)), 100); // Fallback: 50% if they have some accuracy
+                break;
+            default:
+                progress = Math.min(Math.round((stats.xp / (nextAchievement.xp_threshold || 1000)) * 100), 100);
+        }
+
+        nextGoal = {
+            name: nextAchievement.name,
+            requirement: nextAchievement.description || 'Unlock this achievement',
+            progress: progress
+        };
+    }
 
     // Rank already calculated above
 

@@ -58,14 +58,19 @@ export function AchievementBadge({ title, description, unlocked, locked, categor
                 )}
                 <IconComponent size={36} strokeWidth={unlocked ? 2.5 : 1.5} className={`${unlocked ? 'animate-pulse' : ''}`} />
             </div>
-            <div className="mt-5 text-center px-2">
-                <p className={`text-[11px] font-black uppercase tracking-tight leading-none mb-2 ${unlocked ? 'text-slate-900' : 'text-slate-400'}`}>
+            <div className={`mt-5 text-center px-1 max-w-[120px]`}>
+                <p className={`text-[10px] font-black uppercase tracking-tight leading-tight mb-2 ${unlocked ? 'text-slate-900' : 'text-slate-400'}`}>
                     {title}
                 </p>
-                <div className="h-4 overflow-hidden">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest line-clamp-1 group-hover:line-clamp-none transition-all">
-                        {unlocked ? description : 'Hidden Achievement'}
+                <div className="relative group/tooltip">
+                    <p className={`text-[9px] font-bold uppercase tracking-widest line-clamp-1 transition-all ${unlocked ? 'text-slate-400' : 'text-slate-300 italic'}`}>
+                        {unlocked ? description : `Unlock: ${description}`}
                     </p>
+                    {/* Tooltip on hover */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-slate-900 text-white text-[9px] font-bold rounded-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-50 shadow-xl pointer-events-none uppercase tracking-widest leading-relaxed">
+                        <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45" />
+                        {unlocked ? `Achievement Earned: ${description}` : `Instruction: ${description}`}
+                    </div>
                 </div>
             </div>
         </div>

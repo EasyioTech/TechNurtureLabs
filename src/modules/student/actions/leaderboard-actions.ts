@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { students, studentAcademicRecords } from '@/db/schema';
-import { eq, and, desc, inArray } from 'drizzle-orm';
+import { eq, and, desc, inArray, sql, isNotNull } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { redis } from '@/lib/redis';
 
@@ -13,8 +13,12 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
 
+    if (session.role !== 'student') {
+        throw new Error('Access denied: Student access only');
+    }
+
     const currentUser = await db.query.students.findFirst({
-        where: eq(students.id, userId),
+        where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`),
         with: {
             academicRecords: {
                 with: { academicClass: true },
@@ -23,7 +27,7 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
         }
     });
 
-    if (!currentUser) throw new Error('User not found');
+    if (!currentUser) throw new Error('Student profile not found');
 
     const schoolId = currentUser.school_id;
     const cacheKey = schoolId ? `lb:school:${schoolId}` : `lb:global`;

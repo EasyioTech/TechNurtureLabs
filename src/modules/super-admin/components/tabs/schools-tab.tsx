@@ -212,8 +212,29 @@ export function SchoolsTab({
                     {editingSchool && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Name</Label><Input value={editingSchool.name} onChange={e => setEditingSchool({ ...editingSchool, name: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Email</Label><Input value={editingSchool.email} onChange={e => setEditingSchool({ ...editingSchool, email: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>School Name</Label><Input value={editingSchool.name} onChange={e => setEditingSchool({ ...editingSchool, name: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Contact Email</Label><Input value={editingSchool.email} onChange={e => setEditingSchool({ ...editingSchool, email: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Admin Name</Label>
+                                    <Input 
+                                        value={(editingSchool as any).principal_name || ''} 
+                                        onChange={e => setEditingSchool({ ...editingSchool, principal_name: e.target.value } as any)} 
+                                        placeholder="Principal/Admin Full Name"
+                                        className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} 
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Password</Label>
+                                    <Input 
+                                        type="password"
+                                        value={(editingSchool as any).password || ''} 
+                                        onChange={e => setEditingSchool({ ...editingSchool, password: e.target.value } as any)} 
+                                        placeholder={editingSchool.id ? '•••••••• (leave blank to keep)' : 'Set portal password'}
+                                        className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} 
+                                    />
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Phone</Label><Input value={editingSchool.phone || ''} onChange={e => setEditingSchool({ ...editingSchool, phone: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>

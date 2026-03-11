@@ -11,6 +11,8 @@ import {
   BookOpen, Award, Target
 } from 'lucide-react';
 import { StudentHeader } from '@/modules/student/components/header';
+import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
+import { getStudentProfileData } from '@/modules/student/actions/profile-actions';
 
 type Lesson = {
   id: string;
@@ -35,17 +37,25 @@ export default function JourneyPage({ params }: { params: Promise<{ courseId: st
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [school, setSchool] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [stats, setStats] = useState({ xp: 0, streak: 0, level: 1 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await getCourseJourneyData(courseId);
-        setCourse(data.course as any);
-        setLessons(data.lessons as any);
-        setSchool(data.school);
+        const [journeyData, profileData] = await Promise.all([
+          getCourseJourneyData(courseId),
+          getStudentProfileData()
+        ]);
+        
+        setCourse(journeyData.course as any);
+        setLessons(journeyData.lessons as any);
+        setSchool(journeyData.school);
+        setProfile(profileData.profile);
+        setStats(profileData.stats);
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching journey data:", err);
       }
       setLoading(false);
     }
@@ -57,16 +67,12 @@ export default function JourneyPage({ params }: { params: Promise<{ courseId: st
   const progress = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Sparkles className="w-8 h-8 text-indigo-600 animate-spin" />
-      </div>
-    );
+    return <StudentDashboardLoader message="Navigating learning path..." />;
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <StudentHeader profile={{ full_name: 'Student', email: '' }} school={school} stats={{ xp: totalXP, streak: 0, level: 1 }} />
+      <StudentHeader profile={profile as any} school={school} stats={stats} />
       <header className="relative z-50 border-b border-slate-200 bg-white sticky top-0 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">

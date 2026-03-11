@@ -59,6 +59,70 @@ export async function awardXP(userId: string, xp: number, schoolId?: string | nu
     }
 }
 
+/**
+ * Handles student streak logic and login-based daily challenges.
+ * This should be called on login and on lesson/quiz completion.
+ */
+export async function handleStudentEngagement(userId: string) {
+    try {
+        const student = await db.query.students.findFirst({
+            where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`)
+        });
+
+        if (!student) return;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let newStreak = student.current_streak || 0;
+        const lastActive = student.last_active_at ? new Date(student.last_active_at) : null;
+        
+        if (lastActive) {
+            lastActive.setHours(0, 0, 0, 0);
+            const diffDays = Math.round((today.getTime() - lastActive.getTime()) / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 1) {
+                // New day, consecutive activity
+                newStreak += 1;
+            } else if (diffDays > 1) {
+                // Skiped one or more days, reset but start at 1 for today
+                newStreak = 1;
+            } else if (diffDays === 0) {
+                // Already active today, streak remains same (unless it was 0, then set to 1)
+                if (newStreak === 0) newStreak = 1;
+            }
+        } else {
+            // Very first activity
+            newStreak = 1;
+        }
+
+        const longestStreak = Math.max(newStreak, student.longest_streak || 0);
+
+        await db.update(students).set({
+            current_streak: newStreak,
+            longest_streak: longestStreak,
+            last_active_at: new Date(),
+            updated_at: new Date()
+        }).where(eq(students.id, userId));
+
+        // Trigger the "streak" (login) challenge progress
+        try {
+            const { updateDailyChallengeProgress } = await import('@/modules/student/actions/challenge-actions');
+            await updateDailyChallengeProgress(userId, 'streak', 1);
+        } catch (e) {
+            console.error("Failed to update streak challenge:", e);
+        }
+
+        // Mark achievement data as "dirty" to trigger a re-check on next dashboard visit
+        await redis.setex(`user:${userId}:achievements_dirty`, 3600, '1');
+
+        // Invalidate dashboard to show new streak
+        await invalidateStudentDashboardCache(userId);
+    } catch (err) {
+        console.error("Engagement handling error:", err);
+    }
+}
+
 export async function incrementProgressCounter(userId: string, metric: 'lessons' | 'quizzes' | 'perfect_quizzes') {
     const key = `user:${userId}:stats`;
     await redis.hincrby(key, metric, 1);

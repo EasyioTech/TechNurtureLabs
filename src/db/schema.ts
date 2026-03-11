@@ -16,7 +16,7 @@ export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'quarterly',
 export const paymentStatusEnum = pgEnum('payment_status', ['created', 'authorized', 'captured', 'failed', 'refunded']);
 // NEW BUG 5: removed 'quiz' — quizzes are a first-class entity (quizzes table). A lesson's quiz
 // is discovered via the quizzes relation (WHERE lesson_id = ?), not via content_type.
-export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['video', 'ppt', 'pdf']);
+export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['video', 'ppt', 'pdf', 'quiz']);
 export const questionTypeEnum = pgEnum('question_type', ['mcq', 'true_false', 'fill_blank', 'multi_select']);
 export const xpSourceEnum = pgEnum('xp_source', ['lesson_completion', 'quiz_score', 'daily_streak', 'challenge_win', 'badge_earned', 'bonus', 'manual_adjustment']);
 export const achievementTierEnum = pgEnum('achievement_tier', ['bronze', 'silver', 'gold', 'platinum']);
@@ -103,8 +103,8 @@ export const schoolAdmins = pgTable('school_admins', {
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => [
-    uniqueIndex('uq_school_admins_email_per_school')
-        .on(table.email, table.school_id)
+    uniqueIndex('uq_school_admins_email')
+        .on(table.email)
         .where(sql`deleted_at IS NULL`),
     index('idx_school_admins_school').on(table.school_id),
 ]);
@@ -134,8 +134,11 @@ export const students = pgTable('students', {
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => [
-    uniqueIndex('uq_students_email_per_school')
-        .on(table.email, table.school_id)
+    uniqueIndex('uq_students_email')
+        .on(table.email)
+        .where(sql`deleted_at IS NULL`),
+    uniqueIndex('uq_students_phone')
+        .on(table.phone)
         .where(sql`deleted_at IS NULL`),
     index('idx_students_school').on(table.school_id),
     index('idx_students_xp').on(table.cumulative_xp),

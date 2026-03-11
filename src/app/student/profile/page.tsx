@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { getStudentProfileData, updateStudentBio, updateStudentAvatar, updateStudentProfile } from '@/modules/student/actions/profile-actions';
+import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -166,14 +167,7 @@ export default function StudentProfile() {
   const avatarBg = AVATAR_COLORS.find(c => c.id === selectedColor)?.code || 'bg-indigo-600';
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading Profile Context...</p>
-        </div>
-      </div>
-    );
+    return <StudentDashboardLoader message="Loading Profile Context..." />;
   }
 
   const xpProgress = (profile?.total_xp || 0) % 1000;

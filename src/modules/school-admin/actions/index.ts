@@ -135,7 +135,7 @@ export async function getSchoolAdminDashboardData(schoolId: string) {
 
     await verifySchoolAdminContext(schoolId);
     const studentsData = await db.query.students.findMany({
-        where: eq(students.school_id, schoolId)
+        where: and(eq(students.school_id, schoolId), sql`${students.deleted_at} IS NULL`)
     });
     const studentIds = studentsData.map(s => s.id);
 
@@ -242,7 +242,7 @@ export async function getSchoolStats(schoolId: string) {
 
     await verifySchoolAdminContext(schoolId);
     const studentsData = await db.query.students.findMany({
-        where: eq(students.school_id, schoolId)
+        where: and(eq(students.school_id, schoolId), sql`${students.deleted_at} IS NULL`)
     });
     const studentIds = studentsData.map(s => s.id);
 
@@ -340,7 +340,7 @@ export async function getSchoolStats(schoolId: string) {
 export async function getSchoolStudents(schoolId: string) {
     await verifySchoolAdminContext(schoolId);
     const studentsData = await db.query.students.findMany({
-        where: eq(students.school_id, schoolId),
+        where: and(eq(students.school_id, schoolId), sql`${students.deleted_at} IS NULL`),
         orderBy: [desc(students.cumulative_xp)],
     });
     const studentIds = studentsData.map(s => s.id);
@@ -377,11 +377,13 @@ export async function getSchoolStudents(schoolId: string) {
 export async function getSchoolStudentDetails(userId: string) {
     await verifyStudentContext(userId);
     const student = await db.query.students.findFirst({
-        where: eq(students.id, userId)
+        where: and(eq(students.id, userId), sql`deleted_at IS NULL`)
     });
     if (!student) return null;
 
     const progressData = await db.select().from(lessonProgress).where(eq(lessonProgress.user_id, userId));
+    const lessonsDone = progressData.filter(p => p.completed_at != null).length;
+
     const courseProgressData = await db.select().from(courseProgress).where(eq(courseProgress.user_id, userId));
     const courseIds = courseProgressData.map(cp => cp.course_id);
 
@@ -389,15 +391,36 @@ export async function getSchoolStudentDetails(userId: string) {
         ? await db.query.courses.findMany({ where: inArray(courses.id, courseIds) })
         : [];
 
-    const attempts = await db.query.quizAttempts.findMany({ where: eq(quizAttempts.user_id, userId) });
+    const attempts = await db.query.quizAttempts.findMany({ 
+        where: eq(quizAttempts.user_id, userId),
+        orderBy: [desc(quizAttempts.completed_at)]
+    });
+    
     const avgScore = attempts.length > 0
-        ? Math.round(attempts.reduce((a, at) => a + (Number((at as any).score_pct) || 0), 0) / attempts.length)
+        ? Math.round(attempts.reduce((a, at) => {
+            const score = Number(at.score) || 0;
+            const max = Number(at.max_score) || 100;
+            return a + (score / max * 100);
+        }, 0) / attempts.length)
         : 0;
 
     const classMappingDetails = await db.query.studentAcademicRecords.findFirst({
         where: eq(studentAcademicRecords.user_id, userId),
+        orderBy: [desc(studentAcademicRecords.created_at)],
         with: { academicClass: true } as any
     });
+
+    // Rank calculation within their school
+    const rankResult = await db.select({
+        count: sql<number>`count(*)`
+    })
+    .from(students)
+    .where(and(
+        eq(students.school_id, student.school_id),
+        sql`${students.cumulative_xp} > ${student.cumulative_xp}`,
+        sql`deleted_at IS NULL`
+    ));
+    const rank = Number(rankResult[0].count) + 1;
 
     return {
         student: {
@@ -405,18 +428,25 @@ export async function getSchoolStudentDetails(userId: string) {
             full_name: `${student.first_name} ${student.last_name}`,
             total_xp: Number(student.cumulative_xp),
             level: Math.floor(Number(student.cumulative_xp) / 1000) + 1,
-            class_name: (classMappingDetails as any)?.academicClass?.name || 'N/A'
+            class_name: (classMappingDetails as any)?.academicClass?.name || 'N/A',
+            lessons_completed: lessonsDone,
+            rank
         },
         courses: courseProgressData.map(cp => {
             const c = enrolledCourses.find(cur => cur.id === cp.course_id);
             return {
                 ...cp,
                 title: c?.title || 'Unknown',
-                thumbnail_url: c?.thumbnail_url || null
+                thumbnail_url: c?.thumbnail_url || null,
+                progress_pct: Number(cp.progress_pct)
             };
         }),
         quizCount: attempts.length,
-        avgScore
+        avgScore,
+        recentAttempts: attempts.slice(0, 5).map(at => ({
+            ...at,
+            score_pct: Math.round((Number(at.score) / (Number(at.max_score) || 100)) * 100)
+        }))
     };
 }
 

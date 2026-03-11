@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { registerSchool, fetchActivePaymentPlans, fetchGlobalClasses } from '@/modules/auth/register-actions';
+import { registerSchool, fetchActivePaymentPlans, fetchGlobalClasses, checkIdentifierExists } from '@/modules/auth/register-actions';
 import { validatePromoCode } from '@/modules/super-admin/actions';
 import { toast } from 'sonner';
 import {
@@ -105,13 +105,36 @@ export default function SchoolRegistrationPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNextStep = (currentStep: number) => {
-    if (validateStep(currentStep)) {
-      setErrors({});
-      setStep(currentStep + 1);
-    } else {
+  const handleNextStep = async (currentStep: number) => {
+    if (!validateStep(currentStep)) {
       toast.error('Please fill in all required fields correctly');
+      return;
     }
+
+    if (currentStep === 3) {
+      setLoading(true);
+      try {
+        const exists = await checkIdentifierExists(formData.contact_email);
+        if (exists) {
+          setErrors(prev => ({ ...prev, contact_email: 'This email is already associated with an account' }));
+          toast.error('The email address provided is already in use');
+          return;
+        }
+        
+        // If no payment plans, register school immediately after currentStep 3 check passes
+        if (paymentPlans.length === 0) {
+            await handleRegisterSchool(null);
+            return;
+        }
+      } catch (err) {
+        console.error('Email check failed:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    setErrors({});
+    setStep(currentStep + 1);
   };
 
   useEffect(() => {
@@ -633,7 +656,7 @@ export default function SchoolRegistrationPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.contact_email ? 'text-rose-500' : 'text-slate-600'}`}>School Email *</Label>
+                      <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.contact_email ? 'text-rose-500' : 'text-slate-600'}`}>Email *</Label>
                       <Input
                         type="email"
                         value={formData.contact_email}
@@ -648,7 +671,7 @@ export default function SchoolRegistrationPage() {
                       {errors.contact_email && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.contact_email}</p>}
                     </div>
                     <div className="space-y-2">
-                      <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.contact_phone ? 'text-rose-500' : 'text-slate-600'}`}>Primary Phone *</Label>
+                      <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.contact_phone ? 'text-rose-500' : 'text-slate-600'}`}>Phone *</Label>
                       <Input
                         value={formData.contact_phone}
                         onChange={(e) => {
@@ -701,10 +724,7 @@ export default function SchoolRegistrationPage() {
                     ) : (
                       <NeumorphicButton
                         type="button"
-                        onClick={() => {
-                          if (validateStep(3)) handleRegisterSchool(null);
-                          else toast.error('Please fill in all required fields correctly');
-                        }}
+                        onClick={() => handleNextStep(3)}
                         variant="primary"
                         className="w-full !h-16 !text-base !rounded-2xl !bg-slate-950 hover:!bg-slate-900 shadow-xl shadow-slate-950/10 transition-all font-black uppercase tracking-widest cursor-pointer"
                       >
