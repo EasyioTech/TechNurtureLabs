@@ -29,6 +29,26 @@ export function VideoPlayer({ src, poster, lessonId, userId, onComplete, classNa
   const [progress, setProgress] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [showSkipWarning, setShowSkipWarning] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-hide controls during playback
+  useEffect(() => {
+    const handleActivity = () => {
+      setShowControls(true);
+      if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+      if (isPlaying) {
+        controlsTimeout.current = setTimeout(() => setShowControls(false), 3000);
+      }
+    };
+
+    window.addEventListener('mousemove', handleActivity);
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+    };
+  }, [isPlaying]);
 
   // Auto-save progress and update maxTime
   useEffect(() => {
@@ -36,7 +56,6 @@ export function VideoPlayer({ src, poster, lessonId, userId, onComplete, classNa
       if (player.current && !player.current.paused) {
         const { currentTime, duration } = player.current;
         if (duration > 0) {
-          // Update max watched time strictly (only increment if it played naturally, not jumped)
           if (currentTime > maxTimeWatched.current && currentTime - maxTimeWatched.current <= 3) {
             maxTimeWatched.current = currentTime;
           }
@@ -44,12 +63,10 @@ export function VideoPlayer({ src, poster, lessonId, userId, onComplete, classNa
           const pct = (currentTime / duration) * 100;
           setProgress(pct);
 
-          // Save progress every 15 seconds
           if (Math.abs(currentTime - lastSavedPosition.current) > 15) {
             saveProgress(pct);
           }
 
-          // Mark as complete if > 95% AND they've actually seen it
           const maxPct = (maxTimeWatched.current / duration) * 100;
           if (maxPct >= 95 && !isCompleted) {
             handleComplete();
@@ -88,7 +105,6 @@ export function VideoPlayer({ src, poster, lessonId, userId, onComplete, classNa
 
   const onSeeking = (event: any) => {
     const targetTime = event?.detail ?? player.current?.currentTime ?? 0;
-    // VERY STRICT: If seeking forward beyond what was already watched
     if (targetTime > maxTimeWatched.current + 2) {
       player.current.currentTime = maxTimeWatched.current;
       setShowSkipWarning(true);
@@ -97,12 +113,23 @@ export function VideoPlayer({ src, poster, lessonId, userId, onComplete, classNa
   };
 
   return (
-    <div className={cn("space-y-8 w-full", className)}>
-      <div className="aspect-video bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl shadow-indigo-900/10 border border-white/5 relative group">
+    <div className={cn("relative group/player w-full transition-all duration-1000", className)}>
+      {/* Cinematic Ambient Aura */}
+      <div className={cn(
+        "absolute -inset-20 theater-aura transition-opacity duration-1000",
+        isPlaying ? "opacity-100" : "opacity-0"
+      )} />
+
+      <div className={cn(
+        "relative z-20 aspect-video bg-black rounded-[3rem] overflow-hidden shadow-[0_0_100px_-20px_rgba(30,41,59,0.5)] border border-white/5 transition-all duration-1000",
+        isPlaying && "scale-[1.02] shadow-[0_0_150px_-20px_rgba(79,70,229,0.2)]"
+      )}>
         <MediaPlayer
           ref={player}
           title="Curriculum Video"
           src={src}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
           onEnded={() => !isCompleted && handleComplete()}
           onSeeking={onSeeking}
           onTimeUpdate={(event: any) => {
@@ -117,110 +144,102 @@ export function VideoPlayer({ src, poster, lessonId, userId, onComplete, classNa
           <MediaProvider>
             {poster && <Poster src={poster} alt="Lesson Thumbnail" className="vds-poster object-cover" />}
           </MediaProvider>
-          <DefaultVideoLayout icons={defaultLayoutIcons} />
+          <div className={cn(
+            "absolute inset-0 z-50 transition-opacity duration-500 pointer-events-none",
+            showControls || !isPlaying ? "opacity-100" : "opacity-0"
+          )}>
+            <DefaultVideoLayout icons={defaultLayoutIcons} />
+          </div>
         </MediaPlayer>
 
+        {/* Skip Warning Overlay */}
         {showSkipWarning && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] animate-in zoom-in duration-300">
-            <div className="bg-slate-900/90 backdrop-blur-xl border border-white/10 px-8 py-5 rounded-[2rem] flex items-center gap-4 shadow-2xl">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center text-amber-500">
-                <Lock size={24} />
+          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-slate-900/90 border border-white/10 px-10 py-6 rounded-[2.5rem] flex items-center gap-5 shadow-2xl scale-110">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/20 flex items-center justify-center text-amber-500">
+                <Lock size={28} strokeWidth={3} />
               </div>
-              <div>
-                <p className="text-xs font-black text-white uppercase tracking-widest">No Skipping Allowed</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Please watch the full content to proceed</p>
+              <div className="text-left">
+                <p className="text-sm font-black text-white uppercase tracking-[0.2em]">Focus Mode Active</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Skipping is restricted to ensure mastery.</p>
               </div>
             </div>
           </div>
         )}
       </div>
 
+      {/* Under-Player Minimal Progress (Only visible when controls are hidden) */}
       <div className={cn(
-        "p-8 lg:p-10 rounded-[3rem] border transition-all duration-700 relative overflow-hidden",
-        isCompleted
-          ? "bg-emerald-50/20 border-emerald-100"
-          : "bg-white border-slate-100 shadow-2xl shadow-slate-200/40"
+        "absolute -bottom-4 left-10 right-10 h-1.5 transition-all duration-700 z-10",
+        !showControls && isPlaying ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+      )}>
+        <div className="w-full h-full bg-white/5 backdrop-blur-md rounded-full overflow-hidden border border-white/10">
+          <div 
+            className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 transition-all duration-300 shadow-[0_0_15px_rgba(79,70,229,0.5)]"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Context Info Card (Hides when playing) */}
+      <div className={cn(
+        "mt-12 p-10 rounded-[4rem] border transition-all duration-1000",
+        isCompleted ? "bg-emerald-50/20 border-emerald-100" : "bg-white border-slate-100 shadow-2xl shadow-slate-200/40",
+        isPlaying && "opacity-20 blur-xl scale-95 pointer-events-none translate-y-12"
       )}>
         <div className="flex flex-col lg:flex-row items-center justify-between gap-10">
-          <div className="flex items-center gap-6 w-full lg:w-auto">
+          <div className="flex items-center gap-8">
             <div className={cn(
-              "w-20 h-20 rounded-[2rem] flex items-center justify-center border-4 transition-all duration-1000",
+              "w-24 h-24 rounded-[2.5rem] flex items-center justify-center border-4 transition-all duration-1000",
               isCompleted
-                ? "bg-white text-emerald-500 border-emerald-100 scale-110 rotate-[360deg] shadow-lg"
+                ? "bg-white text-emerald-500 border-emerald-100 scale-110 shadow-lg"
                 : "bg-slate-50 text-indigo-600 border-slate-100"
             )}>
-              {isCompleted ? <CheckCircle2 size={40} /> : <Play size={40} fill="currentColor" />}
+              {isCompleted ? <CheckCircle2 size={48} /> : <Play size={48} fill="currentColor" className="ml-2" />}
             </div>
-            <div className="flex-1">
+            <div className="text-left">
               <h4 className={cn(
-                "text-xl font-black uppercase tracking-tight mb-2",
+                "text-2xl font-black uppercase tracking-tight mb-2 leading-none",
                 isCompleted ? "text-emerald-900" : "text-slate-900"
               )}>
-                {isCompleted ? 'Module Finished' : 'Continuous Learning'}
+                {isCompleted ? 'Knowledge Verified' : 'Deep Study Session'}
               </h4>
-              <div className="flex items-center gap-3">
-                <div className="flex -space-x-2">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[8px] font-black text-slate-500 overflow-hidden">
-                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i * 123}`} alt="student" />
-                    </div>
-                  ))}
-                </div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  {isCompleted ? 'Badge Available' : 'Watching with 4K+ others'}
-                </p>
-              </div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
+                {isCompleted ? 'Badge Unlocked' : 'Mastery Progress Optimized'}
+              </p>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-6 w-full lg:w-auto min-w-[320px]">
+          <div className="flex flex-col sm:flex-row items-center gap-8 w-full lg:w-auto min-w-[400px]">
             <div className="flex-1 w-full">
-              <div className="flex items-end justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Watching Progress</p>
-                </div>
-                <p className={cn(
-                  "text-base font-black tracking-tighter",
-                  isCompleted ? "text-emerald-600" : "text-indigo-600"
-                )}>
-                  {Math.round(progress)}%
-                </p>
+              <div className="flex items-end justify-between mb-4">
+                <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Watching Progress</p>
+                <p className="text-xl font-black text-indigo-600 tracking-tighter">{Math.round(progress)}%</p>
               </div>
-              <div className="h-5 bg-slate-100 rounded-full overflow-hidden p-1.5 border border-slate-200/30">
+              <div className="h-4 bg-slate-100 rounded-full overflow-hidden p-1 border border-slate-200/30">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-1000 ease-out",
-                    isCompleted ? "bg-emerald-500" : "bg-gradient-to-r from-indigo-600 to-indigo-400 shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+                    isCompleted ? "bg-emerald-500" : "bg-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.4)]"
                   )}
                   style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <button
                 onClick={handleSeekBack}
-                className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white hover:border-indigo-100 hover:shadow-xl transition-all active:scale-90"
-                title="Rewind 10s"
+                className="w-16 h-16 rounded-[2rem] bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white hover:border-indigo-100 hover:shadow-2xl transition-all active:scale-90"
               >
-                <RotateCcw size={22} />
+                <RotateCcw size={28} />
               </button>
-              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-200 cursor-not-allowed" title="Skipping Locked">
-                <FastForward size={22} />
+              <div className="w-16 h-16 rounded-[2rem] bg-white border border-slate-100 flex items-center justify-center text-slate-200 cursor-not-allowed opacity-50">
+                <FastForward size={28} />
               </div>
             </div>
           </div>
         </div>
-
-        {!isCompleted && (
-          <div className="mt-8 pt-8 border-t border-slate-100 flex items-center gap-3">
-            <Info size={14} className="text-amber-500" />
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-              Lesson will be marked complete automatically once you reach 95% of the video duration.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

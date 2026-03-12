@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { students, schoolAdmins, superAdmins, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping, schools, auditLogs } from '@/db/schema';
+import { students, schoolAdmins, superAdmins, courses, lessons, lessonProgress, enrollments, xpEvents, quizzes, quizQuestions, academicSessions, studentAcademicRecords, courseClassMapping, schools, auditLogs, mediaAssets, lessonSubmissions } from '@/db/schema';
 import { eq, and, inArray, asc, desc, isNotNull, isNull, sql } from 'drizzle-orm';
 import { awardXP, incrementProgressCounter, handleStudentEngagement } from '@/lib/gamification';
 import { redis, safeRedis } from '@/lib/redis';
@@ -485,4 +485,57 @@ export async function updateTimeSpent(lessonId: string, seconds: number) {
             updated_at: new Date()
         })
         .where(and(eq(lessonProgress.user_id, session.userId), eq(lessonProgress.lesson_id, lessonId)));
+}
+
+export async function submitAssignment(lessonId: string, assetId: string) {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+    const userId = session.userId;
+
+    // Check for existing submissions
+    const existing = await db.query.lessonSubmissions.findFirst({
+        where: and(
+            eq(lessonSubmissions.user_id, userId),
+            eq(lessonSubmissions.lesson_id, lessonId)
+        )
+    });
+
+    if (existing) {
+        await db.update(lessonSubmissions)
+            .set({
+                asset_id: assetId,
+                status: 'submitted',
+                updated_at: new Date()
+            })
+            .where(eq(lessonSubmissions.id, existing.id));
+    } else {
+        await db.insert(lessonSubmissions).values({
+            user_id: userId,
+            lesson_id: lessonId,
+            asset_id: assetId,
+            status: 'submitted',
+        });
+    }
+
+    // Automatically reward completion on submission
+    await completeLessonAndReward(lessonId);
+    
+    return { success: true };
+}
+
+export async function getSubmissionStatus(lessonId: string) {
+    const session = await verifySession();
+    if (!session) return null;
+
+    const submission = await db.query.lessonSubmissions.findFirst({
+        where: and(
+            eq(lessonSubmissions.user_id, session.userId),
+            eq(lessonSubmissions.lesson_id, lessonId)
+        ),
+        with: {
+            asset: true
+        }
+    });
+
+    return submission || null;
 }

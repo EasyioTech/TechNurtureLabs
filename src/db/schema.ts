@@ -16,7 +16,7 @@ export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'quarterly',
 export const paymentStatusEnum = pgEnum('payment_status', ['created', 'authorized', 'captured', 'failed', 'refunded']);
 // NEW BUG 5: removed 'quiz' — quizzes are a first-class entity (quizzes table). A lesson's quiz
 // is discovered via the quizzes relation (WHERE lesson_id = ?), not via content_type.
-export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['video', 'ppt', 'pdf', 'quiz']);
+export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['video', 'ppt', 'pdf', 'quiz', 'assignment']);
 export const questionTypeEnum = pgEnum('question_type', ['mcq', 'true_false', 'fill_blank', 'multi_select']);
 export const xpSourceEnum = pgEnum('xp_source', ['lesson_completion', 'quiz_score', 'daily_streak', 'challenge_win', 'badge_earned', 'bonus', 'manual_adjustment']);
 export const achievementTierEnum = pgEnum('achievement_tier', ['bronze', 'silver', 'gold', 'platinum']);
@@ -490,10 +490,20 @@ export const quizAttempts = pgTable('quiz_attempts', {
     xp_earned: integer('xp_earned').notNull().default(0),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    uniqueIndex('uq_quiz_attempt').on(table.user_id, table.quiz_id, table.enrollment_id, table.attempt_number),
-    // ISSUE 20: Missing FK indexes — without these, every quiz update/delete scans the whole attempts table
-    index('idx_qattempts_quiz').on(table.quiz_id),
     index('idx_qattempts_user').on(table.user_id),
+]);
+
+export const lessonSubmissions = pgTable('lesson_submissions', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+    lesson_id: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
+    asset_id: uuid('asset_id').notNull().references(() => mediaAssets.id, { onDelete: 'cascade' }),
+    feedback: text('feedback'),
+    status: text('status').notNull().default('submitted'),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+    index('idx_submission_user_lesson').on(table.user_id, table.lesson_id),
 ]);
 
 // ============================================================================
@@ -553,7 +563,8 @@ export const dailyChallenges = pgTable('daily_challenges', {
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    uniqueIndex('uq_daily_challenge_date').on(table.challenge_date),
+    index('idx_daily_challenge_date').on(table.challenge_date),
+    uniqueIndex('uq_daily_challenge_item').on(table.challenge_date, table.title),
 ]);
 
 export const userDailyChallenges = pgTable('user_daily_challenges', {
@@ -830,6 +841,7 @@ export const lessonsRelations = relations(lessons, ({ one, many }) => ({
     course: one(courses, { fields: [lessons.course_id], references: [courses.id] }),
     quiz: one(quizzes, { fields: [lessons.id], references: [quizzes.lesson_id] }),
     progress: many(lessonProgress),
+    submissions: many(lessonSubmissions),
 }));
 
 export const enrollmentsRelations = relations(enrollments, ({ one, many }) => ({
@@ -935,4 +947,10 @@ export const invoicesRelations = relations(invoices, ({ one }) => ({
     school: one(schools, { fields: [invoices.school_id], references: [schools.id] }),
     subscription: one(schoolSubscriptions, { fields: [invoices.subscription_id], references: [schoolSubscriptions.id] }),
     transaction: one(paymentTransactions, { fields: [invoices.transaction_id], references: [paymentTransactions.id] }),
+}));
+
+export const lessonSubmissionsRelations = relations(lessonSubmissions, ({ one }) => ({
+    student: one(students, { fields: [lessonSubmissions.user_id], references: [students.id] }),
+    lesson: one(lessons, { fields: [lessonSubmissions.lesson_id], references: [lessons.id] }),
+    asset: one(mediaAssets, { fields: [lessonSubmissions.asset_id], references: [mediaAssets.id] }),
 }));

@@ -124,3 +124,42 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Cinematic Zen Utilities */
+@layer utilities {
+  .theater-mode {
+    @apply bg-slate-950 text-white selection:bg-indigo-500/30 overflow-hidden;
+  }
+
+  .theater-aura {
+    background: radial-gradient(circle at center, rgba(79, 70, 229, 0.15) 0%, rgba(2, 6, 23, 0) 70%);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .stealth-header {
+    @apply transition-all duration-700 opacity-0 -translate-y-4;
+  }
+
+  .stealth-header:hover, 
+  .stealth-header.active {
+    @apply opacity-100 translate-y-0;
+  }
+
+  .glass-theater {
+    @apply bg-white/5 backdrop-blur-3xl border border-white/10 shadow-2xl;
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2.5s infinite;
+}

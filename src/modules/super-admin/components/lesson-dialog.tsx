@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Lesson } from '../types';
 import { useAdminTheme, t } from '../theme-context';
-import { BookOpen, Play, FileText, MonitorPlay, HelpCircle, ExternalLink, Zap, Clock, X, Upload, Link2, Library, FileDown } from 'lucide-react';
+import { BookOpen, Play, FileText, MonitorPlay, HelpCircle, ExternalLink, Zap, Clock, X, Upload, Link2, Library, FileDown, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { MediaLibraryPicker } from './media-library-picker';
@@ -30,6 +30,7 @@ const CONTENT_TYPES = [
     { id: 'video', label: 'Video', icon: Play, desc: 'MP4, YouTube, Vimeo' },
     { id: 'ppt', label: 'Presentation', icon: MonitorPlay, desc: 'Slides & Decks' },
     { id: 'pdf', label: 'Document', icon: FileText, desc: 'PDF, Word, Text' },
+    { id: 'assignment', label: 'Mission', icon: Trophy, desc: 'Document submission' },
     { id: 'quiz', label: 'Quiz', icon: HelpCircle, desc: 'Interactive assessment' },
 ];
 

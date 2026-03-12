@@ -44,7 +44,7 @@ type Lesson = {
   id: string;
   title: string;
   description: string | null;
-  content_type: 'video' | 'ppt' | 'pdf';
+  content_type: 'video' | 'ppt' | 'pdf' | 'assignment';
   content_url: string | null;
   duration: number;
   xp_reward: number;
@@ -55,12 +55,14 @@ type Lesson = {
 import { VideoPlayer } from '@/components/video/video-player';
 import { PDFViewer } from '@/components/learning/pdf-viewer';
 import { PPTViewer } from '@/components/learning/ppt-viewer';
+import { AssignmentViewer } from '@/components/learning/assignment-viewer';
 
 // ─── Content type helpers ──────────────────────────────────────────
 const CONTENT_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   video: { label: 'Video Lesson', icon: Play, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
   ppt: { label: 'Presentation', icon: MonitorPlay, color: 'text-sky-600 bg-sky-50 border-sky-100' },
   pdf: { label: 'Document', icon: FileText, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
+  assignment: { label: 'Mission', icon: Trophy, color: 'text-rose-600 bg-rose-50 border-rose-100' },
   quiz: { label: 'Assessment', icon: HelpCircle, color: 'text-amber-600 bg-amber-50 border-amber-100' },
 };
 
@@ -166,92 +168,110 @@ export default function LessonPlayerPage() {
 
   return (
     <div className={cn(
-      "min-h-screen transition-colors duration-700 font-sans selection:bg-indigo-100 selection:text-indigo-900",
-      isFocusMode ? "bg-slate-950 text-white" : "bg-slate-50/30 text-slate-900 pb-32"
+      "min-h-screen transition-all duration-1000 font-sans selection:bg-indigo-100 selection:text-indigo-900",
+      isFocusMode ? "theater-mode" : "bg-slate-50/30 text-slate-900 pb-32"
     )}>
-      {/* Premium Header */}
-      {!isFocusMode && (
-        <header className="sticky top-0 z-[60] bg-white/80 backdrop-blur-xl border-b border-slate-100 lg:px-12 px-6 py-5 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-6">
-            <Link href={`/student/course/${lesson.course_id}`}>
-              <button className="w-10 h-10 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:border-slate-300 transition-all hover:scale-105 active:scale-95 shadow-sm">
-                <ArrowLeft size={18} />
-              </button>
-            </Link>
-            <div className="h-6 w-px bg-slate-100" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-0.5">Lesson Mode</p>
-              <p className="text-sm font-black text-slate-900 uppercase tracking-tight truncate max-w-[200px] md:max-w-md">
-                {lesson.title}
-              </p>
-            </div>
-          </div>
+      {/* Cinematic Aura for background depth */}
+      {isFocusMode && <div className="fixed inset-0 theater-aura z-0 animate-in fade-in duration-1000" />}
 
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsFocusMode(true)}
-              className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-2xl border border-slate-100 bg-white text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 hover:border-indigo-100 transition-all shadow-sm"
-            >
-              <Maximize2 size={14} /> Focus Mode
+      {/* Premium Stealth Header */}
+      <header className={cn(
+        "sticky top-0 z-[60] bg-white/80 backdrop-blur-xl border-b border-slate-100 lg:px-12 px-6 py-5 flex items-center justify-between shadow-sm transition-all duration-700",
+        isFocusMode && "stealth-header fixed inset-x-0 !bg-slate-950/50 !border-white/5 text-white"
+      )}>
+        <div className="flex items-center gap-6">
+          <Link href={`/student/course/${lesson.course_id}`}>
+            <button className={cn(
+              "w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-sm",
+              isFocusMode ? "bg-white/5 border border-white/10 text-white/50 hover:text-white" : "bg-white border border-slate-100 text-slate-400 hover:text-slate-900 hover:border-slate-300"
+            )}>
+              <ArrowLeft size={18} />
             </button>
-            <div className="h-6 w-px bg-slate-100 hidden sm:block" />
-            <div className={`hidden sm:flex items-center gap-2 px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-widest ${currentConfig.color}`}>
-              <DynamicIcon size={14} strokeWidth={3} />
-              {currentConfig.label}
-            </div>
-            <div className="h-6 w-px bg-slate-100 hidden sm:block" />
-            <div className="flex items-center gap-2 bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border border-amber-100 text-[10px] font-black uppercase tracking-widest shadow-sm">
-              <Star size={14} fill="currentColor" />
-              +{lesson.xp_reward} XP
-            </div>
+          </Link>
+          <div className={cn("h-6 w-px", isFocusMode ? "bg-white/10" : "bg-slate-100")} />
+          <div className="min-w-0">
+            <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-0.5", isFocusMode ? "text-indigo-400" : "text-indigo-600")}>
+              {isFocusMode ? 'Focusing on Mastery' : 'Lesson Mode'}
+            </p>
+            <p className={cn("text-sm font-black uppercase tracking-tight truncate max-w-[200px] md:max-w-md", isFocusMode ? "text-white" : "text-slate-900")}>
+              {lesson.title}
+            </p>
           </div>
-        </header>
-      )}
-
-      {isFocusMode && (
-        <div className="fixed top-8 right-8 z-[100] animate-in fade-in duration-500">
-          <button
-            onClick={() => setIsFocusMode(false)}
-            className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white/50 hover:text-white transition-all transform hover:rotate-90"
-            title="Exit Focus Mode"
-          >
-            <Minimize2 size={24} />
-          </button>
         </div>
-      )}
+
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsFocusMode(!isFocusMode)}
+            className={cn(
+              "hidden lg:flex items-center gap-2 px-6 py-2.5 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all shadow-sm",
+              isFocusMode 
+                ? "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white" 
+                : "bg-white border-slate-100 text-slate-500 hover:text-indigo-600 hover:border-indigo-100"
+            )}
+          >
+            {isFocusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            {isFocusMode ? 'Exit Cinema' : 'Theater Mode'}
+          </button>
+          
+          <div className={cn("h-6 w-px hidden sm:block", isFocusMode ? "bg-white/10" : "bg-slate-100")} />
+          
+          <div className={cn(
+            "hidden sm:flex items-center gap-2 px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-colors",
+            isFocusMode ? "bg-white/5 border-white/10 text-white/50" : currentConfig.color
+          )}>
+            <DynamicIcon size={14} strokeWidth={3} />
+            {currentConfig.label}
+          </div>
+
+          <div className="flex items-center gap-2 bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border border-amber-100 text-[10px] font-black uppercase tracking-widest shadow-sm">
+            <Star size={14} fill="currentColor" />
+            <span className="hidden lg:inline">Earn</span> +{lesson.xp_reward} XP
+          </div>
+        </div>
+      </header>
 
       <main className={cn(
-        "mx-auto transition-all duration-700 animate-in fade-in slide-in-from-bottom-4",
-        isFocusMode ? "max-w-[1400px] py-12 px-12" : "max-w-[1200px] px-6 lg:px-12 py-12 lg:py-20 "
+        "relative z-10 mx-auto transition-all duration-1000 animate-in fade-in slide-in-from-bottom-4",
+        isFocusMode ? "max-w-[1400px] py-20 px-12" : "max-w-[1240px] px-6 lg:px-12 py-12 lg:py-20"
       )}>
-        <div className={cn("mb-12", isFocusMode && "text-center")}>
+        <div className={cn("transition-all duration-1000", isFocusMode ? "text-center mb-16" : "mb-12")}>
           <div className={cn("flex flex-wrap items-center gap-3 mb-6", isFocusMode && "justify-center")}>
             <Badge className={cn(
-              "border-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest",
-              isFocusMode ? "bg-white/10 text-white" : "bg-slate-900 text-white"
+              "border-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-colors",
+              isFocusMode ? "bg-indigo-500 text-white" : "bg-slate-900 text-white"
             )}>{lesson.content_type.toUpperCase()} CONTENT</Badge>
             <Badge className={cn(
-              "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm",
+              "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm transition-colors",
               isFocusMode ? "bg-white/5 border-white/10 text-white/40" : "bg-white border-slate-100 text-slate-400"
             )}>
               <Clock size={12} />
-              Estimated {lesson.duration}m
+              Duration: {lesson.duration}m
             </Badge>
           </div>
+          
           <h1 className={cn(
-            "font-black uppercase tracking-tight leading-none mb-6",
-            isFocusMode ? "text-4xl lg:text-7xl text-white" : "text-3xl lg:text-5xl text-slate-900"
+            "font-black tracking-tight leading-tight transition-all duration-1000",
+            isFocusMode 
+              ? "text-4xl lg:text-7xl text-white mb-2 max-w-4xl mx-auto uppercase" 
+              : "text-3xl lg:text-5xl text-slate-900 mb-6 uppercase"
           )}>
             {lesson.title}
           </h1>
-          {!isFocusMode && (
+
+          <div className={cn(
+            "transition-all duration-1000 overflow-hidden",
+            isFocusMode ? "max-h-0 opacity-0" : "max-h-40 opacity-100"
+          )}>
             <p className="text-slate-500 font-medium max-w-2xl text-lg leading-relaxed">
               {lesson.description || `In this lesson, you will explore everything about ${lesson.title}. Follow along carefully to complete the lesson and earn your rewards.`}
             </p>
-          )}
+          </div>
         </div>
 
-        <div className="relative">
+        <div className={cn(
+          "relative transition-all duration-1000",
+          isFocusMode && "scale-[1.05] perspective-1000"
+        )}>
           {/* ── VIDEO ── */}
           {lesson.content_type === 'video' && lesson.content_url && (
             <VideoPlayer
@@ -267,6 +287,7 @@ export default function LessonPlayerPage() {
               url={lesson.content_url}
               onComplete={() => completeLesson()}
               lessonComplete={lessonComplete}
+              isFocusMode={isFocusMode}
             />
           )}
 
@@ -276,11 +297,11 @@ export default function LessonPlayerPage() {
               url={lesson.content_url}
               onComplete={() => completeLesson()}
               lessonComplete={lessonComplete}
+              isFocusMode={isFocusMode}
             />
           )}
 
           {/* ── QUIZ ── */}
-          {/* quiz_data presence drives quiz rendering — content_type is no longer 'quiz' */}
           {lesson.quiz_data && (
             <QuizEngine
               quizData={lesson.quiz_data}
@@ -289,25 +310,38 @@ export default function LessonPlayerPage() {
               onComplete={completeLesson}
             />
           )}
+
+          {/* ── ASSIGNMENT / UPLOAD ── */}
+          {lesson.content_type === 'assignment' && (
+            <AssignmentViewer
+              lessonId={lessonId}
+              onComplete={() => completeLesson()}
+              lessonComplete={lessonComplete}
+              isFocusMode={isFocusMode}
+            />
+          )}
         </div>
 
         {/* ── Completion Banner ── */}
         {lessonComplete && !lesson.quiz_data && (
-          <div className="mt-16 p-12 rounded-[4rem] bg-slate-950 text-white text-center shadow-[0_40px_80px_-20px_rgba(30,41,59,0.3)] relative overflow-hidden border border-white/5 animate-in zoom-in-95 duration-700">
+          <div className={cn(
+            "mt-16 p-12 lg:p-20 rounded-[4rem] text-center relative overflow-hidden transition-all duration-700 animate-in zoom-in-95 backdrop-blur-3xl border shadow-2xl",
+            isFocusMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-950 border-white/5 text-white"
+          )}>
             <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px]" />
             <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px]" />
 
             <div className="relative z-10 max-w-md mx-auto">
-              <div className="w-24 h-24 bg-white/5 backdrop-blur-xl rounded-[2.5rem] flex items-center justify-center border border-white/10 mx-auto mb-8 shadow-2xl">
+              <div className="w-24 h-24 bg-white/5 rounded-[2.5rem] flex items-center justify-center border border-white/10 mx-auto mb-8 shadow-2xl">
                 <CheckCircle2 size={40} className="text-emerald-400" strokeWidth={3} />
               </div>
-              <h3 className="text-4xl font-black uppercase tracking-tight mb-4">Lesson Complete</h3>
+              <h3 className="text-4xl lg:text-5xl font-black uppercase tracking-tight mb-4">Ascension Complete</h3>
               <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-10">
-                Excellent effort! You have earned <span className="text-emerald-400 font-black">+{lesson.xp_reward} XP</span>.
+                Knowledge secured. You've earned <span className="text-emerald-400 font-black">+{lesson.xp_reward} XP</span>.
               </p>
               <Link href={`/student/course/${lesson.course_id}`}>
-                <button className="group w-full bg-white text-slate-950 h-16 rounded-3xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-emerald-400 hover:text-white transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3">
-                  Back to Course <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                <button className="group w-full bg-white text-slate-950 h-20 rounded-[2.5rem] font-black uppercase tracking-[0.2em] text-[10px] hover:bg-emerald-400 hover:text-white transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3">
+                  Return to Syllabus <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                 </button>
               </Link>
             </div>

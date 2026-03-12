@@ -71,28 +71,34 @@ export async function handleStudentEngagement(userId: string) {
 
         if (!student) return;
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
 
         let newStreak = student.current_streak || 0;
-        const lastActive = student.last_active_at ? new Date(student.last_active_at) : null;
+        const lastActiveDate = student.last_active_at ? new Date(student.last_active_at) : null;
         
-        if (lastActive) {
-            lastActive.setHours(0, 0, 0, 0);
-            const diffDays = Math.round((today.getTime() - lastActive.getTime()) / (1000 * 60 * 60 * 24));
-
-            if (diffDays === 1) {
-                // New day, consecutive activity
-                newStreak += 1;
-            } else if (diffDays > 1) {
-                // Skiped one or more days, reset but start at 1 for today
-                newStreak = 1;
-            } else if (diffDays === 0) {
-                // Already active today, streak remains same (unless it was 0, then set to 1)
+        if (lastActiveDate) {
+            const lastActiveStr = lastActiveDate.toISOString().split('T')[0];
+            
+            if (todayStr === lastActiveStr) {
+                // Already processed today, keep current streak
                 if (newStreak === 0) newStreak = 1;
+            } else {
+                // Check if yesterday was the last active day
+                const yesterday = new Date(now);
+                yesterday.setDate(now.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+                if (lastActiveStr === yesterdayStr) {
+                    // Consecutive day!
+                    newStreak += 1;
+                } else {
+                    // Gap detected, reset but count today as day 1
+                    newStreak = 1;
+                }
             }
         } else {
-            // Very first activity
+            // First time activity
             newStreak = 1;
         }
 
