@@ -9,7 +9,9 @@ import { format, subDays, endOfDay, addMonths } from 'date-fns';
 import { courses, lessons, paymentPlans, superAdmins, schoolAdmins, students, schools, lessonProgress, enrollments, schoolSubscriptions, paymentTransactions, courseProgress, classes, courseClassMapping, schoolClassMapping, quizzes, quizQuestions, studentAcademicRecords, academicSessions, promoCodes, auditLogs, platformSettings, platformMetricsDaily } from '@/db/schema';
 import { eq, asc, desc, count, sql, and, lte, inArray, not } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { redis, safeRedis } from '@/lib/redis';
+import bcrypt from 'bcryptjs';
 
 const CACHE_TTL = 300; // 5 minutes
 const CACHE_KEYS = {
@@ -24,6 +26,10 @@ export async function invalidateAdminCache() {
 }
 
 export async function fetchAllAdminData() {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     // Attempt fragmented cache hit
     try {
         const [students, schools, courses, meta] = await Promise.all([
@@ -156,6 +162,11 @@ export async function fetchAllAdminData() {
 }
 
 export async function savePromoCode(data: any) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
+
     if (data.id) {
         const [updated] = await db.update(promoCodes).set({
             code: data.code,
@@ -186,6 +197,9 @@ export async function savePromoCode(data: any) {
 
 export async function deletePromoCode(id: string) {
     const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     const promo = await db.query.promoCodes.findFirst({ where: eq(promoCodes.id, id) });
     await db.delete(promoCodes).where(eq(promoCodes.id, id));
     if (session && promo) {
@@ -218,6 +232,10 @@ export async function validatePromoCode(code: string) {
 }
 
 export async function fetchCourseLessons(courseId: string) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     const data = await db.query.lessons.findMany({
         where: eq(lessons.course_id, courseId),
         orderBy: [asc(lessons.sequence_order)]
@@ -230,6 +248,10 @@ export async function fetchCourseLessons(courseId: string) {
 }
 
 export async function saveCourseAdmin(courseData: any) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     const slug = courseData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
     let courseId = courseData.id;
@@ -295,6 +317,9 @@ async function updateCourseTotals(courseId: string) {
 
 export async function deleteCourseAdmin(id: string) {
     const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     const course = await db.query.courses.findFirst({ where: eq(courses.id, id) });
     await db.delete(courses).where(eq(courses.id, id));
     if (session && course) {
@@ -311,10 +336,18 @@ export async function deleteCourseAdmin(id: string) {
 }
 
 export async function fetchLessonAdmin(id: string) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     return await db.query.lessons.findFirst({ where: eq(lessons.id, id) });
 }
 
 export async function saveLessonAdmin(lessonData: any) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     if (lessonData.id) {
         const [updated] = await db.update(lessons).set({
             title: lessonData.title,
@@ -352,6 +385,9 @@ export async function saveLessonAdmin(lessonData: any) {
 
 export async function deleteLessonAdmin(id: string) {
     const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, id) });
     await db.delete(lessons).where(eq(lessons.id, id));
     if (lesson) {
@@ -370,6 +406,10 @@ export async function deleteLessonAdmin(id: string) {
 }
 
 export async function saveLessonOrderAdmin(updates: any[]) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     for (const update of updates) {
         await db.update(lessons)
             .set({ sequence_order: update.sequence_index || update.sequence_order })
@@ -379,6 +419,10 @@ export async function saveLessonOrderAdmin(updates: any[]) {
 }
 
 export async function savePlanAdmin(planData: any) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     if (planData.is_popular) {
         // Only one plan can be featured
         await db.update(paymentPlans).set({ is_popular: false });
@@ -420,11 +464,14 @@ export async function savePlanAdmin(planData: any) {
 }
 
 export async function deletePlanAdmin(id: string) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     const activeSubs = await db.select().from(schoolSubscriptions).where(eq(schoolSubscriptions.plan_id, id));
     if (activeSubs.length > 0) {
         throw new Error("Cannot delete plan: This tier is currently being utilized by active institutions.");
     }
-    const session = await verifySession();
     const plan = await db.query.paymentPlans.findFirst({ where: eq(paymentPlans.id, id) });
     await db.delete(paymentPlans).where(eq(paymentPlans.id, id));
     if (session && plan) {
@@ -442,6 +489,9 @@ export async function deletePlanAdmin(id: string) {
 
 export async function toggleSchoolStatus(schoolId: string, isActive: boolean) {
     const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     const oldSchool = await db.query.schools.findFirst({ where: eq(schools.id, schoolId) });
 
     const [updated] = await db.update(schools)
@@ -487,7 +537,9 @@ const schoolAdminSchema = z.object({
 
 export async function saveSchoolAdmin(schoolData: any) {
     const session = await verifySession();
-    if (!session || session.userType !== 'super_admin') throw new Error('Unauthorized');
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
 
     const validatedData = schoolAdminSchema.parse(schoolData);
     const email = validatedData.email.toLowerCase().trim();
@@ -628,6 +680,10 @@ export async function saveSchoolAdmin(schoolData: any) {
 }
 
 export async function fetchQuizAdmin(lessonId: string) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     const quiz = await db.query.quizzes.findFirst({
         where: eq(quizzes.lesson_id, lessonId),
         with: {
@@ -640,6 +696,10 @@ export async function fetchQuizAdmin(lessonId: string) {
 }
 
 export async function saveQuizAdmin(quizData: any) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     let quizId = quizData.id;
 
     if (quizId) {
@@ -691,12 +751,20 @@ export async function saveQuizAdmin(quizData: any) {
 }
 
 export async function deleteQuizAdmin(quizId: string) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     // quiz_questions cascade via FK — only need to delete the quiz
     await db.delete(quizzes).where(eq(quizzes.id, quizId));
     invalidateAdminCache();
 }
 
 export async function assignPlanToSchool(schoolId: string, planId: string, billingMonths: number = 12, promoCodeId?: string | null) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     const now = new Date();
     const periodEnd = addMonths(now, billingMonths);
 
@@ -746,6 +814,10 @@ export async function assignPlanToSchool(schoolId: string, planId: string, billi
  */
 
 export async function fetchGlobalLessons() {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     const data = await db.query.lessons.findMany({
         with: {
             course: true
@@ -759,6 +831,10 @@ export async function fetchGlobalLessons() {
 }
 
 export async function fetchGlobalQuizzes() {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     const data = await db.query.quizzes.findMany({
         with: {
             course: true,
@@ -777,6 +853,10 @@ export async function fetchGlobalQuizzes() {
  */
 
 export async function cloneQuizAction(quizId: string, targetLessonId: string, targetCourseId: string) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     return await db.transaction(async (tx) => {
         const sourceQuiz = await tx.query.quizzes.findFirst({
             where: eq(quizzes.id, quizId),
@@ -820,6 +900,10 @@ export async function cloneQuizAction(quizId: string, targetLessonId: string, ta
 }
 
 export async function cloneLessonAction(lessonId: string, targetCourseId: string) {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     return await db.transaction(async (tx) => {
         const sourceLesson = await tx.query.lessons.findFirst({
             where: eq(lessons.id, lessonId)
@@ -858,6 +942,10 @@ export async function cloneLessonAction(lessonId: string, targetCourseId: string
 }
 
 export async function syncPlatformMetrics() {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     try {
         const last30Days = [];
         for (let i = 29; i >= 0; i--) {
@@ -957,6 +1045,10 @@ export async function ensureDefaultClasses() {
 }
 
 export async function fetchAllClasses() {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
     try {
         const allClasses = await db.select().from(classes).orderBy(asc(classes.level));
         return allClasses;
@@ -967,11 +1059,12 @@ export async function fetchAllClasses() {
 }
 
 export async function createClass(name: string, level: number) {
+    const session = await verifySession();
+    if (!session || (session.role !== 'super_admin' && session.userType !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
+
     try {
-        const session = await verifySession();
-        if (!session || session.role !== 'super_admin') {
-            return { success: false, error: 'Unauthorized' };
-        }
 
         if (!name || !name.trim()) {
             return { success: false, error: 'Class name is required' };
@@ -1006,11 +1099,12 @@ export async function createClass(name: string, level: number) {
 }
 
 export async function deleteClass(classId: string) {
+    const session = await verifySession();
+    if (!session || (session.role !== 'super_admin' && session.userType !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
+
     try {
-        const session = await verifySession();
-        if (!session || session.role !== 'super_admin') {
-            return { success: false, error: 'Unauthorized' };
-        }
 
         // Check if any school is using this class
         const mappings = await db.select().from(schoolClassMapping)

@@ -4,13 +4,16 @@ import { db } from '@/lib/db';
 import { students, studentAcademicRecords } from '@/db/schema';
 import { eq, and, desc, inArray, sql, isNotNull } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { redis } from '@/lib/redis';
 
 const LEADERBOARD_CACHE_TTL = 3600; // 1 hour for sync logic
 
 export async function getStudentLeaderboard(scope: 'school' | 'class') {
     const session = await verifySession();
-    if (!session) throw new Error('Unauthorized');
+    if (!session) {
+        redirect('/login');
+    }
     const userId = session.userId;
 
     if (session.role !== 'student') {

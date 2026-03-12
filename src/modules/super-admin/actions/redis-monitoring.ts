@@ -2,6 +2,7 @@
 
 import { redis } from '@/lib/redis';
 import { verifySession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { RedisHealthMetrics, SystemHealthData, ServerHealthMetrics, DatabaseHealthMetrics } from '../types';
 import os from 'os';
 import { db } from '@/lib/db';
@@ -10,7 +11,7 @@ import { sql } from 'drizzle-orm';
 export async function getSystemHealth(): Promise<SystemHealthData> {
     const session = await verifySession();
     if (!session || session.userType !== 'super_admin') {
-        throw new Error('Unauthorized');
+        redirect('/admin-portal/login');
     }
 
     try {
@@ -195,8 +196,8 @@ export async function getSystemHealth(): Promise<SystemHealthData> {
                         FROM pg_stat_activity 
                         WHERE state = 'active'
                     `);
-                    if (statsResult.rows && statsResult.rows.length > 0) {
-                        activeConns = statsResult.rows[0].active_connections as number;
+                    if (statsResult && statsResult.length > 0) {
+                        activeConns = (statsResult[0] as any).active_connections as number;
                     }
                 } catch (e) {
                     // Ignore if missing permissions for pg_stat_activity
@@ -208,8 +209,8 @@ export async function getSystemHealth(): Promise<SystemHealthData> {
                     const sizeResult = await db.execute(sql`
                         SELECT pg_size_pretty(pg_database_size(current_database())) as size
                     `);
-                    if (sizeResult.rows && sizeResult.rows.length > 0) {
-                        dbSize = sizeResult.rows[0].size as string;
+                    if (sizeResult && sizeResult.length > 0) {
+                        dbSize = (sizeResult[0] as any).size as string;
                     }
                 } catch (e) {
                     dbSize = 'Secured';

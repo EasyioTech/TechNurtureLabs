@@ -12,6 +12,7 @@ import {
     enrollments,
     auditLogs
 } from '@/db/schema';
+import { redirect } from 'next/navigation';
 import { eq, and, gt, sql, count, isNotNull, asc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getProgressCounter, isAchievementCheckNeeded, clearAchievementDirtyBit } from '@/lib/gamification';
@@ -151,7 +152,9 @@ export async function seedAchievementsData() {
  */
 export async function checkAndAwardAchievements() {
     const session = await verifySession();
-    if (!session) return { success: false, error: 'Unauthorized' };
+    if (!session) {
+        redirect('/login');
+    }
     const userId = session.userId;
 
     // OPTIMIZATION: Check dirty bit first. If no new XP or progress event, skip heavy DB checks.
@@ -293,7 +296,9 @@ async function getStudentRankMetrics(userId: string, schoolId: string) {
 
 export async function getStudentAchievementsData() {
     const session = await verifySession();
-    if (!session) throw new Error('Unauthorized');
+    if (!session) {
+        redirect('/login');
+    }
     const userId = session.userId;
 
     if (session.role !== 'student') {

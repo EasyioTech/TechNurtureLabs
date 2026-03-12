@@ -1,10 +1,11 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { superAdmins, schoolAdmins, students, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts, auditLogs, userSessions } from '@/db/schema';
+import { superAdmins, schoolAdmins, students, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts, auditLogs, userSessions, invoices } from '@/db/schema';
 import { eq, asc, desc, inArray, and, sql, or } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { verifySession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { redis } from '@/lib/redis';
 import { z } from 'zod';
 
@@ -13,7 +14,9 @@ import { z } from 'zod';
  */
 async function verifySchoolAdminContext(targetSchoolId: string) {
     const session = await verifySession();
-    if (!session) throw new Error('Unauthorized');
+    if (!session) {
+        redirect('/school-portal/login');
+    }
     if (session.userType === 'super_admin') return;
 
     // School Admins can only view/edit their own school
@@ -28,7 +31,9 @@ async function verifySchoolAdminContext(targetSchoolId: string) {
  */
 async function verifyStudentContext(targetUserId: string) {
     const session = await verifySession();
-    if (!session) throw new Error('Unauthorized');
+    if (!session) {
+        redirect('/school-portal/login');
+    }
     if (session.userType === 'super_admin') return;
 
     const currentUser = await db.query.schoolAdmins.findFirst({ where: eq(schoolAdmins.id, session.userId) });
@@ -583,6 +588,9 @@ export async function getSchoolLeaderboard(schoolId: string, limit = 10) {
 
 export async function toggleStudentStatus(userId: string, isActive: boolean) {
     const session = await verifySession();
+    if (!session) {
+        redirect('/school-portal/login');
+    }
     await verifyStudentContext(userId);
     const oldStudent = await db.query.students.findFirst({ where: eq(students.id, userId) });
 
@@ -605,6 +613,9 @@ export async function toggleStudentStatus(userId: string, isActive: boolean) {
 
 export async function deleteStudent(userId: string) {
     const session = await verifySession();
+    if (!session) {
+        redirect('/school-portal/login');
+    }
     await verifyStudentContext(userId);
     const student = await db.query.students.findFirst({ where: eq(students.id, userId) });
 

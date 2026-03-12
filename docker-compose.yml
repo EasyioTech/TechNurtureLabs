@@ -53,12 +53,31 @@ services:
     container_name: LMS_migration
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:admin@db:5432/orchids}
+      - ADMIN_FIRST_NAME=${ADMIN_FIRST_NAME:-Super}
+      - ADMIN_LAST_NAME=${ADMIN_LAST_NAME:-Admin}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@technurture.com}
+      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH:-$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi}
+      - PLATFORM_NAME=${PLATFORM_NAME:-TechNurture Labs}
+      - SUPPORT_EMAIL=${SUPPORT_EMAIL:-support@technurture.io}
+      - CURRENCY_DEFAULT=${CURRENCY_DEFAULT:-INR}
+      - PLATFORM_LOGO_URL=${PLATFORM_LOGO_URL:-}
+      - PLATFORM_FAVICON_URL=${PLATFORM_FAVICON_URL:-}
+      - LOGO_LAYOUT=${LOGO_LAYOUT:-horizontal}
+      - SHOW_PLATFORM_NAME=${SHOW_PLATFORM_NAME:-TRUE}
+      - LOGO_HEIGHT=${LOGO_HEIGHT:-40}
+      - HERO_VIDEO_URL=${HERO_VIDEO_URL:-}
+      - HERO_VIDEO_TYPE=${HERO_VIDEO_TYPE:-youtube}
     volumes:
       - ./database/schema.sql:/schema.sql:ro
+      - ./database/production_secure_init.sql:/prod_init.sql:ro
     depends_on:
       db:
         condition: service_healthy
-    command: psql $DATABASE_URL -f /schema.sql
+    command: >
+      sh -c "psql $DATABASE_URL -f /schema.sql && 
+             apt-get update && apt-get install -y gettext-base &&
+             envsubst < /prod_init.sql > /prod_init_final.sql &&
+             psql $DATABASE_URL -f /prod_init_final.sql"
     profiles:
       - setup
 

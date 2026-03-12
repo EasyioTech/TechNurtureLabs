@@ -2,13 +2,16 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { students, achievements, userAchievements, lessonProgress, quizAttempts, studentAcademicRecords } from '@/db/schema';
 import { eq, and, gt, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export async function getStudentProfileData() {
     const session = await verifySession();
-    if (!session) throw new Error('Unauthorized');
+    if (!session) {
+        redirect('/login');
+    }
 
     const profile = await db.query.students.findFirst({
         where: eq(students.id, session.userId),
@@ -105,7 +108,9 @@ export async function getStudentProfileData() {
 
 export async function updateStudentBio(bio: string) {
     const session = await verifySession();
-    if (!session) return;
+    if (!session) {
+        redirect('/login');
+    }
     await db.update(students).set({ bio }).where(eq(students.id, session.userId));
     revalidatePath('/student/profile');
 }
@@ -117,7 +122,9 @@ export async function updateStudentProfile(data: {
     phone?: string | null;
 }) {
     const session = await verifySession();
-    if (!session) return;
+    if (!session) {
+        redirect('/login');
+    }
     await db.update(students).set({
         first_name: data.first_name,
         last_name: data.last_name,
@@ -135,7 +142,9 @@ export async function updateStudentProfile(data: {
 
 export async function updateStudentAvatar(avatarStyle: string) {
     const session = await verifySession();
-    if (!session) return;
+    if (!session) {
+        redirect('/login');
+    }
     await db.update(students).set({ avatar_url: avatarStyle }).where(eq(students.id, session.userId));
     revalidatePath('/student/profile');
     revalidatePath('/student');

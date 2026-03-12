@@ -2,6 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { students, schools, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseClassMapping, quizAttempts, auditLogs } from '@/db/schema';
 import { eq, and, gt, inArray, asc, desc, isNotNull, sql } from 'drizzle-orm';
 import { redis, safeRedis } from '@/lib/redis';
@@ -38,7 +39,9 @@ export type DashboardData = {
 
 export async function getStudentDashboardData(): Promise<DashboardData> {
     const session = await verifySession();
-    if (!session) throw new Error('Unauthorized');
+    if (!session) {
+        redirect('/login');
+    }
 
     const userId = session.userId;
 
@@ -411,7 +414,7 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
 export async function deleteStudentAccountAction() {
     const session = await verifySession();
     if (!session || session.role !== 'student') {
-        throw new Error('Unauthorized account termination request.');
+        redirect('/login');
     }
 
     try {

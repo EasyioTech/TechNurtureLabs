@@ -4,10 +4,13 @@ import { db } from '@/lib/db';
 import { lessonProgress, courseProgress, quizAttempts, students } from '@/db/schema';
 import { eq, and, sql, gte } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 export async function getStudentDailyAnalytics() {
     const session = await verifySession();
-    if (!session) throw new Error('Unauthorized');
+    if (!session) {
+        redirect('/login');
+    }
     const userId = session.userId;
 
     if (session.role !== 'student') {
