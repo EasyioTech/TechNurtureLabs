@@ -440,6 +440,11 @@ export const lessonProgress = pgTable('lesson_progress', {
     progress_pct: numeric('progress_pct', { precision: 5, scale: 2 }).notNull().default('0'),
     last_position_secs: integer('last_position_secs').notNull().default(0),
     time_spent_secs: integer('time_spent_secs').notNull().default(0),
+    verified_watch_seconds: integer('verified_watch_seconds').notNull().default(0),
+    content_watched: boolean('content_watched').notNull().default(false),
+    completion_locked: boolean('completion_locked').notNull().default(false),
+    max_page_viewed: integer('max_page_viewed').notNull().default(0),
+    slides_viewed_array: jsonb('slides_viewed_array').notNull().default([]),
     xp_earned: integer('xp_earned').notNull().default(0),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -449,6 +454,29 @@ export const lessonProgress = pgTable('lesson_progress', {
     index('idx_lp_enrollment').on(table.enrollment_id),
     index('idx_lp_session').on(table.session_id),
     index('idx_lp_school').on(table.school_id),
+    index('idx_lp_content_watched').on(table.content_watched),
+]);
+
+export const lessonSessions = pgTable('lesson_sessions', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+    lesson_id: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
+    session_token: text('session_token').notNull().unique(),
+    device_hash: text('device_hash'),
+    user_agent: text('user_agent'),
+    ip_hash: text('ip_hash'),
+    last_nonce: bigint('last_nonce', { mode: 'number' }).notNull().default(0),
+    ip_address: inet('ip_address'),
+    started_at: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    last_heartbeat_at: timestamp('last_heartbeat_at', { withTimezone: true }).notNull().defaultNow(),
+    last_playback_time: integer('last_playback_time').notNull().default(0),
+    total_verified_seconds: integer('total_verified_seconds').notNull().default(0),
+    is_active: boolean('is_active').notNull().default(true),
+    metadata: jsonb('metadata').notNull().default({}),
+}, (table) => [
+    index('idx_sessions_user_lesson').on(table.user_id, table.lesson_id),
+    index('idx_sessions_token').on(table.session_token),
+    index('idx_sessions_active').on(table.is_active),
 ]);
 
 export const courseProgress = pgTable('course_progress', {
@@ -818,6 +846,7 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
     achievements: many(userAchievements),
     dailyChallenges: many(userDailyChallenges),
     certificates: many(userCertificates),
+    lessonSessions: many(lessonSessions),
 }));
 
 export const schoolAdminsRelations = relations(schoolAdmins, ({ one, many }) => ({
@@ -845,6 +874,7 @@ export const lessonsRelations = relations(lessons, ({ one, many }) => ({
     quiz: one(quizzes, { fields: [lessons.id], references: [quizzes.lesson_id] }),
     progress: many(lessonProgress),
     submissions: many(lessonSubmissions),
+    sessions: many(lessonSessions),
 }));
 
 export const enrollmentsRelations = relations(enrollments, ({ one, many }) => ({
@@ -956,4 +986,9 @@ export const lessonSubmissionsRelations = relations(lessonSubmissions, ({ one })
     student: one(students, { fields: [lessonSubmissions.user_id], references: [students.id] }),
     lesson: one(lessons, { fields: [lessonSubmissions.lesson_id], references: [lessons.id] }),
     asset: one(mediaAssets, { fields: [lessonSubmissions.asset_id], references: [mediaAssets.id] }),
+}));
+
+export const lessonSessionsRelations = relations(lessonSessions, ({ one }) => ({
+    student: one(students, { fields: [lessonSessions.user_id], references: [students.id] }),
+    lesson: one(lessons, { fields: [lessonSessions.lesson_id], references: [lessons.id] }),
 }));

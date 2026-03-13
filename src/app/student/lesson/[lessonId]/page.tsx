@@ -3,16 +3,17 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { useParams, useRouter } from 'next/navigation';
-import { getLessonData, completeLessonAndReward, saveVideoProgress, updateTimeSpent } from '@/components/learning/actions';
+import { getLessonData, completeLessonAndReward, saveVideoProgress, updateTimeSpent, getCourseDetailsData } from '@/components/learning/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, CheckCircle2, Clock, Play, FileText, Trophy,
   Zap, ExternalLink, AlertCircle, ChevronRight, MonitorPlay,
   HelpCircle, BookOpen, User, Star, Maximize2, Minimize2, ShieldAlert,
-  Timer
+  Timer, Lock as LockIcon, Layers, ShieldCheck
 } from 'lucide-react';
 import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import Link from 'next/link';
@@ -37,6 +38,8 @@ type QuizData = {
     pass_percentage: number;
     max_attempts: number;
     xp_reward: number;
+    is_locked?: boolean;
+    lock_reason?: string;
   };
   questions: Question[];
 };
@@ -95,6 +98,10 @@ export default function LessonPlayerPage() {
   const [lessonComplete, setLessonComplete] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
 
+  const [activeTab, setActiveTab] = useState<'overview' | 'syllabus' | 'quiz'>('overview');
+  const [courseData, setCourseData] = useState<any>(null);
+  const [courseLoading, setCourseLoading] = useState(true);
+
   // Time spent tracking
   useEffect(() => {
     const interval = setInterval(() => {
@@ -105,25 +112,16 @@ export default function LessonPlayerPage() {
     return () => clearInterval(interval);
   }, [lessonComplete, lessonId]);
 
-  // Global Security Measures (Disable inspect element, right click)
+  // Global Security Measures
   useEffect(() => {
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === 'F12' ||
-        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
-        (e.ctrlKey && e.key === 'U')
-      ) {
+      if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || (e.ctrlKey && e.key === 'U')) {
         e.preventDefault();
       }
     };
-
     window.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('keydown', handleKeyDown);
-
     return () => {
       window.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('keydown', handleKeyDown);
@@ -132,13 +130,27 @@ export default function LessonPlayerPage() {
 
   useEffect(() => {
     async function fetchLesson() {
+      setLoading(true);
       try {
         const data = await getLessonData(lessonId);
-        if (data) setLesson(data as any);
+        if (data) {
+          setLesson(data as any);
+          setLessonComplete(!!data.user_progress?.completed_at);
+          
+          // Fetch course details for syllabus tab
+          const course = await getCourseDetailsData(data.course_id);
+          setCourseData(course);
+
+          // Auto-switch to quiz if lesson is complete and quiz exists
+          if (data.user_progress?.completed_at && data.quiz_data) {
+             setActiveTab('quiz');
+          }
+        }
       } catch (err) {
         console.error('Failed to load lesson:', err);
       }
       setLoading(false);
+      setCourseLoading(false);
     }
     fetchLesson();
   }, [lessonId]);
@@ -148,26 +160,28 @@ export default function LessonPlayerPage() {
     setLessonComplete(true);
     try {
       await completeLessonAndReward(lessonId, quizPercentage, isPerfect);
+      if (lesson?.course_id) {
+        const course = await getCourseDetailsData(lesson.course_id);
+        setCourseData(course);
+      }
+      // Show quiz tab upon completion
+      if (lesson?.quiz_data) setActiveTab('quiz');
     } catch (err) { console.error('Failed to record completion:', err); }
-  }, [lessonId, lessonComplete]);
+  }, [lessonId, lessonComplete, lesson?.course_id, lesson?.quiz_data]);
 
-  // Safe configuration lookup
-  const currentConfig = lesson ? (CONTENT_CONFIG[lesson.content_type] || CONTENT_CONFIG.video) : CONTENT_CONFIG.video;
-  const DynamicIcon = currentConfig.icon;
-
-  if (loading) {
-    return <StudentDashboardLoader message={`Synchronizing ${currentConfig.label.toLowerCase()} content...`} />;
+  if (loading || courseLoading) {
+    return <StudentDashboardLoader message="Loading cinematic learning experience..." />;
   }
 
   if (!lesson) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white p-6">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
         <div className="text-center max-w-sm">
-          <div className="w-20 h-20 bg-red-50 rounded-[2rem] flex items-center justify-center text-red-500 mx-auto mb-8 border border-red-100">
+          <div className="w-20 h-20 bg-red-50 rounded-[2.5rem] flex items-center justify-center text-red-500 mx-auto mb-8 border border-red-100">
             <AlertCircle size={32} />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 leading-none">Lesson Locked</h2>
-          <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-10 leading-relaxed">This lesson is either not available yet or you need to enroll first.</p>
+          <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-2">Unavailable</h2>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-8">This resource is protected or deleted.</p>
           <Link href="/student">
             <Button className="w-full bg-slate-950 text-white rounded-2xl h-14 font-black uppercase tracking-widest text-[10px]">Back to Dashboard</Button>
           </Link>
@@ -176,198 +190,298 @@ export default function LessonPlayerPage() {
     );
   }
 
-  return (
-    <div className={cn(
-      "min-h-screen transition-all duration-1000 font-sans selection:bg-indigo-100 selection:text-indigo-900",
-      isFocusMode ? "theater-mode" : "bg-slate-50/30 text-slate-900 pb-32"
-    )}>
-      {/* Cinematic Aura for background depth */}
-      {isFocusMode && <div className="fixed inset-0 theater-aura z-0 animate-in fade-in duration-1000" />}
+  const currentLessonIndex = courseData?.lessons?.findIndex((l: any) => l.id === lessonId) ?? -1;
+  const nextLesson = courseData?.lessons?.[currentLessonIndex + 1];
 
-      {/* Premium Stealth Header */}
-      <header className={cn(
-        "sticky top-0 z-[60] bg-white/80 backdrop-blur-xl border-b border-slate-100 lg:px-12 px-6 py-5 flex items-center justify-between shadow-sm transition-all duration-700",
-        isFocusMode && "stealth-header fixed inset-x-0 !bg-slate-950/50 !border-white/5 text-white"
-      )}>
-        <div className="flex items-center gap-6">
+  return (
+    <div className="min-h-screen bg-white text-slate-950 selection:bg-indigo-100 selection:text-indigo-900">
+      {/* ── CLEAN HEADER ── */}
+      <header className="sticky top-0 z-[60] bg-white/80 backdrop-blur-xl border-b border-slate-200 h-20 flex items-center justify-between px-6 lg:px-12">
+        <div className="flex items-center gap-6 min-w-0">
           <Link href={`/student/course/${lesson.course_id}`}>
-            <button className={cn(
-              "w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-sm",
-              isFocusMode ? "bg-white/5 border border-white/10 text-white/50 hover:text-white" : "bg-white border border-slate-100 text-slate-400 hover:text-slate-900 hover:border-slate-300"
-            )}>
-              <ArrowLeft size={18} />
+            <button className="w-11 h-11 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white hover:border-indigo-200 transition-all active:scale-95">
+              <ArrowLeft size={20} />
             </button>
           </Link>
-          <div className={cn("h-6 w-px", isFocusMode ? "bg-white/10" : "bg-slate-100")} />
           <div className="min-w-0">
-            <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-0.5", isFocusMode ? "text-indigo-400" : "text-indigo-600")}>
-              {isFocusMode ? 'Focusing on Mastery' : 'Lesson Mode'}
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600 mb-0.5 whitespace-nowrap">
+              {courseData?.course?.title || 'Course Content'}
             </p>
-            <p className={cn("text-sm font-black uppercase tracking-tight truncate max-w-[200px] md:max-w-md", isFocusMode ? "text-white" : "text-slate-900")}>
+            <h1 className="text-sm font-black uppercase tracking-tight truncate max-w-[200px] md:max-w-md text-slate-900">
               {lesson.title}
-            </p>
+            </h1>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-2 bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border border-amber-100 text-[10px] font-black uppercase tracking-widest leading-none">
+            <Star size={14} fill="currentColor" />
+            Earn +{lesson.xp_reward} XP
+          </div>
+          
           <button
             onClick={() => setIsFocusMode(!isFocusMode)}
             className={cn(
-              "hidden lg:flex items-center gap-2 px-6 py-2.5 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all shadow-sm",
-              isFocusMode 
-                ? "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white" 
-                : "bg-white border-slate-100 text-slate-500 hover:text-indigo-600 hover:border-indigo-100"
+               "w-11 h-11 rounded-2xl border flex items-center justify-center transition-all active:scale-95",
+               isFocusMode ? "bg-indigo-600 border-indigo-500 text-white" : "bg-slate-50 border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200"
             )}
           >
-            {isFocusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-            {isFocusMode ? 'Exit Cinema' : 'Theater Mode'}
+            {isFocusMode ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
           </button>
-          
-          <div className={cn("h-6 w-px hidden sm:block", isFocusMode ? "bg-white/10" : "bg-slate-100")} />
-          
-          <div className={cn(
-            "hidden sm:flex items-center gap-2 px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-colors",
-            isFocusMode ? "bg-white/5 border-white/10 text-white/50" : currentConfig.color
-          )}>
-            <DynamicIcon size={14} strokeWidth={3} />
-            {currentConfig.label}
-          </div>
-
-          <div className="flex items-center gap-2 bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border border-amber-100 text-[10px] font-black uppercase tracking-widest shadow-sm">
-            <Star size={14} fill="currentColor" />
-            <span className="hidden lg:inline">Earn</span> +{lesson.xp_reward} XP
-          </div>
         </div>
       </header>
 
-      <main className={cn(
-        "relative z-10 mx-auto transition-all duration-1000 animate-in fade-in slide-in-from-bottom-4",
-        isFocusMode 
-          ? "max-w-none px-12 py-20" 
-          : (lesson.content_type === 'pdf' || lesson.content_type === 'ppt')
-            ? "max-w-none px-4 lg:px-6 py-6"
-            : "max-w-[1240px] px-6 lg:px-12 py-12 lg:py-20"
+      {/* ── PLAYER SECTION ── */}
+      <section className={cn(
+        "relative transition-all duration-1000",
+        isFocusMode ? "fixed inset-0 top-0 z-[100] bg-white" : "bg-white border-b border-slate-100"
       )}>
-        <div className={cn("transition-all duration-1000", isFocusMode ? "text-center mb-16" : "mb-12")}>
-          <div className={cn("flex flex-wrap items-center gap-3 mb-6", isFocusMode && "justify-center")}>
-            <Badge className={cn(
-              "border-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-colors",
-              isFocusMode ? "bg-indigo-500 text-white" : "bg-slate-900 text-white"
-            )}>{lesson.content_type.toUpperCase()} CONTENT</Badge>
-            <Badge className={cn(
-              "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm transition-colors",
-              isFocusMode ? "bg-white/5 border-white/10 text-white/40" : "bg-white border-slate-100 text-slate-400"
-            )}>
-              <Clock size={12} />
-              Duration: {lesson.duration}m
-            </Badge>
-          </div>
-          
-          <h1 className={cn(
-            "font-black tracking-tight leading-tight transition-all duration-1000",
-            isFocusMode 
-              ? "text-4xl lg:text-7xl text-white mb-2 max-w-4xl mx-auto uppercase" 
-              : "text-3xl lg:text-5xl text-slate-900 mb-6 uppercase"
-          )}>
-            {lesson.title}
-          </h1>
-
-          <div className={cn(
-            "transition-all duration-1000 overflow-hidden",
-            isFocusMode ? "max-h-0 opacity-0" : "max-h-40 opacity-100"
-          )}>
-            <p className="text-slate-500 font-medium max-w-2xl text-lg leading-relaxed">
-              {lesson.description || `In this lesson, you will explore everything about ${lesson.title}. Follow along carefully to complete the lesson and earn your rewards.`}
-            </p>
-          </div>
-        </div>
-
         <div className={cn(
-          "relative transition-all duration-1000",
-          isFocusMode && "scale-[1.05] perspective-1000"
+          "mx-auto transition-all duration-700",
+          isFocusMode ? "w-full h-full" : "max-w-[1240px] px-0 lg:px-6 py-0 lg:py-12"
         )}>
-          {/* ── VIDEO ── */}
-          {lesson.content_type === 'video' && lesson.content_url && (
-            <VideoPlayer
-              src={lesson.content_url}
-              lessonId={lessonId}
-              initialProgress={lesson.user_progress}
-              onComplete={() => completeLesson()}
-            />
-          )}
+           {lesson.content_type === 'video' && lesson.content_url && (
+              <VideoPlayer
+                src={lesson.content_url}
+                lessonId={lessonId}
+                initialProgress={lesson.user_progress}
+                onComplete={() => completeLesson()}
+              />
+            )}
 
-          {/* ── PDF ── */}
-          {lesson.content_type === 'pdf' && lesson.content_url && (
-            <PDFViewer
-              url={lesson.content_url}
-              onComplete={() => completeLesson()}
-              lessonComplete={lessonComplete}
-              isFocusMode={isFocusMode}
-            />
-          )}
-
-          {/* ── PPT / Slides ── */}
-          {lesson.content_type === 'ppt' && lesson.content_url && (
-            <PPTViewer
-              url={lesson.content_url}
-              onComplete={() => completeLesson()}
-              lessonComplete={lessonComplete}
-              isFocusMode={isFocusMode}
-            />
-          )}
-
-          {/* ── QUIZ ── */}
-          {lesson.quiz_data && (
-            <QuizEngine
-              quizData={lesson.quiz_data}
-              lessonXp={lesson.xp_reward}
-              lessonComplete={lessonComplete}
-              onComplete={completeLesson}
-            />
-          )}
-
-          {/* ── ASSIGNMENT / UPLOAD ── */}
-          {lesson.content_type === 'assignment' && (
-            <AssignmentViewer
-              lessonId={lessonId}
-              onComplete={() => completeLesson()}
-              lessonComplete={lessonComplete}
-              isFocusMode={isFocusMode}
-            />
-          )}
-        </div>
-
-        {/* ── Completion Banner ── */}
-        {lessonComplete && !lesson.quiz_data && (
-          <div className={cn(
-            "mt-16 p-12 lg:p-20 rounded-[4rem] text-center relative overflow-hidden transition-all duration-700 animate-in zoom-in-95 backdrop-blur-3xl border shadow-2xl",
-            isFocusMode ? "bg-white/5 border-white/10 text-white" : "bg-slate-950 border-white/5 text-white"
-          )}>
-            <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px]" />
-            <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px]" />
-
-            <div className="relative z-10 max-w-md mx-auto">
-              <div className="w-24 h-24 bg-white/5 rounded-[2.5rem] flex items-center justify-center border border-white/10 mx-auto mb-8 shadow-2xl">
-                <CheckCircle2 size={40} className="text-emerald-400" strokeWidth={3} />
+            {lesson.content_type === 'pdf' && (
+              <div className="max-w-[1240px] mx-auto py-8 lg:py-16">
+                <PDFViewer url={lesson.content_url!} onComplete={() => completeLesson()} lessonComplete={lessonComplete} />
               </div>
-              <h3 className="text-4xl lg:text-5xl font-black uppercase tracking-tight mb-4">Ascension Complete</h3>
-              <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-10">
-                Knowledge secured. You've earned <span className="text-emerald-400 font-black">+{lesson.xp_reward} XP</span>.
-              </p>
-              <Link href={`/student/course/${lesson.course_id}`}>
-                <button className="group w-full bg-white text-slate-950 h-20 rounded-[2.5rem] font-black uppercase tracking-[0.2em] text-[10px] hover:bg-emerald-400 hover:text-white transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3">
-                  Return to Syllabus <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            )}
+            
+            {lesson.content_type === 'ppt' && (
+              <div className="max-w-[1240px] mx-auto py-8 lg:py-16">
+                <PPTViewer url={lesson.content_url!} onComplete={() => completeLesson()} lessonComplete={lessonComplete} />
+              </div>
+            )}
+
+            {lesson.content_type === 'assignment' && (
+              <div className="max-w-[1240px] mx-auto py-8 lg:py-16">
+                <AssignmentViewer lessonId={lessonId} onComplete={() => completeLesson()} lessonComplete={lessonComplete} />
+              </div>
+            )}
+        </div>
+      </section>
+
+      {/* ── CONTENT AREA ── */}
+      {!isFocusMode && (
+        <main className="max-w-[1240px] mx-auto px-6 py-12 lg:py-20 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            {/* Tab Navigation */}
+            <div className="flex items-center gap-1 border-b border-slate-100 mb-16 overflow-x-auto no-scrollbar">
+              {[
+                { id: 'overview', label: 'Overview', icon: BookOpen },
+                { id: 'syllabus', label: 'Curriculum', icon: Layers },
+                { id: 'quiz', label: 'Assessment', icon: HelpCircle, hidden: !lesson.quiz_data }
+              ].filter(t => !t.hidden).map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id as any)}
+                  className={cn(
+                    "flex items-center gap-2.5 px-8 py-5 text-[11px] font-black uppercase tracking-[0.2em] transition-all relative shrink-0",
+                    activeTab === t.id ? "text-indigo-600" : "text-slate-400 hover:text-slate-900"
+                  )}
+                >
+                  <t.icon size={16} />
+                  {t.label}
+                  {activeTab === t.id && (
+                    <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600 rounded-t-full" />
+                  )}
                 </button>
-              </Link>
+              ))}
             </div>
-          </div>
-        )}
-      </main>
+
+            {/* Tab Content with Immersive Transitions */}
+            <div className="relative min-h-[500px]">
+              <AnimatePresence mode="wait">
+                {activeTab === 'overview' && (
+                  <motion.div
+                    key="overview"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ type: "spring", damping: 30, stiffness: 200 }}
+                  >
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 lg:gap-24">
+                      <div className="lg:col-span-2 space-y-12">
+                        <div className="space-y-6">
+                           <Badge className="bg-indigo-600 text-white border-0 px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-indigo-200/50">
+                             {lesson.content_type.toUpperCase()} MASTERY
+                           </Badge>
+                           <h2 className="text-4xl lg:text-7xl font-black uppercase tracking-tighter leading-[0.85] text-slate-900">
+                             {lesson.title}
+                           </h2>
+                        </div>
+                        
+                        <div className="h-px bg-slate-100 w-full shrink-0" />
+                        
+                        <div className="space-y-8">
+                           <div className="flex items-center gap-3">
+                              <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
+                              <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.4em]">Curriculum Objective</h4>
+                           </div>
+                           <p className="text-xl md:text-2xl font-bold text-slate-400 leading-relaxed uppercase selection:bg-indigo-100">
+                              {lesson.description || `Gain comprehensive knowledge in ${lesson.title}. Master the professional methodologies and strategic applications presented in this curriculum module.`}
+                           </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                           {[
+                             { label: 'Time Scale', val: `${lesson.duration}m`, icon: Clock, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
+                             { label: 'Intelligence', val: `+${lesson.xp_reward} XP`, icon: Star, color: 'text-amber-600 bg-amber-50 border-amber-100' },
+                             { label: 'Security', val: lessonComplete ? 'Verified' : 'Pending', icon: ShieldCheck, color: lessonComplete ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-slate-400 bg-slate-50 border-slate-200' },
+                             { label: 'Protocol', val: lesson.content_type, icon: Zap, color: 'text-sky-600 bg-sky-50 border-sky-100' }
+                           ].map((item, i) => (
+                             <div key={i} className="p-8 bg-white border border-slate-100 rounded-[2.5rem] transition-all hover:shadow-xl hover:shadow-slate-200/50 group">
+                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-6 border transition-transform group-hover:scale-110", item.color)}>
+                                   <item.icon size={22} />
+                                </div>
+                                <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.3em] mb-2 text-center">{item.label}</p>
+                                <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight text-center">{item.val}</p>
+                             </div>
+                           ))}
+                        </div>
+                      </div>
+
+                      {/* Right Panel */}
+                      <div className="space-y-8">
+                         <div className="p-10 bg-indigo-600 rounded-[3.5rem] shadow-2xl shadow-indigo-600/30 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl transition-transform group-hover:scale-125" />
+                            
+                            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-6 relative z-10">Academy Progression</p>
+                            <h4 className="text-2xl font-black text-white uppercase mb-10 leading-none tracking-tight relative z-10">Next Strategic Objective</h4>
+                            
+                            <div className="relative z-10">
+                              {lessonComplete && nextLesson ? (
+                                <Link href={`/student/lesson/${nextLesson.id}`}>
+                                  <button className="w-full h-20 bg-white text-slate-900 rounded-3xl flex items-center justify-between px-8 font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all active:scale-95 shadow-xl">
+                                    <span>Initiate Level</span>
+                                    <ChevronRight size={20} />
+                                  </button>
+                                </Link>
+                              ) : lessonComplete ? (
+                                <div className="w-full h-20 bg-white/10 border border-white/20 rounded-3xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-[10px] text-white">
+                                   Curriculum Concluded
+                                </div>
+                              ) : (
+                                <div className="w-full h-20 bg-black/10 border border-white/10 rounded-3xl flex items-center justify-center text-[10px] font-black text-white/40 uppercase tracking-widest gap-2">
+                                   <LockIcon size={14} /> Playback Lockdown
+                                </div>
+                              )}
+                            </div>
+                         </div>
+
+                         {lesson.quiz_data && !lessonComplete && (
+                            <div className="p-10 bg-slate-50 border border-slate-200 rounded-[3.5rem] relative overflow-hidden group">
+                               <div className="flex items-center gap-4 mb-8">
+                                  <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                                     <HelpCircle size={24} />
+                                  </div>
+                                  <span className="text-[11px] font-black text-amber-600 uppercase tracking-[0.2em]">Exam Gate</span>
+                               </div>
+                               <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
+                                  Authentication successful. Awaiting verified playback completion to unlock assessment.
+                                </p>
+                            </div>
+                         )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTab === 'syllabus' && (
+                  <motion.div
+                    key="syllabus"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="max-w-4xl mx-auto space-y-6"
+                  >
+                     <div className="flex items-center justify-between mb-12 pb-6 border-b border-slate-100">
+                        <div className="flex items-center gap-4">
+                           <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
+                              <Layers size={24} />
+                           </div>
+                           <h3 className="text-2xl font-black uppercase text-slate-900 tracking-tight">Curriculum Roadmap</h3>
+                        </div>
+                        <span className="text-[11px] font-black text-slate-300 uppercase tracking-[0.4em]">
+                           {courseData?.lessons?.length || 0} Professional Steps
+                        </span>
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {courseData?.lessons?.map((l: any, idx: number) => {
+                          const isActive = l.id === lessonId;
+                          const isCompleted = l.status === 'completed';
+                          const isLocked = l.status === 'locked';
+                          const TypeIcon = (CONTENT_CONFIG[l.content_type] || CONTENT_CONFIG.video).icon;
+
+                          return (
+                            <Link 
+                              key={l.id} 
+                              href={isLocked ? '#' : `/student/lesson/${l.id}`}
+                              className={cn(
+                                "flex items-center gap-6 p-6 rounded-[2.5rem] transition-all border group relative overflow-hidden",
+                                isActive 
+                                  ? "bg-slate-50 border-indigo-600 ring-4 ring-indigo-500/5 shadow-inner" 
+                                  : isLocked 
+                                    ? "opacity-40 border-slate-100 grayscale-[0.5] cursor-not-allowed"
+                                    : "bg-white border-slate-100 hover:border-indigo-200 hover:shadow-xl hover:shadow-slate-200/40"
+                              )}
+                            >
+                               {isActive && <div className="absolute top-0 right-0 w-2 h-full bg-indigo-600" />}
+                               <div className={cn(
+                                 "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border-2 transition-all duration-500",
+                                 isActive ? "bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "bg-slate-50 border-slate-100 text-slate-400 group-hover:text-indigo-600 group-hover:border-indigo-100"
+                               )}>
+                                 {isCompleted ? <CheckCircle2 size={28} /> : <TypeIcon size={28} />}
+                               </div>
+                               <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-3 mb-2">
+                                     <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">Module {String(idx + 1).padStart(2, '0')}</span>
+                                     {isLocked && <LockIcon size={12} className="text-slate-300" />}
+                                  </div>
+                                  <p className={cn(
+                                    "text-[14px] font-black uppercase tracking-tight truncate transition-all",
+                                    isActive ? "text-white" : "text-white/50 group-hover:text-white"
+                                  )}>
+                                    {l.title}
+                                  </p>
+                               </div>
+                            </Link>
+                          );
+                        })}
+                     </div>
+                  </motion.div>
+                )}
+
+                {activeTab === 'quiz' && lesson.quiz_data && (
+                  <motion.div
+                    key="quiz"
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    className="animate-in fade-in duration-1000"
+                  >
+                     <QuizEngine
+                        quizData={lesson.quiz_data}
+                        lessonXp={lesson.xp_reward}
+                        lessonComplete={lessonComplete}
+                        onComplete={completeLesson}
+                      />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+        </main>
+      )}
     </div>
   );
 }
-
-
 // ─── Quiz Engine ───────────────────────────────────────────────────
 function QuizEngine({ quizData, lessonXp, lessonComplete, onComplete }: {
   quizData: QuizData | null;
@@ -380,6 +494,29 @@ function QuizEngine({ quizData, lessonXp, lessonComplete, onComplete }: {
   const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [quizFinished, setQuizFinished] = useState(false);
   const [score, setScore] = useState(0);
+
+  if (quizData?.quiz?.is_locked) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 px-6">
+        <div className="bg-slate-950 border border-white/5 p-12 lg:p-20 rounded-[4rem] text-center relative overflow-hidden shadow-2xl">
+           <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/5 rounded-full blur-[100px]" />
+           <div className="relative z-10 flex flex-col items-center">
+             <div className="w-24 h-24 bg-white/5 rounded-[2.5rem] flex items-center justify-center border border-white/10 mb-8 shadow-2xl text-amber-500">
+               <LockIcon size={40} strokeWidth={3} />
+             </div>
+             <h3 className="text-3xl lg:text-4xl font-black uppercase tracking-tight mb-4 text-white">Assessment Locked</h3>
+             <p className="text-sm text-slate-400 font-bold uppercase tracking-widest max-w-md mx-auto leading-relaxed">
+               {quizData.quiz.lock_reason || "You must complete the lesson content before attempting the quiz."}
+             </p>
+             <div className="mt-10 flex items-center gap-2 px-6 py-3 bg-white/5 rounded-full border border-white/10 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <ShieldAlert size={14} className="text-amber-500" />
+                Verified Playback Enforcement Active
+             </div>
+           </div>
+        </div>
+      </div>
+    );
+  }
 
   // Security & Time Management
   const [timeLeft, setTimeLeft] = useState<number>(0);

@@ -44,7 +44,6 @@ export const safeRedis = {
         }
     },
 
-    /** Gets and parses JSON values safely */
     get: async <T>(key: string): Promise<T | null> => {
         try {
             const val = await redis.get(key);
@@ -53,6 +52,18 @@ export const safeRedis = {
         } catch (err) {
             console.error(`[Redis Error] Failed to get/parse key ${key}:`, err);
             return null;
+        }
+    },
+
+    /** Tracks security and performance indicators for observability */
+    trackEvent: async (category: 'security' | 'performance', type: string) => {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const key = `metrics:${category}:${today}`;
+            await redis.hincrby(key, type, 1);
+            await redis.expire(key, 86400 * 14); // 2 weeks retention
+        } catch (err) {
+            console.error(`[Metrics Error] Failed to track ${category}:${type}:`, err);
         }
     }
 };

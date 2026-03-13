@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
@@ -38,7 +38,56 @@ if (isCloudflareConfigured) {
             accessKeyId: serverEnv.CLOUDFLARE_ACCESS_KEY_ID,
             secretAccessKey: serverEnv.CLOUDFLARE_SECRET_ACCESS_KEY,
         },
+        forcePathStyle: true, // Recommended for R2 account ID endpoints
     });
+}
+
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+/**
+ * Fetches an object from R2 as a stream.
+ * Pass range to support partial content (seeking).
+ */
+export async function getObjectStream(key: string, range?: string) {
+    if (!s3Client || !isCloudflareConfigured) {
+        throw new Error("Storage provider not configured.");
+    }
+
+    const command = new GetObjectCommand({
+        Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+        Key: key,
+        Range: range,
+    });
+
+    const response = await s3Client.send(command);
+    return {
+        body: response.Body,
+        contentType: response.ContentType,
+        contentLength: response.ContentLength,
+        contentRange: response.ContentRange,
+        acceptRanges: response.AcceptRanges,
+    };
+}
+
+/**
+ * Generates a short-lived signed URL for an R2 object.
+ * Perfect for protected video streaming.
+ */
+export async function getSignedDownloadUrl(key: string, expiresIn: number = 300, method: string = 'GET'): Promise<string> {
+    if (!s3Client || !isCloudflareConfigured) {
+        throw new Error("Storage provider not configured for signed URLs.");
+    }
+
+    const commandParams = {
+        Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+        Key: key,
+    };
+
+    const command = method.toUpperCase() === 'HEAD' 
+        ? new HeadObjectCommand(commandParams)
+        : new GetObjectCommand(commandParams);
+
+    return await getSignedUrl(s3Client, command, { expiresIn });
 }
 
 // ─────────────────────────────────────────────

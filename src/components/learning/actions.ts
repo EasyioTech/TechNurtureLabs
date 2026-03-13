@@ -250,9 +250,26 @@ export async function getLessonData(lessonId: string) {
 
     if (!lesson) return null;
 
-    // Ensure enrollment exists so completion tracking works
     const enrollment = await ensureEnrollment(userId, lesson.course_id);
     if (!enrollment) return null;
+
+    const progress = await db.query.lessonProgress.findFirst({
+        where: and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId))
+    });
+
+    // ─── Quiz Eligibility Check ───
+    // If the lesson is a video, the quiz is locked until 80% is verified.
+    let isQuizLocked = false;
+    let lockReason = "";
+
+    if (lesson.content_type === 'video') {
+        const threshold = (lesson.duration_minutes || 0) * 60 * 0.8;
+        const watched = progress?.verified_watch_seconds || 0;
+        if (watched < threshold && !progress?.completed_at) {
+            isQuizLocked = true;
+            lockReason = `Please watch at least 80% of the video to unlock the assessment. (${Math.round(watched/60)}m / ${Math.round(threshold/60)}m watched)`;
+        }
+    }
 
     // NEW BUG 5: 'quiz' was removed from lessonContentTypeEnum because quizzes are a
     // first-class entity in the quizzes table. Always look up by lesson_id instead of
@@ -274,8 +291,10 @@ export async function getLessonData(lessonId: string) {
                 pass_percentage: Number(quiz.pass_percentage),
                 max_attempts: quiz.max_attempts,
                 xp_reward: quiz.xp_reward,
+                is_locked: isQuizLocked,
+                lock_reason: lockReason
             },
-            questions: questions.map(q => ({
+            questions: isQuizLocked ? [] : questions.map(q => ({
                 id: q.id,
                 text: q.question_text,
                 question_type: q.question_type,
@@ -288,10 +307,6 @@ export async function getLessonData(lessonId: string) {
         };
     }
 
-    const progress = await db.query.lessonProgress.findFirst({
-        where: and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId))
-    });
-
     return {
         ...lesson,
         sequence_index: lesson.sequence_order,
@@ -300,7 +315,8 @@ export async function getLessonData(lessonId: string) {
         user_progress: progress ? {
             completed_at: progress.completed_at,
             progress_pct: Number(progress.progress_pct) || 0,
-            last_position_secs: progress.last_position_secs || 0
+            last_position_secs: progress.last_position_secs || 0,
+            verified_watch_seconds: progress.verified_watch_seconds
         } : null
     };
 }

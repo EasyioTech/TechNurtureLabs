@@ -1,916 +1,796 @@
 -- ============================================================================
--- TechNurture LMS — Canonical Production Schema
--- Single source of truth. Auto-applied on first DB init via Docker.
--- Generated: 2026-03-08 | Version: 2.0.0
+-- TechNurture LMS — CLEAN PRODUCTION SCHEMA & SEED
+-- Generated: 2026-03-13
+-- Focus: Student Experience, Course Completion, and Stability
 -- ============================================================================
 
--- Auto-commit mode: each statement runs independently.
--- IF NOT EXISTS guards make this safe to re-run.
+-- [INSTRUCTIONS]
+-- 1. Execute this file in a fresh PostgreSQL database.
+-- 2. Ensure the 'pgcrypto' extension is available if gen_random_uuid() is used.
+-- 3. Default Super Admin: admin@technurture.com / AdminPassword123!
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-CREATE EXTENSION IF NOT EXISTS "citext";
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- ============================================================================
--- ENUM TYPES (idempotent)
--- ============================================================================
-DO $$ BEGIN CREATE TYPE user_type AS ENUM ('super_admin', 'school_admin', 'student'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE user_role AS ENUM ('super_admin', 'school_admin', 'student'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE subscription_status AS ENUM ('active', 'trialing', 'past_due', 'cancelled', 'expired'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE billing_cycle AS ENUM ('monthly', 'quarterly', 'semi_annual', 'annual'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE payment_status AS ENUM ('created', 'authorized', 'captured', 'failed', 'refunded'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE lesson_content_type AS ENUM ('video', 'ppt', 'pdf'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE question_type AS ENUM ('mcq', 'true_false', 'fill_blank', 'multi_select'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE xp_source AS ENUM ('lesson_completion', 'quiz_score', 'daily_streak', 'challenge_win', 'badge_earned', 'bonus', 'manual_adjustment'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE achievement_tier AS ENUM ('bronze', 'silver', 'gold', 'platinum'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE challenge_status AS ENUM ('active', 'completed', 'expired'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE audit_action AS ENUM ('create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE invoice_status AS ENUM ('draft', 'issued', 'paid', 'void', 'overdue'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE storage_type AS ENUM ('r2', 'local'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE asset_type AS ENUM ('video', 'image', 'document'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE discount_type AS ENUM ('percentage', 'fixed'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+-- 1. DROP EXISTING (Clean Start)
+-- Uncomment if you want to wipe everything first
+-- DROP SCHEMA public CASCADE;
+-- CREATE SCHEMA public;
+-- GRANT ALL ON SCHEMA public TO postgres;
+-- GRANT ALL ON SCHEMA public TO public;
 
+-- 2. CREATE ENUMS
+CREATE TYPE "public"."achievement_tier" AS ENUM('bronze', 'silver', 'gold', 'platinum');
+CREATE TYPE "public"."asset_type" AS ENUM('video', 'image', 'document');
+CREATE TYPE "public"."audit_action" AS ENUM('create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion');
+CREATE TYPE "public"."billing_cycle" AS ENUM('monthly', 'quarterly', 'semi_annual', 'annual');
+CREATE TYPE "public"."challenge_status" AS ENUM('active', 'completed', 'expired');
+CREATE TYPE "public"."discount_type" AS ENUM('percentage', 'fixed');
+CREATE TYPE "public"."invoice_status" AS ENUM('draft', 'issued', 'paid', 'void', 'overdue');
+CREATE TYPE "public"."lesson_content_type" AS ENUM('video', 'ppt', 'pdf', 'quiz', 'assignment');
+CREATE TYPE "public"."payment_status" AS ENUM('created', 'authorized', 'captured', 'failed', 'refunded');
+CREATE TYPE "public"."question_type" AS ENUM('mcq', 'true_false', 'fill_blank', 'multi_select');
+CREATE TYPE "public"."storage_type" AS ENUM('r2', 'local');
+CREATE TYPE "public"."subscription_status" AS ENUM('active', 'trialing', 'past_due', 'cancelled', 'expired');
+CREATE TYPE "public"."user_role" AS ENUM('super_admin', 'school_admin', 'student');
+CREATE TYPE "public"."user_type" AS ENUM('super_admin', 'school_admin', 'student');
+CREATE TYPE "public"."xp_source" AS ENUM('lesson_completion', 'quiz_score', 'daily_streak', 'challenge_win', 'badge_earned', 'bonus', 'manual_adjustment');
 
--- ============================================================================
--- 1. SCHOOLS (top-level tenant)
--- ============================================================================
-CREATE TABLE IF NOT EXISTS schools (
-    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name                        TEXT NOT NULL,
-    slug                        CITEXT NOT NULL UNIQUE,
-    email                       CITEXT NOT NULL,
-    phone                       TEXT,
-    address                     TEXT,
-    city                        TEXT,
-    state                       TEXT,
-    country                     TEXT NOT NULL DEFAULT 'IN',
-    pincode                     TEXT,
-    logo_url                    TEXT,
-    website                     TEXT,
-    is_active                   BOOLEAN NOT NULL DEFAULT TRUE,
-    udise_code                  TEXT,
-    data_processing_consent     BOOLEAN NOT NULL DEFAULT FALSE,
-    minor_data_guardian_consent BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at                  TIMESTAMPTZ
+-- 3. CREATE TABLES (Drizzle Optimized)
+CREATE TABLE "academic_sessions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"school_id" uuid NOT NULL,
+	"name" text NOT NULL,
+	"start_date" date NOT NULL,
+	"end_date" date NOT NULL,
+	"is_current" boolean DEFAULT false NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
--- ============================================================================
--- 2. ACADEMIC SESSIONS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS academic_sessions (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    school_id   UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-    name        TEXT NOT NULL,
-    start_date  DATE NOT NULL,
-    end_date    DATE NOT NULL,
-    is_current  BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at  TIMESTAMPTZ,
-    CONSTRAINT chk_session_dates CHECK (end_date > start_date)
+CREATE TABLE "achievements" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"description" text,
+	"icon_url" text,
+	"tier" "achievement_tier" DEFAULT 'bronze' NOT NULL,
+	"category" text DEFAULT 'Beginner' NOT NULL,
+	"xp_threshold" integer,
+	"criteria" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "achievements_name_unique" UNIQUE("name")
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_school_current_session
-    ON academic_sessions (school_id) WHERE is_current = TRUE AND deleted_at IS NULL;
-
--- ============================================================================
--- 3. USER MANAGEMENT (Decoupled)
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS super_admins (
-    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    first_name               TEXT NOT NULL,
-    last_name                TEXT NOT NULL,
-    email                    CITEXT NOT NULL UNIQUE,
-    password_hash            TEXT NOT NULL,
-    avatar_url               TEXT,
-    two_factor_secret        TEXT,
-    two_factor_enabled       BOOLEAN NOT NULL DEFAULT FALSE,
-    two_factor_backup_codes  JSONB NOT NULL DEFAULT '[]'::jsonb,
-    is_active                BOOLEAN NOT NULL DEFAULT TRUE,
-    last_active_at           TIMESTAMPTZ,
-    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at               TIMESTAMPTZ
+CREATE TABLE "audit_logs" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid,
+	"user_type" "user_type",
+	"school_id" uuid,
+	"action" "audit_action" NOT NULL,
+	"entity_type" text NOT NULL,
+	"entity_id" uuid,
+	"old_values" jsonb,
+	"new_values" jsonb,
+	"metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"ip_address" inet,
+	"user_agent" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS school_admins (
-    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    school_id                UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-    first_name               TEXT NOT NULL,
-    last_name                TEXT NOT NULL,
-    email                    CITEXT NOT NULL,
-    password_hash            TEXT NOT NULL,
-    phone                    TEXT,
-    avatar_url               TEXT,
-    bio                      TEXT,
-    is_active                BOOLEAN NOT NULL DEFAULT TRUE,
-    last_active_at           TIMESTAMPTZ,
-    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at               TIMESTAMPTZ
+CREATE TABLE "certificates" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"course_id" uuid NOT NULL,
+	"title" text NOT NULL,
+	"description" text,
+	"template_url" text,
+	"min_progress_pct" numeric(5, 2) DEFAULT '100.00' NOT NULL,
+	"min_quiz_score" numeric(5, 2),
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_school_admins_email_per_school
-    ON school_admins (email, school_id) WHERE deleted_at IS NULL;
-
-CREATE TABLE IF NOT EXISTS students (
-    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    school_id                UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-    first_name               TEXT NOT NULL,
-    last_name                TEXT NOT NULL,
-    email                    CITEXT NOT NULL,
-    password_hash            TEXT NOT NULL, -- PIN
-    phone                    TEXT,
-    avatar_url               TEXT,
-    bio                      TEXT,
-    date_of_birth            DATE,
-    gender                   TEXT,
-    is_minor                 BOOLEAN NOT NULL DEFAULT FALSE,
-    guardian_name            TEXT,
-    guardian_email           CITEXT,
-    guardian_consent         BOOLEAN NOT NULL DEFAULT FALSE,
-    cumulative_xp            BIGINT NOT NULL DEFAULT 0,
-    current_streak           INTEGER NOT NULL DEFAULT 0,
-    longest_streak           INTEGER NOT NULL DEFAULT 0,
-    is_active                BOOLEAN NOT NULL DEFAULT TRUE,
-    last_active_at           TIMESTAMPTZ,
-    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at               TIMESTAMPTZ
+CREATE TABLE "classes" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"level" integer NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "classes_name_unique" UNIQUE("name"),
+	CONSTRAINT "classes_level_unique" UNIQUE("level")
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_students_email_per_school
-    ON students (email, school_id) WHERE deleted_at IS NULL;
-
--- Global indexes
-CREATE INDEX IF NOT EXISTS idx_students_school ON students(school_id);
-CREATE INDEX IF NOT EXISTS idx_students_xp ON students(cumulative_xp);
--- users table removed
-
--- user_sessions removed from here, defined later in polymorphic section
-
--- ============================================================================
--- 5. PAYMENT PLANS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS payment_plans (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name          TEXT NOT NULL UNIQUE,
-    description   TEXT,
-    billing_cycle billing_cycle NOT NULL,
-    price         NUMERIC(12,2) NOT NULL,
-    currency      TEXT NOT NULL DEFAULT 'INR',
-    max_students  INT,
-    features      JSONB NOT NULL DEFAULT '{}',
-    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
-    is_popular    BOOLEAN NOT NULL DEFAULT FALSE,
-    trial_days    INT NOT NULL DEFAULT 0,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at    TIMESTAMPTZ,
-    CONSTRAINT chk_price_positive CHECK (price >= 0),
-    CONSTRAINT chk_trial_days_positive CHECK (trial_days >= 0)
+CREATE TABLE "course_class_mapping" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"course_id" uuid NOT NULL,
+	"class_id" uuid NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
--- ============================================================================
--- 6. PROMO CODES
--- ============================================================================
-CREATE TABLE IF NOT EXISTS promo_codes (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    code            TEXT NOT NULL UNIQUE,
-    discount_type   discount_type NOT NULL,
-    discount_value  NUMERIC(12,2) NOT NULL,
-    max_uses        INT,
-    current_uses    INT NOT NULL DEFAULT 0,
-    valid_from      TIMESTAMPTZ,
-    valid_until     TIMESTAMPTZ,
-    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE "course_metrics_daily" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"course_id" uuid NOT NULL,
+	"metric_date" date NOT NULL,
+	"total_enrollments" integer DEFAULT 0 NOT NULL,
+	"active_learners" integer DEFAULT 0 NOT NULL,
+	"completions" integer DEFAULT 0 NOT NULL,
+	"avg_progress_pct" numeric(5, 2),
+	"avg_quiz_score" numeric(5, 2),
+	"total_xp_awarded" bigint DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
--- ============================================================================
--- 7. SCHOOL SUBSCRIPTIONS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS school_subscriptions (
-    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    school_id             UUID NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
-    plan_id               UUID NOT NULL REFERENCES payment_plans(id) ON DELETE RESTRICT,
-    promo_code_id         UUID REFERENCES promo_codes(id) ON DELETE SET NULL,
-    status                subscription_status NOT NULL DEFAULT 'trialing',
-    current_period_start  TIMESTAMPTZ NOT NULL,
-    current_period_end    TIMESTAMPTZ NOT NULL,
-    trial_start           TIMESTAMPTZ,
-    trial_end             TIMESTAMPTZ,
-    cancelled_at          TIMESTAMPTZ,
-    cancel_reason         TEXT,
-    auto_renew            BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_period_dates CHECK (current_period_end > current_period_start)
+CREATE TABLE "course_progress" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"course_id" uuid NOT NULL,
+	"enrollment_id" uuid NOT NULL,
+	"session_id" uuid NOT NULL,
+	"school_id" uuid NOT NULL,
+	"lessons_completed" integer DEFAULT 0 NOT NULL,
+	"total_lessons" integer DEFAULT 0 NOT NULL,
+	"progress_pct" numeric(5, 2) DEFAULT '0' NOT NULL,
+	"total_xp_earned" integer DEFAULT 0 NOT NULL,
+	"total_time_secs" integer DEFAULT 0 NOT NULL,
+	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"completed_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_school_one_active_sub
-    ON school_subscriptions (school_id) WHERE status IN ('active', 'trialing');
-CREATE INDEX IF NOT EXISTS idx_subscriptions_school ON school_subscriptions (school_id);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON school_subscriptions (status);
-CREATE INDEX IF NOT EXISTS idx_sub_school_status ON school_subscriptions (school_id, status);
-
--- ============================================================================
--- 8. PAYMENT TRANSACTIONS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS payment_transactions (
-    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    school_id             UUID NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
-    subscription_id       UUID NOT NULL REFERENCES school_subscriptions(id) ON DELETE RESTRICT,
-    promo_code_id         UUID REFERENCES promo_codes(id) ON DELETE SET NULL,
-    razorpay_order_id     TEXT,
-    razorpay_payment_id   TEXT,
-    razorpay_signature    TEXT,
-    amount                NUMERIC(12,2) NOT NULL,
-    currency              TEXT NOT NULL DEFAULT 'INR',
-    status                payment_status NOT NULL DEFAULT 'created',
-    gateway_response      JSONB,
-    failure_reason        TEXT,
-    refund_amount         NUMERIC(12,2),
-    refunded_at           TIMESTAMPTZ,
-    created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_amount_positive CHECK (amount > 0),
-    CONSTRAINT chk_refund_amount CHECK (refund_amount IS NULL OR (refund_amount > 0 AND refund_amount <= amount))
+CREATE TABLE "courses" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"title" text NOT NULL,
+	"slug" text NOT NULL,
+	"description" text,
+	"thumbnail_url" text,
+	"is_published" boolean DEFAULT false NOT NULL,
+	"all_classes" boolean DEFAULT false NOT NULL,
+	"total_lessons" integer DEFAULT 0 NOT NULL,
+	"total_xp" integer DEFAULT 0 NOT NULL,
+	"category" text DEFAULT 'General' NOT NULL,
+	"topics" text[] DEFAULT '{}' NOT NULL,
+	"created_by" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	CONSTRAINT "courses_slug_unique" UNIQUE("slug")
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_razorpay_payment_id ON payment_transactions (razorpay_payment_id) WHERE razorpay_payment_id IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS uq_razorpay_order_id ON payment_transactions (razorpay_order_id) WHERE razorpay_order_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_transactions_school ON payment_transactions (school_id);
-CREATE INDEX IF NOT EXISTS idx_transactions_status ON payment_transactions (status);
-CREATE INDEX IF NOT EXISTS idx_transactions_created ON payment_transactions (created_at);
-
--- ============================================================================
--- 9. INVOICES
--- ============================================================================
-
-CREATE SEQUENCE IF NOT EXISTS invoice_number_seq START WITH 1000 INCREMENT BY 1;
-
-CREATE TABLE IF NOT EXISTS invoices (
-    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    school_id        UUID NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
-    subscription_id  UUID NOT NULL REFERENCES school_subscriptions(id) ON DELETE RESTRICT,
-    transaction_id   UUID REFERENCES payment_transactions(id) ON DELETE SET NULL,
-    invoice_number   TEXT NOT NULL UNIQUE DEFAULT ('INV-' || nextval('invoice_number_seq')::text),
-    status           invoice_status NOT NULL DEFAULT 'draft',
-    subtotal         NUMERIC(12,2) NOT NULL,
-    tax_amount       NUMERIC(12,2) NOT NULL DEFAULT 0,
-    total            NUMERIC(12,2) NOT NULL,
-    currency         TEXT NOT NULL DEFAULT 'INR',
-    issued_at        TIMESTAMPTZ,
-    due_date         DATE,
-    paid_at          TIMESTAMPTZ,
-    billing_name     TEXT NOT NULL,
-    billing_address  TEXT,
-    gstin            TEXT,
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_invoice_totals CHECK (total = subtotal + tax_amount),
-    CONSTRAINT chk_subtotal_positive CHECK (subtotal >= 0)
+CREATE TABLE "daily_challenges" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"title" text NOT NULL,
+	"description" text,
+	"xp_reward" integer DEFAULT 5 NOT NULL,
+	"criteria" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"challenge_date" date NOT NULL,
+	"status" "challenge_status" DEFAULT 'active' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_invoices_school ON invoices (school_id);
-CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices (status);
-
--- ============================================================================
--- 10. CLASSES (global system-wide)
--- ============================================================================
-CREATE TABLE IF NOT EXISTS classes (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        TEXT NOT NULL UNIQUE,
-    level       INT NOT NULL UNIQUE,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at  TIMESTAMPTZ
+CREATE TABLE "email_verification_tokens" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"user_type" "user_type" NOT NULL,
+	"token_hash" text NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"verified_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
--- ============================================================================
--- 11. SCHOOL-CLASS MAPPING
--- ============================================================================
-CREATE TABLE IF NOT EXISTS school_class_mapping (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    school_id   UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-    class_id    UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-    is_active   BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at  TIMESTAMPTZ
+CREATE TABLE "enrollments" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"course_id" uuid NOT NULL,
+	"school_id" uuid NOT NULL,
+	"session_id" uuid NOT NULL,
+	"enrolled_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"completed_at" timestamp with time zone,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_school_class
-    ON school_class_mapping (school_id, class_id) WHERE deleted_at IS NULL;
-
--- ============================================================================
--- 12. STUDENT ACADEMIC RECORDS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS student_academic_records (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    school_id    UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-    session_id   UUID NOT NULL REFERENCES academic_sessions(id) ON DELETE RESTRICT,
-    class_id     UUID NOT NULL REFERENCES classes(id) ON DELETE RESTRICT,
-    roll_number  TEXT,
-    section      TEXT,
-    is_promoted  BOOLEAN NOT NULL DEFAULT FALSE,
-    promoted_at  TIMESTAMPTZ,
-    promoted_by  UUID REFERENCES school_admins(id) ON DELETE SET NULL,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT uq_student_session UNIQUE (user_id, session_id)
+CREATE TABLE "invoices" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"school_id" uuid NOT NULL,
+	"subscription_id" uuid NOT NULL,
+	"transaction_id" uuid,
+	"invoice_number" text NOT NULL,
+	"status" "invoice_status" DEFAULT 'draft' NOT NULL,
+	"subtotal" numeric(12, 2) NOT NULL,
+	"tax_amount" numeric(12, 2) DEFAULT '0' NOT NULL,
+	"total" numeric(12, 2) NOT NULL,
+	"currency" text DEFAULT 'INR' NOT NULL,
+	"issued_at" timestamp with time zone,
+	"due_date" date,
+	"paid_at" timestamp with time zone,
+	"billing_name" text NOT NULL,
+	"billing_address" text,
+	"gstin" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "invoices_invoice_number_unique" UNIQUE("invoice_number")
 );
 
-CREATE INDEX IF NOT EXISTS idx_sar_user ON student_academic_records (user_id);
-CREATE INDEX IF NOT EXISTS idx_sar_school_session ON student_academic_records (school_id, session_id);
-CREATE INDEX IF NOT EXISTS idx_sar_class ON student_academic_records (class_id);
-
--- ============================================================================
--- 13. COURSES
--- ============================================================================
-CREATE TABLE IF NOT EXISTS courses (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title           TEXT NOT NULL,
-    slug            CITEXT NOT NULL UNIQUE,
-    description     TEXT,
-    thumbnail_url   TEXT,
-    is_published    BOOLEAN NOT NULL DEFAULT FALSE,
-    all_classes     BOOLEAN NOT NULL DEFAULT FALSE,
-    total_lessons   INT NOT NULL DEFAULT 0,
-    total_xp        INT NOT NULL DEFAULT 0,
-    category        TEXT NOT NULL DEFAULT 'General',
-    topics          TEXT[] NOT NULL DEFAULT '{}',
-    created_by      UUID NOT NULL REFERENCES super_admins(id) ON DELETE RESTRICT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at      TIMESTAMPTZ
+CREATE TABLE "lesson_progress" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"lesson_id" uuid NOT NULL,
+	"enrollment_id" uuid NOT NULL,
+	"session_id" uuid NOT NULL,
+	"school_id" uuid NOT NULL,
+	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"completed_at" timestamp with time zone,
+	"progress_pct" numeric(5, 2) DEFAULT '0' NOT NULL,
+	"last_position_secs" integer DEFAULT 0 NOT NULL,
+	"time_spent_secs" integer DEFAULT 0 NOT NULL,
+	"xp_earned" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_courses_published  ON courses (is_published) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_courses_created_at ON courses (created_at);
-CREATE INDEX IF NOT EXISTS idx_courses_topics_gin ON courses USING GIN (topics array_ops);
-
--- ============================================================================
--- 14. COURSE-CLASS MAPPING
--- ============================================================================
-CREATE TABLE IF NOT EXISTS course_class_mapping (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    course_id   UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    class_id    UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-    is_active   BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at  TIMESTAMPTZ
+CREATE TABLE "lesson_submissions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"lesson_id" uuid NOT NULL,
+	"asset_id" uuid NOT NULL,
+	"feedback" text,
+	"status" text DEFAULT 'submitted' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_course_class
-    ON course_class_mapping (course_id, class_id) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_ccm_class ON course_class_mapping (class_id);
-
--- ============================================================================
--- 15. LESSONS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS lessons (
-    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    course_id        UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    title            TEXT NOT NULL,
-    description      TEXT,
-    content_type     lesson_content_type NOT NULL,
-    content_url      TEXT,
-    sequence_order   INT NOT NULL,
-    duration_minutes INT,
-    xp_reward        INT NOT NULL DEFAULT 10,
-    is_published     BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at       TIMESTAMPTZ,
-    CONSTRAINT chk_sequence_positive CHECK (sequence_order > 0),
-    CONSTRAINT chk_xp_reward_positive CHECK (xp_reward >= 0)
+CREATE TABLE "lessons" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"course_id" uuid NOT NULL,
+	"title" text NOT NULL,
+	"description" text,
+	"content_type" "lesson_content_type" NOT NULL,
+	"content_url" text,
+	"sequence_order" integer NOT NULL,
+	"duration_minutes" integer,
+	"xp_reward" integer DEFAULT 10 NOT NULL,
+	"is_published" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_lesson_sequence_per_course
-    ON lessons (course_id, sequence_order);
-CREATE INDEX IF NOT EXISTS idx_lessons_course ON lessons (course_id) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_lessons_course_published ON lessons (course_id, is_published);
-
--- ============================================================================
--- 16. QUIZZES
--- ============================================================================
-CREATE TABLE IF NOT EXISTS quizzes (
-    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    lesson_id        UUID REFERENCES lessons(id) ON DELETE CASCADE,
-    course_id        UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    title            TEXT NOT NULL,
-    description      TEXT,
-    time_limit_secs  INT,
-    pass_percentage  NUMERIC(5,2) NOT NULL DEFAULT 60.00,
-    max_attempts     INT NOT NULL DEFAULT 3,
-    xp_reward        INT NOT NULL DEFAULT 20,
-    is_published     BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at       TIMESTAMPTZ,
-    CONSTRAINT chk_pass_pct CHECK (pass_percentage BETWEEN 0 AND 100),
-    CONSTRAINT chk_max_attempts CHECK (max_attempts > 0),
-    CONSTRAINT chk_quiz_xp CHECK (xp_reward >= 0)
+CREATE TABLE "login_attempts" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"email" text NOT NULL,
+	"user_id" uuid,
+	"user_type" "user_type",
+	"ip_address" inet NOT NULL,
+	"user_agent" text,
+	"success" boolean NOT NULL,
+	"failure_reason" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_quizzes_course ON quizzes (course_id) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_quizzes_lesson ON quizzes (lesson_id) WHERE deleted_at IS NULL;
-
--- ============================================================================
--- 17. QUIZ QUESTIONS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS quiz_questions (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    quiz_id         UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
-    question_text   TEXT NOT NULL,
-    question_type   question_type NOT NULL,
-    options         JSONB NOT NULL DEFAULT '[]',
-    correct_answer  JSONB NOT NULL,
-    explanation     TEXT,
-    points          INT NOT NULL DEFAULT 1,
-    sequence_order  INT NOT NULL,
-    time_limit_secs INT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_points_positive CHECK (points > 0),
-    CONSTRAINT chk_qq_sequence CHECK (sequence_order > 0)
+CREATE TABLE "media_assets" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"file_name" text NOT NULL,
+	"original_name" text NOT NULL,
+	"file_url" text NOT NULL,
+	"file_path" text NOT NULL,
+	"mime_type" text NOT NULL,
+	"file_size" bigint DEFAULT 0 NOT NULL,
+	"storage_type" "storage_type" DEFAULT 'local' NOT NULL,
+	"asset_type" "asset_type" DEFAULT 'document' NOT NULL,
+	"uploaded_by" uuid,
+	"folder" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz_question_sequence
-    ON quiz_questions (quiz_id, sequence_order);
-CREATE INDEX IF NOT EXISTS idx_qq_quiz ON quiz_questions (quiz_id);
-
--- ============================================================================
--- 18. ENROLLMENTS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS enrollments (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    course_id    UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    school_id    UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-    session_id   UUID NOT NULL REFERENCES academic_sessions(id) ON DELETE RESTRICT,
-    enrolled_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    completed_at TIMESTAMPTZ,
-    is_active    BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at   TIMESTAMPTZ
+CREATE TABLE "password_reset_tokens" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"user_type" "user_type" NOT NULL,
+	"token_hash" text NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"used_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_enrollment
-    ON enrollments (user_id, course_id, session_id) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_enrollments_user   ON enrollments (user_id);
-CREATE INDEX IF NOT EXISTS idx_enrollments_course ON enrollments (course_id);
-CREATE INDEX IF NOT EXISTS idx_enrollments_school ON enrollments (school_id);
-CREATE INDEX IF NOT EXISTS idx_enrollments_session ON enrollments (session_id);
-CREATE INDEX IF NOT EXISTS idx_enroll_user_active ON enrollments (user_id, is_active);
-
--- ============================================================================
--- 19. LESSON PROGRESS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS lesson_progress (
-    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id          UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    lesson_id        UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
-    enrollment_id    UUID NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
-    school_id        UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-    session_id       UUID NOT NULL REFERENCES academic_sessions(id) ON DELETE RESTRICT,
-    started_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    completed_at     TIMESTAMPTZ,
-    progress_pct     NUMERIC(5,2) NOT NULL DEFAULT 0,
-    last_position_secs INT NOT NULL DEFAULT 0,
-    time_spent_secs  INT NOT NULL DEFAULT 0,
-    xp_earned        INT NOT NULL DEFAULT 0,
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_lesson_progress_range CHECK (progress_pct BETWEEN 0 AND 100),
-    CONSTRAINT uq_user_lesson UNIQUE (user_id, lesson_id, enrollment_id)
+CREATE TABLE "payment_plans" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"description" text,
+	"billing_cycle" "billing_cycle" NOT NULL,
+	"price" numeric(12, 2) NOT NULL,
+	"currency" text DEFAULT 'INR' NOT NULL,
+	"max_students" integer,
+	"features" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"is_popular" boolean DEFAULT false NOT NULL,
+	"trial_days" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	CONSTRAINT "payment_plans_name_unique" UNIQUE("name")
 );
 
-CREATE INDEX IF NOT EXISTS idx_lp_user       ON lesson_progress (user_id);
-CREATE INDEX IF NOT EXISTS idx_lp_lesson     ON lesson_progress (lesson_id);
-CREATE INDEX IF NOT EXISTS idx_lp_enrollment ON lesson_progress (enrollment_id);
-CREATE INDEX IF NOT EXISTS idx_lp_school     ON lesson_progress (school_id);
-CREATE INDEX IF NOT EXISTS idx_lp_session    ON lesson_progress (session_id);
-
--- ============================================================================
--- 20. COURSE PROGRESS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS course_progress (
-    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id           UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    course_id         UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    enrollment_id     UUID NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
-    school_id         UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-    session_id        UUID NOT NULL REFERENCES academic_sessions(id) ON DELETE RESTRICT,
-    lessons_completed INT NOT NULL DEFAULT 0,
-    total_lessons     INT NOT NULL DEFAULT 0,
-    progress_pct      NUMERIC(5,2) NOT NULL DEFAULT 0,
-    total_xp_earned   INT NOT NULL DEFAULT 0,
-    total_time_secs   INT NOT NULL DEFAULT 0,
-    started_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-    completed_at      TIMESTAMPTZ,
-    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_course_progress_range CHECK (progress_pct BETWEEN 0 AND 100),
-    CONSTRAINT uq_user_course_enrollment UNIQUE (user_id, course_id, enrollment_id)
+CREATE TABLE "payment_transactions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"school_id" uuid NOT NULL,
+	"subscription_id" uuid NOT NULL,
+	"promo_code_id" uuid,
+	"razorpay_order_id" text,
+	"razorpay_payment_id" text,
+	"razorpay_signature" text,
+	"amount" numeric(12, 2) NOT NULL,
+	"currency" text DEFAULT 'INR' NOT NULL,
+	"status" "payment_status" DEFAULT 'created' NOT NULL,
+	"gateway_response" jsonb,
+	"failure_reason" text,
+	"refund_amount" numeric(12, 2),
+	"refunded_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_cp_user       ON course_progress (user_id);
-CREATE INDEX IF NOT EXISTS idx_cp_course     ON course_progress (course_id);
-CREATE INDEX IF NOT EXISTS idx_cp_school     ON course_progress (school_id);
-CREATE INDEX IF NOT EXISTS idx_cp_session    ON course_progress (session_id);
-CREATE INDEX IF NOT EXISTS idx_cp_enrollment ON course_progress (enrollment_id);
-
--- ============================================================================
--- 21. QUIZ ATTEMPTS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS quiz_attempts (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    quiz_id         UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
-    enrollment_id   UUID NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
-    attempt_number  INT NOT NULL DEFAULT 1,
-    score           NUMERIC(5,2) NOT NULL DEFAULT 0,
-    max_score       NUMERIC(5,2) NOT NULL,
-    passed          BOOLEAN NOT NULL DEFAULT FALSE,
-    answers         JSONB NOT NULL DEFAULT '[]',
-    started_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    completed_at    TIMESTAMPTZ,
-    time_taken_secs INT,
-    xp_earned       INT NOT NULL DEFAULT 0,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_attempt_number CHECK (attempt_number > 0),
-    CONSTRAINT chk_score_range CHECK (score >= 0 AND score <= max_score),
-    CONSTRAINT uq_quiz_attempt UNIQUE (user_id, quiz_id, enrollment_id, attempt_number)
+CREATE TABLE "platform_metrics_daily" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"metric_date" date NOT NULL,
+	"total_schools" integer DEFAULT 0 NOT NULL,
+	"active_schools" integer DEFAULT 0 NOT NULL,
+	"total_students" integer DEFAULT 0 NOT NULL,
+	"active_students" integer DEFAULT 0 NOT NULL,
+	"total_enrollments" integer DEFAULT 0 NOT NULL,
+	"total_xp_awarded" bigint DEFAULT 0 NOT NULL,
+	"revenue_total" numeric(14, 2) DEFAULT '0' NOT NULL,
+	"new_subscriptions" integer DEFAULT 0 NOT NULL,
+	"churned_subscriptions" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "platform_metrics_daily_metric_date_unique" UNIQUE("metric_date")
 );
 
-CREATE INDEX IF NOT EXISTS idx_qattempts_user ON quiz_attempts (user_id);
-CREATE INDEX IF NOT EXISTS idx_qattempts_quiz ON quiz_attempts (quiz_id);
-CREATE INDEX IF NOT EXISTS idx_qa_enrollment  ON quiz_attempts (enrollment_id);
-
--- ============================================================================
--- 22. XP EVENTS (ledger — append-only)
--- ============================================================================
-CREATE TABLE IF NOT EXISTS xp_events (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    school_id       UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-    source          xp_source NOT NULL,
-    xp_amount       INT NOT NULL,
-    reference_type  TEXT,
-    reference_id    UUID,
-    description     TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_xp_nonzero CHECK (xp_amount <> 0)
+CREATE TABLE "platform_settings" (
+	"id" text PRIMARY KEY NOT NULL,
+	"logo_url" text,
+	"favicon_url" text,
+	"platform_name" text DEFAULT 'TechNurture' NOT NULL,
+	"logo_layout" text DEFAULT 'horizontal' NOT NULL,
+	"show_platform_name" boolean DEFAULT true NOT NULL,
+	"logo_height" integer DEFAULT 40 NOT NULL,
+	"hero_video_url" text DEFAULT '' NOT NULL,
+	"hero_video_type" text DEFAULT 'youtube' NOT NULL,
+	"support_email" text,
+	"currency_default" text DEFAULT 'INR' NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_xp_user          ON xp_events (user_id);
-CREATE INDEX IF NOT EXISTS idx_xp_school        ON xp_events (school_id);
-CREATE INDEX IF NOT EXISTS idx_xp_user_created  ON xp_events (user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_xp_school_created ON xp_events (school_id, created_at DESC);
-
--- ============================================================================
--- 23. ACHIEVEMENTS (badge catalogue)
--- ============================================================================
-CREATE TABLE IF NOT EXISTS achievements (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name         TEXT NOT NULL UNIQUE,
-    description  TEXT,
-    icon_url     TEXT,
-    tier         achievement_tier NOT NULL DEFAULT 'bronze',
-    category     TEXT NOT NULL DEFAULT 'Beginner',
-    xp_threshold INT,
-    criteria     JSONB NOT NULL DEFAULT '{}',
-    is_active    BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE "promo_codes" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"code" text NOT NULL,
+	"discount_type" "discount_type" NOT NULL,
+	"discount_value" numeric(12, 2) NOT NULL,
+	"max_uses" integer,
+	"current_uses" integer DEFAULT 0 NOT NULL,
+	"valid_from" timestamp with time zone,
+	"valid_until" timestamp with time zone,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "promo_codes_code_unique" UNIQUE("code")
 );
 
-CREATE TABLE IF NOT EXISTS user_achievements (
-    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id        UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    achievement_id UUID NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
-    earned_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT uq_user_achievement UNIQUE (user_id, achievement_id)
+CREATE TABLE "quiz_attempts" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"quiz_id" uuid NOT NULL,
+	"enrollment_id" uuid NOT NULL,
+	"attempt_number" integer DEFAULT 1 NOT NULL,
+	"score" numeric(5, 2) DEFAULT '0' NOT NULL,
+	"max_score" numeric(5, 2) NOT NULL,
+	"passed" boolean DEFAULT false NOT NULL,
+	"answers" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"completed_at" timestamp with time zone,
+	"time_taken_secs" integer,
+	"xp_earned" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_ua_user ON user_achievements (user_id);
-
--- ============================================================================
--- 24. DAILY CHALLENGES
--- ============================================================================
-CREATE TABLE IF NOT EXISTS daily_challenges (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title           TEXT NOT NULL,
-    description     TEXT,
-    xp_reward       INT NOT NULL DEFAULT 5,
-    criteria        JSONB NOT NULL DEFAULT '{}',
-    challenge_date  DATE NOT NULL,
-    status          challenge_status NOT NULL DEFAULT 'active',
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_dc_xp CHECK (xp_reward > 0)
+CREATE TABLE "quiz_questions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"quiz_id" uuid NOT NULL,
+	"question_text" text NOT NULL,
+	"question_type" "question_type" NOT NULL,
+	"options" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"correct_answer" jsonb NOT NULL,
+	"explanation" text,
+	"points" integer DEFAULT 1 NOT NULL,
+	"time_limit_secs" integer,
+	"sequence_order" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_challenge_date ON daily_challenges (challenge_date);
-
-CREATE TABLE IF NOT EXISTS user_daily_challenges (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    challenge_id UUID NOT NULL REFERENCES daily_challenges(id) ON DELETE CASCADE,
-    completed_at TIMESTAMPTZ,
-    xp_earned    INT NOT NULL DEFAULT 0,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT uq_user_daily_challenge UNIQUE (user_id, challenge_id)
+CREATE TABLE "quizzes" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"lesson_id" uuid,
+	"course_id" uuid NOT NULL,
+	"title" text NOT NULL,
+	"description" text,
+	"time_limit_secs" integer,
+	"pass_percentage" numeric(5, 2) DEFAULT '60.00' NOT NULL,
+	"max_attempts" integer DEFAULT 3 NOT NULL,
+	"xp_reward" integer DEFAULT 20 NOT NULL,
+	"is_published" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
 );
 
--- ============================================================================
--- 25. CERTIFICATES
--- ============================================================================
-CREATE TABLE IF NOT EXISTS certificates (
-    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    course_id        UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    title            TEXT NOT NULL,
-    description      TEXT,
-    template_url     TEXT,
-    min_progress_pct NUMERIC(5,2) NOT NULL DEFAULT 100.00,
-    min_quiz_score   NUMERIC(5,2),
-    is_active        BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_cert_progress CHECK (min_progress_pct BETWEEN 0 AND 100)
+CREATE TABLE "school_admins" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"school_id" uuid NOT NULL,
+	"first_name" text NOT NULL,
+	"last_name" text NOT NULL,
+	"email" text NOT NULL,
+	"password_hash" text NOT NULL,
+	"phone" text,
+	"avatar_url" text,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"last_active_at" timestamp with time zone,
+	"bio" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
 );
 
-CREATE TABLE IF NOT EXISTS user_certificates (
-    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id           UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    certificate_id    UUID NOT NULL REFERENCES certificates(id) ON DELETE RESTRICT,
-    enrollment_id     UUID NOT NULL REFERENCES enrollments(id) ON DELETE RESTRICT,
-    certificate_url   TEXT,
-    verification_code TEXT NOT NULL UNIQUE,
-    issued_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT uq_user_cert_enrollment UNIQUE (user_id, certificate_id, enrollment_id)
+CREATE TABLE "school_class_mapping" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"school_id" uuid NOT NULL,
+	"class_id" uuid NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_ucerts_user ON user_certificates (user_id);
-
--- ============================================================================
--- 26. ANALYTICS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS platform_metrics_daily (
-    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    metric_date           DATE NOT NULL UNIQUE,
-    total_schools         INT NOT NULL DEFAULT 0,
-    active_schools        INT NOT NULL DEFAULT 0,
-    total_students        INT NOT NULL DEFAULT 0,
-    active_students       INT NOT NULL DEFAULT 0,
-    total_enrollments     INT NOT NULL DEFAULT 0,
-    total_xp_awarded      BIGINT NOT NULL DEFAULT 0,
-    revenue_total         NUMERIC(14,2) NOT NULL DEFAULT 0,
-    new_subscriptions     INT NOT NULL DEFAULT 0,
-    churned_subscriptions INT NOT NULL DEFAULT 0,
-    created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE "school_metrics_daily" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"school_id" uuid NOT NULL,
+	"metric_date" date NOT NULL,
+	"active_students" integer DEFAULT 0 NOT NULL,
+	"total_lessons_completed" integer DEFAULT 0 NOT NULL,
+	"total_quizzes_taken" integer DEFAULT 0 NOT NULL,
+	"avg_quiz_score" numeric(5, 2),
+	"total_xp_awarded" bigint DEFAULT 0 NOT NULL,
+	"avg_session_minutes" numeric(8, 2),
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS school_metrics_daily (
-    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    school_id                UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-    metric_date              DATE NOT NULL,
-    active_students          INT NOT NULL DEFAULT 0,
-    total_lessons_completed  INT NOT NULL DEFAULT 0,
-    total_quizzes_taken      INT NOT NULL DEFAULT 0,
-    avg_quiz_score           NUMERIC(5,2),
-    total_xp_awarded         BIGINT NOT NULL DEFAULT 0,
-    avg_session_minutes      NUMERIC(8,2),
-    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT uq_school_metric_date UNIQUE (school_id, metric_date)
+CREATE TABLE "school_subscriptions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"school_id" uuid NOT NULL,
+	"plan_id" uuid NOT NULL,
+	"promo_code_id" uuid,
+	"status" "subscription_status" DEFAULT 'trialing' NOT NULL,
+	"current_period_start" timestamp with time zone NOT NULL,
+	"current_period_end" timestamp with time zone NOT NULL,
+	"trial_start" timestamp with time zone,
+	"trial_end" timestamp with time zone,
+	"cancelled_at" timestamp with time zone,
+	"cancel_reason" text,
+	"auto_renew" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS course_metrics_daily (
-    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    course_id         UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    metric_date       DATE NOT NULL,
-    total_enrollments INT NOT NULL DEFAULT 0,
-    active_learners   INT NOT NULL DEFAULT 0,
-    completions       INT NOT NULL DEFAULT 0,
-    avg_progress_pct  NUMERIC(5,2),
-    avg_quiz_score    NUMERIC(5,2),
-    total_xp_awarded  BIGINT NOT NULL DEFAULT 0,
-    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT uq_course_metric_date UNIQUE (course_id, metric_date)
+CREATE TABLE "schools" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"slug" text NOT NULL,
+	"email" text NOT NULL,
+	"phone" text,
+	"address" text,
+	"city" text,
+	"state" text,
+	"country" text DEFAULT 'IN' NOT NULL,
+	"pincode" text,
+	"logo_url" text,
+	"website" text,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"data_processing_consent" boolean DEFAULT false NOT NULL,
+	"minor_data_guardian_consent" boolean DEFAULT false NOT NULL,
+	"udise_code" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	CONSTRAINT "schools_slug_unique" UNIQUE("slug")
 );
 
--- ============================================================================
--- 27. AUDIT & SECURITY
--- ============================================================================
-CREATE TABLE IF NOT EXISTS audit_logs (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID,
-    user_type   user_type NOT NULL,
-    school_id   UUID REFERENCES schools(id) ON DELETE SET NULL,
-    action      audit_action NOT NULL,
-    entity_type TEXT NOT NULL,
-    entity_id   UUID,
-    old_values  JSONB,
-    new_values  JSONB,
-    metadata    JSONB NOT NULL DEFAULT '{}',
-    ip_address  INET,
-    user_agent  TEXT,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE "student_academic_records" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"school_id" uuid NOT NULL,
+	"session_id" uuid NOT NULL,
+	"class_id" uuid NOT NULL,
+	"roll_number" text,
+	"section" text,
+	"is_promoted" boolean DEFAULT false NOT NULL,
+	"promoted_at" timestamp with time zone,
+	"promoted_by" uuid,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_audit_user    ON audit_logs (user_id);
-CREATE INDEX IF NOT EXISTS idx_audit_school  ON audit_logs (school_id);
-CREATE INDEX IF NOT EXISTS idx_audit_action  ON audit_logs (action);
-CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs (created_at);
-
-CREATE TABLE IF NOT EXISTS login_attempts (
-    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email          CITEXT NOT NULL,
-    user_id        UUID,
-    user_type      user_type NOT NULL,
-    ip_address     INET NOT NULL,
-    user_agent     TEXT,
-    success        BOOLEAN NOT NULL,
-    failure_reason TEXT,
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE "students" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"school_id" uuid NOT NULL,
+	"first_name" text NOT NULL,
+	"last_name" text NOT NULL,
+	"email" text NOT NULL,
+	"password_hash" text NOT NULL,
+	"phone" text,
+	"avatar_url" text,
+	"bio" text,
+	"date_of_birth" date,
+	"gender" text,
+	"is_minor" boolean DEFAULT false NOT NULL,
+	"guardian_name" text,
+	"guardian_email" text,
+	"guardian_consent" boolean DEFAULT false NOT NULL,
+	"cumulative_xp" bigint DEFAULT 0 NOT NULL,
+	"current_streak" integer DEFAULT 0 NOT NULL,
+	"longest_streak" integer DEFAULT 0 NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"last_active_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
 );
 
-CREATE INDEX IF NOT EXISTS idx_login_email   ON login_attempts (email);
-CREATE INDEX IF NOT EXISTS idx_login_created ON login_attempts (created_at);
-
-CREATE TABLE IF NOT EXISTS password_reset_tokens (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID NOT NULL,
-    user_type   user_type NOT NULL,
-    token_hash  TEXT NOT NULL,
-    expires_at  TIMESTAMPTZ NOT NULL,
-    used_at     TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_prt_expiry CHECK (expires_at > created_at)
+CREATE TABLE "super_admins" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"first_name" text NOT NULL,
+	"last_name" text NOT NULL,
+	"email" text NOT NULL,
+	"password_hash" text NOT NULL,
+	"avatar_url" text,
+	"two_factor_secret" text,
+	"two_factor_enabled" boolean DEFAULT false NOT NULL,
+	"two_factor_backup_codes" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"last_active_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	CONSTRAINT "super_admins_email_unique" UNIQUE("email")
 );
 
-CREATE INDEX IF NOT EXISTS idx_prt_token   ON password_reset_tokens (token_hash);
-CREATE INDEX IF NOT EXISTS idx_prt_user    ON password_reset_tokens (user_id);
-CREATE INDEX IF NOT EXISTS idx_prt_expires ON password_reset_tokens (expires_at);
-
-CREATE TABLE IF NOT EXISTS email_verification_tokens (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID NOT NULL,
-    user_type   user_type NOT NULL,
-    token_hash  TEXT NOT NULL,
-    expires_at  TIMESTAMPTZ NOT NULL,
-    verified_at TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_evt_expiry CHECK (expires_at > created_at)
+CREATE TABLE "user_achievements" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"achievement_id" uuid NOT NULL,
+	"earned_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS user_sessions (
-    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id            UUID NOT NULL,
-    user_type          user_type NOT NULL,
-    refresh_token_hash TEXT NOT NULL UNIQUE,
-    device_info        TEXT,
-    ip_address         INET,
-    expires_at         TIMESTAMPTZ NOT NULL,
-    revoked_at         TIMESTAMPTZ,
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-    last_used_at       TIMESTAMPTZ
+CREATE TABLE "user_certificates" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"certificate_id" uuid NOT NULL,
+	"enrollment_id" uuid NOT NULL,
+	"certificate_url" text,
+	"verification_code" text NOT NULL,
+	"issued_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "user_certificates_verification_code_unique" UNIQUE("verification_code")
 );
 
-CREATE INDEX IF NOT EXISTS idx_evt_token ON email_verification_tokens (token_hash);
-CREATE INDEX IF NOT EXISTS idx_evt_user  ON email_verification_tokens (user_id);
-
--- ============================================================================
--- 28. PLATFORM SETTINGS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS platform_settings (
-    id                 TEXT PRIMARY KEY,
-    logo_url           TEXT,
-    favicon_url        TEXT,
-    platform_name      TEXT NOT NULL DEFAULT 'TechNurture',
-    logo_layout        TEXT NOT NULL DEFAULT 'horizontal',
-    show_platform_name BOOLEAN NOT NULL DEFAULT TRUE,
-    logo_height        INTEGER NOT NULL DEFAULT 40,
-    hero_video_url     TEXT NOT NULL DEFAULT '',
-    hero_video_type    TEXT NOT NULL DEFAULT 'youtube',
-    support_email      TEXT,
-    currency_default   TEXT NOT NULL DEFAULT 'INR',
-    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE "user_daily_challenges" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"challenge_id" uuid NOT NULL,
+	"completed_at" timestamp with time zone,
+	"xp_earned" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
--- ============================================================================
--- 29. MEDIA ASSETS
--- ============================================================================
-CREATE TABLE IF NOT EXISTS media_assets (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    file_name     TEXT NOT NULL,
-    original_name TEXT NOT NULL,
-    file_url      TEXT NOT NULL,
-    file_path     TEXT NOT NULL,
-    mime_type     TEXT NOT NULL,
-    file_size     BIGINT NOT NULL DEFAULT 0,
-    storage_type  storage_type NOT NULL DEFAULT 'local',
-    asset_type    asset_type NOT NULL DEFAULT 'document',
-    uploaded_by   UUID,
-    folder        TEXT,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE "user_sessions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"user_type" "user_type" NOT NULL,
+	"refresh_token_hash" text NOT NULL,
+	"device_info" text,
+	"ip_address" inet,
+	"expires_at" timestamp with time zone NOT NULL,
+	"revoked_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_used_at" timestamp with time zone
 );
 
-CREATE INDEX IF NOT EXISTS idx_media_asset_type  ON media_assets (asset_type);
-CREATE INDEX IF NOT EXISTS idx_media_uploaded_by ON media_assets (uploaded_by);
-CREATE INDEX IF NOT EXISTS idx_media_created     ON media_assets (created_at);
+CREATE TABLE "xp_events" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"school_id" uuid NOT NULL,
+	"source" "xp_source" NOT NULL,
+	"xp_amount" integer NOT NULL,
+	"reference_type" text,
+	"reference_id" uuid,
+	"description" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- 4. CONSTRAINTS (Foreign Keys)
+ALTER TABLE "academic_sessions" ADD CONSTRAINT "academic_sessions_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "certificates" ADD CONSTRAINT "certificates_course_id_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "course_class_mapping" ADD CONSTRAINT "course_class_mapping_course_id_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "course_class_mapping" ADD CONSTRAINT "course_class_mapping_class_id_classes_id_fk" FOREIGN KEY ("class_id") REFERENCES "public"."classes"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "course_metrics_daily" ADD CONSTRAINT "course_metrics_daily_course_id_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "course_progress" ADD CONSTRAINT "course_progress_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "course_progress" ADD CONSTRAINT "course_progress_course_id_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "course_progress" ADD CONSTRAINT "course_progress_enrollment_id_enrollments_id_fk" FOREIGN KEY ("enrollment_id") REFERENCES "public"."enrollments"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "course_progress" ADD CONSTRAINT "course_progress_session_id_academic_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."academic_sessions"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "course_progress" ADD CONSTRAINT "course_progress_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "courses" ADD CONSTRAINT "courses_created_by_super_admins_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."super_admins"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "enrollments" ADD CONSTRAINT "enrollments_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "enrollments" ADD CONSTRAINT "enrollments_course_id_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "enrollments" ADD CONSTRAINT "enrollments_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "enrollments" ADD CONSTRAINT "enrollments_session_id_academic_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."academic_sessions"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_subscription_id_school_subscriptions_id_fk" FOREIGN KEY ("subscription_id") REFERENCES "public"."school_subscriptions"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_transaction_id_payment_transactions_id_fk" FOREIGN KEY ("transaction_id") REFERENCES "public"."payment_transactions"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_lesson_id_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."lessons"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_enrollment_id_enrollments_id_fk" FOREIGN KEY ("enrollment_id") REFERENCES "public"."enrollments"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_session_id_academic_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."academic_sessions"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "lesson_submissions" ADD CONSTRAINT "lesson_submissions_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "lesson_submissions" ADD CONSTRAINT "lesson_submissions_lesson_id_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."lessons"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "lesson_submissions" ADD CONSTRAINT "lesson_submissions_asset_id_media_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."media_assets"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "lessons" ADD CONSTRAINT "lessons_course_id_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "payment_transactions" ADD CONSTRAINT "payment_transactions_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "payment_transactions" ADD CONSTRAINT "payment_transactions_subscription_id_school_subscriptions_id_fk" FOREIGN KEY ("subscription_id") REFERENCES "public"."school_subscriptions"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "payment_transactions" ADD CONSTRAINT "payment_transactions_promo_code_id_promo_codes_id_fk" FOREIGN KEY ("promo_code_id") REFERENCES "public"."promo_codes"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "quiz_attempts" ADD CONSTRAINT "quiz_attempts_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "quiz_attempts" ADD CONSTRAINT "quiz_attempts_quiz_id_quizzes_id_fk" FOREIGN KEY ("quiz_id") REFERENCES "public"."quizzes"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "quiz_attempts" ADD CONSTRAINT "quiz_attempts_enrollment_id_enrollments_id_fk" FOREIGN KEY ("enrollment_id") REFERENCES "public"."enrollments"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "quiz_questions" ADD CONSTRAINT "quiz_questions_quiz_id_quizzes_id_fk" FOREIGN KEY ("quiz_id") REFERENCES "public"."quizzes"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "quizzes" ADD CONSTRAINT "quizzes_lesson_id_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."lessons"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "quizzes" ADD CONSTRAINT "quizzes_course_id_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "school_admins" ADD CONSTRAINT "school_admins_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "school_class_mapping" ADD CONSTRAINT "school_class_mapping_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "school_class_mapping" ADD CONSTRAINT "school_class_mapping_class_id_classes_id_fk" FOREIGN KEY ("class_id") REFERENCES "public"."classes"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "school_metrics_daily" ADD CONSTRAINT "school_metrics_daily_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "school_subscriptions" ADD CONSTRAINT "school_subscriptions_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "school_subscriptions" ADD CONSTRAINT "school_subscriptions_plan_id_payment_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."payment_plans"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "school_subscriptions" ADD CONSTRAINT "school_subscriptions_promo_code_id_promo_codes_id_fk" FOREIGN KEY ("promo_code_id") REFERENCES "public"."promo_codes"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "student_academic_records" ADD CONSTRAINT "student_academic_records_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "student_academic_records" ADD CONSTRAINT "student_academic_records_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "student_academic_records" ADD CONSTRAINT "student_academic_records_session_id_academic_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."academic_sessions"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "student_academic_records" ADD CONSTRAINT "student_academic_records_class_id_classes_id_fk" FOREIGN KEY ("class_id") REFERENCES "public"."classes"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "student_academic_records" ADD CONSTRAINT "student_academic_records_promoted_by_school_admins_id_fk" FOREIGN KEY ("promoted_by") REFERENCES "public"."school_admins"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "students" ADD CONSTRAINT "students_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "user_achievements" ADD CONSTRAINT "user_achievements_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "user_achievements" ADD CONSTRAINT "user_achievements_achievement_id_achievements_id_fk" FOREIGN KEY ("achievement_id") REFERENCES "public"."achievements"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "user_certificates" ADD CONSTRAINT "user_certificates_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "user_certificates" ADD CONSTRAINT "user_certificates_certificate_id_certificates_id_fk" FOREIGN KEY ("certificate_id") REFERENCES "public"."certificates"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "user_certificates" ADD CONSTRAINT "user_certificates_enrollment_id_enrollments_id_fk" FOREIGN KEY ("enrollment_id") REFERENCES "public"."enrollments"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "user_daily_challenges" ADD CONSTRAINT "user_daily_challenges_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "user_daily_challenges" ADD CONSTRAINT "user_daily_challenges_challenge_id_daily_challenges_id_fk" FOREIGN KEY ("challenge_id") REFERENCES "public"."daily_challenges"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "xp_events" ADD CONSTRAINT "xp_events_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "xp_events" ADD CONSTRAINT "xp_events_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
+
+-- 5. INDEXES
+CREATE INDEX "idx_audit_user" ON "audit_logs" USING btree ("user_id");
+CREATE INDEX "idx_audit_created" ON "audit_logs" USING btree ("created_at");
+CREATE UNIQUE INDEX "uq_course_class" ON "course_class_mapping" USING btree ("course_id","class_id") WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX "uq_course_metric_date" ON "course_metrics_daily" USING btree ("course_id","metric_date");
+CREATE UNIQUE INDEX "uq_user_course_enrollment" ON "course_progress" USING btree ("user_id","course_id","enrollment_id");
+CREATE INDEX "idx_cp_session" ON "course_progress" USING btree ("session_id");
+CREATE INDEX "idx_cp_school" ON "course_progress" USING btree ("school_id");
+CREATE INDEX "idx_courses_published" ON "courses" USING btree ("is_published");
+CREATE INDEX "idx_courses_active_published" ON "courses" USING btree ("is_published") WHERE deleted_at IS NULL;
+CREATE INDEX "idx_daily_challenge_date" ON "daily_challenges" USING btree ("challenge_date");
+CREATE UNIQUE INDEX "uq_daily_challenge_item" ON "daily_challenges" USING btree ("challenge_date","title");
+CREATE INDEX "idx_evt_token" ON "email_verification_tokens" USING btree ("token_hash");
+CREATE INDEX "idx_evt_user" ON "email_verification_tokens" USING btree ("user_id");
+CREATE UNIQUE INDEX "uq_enrollment" ON "enrollments" USING btree ("user_id","course_id","session_id") WHERE deleted_at IS NULL;
+CREATE INDEX "idx_enrollments_school" ON "enrollments" USING btree ("school_id");
+CREATE INDEX "idx_enroll_user_active" ON "enrollments" USING btree ("user_id","is_active");
+CREATE UNIQUE INDEX "uq_user_lesson" ON "lesson_progress" USING btree ("user_id","lesson_id","enrollment_id");
+CREATE INDEX "idx_lp_user" ON "lesson_progress" USING btree ("user_id");
+CREATE INDEX "idx_lp_enrollment" ON "lesson_progress" USING btree ("enrollment_id");
+CREATE INDEX "idx_lp_session" ON "lesson_progress" USING btree ("session_id");
+CREATE INDEX "idx_lp_school" ON "lesson_progress" USING btree ("school_id");
+CREATE INDEX "idx_submission_user_lesson" ON "lesson_submissions" USING btree ("user_id","lesson_id");
+CREATE INDEX "idx_lessons_course" ON "lessons" USING btree ("course_id");
+CREATE INDEX "idx_lessons_active" ON "lessons" USING btree ("course_id") WHERE deleted_at IS NULL;
+CREATE INDEX "idx_lessons_course_published" ON "lessons" USING btree ("course_id","is_published");
+CREATE INDEX "idx_login_email" ON "login_attempts" USING btree ("email");
+CREATE INDEX "idx_login_created" ON "login_attempts" USING btree ("created_at");
+CREATE INDEX "idx_media_asset_type" ON "media_assets" USING btree ("asset_type");
+CREATE INDEX "idx_media_uploaded_by" ON "media_assets" USING btree ("uploaded_by");
+CREATE INDEX "idx_media_created" ON "media_assets" USING btree ("created_at");
+CREATE INDEX "idx_prt_token" ON "password_reset_tokens" USING btree ("token_hash");
+CREATE INDEX "idx_prt_user" ON "password_reset_tokens" USING btree ("user_id");
+CREATE INDEX "idx_prt_expires" ON "password_reset_tokens" USING btree ("expires_at");
+CREATE INDEX "idx_transactions_school" ON "payment_transactions" USING btree ("school_id");
+CREATE INDEX "idx_transactions_status" ON "payment_transactions" USING btree ("status");
+CREATE INDEX "idx_qattempts_user" ON "quiz_attempts" USING btree ("user_id");
+CREATE UNIQUE INDEX "uq_school_admins_email" ON "school_admins" USING btree ("email") WHERE deleted_at IS NULL;
+CREATE INDEX "idx_school_admins_school" ON "school_admins" USING btree ("school_id");
+CREATE UNIQUE INDEX "uq_school_class" ON "school_class_mapping" USING btree ("school_id","class_id") WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX "uq_school_metric_date" ON "school_metrics_daily" USING btree ("school_id","metric_date");
+CREATE INDEX "idx_subscriptions_school" ON "school_subscriptions" USING btree ("school_id");
+CREATE INDEX "idx_subscriptions_status" ON "school_subscriptions" USING btree ("status");
+CREATE UNIQUE INDEX "uq_school_one_active_sub" ON "school_subscriptions" USING btree ("school_id") WHERE status IN ('active', 'trialing');
+CREATE INDEX "idx_sub_school_status" ON "school_subscriptions" USING btree ("school_id","status");
+CREATE UNIQUE INDEX "uq_student_session" ON "student_academic_records" USING btree ("user_id","session_id");
+CREATE INDEX "idx_sar_school_session" ON "student_academic_records" USING btree ("school_id","session_id");
+CREATE UNIQUE INDEX "uq_students_email" ON "students" USING btree ("email") WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX "uq_students_phone" ON "students" USING btree ("phone") WHERE deleted_at IS NULL;
+CREATE INDEX "idx_students_school" ON "students" USING btree ("school_id");
+CREATE INDEX "idx_students_xp" ON "students" USING btree ("cumulative_xp");
+CREATE UNIQUE INDEX "uq_user_achievement" ON "user_achievements" USING btree ("user_id","achievement_id");
+CREATE UNIQUE INDEX "uq_user_cert_enrollment" ON "user_certificates" USING btree ("user_id","certificate_id","enrollment_id");
+CREATE UNIQUE INDEX "uq_user_daily_challenge" ON "user_daily_challenges" USING btree ("user_id","challenge_id");
+CREATE INDEX "idx_sessions_user" ON "user_sessions" USING btree ("user_id");
+CREATE INDEX "idx_sessions_expires" ON "user_sessions" USING btree ("expires_at");
+CREATE UNIQUE INDEX "uq_sessions_token_hash" ON "user_sessions" USING btree ("refresh_token_hash");
+CREATE INDEX "idx_xp_user" ON "xp_events" USING btree ("user_id");
+CREATE INDEX "idx_xp_school" ON "xp_events" USING btree ("school_id");
+CREATE INDEX "idx_xp_created" ON "xp_events" USING btree ("created_at");
+CREATE INDEX "idx_xp_user_created" ON "xp_events" USING btree ("user_id","created_at");
 
 -- ============================================================================
--- 30. TRIGGERS — auto-update updated_at
--- ============================================================================
-CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DO $$
-DECLARE t text;
-BEGIN
-    FOR t IN SELECT unnest(ARRAY[
-        'schools', 'academic_sessions', 'super_admins', 'school_admins', 'students',
-        'payment_plans',
-        'promo_codes', 'school_subscriptions', 'payment_transactions',
-        'invoices', 'student_academic_records', 'courses', 'lessons',
-        'quizzes', 'quiz_questions', 'enrollments', 'lesson_progress',
-        'course_progress', 'achievements', 'daily_challenges',
-        'certificates', 'platform_settings', 'media_assets'
-    ])
-    LOOP
-        EXECUTE format('
-            DROP TRIGGER IF EXISTS trg_%s_updated_at ON %I;
-            CREATE TRIGGER trg_%s_updated_at
-                BEFORE UPDATE ON %I
-                FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-        ', t, t, t, t);
-    END LOOP;
-END $$;
-
--- ============================================================================
--- 31. SEED DATA
+-- 6. CORE SEED DATA
 -- ============================================================================
 
--- Platform Settings (global singleton)
-INSERT INTO platform_settings (id, platform_name, support_email, currency_default)
-VALUES ('global', 'TechNurture Labs', 'support@technurture.io', 'INR')
-ON CONFLICT (id) DO NOTHING;
-
--- Global Classes 1-12
+-- Classes (Level 1-12)
 INSERT INTO classes (name, level) VALUES
     ('Class 1',  1),  ('Class 2',  2),  ('Class 3',  3),  ('Class 4',  4),
     ('Class 5',  5),  ('Class 6',  6),  ('Class 7',  7),  ('Class 8',  8),
     ('Class 9',  9),  ('Class 10', 10), ('Class 11', 11), ('Class 12', 12)
 ON CONFLICT (name) DO NOTHING;
 
--- Default Payment Plans
-INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active)
+-- Payment Plans
+INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
 VALUES
-    ('Basic Education',  'Foundation for primary classes.',       'annual', 999,  50,  '{"lms": true, "analytics": false}'::jsonb, true),
-    ('Pro Academy',      'Advanced tools for the whole school.',  'annual', 4999, 500, '{"lms": true, "analytics": true, "priority_support": true}'::jsonb, true)
+    ('Basic Education',  'Foundation for primary classes.',       'annual', 999,  50,  '{"lms": true, "analytics": false}'::jsonb, true, false),
+    ('Pro Academy',      'Advanced tools for the whole school.',  'annual', 4999, 500, '{"lms": true, "analytics": true, "priority_support": true}'::jsonb, true, true)
 ON CONFLICT (name) DO NOTHING;
 
--- Achievements
-INSERT INTO achievements (name, description, tier, xp_threshold, criteria) VALUES
-    ('First Steps',       'Completed your first lesson.',             'bronze',   0,    '{"type": "lesson_completion", "count": 1}'::jsonb),
-    ('XP Earner',         'Earned 100 XP.',                          'bronze',   100,  '{"type": "xp_threshold", "xp": 100}'::jsonb),
-    ('On a Roll',         'Maintained a 3-day streak.',              'bronze',   0,    '{"type": "streak", "days": 3}'::jsonb),
-    ('Knowledge Seeker',  'Completed 10 lessons.',                   'silver',   0,    '{"type": "lesson_completion", "count": 10}'::jsonb),
-    ('Quiz Champion',     'Passed 5 quizzes with 80%+ score.',       'silver',   0,    '{"type": "quiz_pass", "count": 5, "min_score": 80}'::jsonb),
-    ('Consistency King',  'Maintained a 7-day streak.',              'gold',     0,    '{"type": "streak", "days": 7}'::jsonb),
-    ('XP Master',         'Earned 1000 XP.',                         'gold',     1000, '{"type": "xp_threshold", "xp": 1000}'::jsonb),
-    ('Course Conqueror',  'Completed an entire course.',             'gold',     0,    '{"type": "course_completion", "count": 1}'::jsonb),
-    ('Legend',            'Earned 10,000 XP.',                       'platinum', 10000,'{"type": "xp_threshold", "xp": 10000}'::jsonb)
-ON CONFLICT (name) DO NOTHING;
+-- Platform Global Settings
+INSERT INTO platform_settings (id, platform_name, support_email, currency_default)
+VALUES ('global', 'TechNurture Labs', 'support@technurture.io', 'INR')
+ON CONFLICT (id) DO NOTHING;
 
--- ============================================================================
--- 32. SUPER ADMIN
--- Password is 'AdminPassword123!' hashed with bcrypt (10 rounds)
--- ============================================================================
-INSERT INTO super_admins (
-    id, first_name, last_name, email, password_hash, is_active
-) VALUES (
+-- Default Super Admin
+-- Password: AdminPassword123!
+INSERT INTO super_admins (id, first_name, last_name, email, password_hash, is_active)
+VALUES (
     gen_random_uuid(),
     'Super',
     'Admin',
     'admin@technurture.com',
     '$2b$10$Sk9UyIVPSe2I5lf9.R7QO.3O2TKys2Rly4Z2LbyTvn1sTde8mDtlu',
     TRUE
-) ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;
+) ON CONFLICT (email) DO NOTHING;
 
--- (All statements above run in auto-commit mode. No COMMIT needed.)
+-- Audit Trail Initialization
+INSERT INTO audit_logs (id, user_type, action, entity_type, metadata)
+VALUES (
+    gen_random_uuid(),
+    'super_admin',
+    'create',
+    'system_init',
+    '{"event": "Clean Production Schema initialized with seeds"}'::jsonb
+);
+
+-- ============================================================================
+-- END OF SCRIPT
+-- ============================================================================
