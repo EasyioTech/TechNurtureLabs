@@ -482,6 +482,7 @@ CREATE TABLE IF NOT EXISTS lesson_progress (
     started_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     completed_at     TIMESTAMPTZ,
     progress_pct     NUMERIC(5,2) NOT NULL DEFAULT 0,
+    last_position_secs INT NOT NULL DEFAULT 0,
     time_spent_secs  INT NOT NULL DEFAULT 0,
     xp_earned        INT NOT NULL DEFAULT 0,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),

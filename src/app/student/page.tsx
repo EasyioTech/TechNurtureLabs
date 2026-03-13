@@ -133,57 +133,138 @@ export default function StudentDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-             {/* We can put secondary actions here if needed later */}
+            <div className="relative group hidden sm:block">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={16} />
+              <input
+                type="text"
+                placeholder="Search resources..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-48 xl:w-64 h-12 bg-white border border-slate-100 rounded-2xl pl-11 pr-4 py-2 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-4 focus:ring-indigo-600/5 focus:border-indigo-600 transition-all shadow-sm"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Notification Bell */}
+              <button className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-all shadow-sm relative group">
+                <Bell size={18} />
+                <span className="absolute top-3 right-3 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
+              </button>
+
+              <div className="relative">
+                <button
+                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                  className="flex items-center gap-3 p-1 pr-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 transition-all shadow-sm"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-[10px] font-black shadow-lg shadow-indigo-200">
+                    {userProfile?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'ST'}
+                  </div>
+                  <div className="text-left hidden min-[1400px]:block">
+                    <p className="text-[10px] font-black text-slate-900 uppercase leading-none mb-1">{userProfile?.full_name?.split(' ')[0]}</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Lv {stats.level}</p>
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {profileMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setProfileMenuOpen(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50 p-2"
+                      >
+                        <Link href="/student/profile" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-[10px] font-black uppercase tracking-widest">
+                          <User size={16} /> My Profile
+                        </Link>
+                        <Link href="/student/settings" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-[10px] font-black uppercase tracking-widest">
+                          <Settings size={16} /> Settings
+                        </Link>
+                        <div className="h-px bg-slate-50 my-1" />
+                        <button
+                          onClick={() => {
+                            setProfileMenuOpen(false);
+                            signOut();
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-3 text-rose-500 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition-colors text-[10px] font-black uppercase tracking-widest"
+                        >
+                          <LogOut size={16} /> Logout
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="hidden sm:block w-px h-8 bg-slate-100 mx-1" />
+
+              {/* The logout button here was redundant since we have it in the profile menu and sidebar settings */}
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
           <div className="xl:col-span-8 space-y-12">
 
-            {/* Quick Resume Hero - Indigo Themed */}
-            {lastCourse && (
-              <section className="relative overflow-hidden rounded-3xl md:rounded-[3rem] bg-indigo-600 p-6 sm:p-8 lg:p-10 text-white shadow-xl shadow-indigo-200 group">
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 sm:gap-8">
-                  <div>
-                    <Badge className={`bg-white/20 text-white border-0 px-3 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest mb-4 md:mb-6`}>
-                      {lastCourse.completedLessons === lastCourse.totalLessons && lastCourse.totalLessons > 0
-                        ? 'Course Completed'
-                        : lastCourse.completedLessons > 0 ? 'Continue Learning' : 'Start Next Course'}
-                    </Badge>
-                    <h2 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight leading-tight mb-4">{lastCourse.title}</h2>
-                    <div className="flex items-center gap-4 sm:gap-6 mb-6 md:mb-8 text-[9px] md:text-[10px] font-black text-white/60 uppercase tracking-widest">
-                      <span className="flex items-center gap-2"><BookOpen size={14} /> {lastCourse.totalLessons} Lessons</span>
-                      <span className="flex items-center gap-2"><Clock size={14} /> {Math.ceil((lastCourse.totalLessons || 0) * 0.4)}h Est.</span>
-                    </div>
-                    <Link href={`/student/course/${lastCourse.id}`}>
-                      <Button className="h-12 md:h-14 px-8 md:px-10 rounded-xl md:rounded-2xl bg-white text-indigo-600 font-black uppercase tracking-widest text-[10px] md:text-[11px] hover:bg-slate-50 transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-black/5 w-full sm:w-auto">
-                        {lastCourse.completedLessons === lastCourse.totalLessons && lastCourse.totalLessons > 0
-                          ? 'Review Course'
-                          : lastCourse.completedLessons > 0 ? 'Resume Course' : 'Start Course'}
-                        <ArrowRight size={16} className="ml-3" />
-                      </Button>
-                    </Link>
-                  </div>
+            {/* Quick Resume Hero - Dynamic Theme */}
+            {lastCourse && (() => {
+              // Generate a stable color based on the title
+              const colors = [
+                { bg: 'bg-indigo-600', shadow: 'shadow-indigo-200', text: 'text-indigo-600', ring: 'ring-indigo-100' },
+                { bg: 'bg-emerald-600', shadow: 'shadow-emerald-200', text: 'text-emerald-600', ring: 'ring-emerald-100' },
+                { bg: 'bg-rose-600', shadow: 'shadow-rose-200', text: 'text-rose-600', ring: 'ring-rose-100' },
+                { bg: 'bg-amber-600', shadow: 'shadow-amber-200', text: 'text-amber-600', ring: 'ring-amber-100' },
+                { bg: 'bg-sky-600', shadow: 'shadow-sky-200', text: 'text-sky-600', ring: 'ring-sky-100' },
+                { bg: 'bg-violet-600', shadow: 'shadow-violet-200', text: 'text-violet-600', ring: 'ring-violet-100' },
+              ];
+              const hash = lastCourse.title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+              const theme = colors[hash % colors.length];
 
-                  <div className="relative w-32 h-32 flex-shrink-0">
-                    <svg className="w-full h-full -rotate-90">
-                      <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="12" fill="none" className="text-white/10" />
-                      <circle
-                        cx="64" cy="64" r="56"
-                        stroke="currentColor" strokeWidth="12" fill="none"
-                        strokeDasharray={`${(lastCourse.completedLessons / (lastCourse.totalLessons || 1)) * 351.8} 351.8`}
-                        className="text-white"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-black">{Math.round((lastCourse.completedLessons / (lastCourse.totalLessons || 1)) * 100)}%</span>
-                      <span className="text-[8px] font-black text-white/50 uppercase tracking-widest mt-1">Sync</span>
+              return (
+                <section className={`relative overflow-hidden rounded-3xl md:rounded-[3rem] ${theme.bg} p-6 sm:p-8 lg:p-10 text-white shadow-xl ${theme.shadow} group transition-all duration-500`}>
+                  <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 sm:gap-8">
+                    <div>
+                      <Badge className={`bg-white/20 text-white border-0 px-3 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest mb-4 md:mb-6`}>
+                        {lastCourse.completedLessons === lastCourse.totalLessons && lastCourse.totalLessons > 0
+                          ? 'Course Completed'
+                          : lastCourse.completedLessons > 0 ? 'Continue Learning' : 'Start Next Course'}
+                      </Badge>
+                      <h2 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight leading-tight mb-4">{lastCourse.title}</h2>
+                      <div className="flex items-center gap-4 sm:gap-6 mb-6 md:mb-8 text-[9px] md:text-[10px] font-black text-white/60 uppercase tracking-widest">
+                        <span className="flex items-center gap-2"><BookOpen size={14} /> {lastCourse.totalLessons} Lessons</span>
+                        <span className="flex items-center gap-2"><Clock size={14} /> {Math.ceil((lastCourse.totalLessons || 0) * 0.4)}h Est.</span>
+                      </div>
+                      <Link href={`/student/course/${lastCourse.id}`}>
+                        <Button className={`h-12 md:h-14 px-8 md:px-10 rounded-xl md:rounded-2xl bg-white ${theme.text} font-black uppercase tracking-widest text-[10px] md:text-[11px] hover:bg-slate-50 transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-black/5 w-full sm:w-auto`}>
+                          {lastCourse.completedLessons === lastCourse.totalLessons && lastCourse.totalLessons > 0
+                            ? 'Review Course'
+                            : lastCourse.completedLessons > 0 ? 'Resume Course' : 'Start Course'}
+                          <ArrowRight size={16} className="ml-3" />
+                        </Button>
+                      </Link>
+                    </div>
+
+                    <div className="relative w-32 h-32 flex-shrink-0">
+                      <svg className="w-full h-full -rotate-90">
+                        <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="12" fill="none" className="text-white/10" />
+                        <circle
+                          cx="64" cy="64" r="56"
+                          stroke="currentColor" strokeWidth="12" fill="none"
+                          strokeDasharray={`${(lastCourse.completedLessons / (lastCourse.totalLessons || 1)) * 351.8} 351.8`}
+                          className="text-white"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-2xl font-black">{Math.round((lastCourse.completedLessons / (lastCourse.totalLessons || 1)) * 100)}%</span>
+                        <span className="text-[8px] font-black text-white/50 uppercase tracking-widest mt-1">Sync</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </section>
-            )}
+                </section>
+              );
+            })()}
 
             {/* Performance Snapshot */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">

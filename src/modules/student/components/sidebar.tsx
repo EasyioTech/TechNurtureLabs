@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -16,9 +16,11 @@ import {
     Zap,
     Compass,
     Search,
-    Bell
+    Bell,
+    LogOut
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { useAuth } from '@/components/providers/auth-provider';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_ITEMS = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/student' },
@@ -42,7 +44,9 @@ export function StudentSidebar({
     settings?: any;
     profile?: { full_name: string; email: string };
 }) {
+    const { signOut } = useAuth();
     const pathname = usePathname();
+    const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
     const logoUrl = school?.logo_url || settings?.logo_url;
     const displayName = school?.name || settings?.platform_name || 'TechNurture';
@@ -113,21 +117,59 @@ export function StudentSidebar({
             <div className="p-4 space-y-4">
                 {/* Profile Card */}
                 {profile && (
-                    <Link href="/student/profile">
+                    <div className="relative">
                         <div className="flex items-center gap-3 p-3 rounded-3xl bg-slate-50 border border-slate-100 hover:border-slate-300 transition-all cursor-pointer group">
-                            <div className="relative">
-                                <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm group-hover:scale-105 transition-transform">
-                                    {initials}
+                            <Link href="/student/profile" className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="relative">
+                                    <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm group-hover:scale-105 transition-transform">
+                                        {initials}
+                                    </div>
+                                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 border-2 border-white rounded-full" />
                                 </div>
-                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 border-2 border-white rounded-full" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-black text-slate-800 truncate leading-none mb-1">{profile.full_name?.split(' ')[0]}</p>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{stats?.level ? `Level ${stats.level}` : 'Student'}</p>
-                            </div>
-                            <Bell size={14} className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-black text-slate-800 truncate leading-none mb-1">{profile.full_name?.split(' ')[0]}</p>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{stats?.level ? `Level ${stats.level}` : 'Student'}</p>
+                                </div>
+                            </Link>
+                            <button 
+                                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                                className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-300 hover:text-indigo-600 hover:bg-white transition-all shadow-sm"
+                            >
+                                <Settings size={14} className={profileMenuOpen ? 'text-indigo-600 rotate-90' : 'transition-transform duration-300'} />
+                            </button>
                         </div>
-                    </Link>
+
+                        <AnimatePresence>
+                            {profileMenuOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setProfileMenuOpen(false)} />
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute bottom-full left-0 mb-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50 p-2"
+                                    >
+                                        <Link href="/student/profile" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-[10px] font-black uppercase tracking-widest">
+                                            <User size={16} /> My Profile
+                                        </Link>
+                                        <Link href="/student/settings" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-[10px] font-black uppercase tracking-widest">
+                                            <Settings size={16} /> Preferences
+                                        </Link>
+                                        <div className="h-px bg-slate-50 my-1" />
+                                        <button
+                                            onClick={() => {
+                                                setProfileMenuOpen(false);
+                                                signOut();
+                                            }}
+                                            className="flex items-center gap-3 w-full px-4 py-3 text-rose-500 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition-colors text-[10px] font-black uppercase tracking-widest"
+                                        >
+                                            <LogOut size={16} /> Logout
+                                        </button>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 )}
 
                 {/* Streak Card */}

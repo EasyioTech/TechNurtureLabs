@@ -18,10 +18,10 @@ INSERT INTO super_admins (
     created_at
 ) VALUES (
     gen_random_uuid(),
-    '${ADMIN_FIRST_NAME:-Super}',           
-    '${ADMIN_LAST_NAME:-Admin}',             
-    '${ADMIN_EMAIL:-admin@yourdomain.com}', 
-    '${ADMIN_PASSWORD_HASH:-$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi}', 
+    '${ADMIN_FIRST_NAME}',           
+    '${ADMIN_LAST_NAME}',             
+    '${ADMIN_EMAIL}', 
+    '${ADMIN_PASSWORD_HASH}', 
     TRUE,
     now()
 ) ON CONFLICT (email) DO UPDATE SET 
@@ -47,16 +47,16 @@ INSERT INTO platform_settings (
     updated_at
 ) VALUES (
     'global', 
-    '${PLATFORM_NAME:-TechNurture Labs}', 
-    '${SUPPORT_EMAIL:-support@yourdomain.com}',
-    '${PLATFORM_LOGO_URL:-}', 
-    '${PLATFORM_FAVICON_URL:-}', 
-    '${LOGO_LAYOUT:-horizontal}',
-    ${SHOW_PLATFORM_NAME:-TRUE},
-    ${LOGO_HEIGHT:-40},
-    '${HERO_VIDEO_URL:-}', 
-    '${HERO_VIDEO_TYPE:-youtube}', 
-    '${CURRENCY_DEFAULT:-INR}',
+    '${PLATFORM_NAME}', 
+    '${SUPPORT_EMAIL}',
+    '${PLATFORM_LOGO_URL}', 
+    '${PLATFORM_FAVICON_URL}', 
+    '${LOGO_LAYOUT}',
+    ${SHOW_PLATFORM_NAME},
+    ${LOGO_HEIGHT},
+    '${HERO_VIDEO_URL}', 
+    '${HERO_VIDEO_TYPE}', 
+    '${CURRENCY_DEFAULT}',
     now()
 ) ON CONFLICT (id) DO UPDATE SET 
     platform_name = EXCLUDED.platform_name,

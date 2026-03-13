@@ -733,6 +733,8 @@ export const platformSettings = pgTable('platform_settings', {
     logo_height: integer('logo_height').notNull().default(40),
     hero_video_url: text('hero_video_url').notNull().default(''),
     hero_video_type: text('hero_video_type').notNull().default('youtube'), // 'upload', 'youtube', 'vimeo', 'link'
+    support_email: text('support_email'),
+    currency_default: text('currency_default').notNull().default('INR'),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
