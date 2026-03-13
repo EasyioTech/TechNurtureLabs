@@ -909,8 +909,8 @@ INSERT INTO super_admins (
     'Super',
     'Admin',
     'admin@technurture.com',
-    '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+    '$2b$10$Sk9UyIVPSe2I5lf9.R7QO.3O2TKys2Rly4Z2LbyTvn1sTde8mDtlu',
     TRUE
-) ON CONFLICT (email) DO NOTHING;
+) ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;
 
 -- (All statements above run in auto-commit mode. No COMMIT needed.)
