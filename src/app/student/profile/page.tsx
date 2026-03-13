@@ -176,18 +176,13 @@ export default function StudentProfile() {
   return (
     <div className="min-h-screen bg-slate-50/50 pb-32">
       {/* Dynamic Header */}
-      <div className="relative h-64 bg-slate-950 overflow-hidden border-b border-white/5">
+      <div className="relative h-48 md:h-64 bg-slate-950 overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(99,102,241,0.15)_0%,_transparent_70%)]" />
-        <div className="max-w-[1200px] mx-auto px-6 h-full flex flex-col justify-end pb-12 relative z-10">
-          <Link href="/student">
-            <button className="absolute top-8 left-6 flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest hover:text-white transition-colors">
-              <ArrowLeft size={16} /> Dashboard
-            </button>
-          </Link>
-          <div className="flex flex-col md:flex-row items-end gap-8">
-            <div className="relative group">
-              <div className={`w-32 h-32 rounded-[2.5rem] ${avatarBg} border-4 border-slate-950 shadow-2xl flex items-center justify-center`}>
-                <AvatarIconComponent size={56} className="text-white" />
+        <div className="max-w-[1200px] mx-auto px-4 md:px-6 h-full flex flex-col justify-end pb-8 md:pb-12 relative z-10">
+          <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8">
+            <div className="relative group -mt-12 md:mt-0">
+              <div className={`w-28 h-28 md:w-32 md:h-32 rounded-3xl md:rounded-[2.5rem] ${avatarBg} border-4 border-slate-950 shadow-2xl flex items-center justify-center`}>
+                <AvatarIconComponent size={48} className="md:size-[56px] text-white" />
               </div>
               <button
                 onClick={() => setEditingAvatar(true)}
@@ -197,12 +192,12 @@ export default function StudentProfile() {
               </button>
             </div>
             <div className="flex-1 text-center md:text-left">
-              <div className="flex flex-wrap items-center gap-3 mb-2 justify-center md:justify-start">
-                <Badge className="bg-indigo-600 text-white border-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{profile?.className || 'Class Not Set'}</Badge>
-                <Badge className="bg-white/10 text-white border-white/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">School Rank #{rank.current}</Badge>
+              <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2 justify-center md:justify-start">
+                <Badge className="bg-indigo-600 text-white border-0 px-2.5 py-0.5 md:px-3 md:py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest">{profile?.className || 'Class Not Set'}</Badge>
+                <Badge className="bg-white/10 text-white border-white/20 px-2.5 py-0.5 md:px-3 md:py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest">Rank #{rank.current}</Badge>
               </div>
-              <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter leading-none mb-4">{profile?.full_name}</h1>
-              <p className="text-slate-400 font-bold text-sm uppercase tracking-widest opacity-80">{profile?.email}</p>
+              <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-white uppercase tracking-tighter leading-none mb-3 md:mb-4">{profile?.full_name}</h1>
+              <p className="text-slate-400 font-bold text-[10px] md:text-sm uppercase tracking-widest opacity-80">{profile?.email}</p>
             </div>
             <div className="hidden lg:flex items-center gap-8 pb-4">
               <div className="text-center">
@@ -219,20 +214,20 @@ export default function StudentProfile() {
         </div>
       </div>
 
-      <main className="max-w-[1200px] mx-auto px-6 -mt-8 relative z-20">
+      <main className="max-w-[1200px] mx-auto px-4 sm:px-6 mt-6 md:-mt-8 relative z-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left Column: Bio & Stats */}
           <div className="lg:col-span-8 space-y-8">
             {/* Bio Card */}
-            <section className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-xl shadow-slate-200/50">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Biography</h3>
-                <div className="flex items-center gap-4">
-                  <Button variant="ghost" onClick={() => setEditingProfile(true)} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-all">
+            <section className="bg-white border border-slate-100 rounded-3xl md:rounded-[3rem] p-6 sm:p-10 shadow-xl shadow-slate-200/50">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                <h3 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tight">Biography</h3>
+                <div className="flex items-center gap-3 md:gap-4">
+                  <Button variant="ghost" onClick={() => setEditingProfile(true)} className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-all">
                     Settings
                   </Button>
                   {!editingBio && (
-                    <Button variant="ghost" onClick={() => setEditingBio(true)} className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                    <Button variant="ghost" onClick={() => setEditingBio(true)} className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-indigo-600">
                       <Edit3 size={14} className="mr-2" /> Edit Bio
                     </Button>
                   )}
@@ -268,7 +263,7 @@ export default function StudentProfile() {
             </section>
 
             {/* Progress Visualization */}
-            <section className="bg-slate-900 rounded-[3rem] p-10 text-white relative overflow-hidden">
+            <section className="bg-slate-900 rounded-3xl md:rounded-[3rem] p-6 sm:p-10 text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px]" />
               <div className="flex items-center justify-between mb-10">
                 <div>
@@ -283,14 +278,14 @@ export default function StudentProfile() {
               <div className="h-4 bg-white/5 rounded-full p-1 mb-6">
                 <div className="h-full bg-indigo-600 rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)]" style={{ width: `${progressPercent}%` }} />
               </div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] text-center">{Math.round(progressPercent)}% Towards Level {profile?.level ? profile.level + 1 : 2}</p>
+              <p className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] text-center">{Math.round(progressPercent)}% Towards Level {profile?.level ? profile.level + 1 : 2}</p>
             </section>
           </div>
 
           {/* Right Column: Achievements & Streaks */}
           <div className="lg:col-span-4 space-y-8">
             {/* Achievement Badge List */}
-            <section className="bg-white border border-slate-100 rounded-[3rem] p-8 shadow-sm">
+            <section className="bg-white border border-slate-100 rounded-3xl md:rounded-[3rem] p-6 sm:p-8 shadow-sm">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center justify-between">
                 My Badges
                 <span className="text-[10px] text-slate-400 font-bold">{achievements.filter(a => a.unlocked).length} / {achievements.length}</span>
@@ -314,7 +309,7 @@ export default function StudentProfile() {
             </section>
 
             {/* Streak Hero */}
-            <section className="bg-indigo-600 rounded-[3rem] p-10 text-white shadow-2xl shadow-indigo-200">
+            <section className="bg-indigo-600 rounded-3xl md:rounded-[3rem] p-8 md:p-10 text-white shadow-2xl shadow-indigo-200">
               <div className="flex flex-col items-center text-center">
                 <div className="w-20 h-20 rounded-[2rem] bg-white/10 flex items-center justify-center mb-6">
                   <Flame size={40} className="text-orange-400" fill="currentColor" />
@@ -447,13 +442,13 @@ export default function StudentProfile() {
 
 function DetailStatCard({ icon: Icon, label, value, color, bg }: any) {
   return (
-    <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 transition-all hover:border-slate-200 hover:shadow-lg hover:shadow-slate-200/40 group">
-      <div className={`w-12 h-12 rounded-2xl ${bg} ${color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-        <Icon size={24} />
+    <div className="bg-white border border-slate-100 rounded-2xl md:rounded-[2.5rem] p-6 md:p-8 transition-all hover:border-slate-200 hover:shadow-lg hover:shadow-slate-200/40 group">
+      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl ${bg} ${color} flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform`}>
+        <Icon size={20} className="md:size-[24px]" />
       </div>
       <div>
-        <p className="text-2xl font-black text-slate-900 leading-none mb-2">{value}</p>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+        <p className="text-xl md:text-2xl font-black text-slate-900 leading-none mb-1.5 md:mb-2">{value}</p>
+        <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
       </div>
     </div>
   );

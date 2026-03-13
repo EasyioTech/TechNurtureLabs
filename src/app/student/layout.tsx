@@ -23,7 +23,13 @@ export default async function StudentLayout({
     );
 
     return (
-        <StudentLayoutShell sidebar={sidebar}>
+        <StudentLayoutShell 
+            sidebar={sidebar}
+            profile={data?.profile}
+            school={data?.school}
+            stats={data?.stats}
+            settings={settings}
+        >
             {children}
         </StudentLayoutShell>
     );

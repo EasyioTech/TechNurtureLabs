@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
     Flame, Star, Crown, Bell, LogOut, Search, Menu, X,
     Settings, GraduationCap, LayoutDashboard,
-    Zap, Sparkles, Compass, User, BookOpen
+    Zap, Sparkles, Compass, User, BookOpen, Target, Trophy
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 
@@ -277,11 +277,16 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                             </div>
 
                             {/* Nav */}
-                            <nav className="flex-1 overflow-y-auto py-3 px-3">
+                            <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
                                 <NavItem icon={LayoutDashboard} label="Dashboard" href="/student" active={pathname === '/student'} close={() => setMobileOpen(false)} />
+                                <NavItem icon={BookOpen} label="My Library" href="/student/courses" active={pathname === '/student/courses'} close={() => setMobileOpen(false)} />
+                                <NavItem icon={Target} label="Challenges" href="/student/challenges" active={pathname === '/student/challenges'} close={() => setMobileOpen(false)} />
+                                <NavItem icon={Trophy} label="Achievements" href="/student/achievements" active={pathname === '/student/achievements'} close={() => setMobileOpen(false)} />
+                                <div className="py-2 px-4">
+                                    <div className="h-px bg-slate-50" />
+                                </div>
                                 <NavItem icon={User} label="My Profile" href="/student/profile" active={pathname === '/student/profile'} close={() => setMobileOpen(false)} />
-                                <NavItem icon={Crown} label="Achievements" href="/student/profile" close={() => setMobileOpen(false)} />
-                                <NavItem icon={Settings} label="Settings" href="/student/profile" close={() => setMobileOpen(false)} />
+                                <NavItem icon={Settings} label="Settings" href="/student/profile" active={false} close={() => setMobileOpen(false)} />
                             </nav>
 
                             {/* Sign out */}

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 // ─── Types ────────────────────────────────────────────────────────
 type Question = {
   id: string;
@@ -53,8 +54,12 @@ type Lesson = {
 };
 
 import { VideoPlayer } from '@/components/video/video-player';
-import { PDFViewer } from '@/components/learning/pdf-viewer';
-import { PPTViewer } from '@/components/learning/ppt-viewer';
+const PDFViewer = dynamic(() => import('@/components/learning/pdf-viewer').then(mod => mod.PDFViewer), {
+  ssr: false,
+});
+const PPTViewer = dynamic(() => import('@/components/learning/ppt-viewer').then(mod => mod.PPTViewer), {
+  ssr: false,
+});
 import { AssignmentViewer } from '@/components/learning/assignment-viewer';
 
 // ─── Content type helpers ──────────────────────────────────────────
@@ -232,7 +237,11 @@ export default function LessonPlayerPage() {
 
       <main className={cn(
         "relative z-10 mx-auto transition-all duration-1000 animate-in fade-in slide-in-from-bottom-4",
-        isFocusMode ? "max-w-[1400px] py-20 px-12" : "max-w-[1240px] px-6 lg:px-12 py-12 lg:py-20"
+        isFocusMode 
+          ? "max-w-none px-12 py-20" 
+          : (lesson.content_type === 'pdf' || lesson.content_type === 'ppt')
+            ? "max-w-none px-4 lg:px-6 py-6"
+            : "max-w-[1240px] px-6 lg:px-12 py-12 lg:py-20"
       )}>
         <div className={cn("transition-all duration-1000", isFocusMode ? "text-center mb-16" : "mb-12")}>
           <div className={cn("flex flex-wrap items-center gap-3 mb-6", isFocusMode && "justify-center")}>

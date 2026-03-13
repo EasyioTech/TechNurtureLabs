@@ -48,17 +48,17 @@ export function AchievementBadge({ title, description, unlocked, locked, categor
     return (
         <div className={`group flex flex-col items-center transition-all duration-500 ${locked ? 'opacity-40 grayscale' : 'hover:scale-110 active:scale-95'}`}>
             <div className={`
-                relative w-24 h-24 rounded-[2rem] flex items-center justify-center border-2 transition-all duration-500 shadow-sm
+                relative w-16 h-16 xs:w-20 xs:h-20 md:w-24 md:h-24 rounded-2xl md:rounded-[2rem] flex items-center justify-center border transition-all duration-500 shadow-sm
                 ${colorClasses}
             `}>
                 {unlocked && (
-                    <div className="absolute -top-1 -right-1 w-7 h-7 bg-emerald-500 text-white rounded-full flex items-center justify-center border-4 border-white shadow-lg animate-in zoom-in duration-1000">
+                    <div className="absolute -top-1 -right-1 w-6 h-6 md:w-7 md:h-7 bg-emerald-500 text-white rounded-full flex items-center justify-center border-[3px] md:border-4 border-white shadow-lg animate-in zoom-in duration-1000">
                         <CheckCircle2 size={12} strokeWidth={3} />
                     </div>
                 )}
-                <IconComponent size={36} strokeWidth={unlocked ? 2.5 : 1.5} className={`${unlocked ? 'animate-pulse' : ''}`} />
+                <IconComponent size={30} strokeWidth={unlocked ? 2.5 : 1.5} className={`${unlocked ? 'animate-pulse' : ''}`} />
             </div>
-            <div className={`mt-5 text-center px-1 max-w-[120px]`}>
+            <div className={`mt-3 md:mt-5 text-center px-1 max-w-[100px] md:max-w-[120px]`}>
                 <p className={`text-[10px] font-black uppercase tracking-tight leading-tight mb-2 ${unlocked ? 'text-slate-900' : 'text-slate-400'}`}>
                     {title}
                 </p>

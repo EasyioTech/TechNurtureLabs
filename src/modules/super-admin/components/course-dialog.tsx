@@ -12,9 +12,12 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Course } from '../types';
 import { useAdminTheme, t } from '../theme-context';
-import { BookOpen, ExternalLink, Zap, Upload, ImageIcon, Loader2, X, Eye, Library } from 'lucide-react';
+import { BookOpen, ExternalLink, Zap, Upload, ImageIcon, Loader2, X, Eye, Library, Cloud, HardDrive } from 'lucide-react';
 import { toast } from 'sonner';
 import { MediaLibraryPicker } from './media-library-picker';
+import { useUpload } from '@/hooks/use-upload';
+import { UploadProgress } from '@/components/shared/upload-progress';
+import { uploadStore } from '@/lib/upload-store';
 
 interface CourseDialogProps {
     open: boolean;
@@ -32,6 +35,32 @@ export function CourseDialog({
     const { isDark, accent } = useAdminTheme();
     const [showFullPreview, setShowFullPreview] = React.useState(false);
     const [libraryOpen, setLibraryOpen] = React.useState(false);
+    const [uploadFile, setUploadFile] = React.useState<File | null>(null);
+    const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
+
+    const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload({
+        onSuccess: (data) => {
+            setEditingCourse({ ...editingCourse, thumbnail: data.url });
+            toast.success('Thumbnail uploaded successfully');
+            setUploadFile(null);
+        },
+        onError: (err) => {
+            toast.error(err || 'Failed to upload thumbnail');
+        }
+    });
+
+    // Notify upload store that this upload is being handled locally in this dialog
+    React.useEffect(() => {
+        if (isUploading && open) {
+            uploadStore.updateTask(uploadId, { isLocalVisible: true });
+        } else {
+            uploadStore.updateTask(uploadId, { isLocalVisible: false });
+        }
+        return () => {
+            uploadStore.updateTask(uploadId, { isLocalVisible: false });
+        };
+    }, [uploadId, isUploading, open]);
+
     const isEditing = !!editingCourse?.id;
 
     // Local state for selected classes to avoid immediate parent updates
@@ -147,30 +176,20 @@ export function CourseDialog({
                                         onChange={async (e) => {
                                             const file = e.target.files?.[0];
                                             if (!file) return;
+                                            setUploadFile(file);
 
-                                            const formData = new FormData();
-                                            formData.append('file', file);
+                                            const additionalData: Record<string, string> = {
+                                                storagePreference: storagePref
+                                            };
                                             if (editingCourse?.id) {
-                                                formData.append('contextType', 'course');
-                                                formData.append('contextId', editingCourse.id);
+                                                additionalData.contextType = 'course';
+                                                additionalData.contextId = editingCourse.id;
                                             }
 
-                                            const loadingId = toast.loading('Uploading thumbnail...');
                                             try {
-                                                const res = await fetch('/api/upload', {
-                                                    method: 'POST',
-                                                    body: formData,
-                                                });
-                                                const data = await res.json();
-                                                if (data.url) {
-                                                    setEditingCourse({ ...editingCourse, thumbnail: data.url });
-                                                    toast.success('Thumbnail uploaded successfully', { id: loadingId });
-                                                } else {
-                                                    throw new Error(data.error || 'Upload failed');
-                                                }
+                                                await upload(file, additionalData);
                                             } catch (error) {
                                                 console.error('Upload error:', error);
-                                                toast.error('Failed to upload thumbnail', { id: loadingId });
                                             }
                                         }}
                                     />
@@ -213,12 +232,54 @@ export function CourseDialog({
                                         <Button
                                             type="button"
                                             onClick={() => document.getElementById('thumbnail-upload')?.click()}
-                                            className={`w-full h-12 rounded-full border-2 border-dashed flex items-center justify-center gap-2.5 font-bold transition-all hover:border-${accent.name}-400/50 hover:bg-${accent.name}-400/5 ${isDark ? `border-white/10 text-slate-300 hover:${accent.text} bg-transparent` : 'border-slate-200 text-slate-600 hover:text-slate-900 bg-transparent'}`}
+                                            disabled={isUploading}
+                                            className={`w-full h-12 rounded-full border-2 border-dashed flex items-center justify-center gap-2.5 font-bold transition-all hover:border-${accent.name}-400/50 hover:bg-${accent.name}-400/5 ${isDark ? `border-white/10 text-slate-300 hover:${accent.text} bg-transparent` : 'border-slate-200 text-slate-600 hover:text-slate-900 bg-transparent'} ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         >
-                                            <Upload size={16} />
-                                            UPLOAD IMAGE
+                                            {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                            {isUploading ? 'UPLOADING...' : 'UPLOAD IMAGE'}
                                         </Button>
                                     )}
+                                </div>
+                            </div>
+
+                            {uploadFile && (
+                                <UploadProgress
+                                    progress={progress}
+                                    fileName={uploadFile.name}
+                                    isUploading={isUploading}
+                                    error={uploadError}
+                                    onCancel={abort}
+                                    onReset={resetUpload}
+                                    isDark={isDark}
+                                />
+                            )}
+
+                            {/* Storage Preference Toggle */}
+                            <div className="flex items-center gap-3 px-1">
+                                <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
+                                    Storage:
+                                </p>
+                                <div className={`p-1 rounded-full flex gap-1 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
+                                    {[
+                                        { id: 'r2', label: 'Cloud', icon: Cloud },
+                                        { id: 'local', label: 'Server', icon: HardDrive }
+                                    ].map(opt => {
+                                        const isActive = storagePref === opt.id;
+                                        return (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
+                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all
+                                                    ${isActive 
+                                                        ? (isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm border border-slate-200') 
+                                                        : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
+                                            >
+                                                <opt.icon size={10} />
+                                                {opt.label}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
 

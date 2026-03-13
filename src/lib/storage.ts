@@ -95,7 +95,7 @@ export interface UploadResult {
     mimeType: string;
 }
 
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB max
+const MAX_FILE_SIZE = 2048 * 1024 * 1024; // 2 GB max
 
 /**
  * Validates file buffer against common extension magic bytes to prevent mislabeled file exploit.
@@ -151,7 +151,8 @@ export async function uploadFile(
     buffer: Buffer,
     originalFilename: string,
     mimeType: string,
-    context?: StorageContext
+    context?: StorageContext,
+    preferredStorage?: 'r2' | 'local'
 ): Promise<UploadResult> {
     const fileSize = buffer.length;
 
@@ -170,7 +171,9 @@ export async function uploadFile(
     const fileName = `${uuidv4()}${ext}`;
 
     // ── Attempt R2 upload ──────────────────────────────────────────────
-    if (isCloudflareConfigured && s3Client) {
+    const shouldTryR2 = isCloudflareConfigured && s3Client && preferredStorage !== 'local';
+    
+    if (shouldTryR2 && s3Client) {
         const key = `${folder}/${fileName}`;
         try {
             const command = new PutObjectCommand({

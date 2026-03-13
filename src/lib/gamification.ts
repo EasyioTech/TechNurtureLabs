@@ -1,7 +1,7 @@
 import { redis } from './redis';
 import { db } from './db';
 import { students, schoolAdmins, superAdmins, lessonProgress, quizAttempts } from '@/db/schema';
-import { eq, sql, and, isNotNull, count } from 'drizzle-orm';
+import { eq, sql, and, isNotNull, count, isNull } from 'drizzle-orm';
 import { invalidateStudentDashboardCache } from '@/modules/student/actions';
 
 const STATS_CACHE_TTL = 604800; // 7 days (Prevents infinite keys for inactive users)
@@ -66,10 +66,19 @@ export async function awardXP(userId: string, xp: number, schoolId?: string | nu
 export async function handleStudentEngagement(userId: string) {
     try {
         const student = await db.query.students.findFirst({
-            where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`)
+            where: and(eq(students.id, userId), isNull(students.deleted_at)),
+            columns: {
+                id: true,
+                current_streak: true,
+                longest_streak: true,
+                last_active_at: true
+            }
         });
 
-        if (!student) return;
+        if (!student) {
+            console.warn(`Engagement skip: Student not found or deleted for ID: ${userId}`);
+            return;
+        }
 
         const now = new Date();
         const todayStr = now.toISOString().split('T')[0];
@@ -124,8 +133,12 @@ export async function handleStudentEngagement(userId: string) {
 
         // Invalidate dashboard to show new streak
         await invalidateStudentDashboardCache(userId);
-    } catch (err) {
-        console.error("Engagement handling error:", err);
+    } catch (err: any) {
+        console.error("Engagement handling error:", {
+            message: err?.message || String(err),
+            code: err?.code,
+            query: err?.query
+        });
     }
 }
 

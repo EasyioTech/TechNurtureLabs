@@ -352,35 +352,7 @@ function DashboardContent() {
                         </motion.p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                        {activePage === 'courses' ? (
-                            <>
-                                <Button variant="outline" size="sm"
-                                    onClick={() => {
-                                        data.setEditingCourse({ published: true, all_classes: true });
-                                        data.setShowCourseDialog(true);
-                                    }}
-                                    className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black border-2 transition-all ${t.btnOutline(isDark)}`}>
-                                    <Plus size={isDark ? 14 : 16} /> CREATE COURSE
-                                </Button>
-                                <Button size="sm"
-                                    disabled={!data.selectedCourse}
-                                    onClick={() => {
-                                        if (data.selectedCourse) {
-                                            data.setEditingLesson({
-                                                course_id: data.selectedCourse.id,
-                                                is_published: true,
-                                                content_type: 'video'
-                                            });
-                                            data.setShowLessonDialog(true);
-                                        }
-                                    }}
-                                    className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black shadow-xl transition-all
-                                        ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)} ${!data.selectedCourse ? 'opacity-40 grayscale pointer-events-none' : ''}`}
-                                    style={isDark && data.selectedCourse ? t.glowStyle(isDark, accent) : {}}>
-                                    <Plus size={20} strokeWidth={3} /> CREATE LESSON
-                                </Button>
-                            </>
-                        ) : (
+                        {activePage !== 'courses' && (
                             <>
                                 {activePage !== 'system' && (
                                     <Button variant="outline" size="sm"

@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { students, schools, courses, lessons, lessonProgress, dailyChallenges, userDailyChallenges, achievements, userAchievements, enrollments, studentAcademicRecords, courseClassMapping, quizAttempts, auditLogs } from '@/db/schema';
-import { eq, and, gt, inArray, asc, desc, isNotNull, sql } from 'drizzle-orm';
+import { eq, and, gt, inArray, asc, desc, isNotNull, sql, isNull } from 'drizzle-orm';
 import { redis, safeRedis } from '@/lib/redis';
 
 export const invalidateStudentDashboardCache = async (userId: string) => {
@@ -55,11 +55,9 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
         const { handleStudentEngagement } = await import('@/lib/gamification');
         const { checkAndAwardAchievements } = await import('./achievement-actions');
         
-        // Parallel sync (non-blocking if possible, but for data accuracy we wait)
-        await Promise.all([
-            handleStudentEngagement(userId),
-            checkAndAwardAchievements()
-        ]);
+        // Sequential sync to preserve DB connections and ensure correct state order
+        await handleStudentEngagement(userId);
+        await checkAndAwardAchievements();
     } catch (err) {
         console.error("Dashboard engagement sync error:", err);
     }
@@ -73,7 +71,20 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
     }
 
     const profile = await db.query.students.findFirst({
-        where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`),
+        where: and(eq(students.id, userId), isNull(students.deleted_at)),
+        columns: {
+            id: true,
+            school_id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            phone: true,
+            avatar_url: true,
+            bio: true,
+            cumulative_xp: true,
+            current_streak: true,
+            longest_streak: true
+        },
         with: {
             academicRecords: {
                 with: {
@@ -278,38 +289,52 @@ export async function getStudentDashboardData(): Promise<DashboardData> {
 
     const allRelevantCourses = Array.from(courseMap.values());
 
-    const coursesWithProgress = await Promise.all(
-        allRelevantCourses.map(async (course) => {
-            if (!course) return null;
-
-            const courseLessons = await db.query.lessons.findMany({
-                where: eq(lessons.course_id, course.id)
-            });
-            const totalLessons = courseLessons.length;
-
-            let completedCount = 0;
-            if (totalLessons > 0) {
-                const lessonIds = courseLessons.map(l => l.id);
-                const userProgress = await db.select().from(lessonProgress).where(
-                    and(
-                        eq(lessonProgress.user_id, userId),
-                        inArray(lessonProgress.lesson_id, lessonIds),
-                        isNotNull(lessonProgress.completed_at)
-                    )
-                );
-                completedCount = userProgress.length;
-            }
-
-            return {
-                ...course,
-                // Backward-compatible aliases
-                thumbnail: course.thumbnail_url,
-                published: course.is_published,
-                totalLessons,
-                completedLessons: completedCount
-            };
+    // Optimized course progress calculation
+    const allCourseIds = allRelevantCourses.map(c => c.id).filter(Boolean);
+    
+    // Batch fetch all lessons for all relevant courses
+    const allLessons = allCourseIds.length > 0 
+        ? await db.query.lessons.findMany({
+            where: inArray(lessons.course_id, allCourseIds)
         })
-    );
+        : [];
+        
+    // Group lessons by course
+    const lessonsByCourse = new Map<string, any[]>();
+    allLessons.forEach(lesson => {
+        const list = lessonsByCourse.get(lesson.course_id) || [];
+        list.push(lesson);
+        lessonsByCourse.set(lesson.course_id, list);
+    });
+    
+    // Batch fetch all progress for these lessons
+    const allLessonIds = allLessons.map(l => l.id);
+    const allUserProgress = allLessonIds.length > 0
+        ? await db.select().from(lessonProgress).where(
+            and(
+                eq(lessonProgress.user_id, userId),
+                inArray(lessonProgress.lesson_id, allLessonIds),
+                isNotNull(lessonProgress.completed_at)
+            )
+        )
+        : [];
+        
+    const completedLessonIds = new Set(allUserProgress.map(p => p.lesson_id));
+
+    const coursesWithProgress = allRelevantCourses.map((course) => {
+        if (!course) return null;
+        const courseLessons = lessonsByCourse.get(course.id) || [];
+        const totalLessons = courseLessons.length;
+        const completedCount = courseLessons.filter(l => completedLessonIds.has(l.id)).length;
+
+        return {
+            ...course,
+            thumbnail: course.thumbnail_url,
+            published: course.is_published,
+            totalLessons,
+            completedLessons: completedCount
+        };
+    }).filter(Boolean);
 
     const validCourses = coursesWithProgress.filter(Boolean) as any[];
 

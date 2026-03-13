@@ -6,6 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { useUpload } from '@/hooks/use-upload';
+import { UploadProgress } from '@/components/shared/upload-progress';
+import { uploadStore } from '@/lib/upload-store';
 
 interface MediaAsset {
     id: string;
@@ -35,8 +38,33 @@ export function ImageUpload({ value, onChange, label, description, isDark = fals
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [assets, setAssets] = useState<MediaAsset[]>([]);
     const [loading, setLoading] = useState(false);
-    const [uploading, setUploading] = useState(false);
     const [search, setSearch] = useState('');
+    const [uploadFile, setUploadFile] = useState<File | null>(null);
+    const [storagePref, setStoragePref] = useState<'r2' | 'local'>('r2');
+
+    const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload({
+        onSuccess: (data) => {
+            toast.success('Image uploaded');
+            onChange(data.url);
+            setIsPickerOpen(false);
+            setUploadFile(null);
+        },
+        onError: (err) => {
+            toast.error(err || 'Failed to upload');
+        }
+    });
+
+    // Notify upload store that this upload is being handled locally in this dialog
+    React.useEffect(() => {
+        if (isUploading && isPickerOpen) {
+            uploadStore.updateTask(uploadId, { isLocalVisible: true });
+        } else {
+            uploadStore.updateTask(uploadId, { isLocalVisible: false });
+        }
+        return () => {
+            uploadStore.updateTask(uploadId, { isLocalVisible: false });
+        };
+    }, [uploadId, isUploading, isPickerOpen]);
 
     const loadAssets = async () => {
         setLoading(true);
@@ -70,29 +98,18 @@ export function ImageUpload({ value, onChange, label, description, isDark = fals
             return;
         }
 
-        setUploading(true);
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('purpose', 'library');
-        if (folder) formData.append('folder', folder);
+        setUploadFile(file);
+        
+        const additionalData: Record<string, string> = {
+            purpose: 'library',
+            storagePreference: storagePref
+        };
+        if (folder) additionalData.folder = folder;
 
         try {
-            const res = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await res.json();
-            if (res.ok) {
-                toast.success('Image uploaded');
-                onChange(data.url);
-                setIsPickerOpen(false);
-            } else {
-                throw new Error(data.error || 'Upload failed');
-            }
+            await upload(file, additionalData);
         } catch (err: any) {
-            toast.error(err.message || 'Failed to upload');
-        } finally {
-            setUploading(false);
+            console.error('Upload failed', err);
         }
     };
 
@@ -167,6 +184,18 @@ export function ImageUpload({ value, onChange, label, description, isDark = fals
                     </DialogHeader>
 
                     <div className="p-8 space-y-6">
+                        {uploadFile && (
+                            <UploadProgress
+                                progress={progress}
+                                fileName={uploadFile.name}
+                                isUploading={isUploading}
+                                error={uploadError}
+                                onCancel={abort}
+                                onReset={resetUpload}
+                                isDark={isDark}
+                            />
+                        )}
+
                         <div className="flex flex-col sm:flex-row gap-4">
                             <div className="relative flex-1">
                                 <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} size={16} />
@@ -182,10 +211,10 @@ export function ImageUpload({ value, onChange, label, description, isDark = fals
                             </div>
                             <Button
                                 onClick={() => document.getElementById('logo-upload-input')?.click()}
-                                disabled={uploading}
+                                disabled={isUploading}
                                 className={`h-11 px-6 rounded-2xl font-black text-xs uppercase tracking-widest ${isDark ? 'bg-white text-slate-900 hover:bg-slate-200' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
                             >
-                                {uploading ? <Loader2 size={16} className="animate-spin mr-2" /> : <Upload size={16} className="mr-2" />}
+                                {isUploading ? <Loader2 size={16} className="animate-spin mr-2" /> : <Upload size={16} className="mr-2" />}
                                 Upload New
                             </Button>
                             <input
@@ -195,6 +224,35 @@ export function ImageUpload({ value, onChange, label, description, isDark = fals
                                 accept="image/*"
                                 onChange={handleUpload}
                             />
+                        </div>
+
+                        {/* Storage Preference Toggle */}
+                        <div className="flex items-center gap-3 px-1">
+                            <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                Storage Destination:
+                            </p>
+                            <div className={`p-1 rounded-full flex gap-1 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
+                                {[
+                                    { id: 'r2', label: 'Cloud', icon: Cloud },
+                                    { id: 'local', label: 'Local Server', icon: HardDrive }
+                                ].map(opt => {
+                                    const isActive = storagePref === opt.id;
+                                    return (
+                                        <button
+                                            key={opt.id}
+                                            type="button"
+                                            onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all
+                                                ${isActive 
+                                                    ? (isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm border border-slate-200') 
+                                                    : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
+                                        >
+                                            <opt.icon size={10} />
+                                            {opt.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">

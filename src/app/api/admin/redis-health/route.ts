@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRedisHealth } from '@/modules/super-admin/actions/redis-monitoring';
+import { getSystemHealth } from '@/modules/super-admin/actions/redis-monitoring';
 import { verifySession } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const stats = await getRedisHealth();
+        const stats = await getSystemHealth();
         return NextResponse.json(stats);
     } catch (error: any) {
         console.error("Redis health API error:", error);

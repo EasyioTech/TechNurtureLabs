@@ -119,19 +119,8 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20">
-      {/* Mobile Header Overlay */}
-      <div className="lg:hidden">
-        <StudentHeader
-          profile={userProfile as any}
-          school={school}
-          stats={stats}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          settings={platformSettings}
-        />
-      </div>
 
-      <main className="max-w-[1600px] mx-auto px-6 lg:px-12 py-8 lg:py-12">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-4 md:py-8 lg:py-12">
         {/* Top Desktop Bar */}
         <div className="hidden lg:flex items-center justify-between mb-12">
           <div>
@@ -211,21 +200,21 @@ export default function StudentDashboard() {
 
             {/* Quick Resume Hero - Indigo Themed */}
             {lastCourse && (
-              <section className="relative overflow-hidden rounded-[3rem] bg-indigo-600 p-10 text-white shadow-xl shadow-indigo-200 group">
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <section className="relative overflow-hidden rounded-3xl md:rounded-[3rem] bg-indigo-600 p-6 sm:p-8 lg:p-10 text-white shadow-xl shadow-indigo-200 group">
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 sm:gap-8">
                   <div>
-                    <Badge className={`bg-white/20 text-white border-0 px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest mb-6`}>
+                    <Badge className={`bg-white/20 text-white border-0 px-3 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest mb-4 md:mb-6`}>
                       {lastCourse.completedLessons === lastCourse.totalLessons && lastCourse.totalLessons > 0
                         ? 'Course Completed'
                         : lastCourse.completedLessons > 0 ? 'Continue Learning' : 'Start Next Course'}
                     </Badge>
-                    <h2 className="text-3xl font-black uppercase tracking-tight leading-none mb-4">{lastCourse.title}</h2>
-                    <div className="flex items-center gap-6 mb-8 text-[10px] font-black text-white/60 uppercase tracking-widest">
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight leading-tight mb-4">{lastCourse.title}</h2>
+                    <div className="flex items-center gap-4 sm:gap-6 mb-6 md:mb-8 text-[9px] md:text-[10px] font-black text-white/60 uppercase tracking-widest">
                       <span className="flex items-center gap-2"><BookOpen size={14} /> {lastCourse.totalLessons} Lessons</span>
-                      <span className="flex items-center gap-2"><Clock size={14} /> {Math.ceil((lastCourse.totalLessons || 0) * 0.4)}h Total Est.</span>
+                      <span className="flex items-center gap-2"><Clock size={14} /> {Math.ceil((lastCourse.totalLessons || 0) * 0.4)}h Est.</span>
                     </div>
                     <Link href={`/student/course/${lastCourse.id}`}>
-                      <Button className="h-14 px-10 rounded-2xl bg-white text-indigo-600 font-black uppercase tracking-widest text-[11px] hover:bg-slate-50 transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-black/5">
+                      <Button className="h-12 md:h-14 px-8 md:px-10 rounded-xl md:rounded-2xl bg-white text-indigo-600 font-black uppercase tracking-widest text-[10px] md:text-[11px] hover:bg-slate-50 transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-black/5 w-full sm:w-auto">
                         {lastCourse.completedLessons === lastCourse.totalLessons && lastCourse.totalLessons > 0
                           ? 'Review Course'
                           : lastCourse.completedLessons > 0 ? 'Resume Course' : 'Start Course'}
@@ -255,23 +244,23 @@ export default function StudentDashboard() {
             )}
 
             {/* Performance Snapshot */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <QuickStatCard icon={BookOpen} value={stats.lessonsCompleted} label="Finished Lessons" />
-              <QuickStatCard icon={Clock} value={`${stats.totalTime}h`} label="Total Learning" />
-              <QuickStatCard icon={Target} value={`${stats.accuracy}%`} label="Average Score" />
-              <QuickStatCard icon={Medal} value={`#${stats.rank}`} label="My Rank" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              <QuickStatCard icon={BookOpen} value={stats.lessonsCompleted} label="Finished" />
+              <QuickStatCard icon={Clock} value={`${stats.totalTime}h`} label="Learning" />
+              <QuickStatCard icon={Target} value={`${stats.accuracy}%`} label="My Score" />
+              <QuickStatCard icon={Medal} value={`#${stats.rank}`} label="Rank" />
             </div>
 
             {/* Daily Challenges */}
-            <section className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm">
+            <section className="bg-white rounded-3xl md:rounded-[3rem] p-6 sm:p-10 border border-slate-100 shadow-sm">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h3 className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">Daily Challenges</h3>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Next reset in: {resetTime}</p>
+                  <h3 className="text-lg md:text-xl font-black text-slate-900 tracking-tight leading-none uppercase">Challenges</h3>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{resetTime} to reset</p>
                 </div>
                 <Link href="/student/challenges">
                   <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:bg-indigo-50">
-                    All Challenges <ChevronRight size={14} className="ml-1" />
+                    All <ChevronRight size={14} className="ml-1" />
                   </Button>
                 </Link>
               </div>
@@ -295,7 +284,7 @@ export default function StudentDashboard() {
             {/* Active Courses */}
             <section>
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">My Active Courses</h3>
+                <h3 className="text-lg md:text-xl font-black text-slate-900 tracking-tight leading-none uppercase">Active Courses</h3>
                 <Link href="/student/courses">
                   <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:bg-indigo-50">
                     View All <ChevronRight size={14} className="ml-1" />
@@ -326,25 +315,25 @@ export default function StudentDashboard() {
           {/* Sidebar Area */}
           <div className="xl:col-span-4 space-y-10">
             {/* Level Persistence */}
-            <div className="bg-slate-950 rounded-[3rem] p-10 text-white relative overflow-hidden shadow-2xl shadow-indigo-900/20 border border-white/5">
+            <div className="bg-slate-950 rounded-3xl md:rounded-[3rem] p-6 sm:p-10 text-white relative overflow-hidden shadow-2xl shadow-indigo-900/20 border border-white/5">
               <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">My Progress</p>
-                    <p className="text-4xl font-black tracking-tighter">Level {stats.level}</p>
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">My Progress</p>
+                    <p className="text-3xl md:text-4xl font-black tracking-tighter">Level {stats.level}</p>
                   </div>
-                  <div className="w-16 h-16 rounded-[1.75rem] bg-white/5 backdrop-blur-md flex items-center justify-center border border-white/10 ring-1 ring-white/10">
-                    <Crown size={32} className="text-indigo-500" />
+                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-[1.75rem] bg-white/5 backdrop-blur-md flex items-center justify-center border border-white/10 ring-1 ring-white/10">
+                    <Crown size={28} className="text-indigo-500" />
                   </div>
                 </div>
 
-                <div className="space-y-4 mb-10">
+                <div className="space-y-4 mb-8 sm:mb-10">
                   <div className="flex items-end justify-between">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-mono">XP PROGRESS</p>
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest font-mono">XP PROGRESS</p>
                     <p className="text-xs font-black text-indigo-500">{Math.round(levelProgress)}%</p>
                   </div>
-                  <div className="h-4 bg-white/5 rounded-full overflow-hidden p-1 flex border border-white/10">
+                  <div className="h-3 md:h-4 bg-white/5 rounded-full overflow-hidden p-1 flex border border-white/10">
                     <div
                       className="h-full bg-indigo-500 rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all duration-1000 ease-out"
                       style={{ width: `${levelProgress}%` }}
@@ -352,16 +341,16 @@ export default function StudentDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-5 rounded-3xl bg-white/5 border border-white/5">
-                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Yields</p>
-                    <p className="text-xl font-black text-white">{stats.xp.toLocaleString()}</p>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="p-4 sm:p-5 rounded-2xl md:rounded-3xl bg-white/5 border border-white/5">
+                    <p className="text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 md:mb-2">Total XP</p>
+                    <p className="text-lg md:text-xl font-black text-white">{stats.xp.toLocaleString()}</p>
                   </div>
-                  <div className="p-5 rounded-3xl bg-white/5 border border-white/5">
-                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Streak</p>
+                  <div className="p-4 sm:p-5 rounded-2xl md:rounded-3xl bg-white/5 border border-white/5">
+                    <p className="text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 md:mb-2">Streak</p>
                     <div className="flex items-center gap-2 text-orange-500">
-                      <Flame size={18} fill="currentColor" />
-                      <p className="text-xl font-black text-white">{stats.streak}D</p>
+                      <Flame size={16} fill="currentColor" />
+                      <p className="text-lg md:text-xl font-black text-white">{stats.streak}D</p>
                     </div>
                   </div>
                 </div>
@@ -385,14 +374,14 @@ export default function StudentDashboard() {
             </div>
 
             {/* Achievement Preview */}
-            <div className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative group overflow-hidden">
+            <div className="bg-white border border-slate-100 rounded-3xl md:rounded-[3rem] p-6 sm:p-10 shadow-sm relative group overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-500" />
               <div className="flex items-center justify-between mb-8 relative z-10">
                 <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">My Badges</h4>
                 <Link href="/student/achievements" className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 uppercase tracking-widest">View All</Link>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-8 gap-y-12 relative z-10 scale-90 sm:scale-100 origin-center py-4">
+              <div className="grid grid-cols-2 gap-x-4 sm:gap-x-8 gap-y-10 sm:gap-y-12 relative z-10 scale-90 sm:scale-100 origin-center py-2 sm:py-4">
                 {(achievements || []).slice(0, 4).map((achievement) => (
                   <AchievementBadge
                     key={achievement.id}
@@ -400,16 +389,16 @@ export default function StudentDashboard() {
                     description={achievement.description || ''}
                     unlocked={achievement.unlocked}
                     locked={!achievement.unlocked}
-                    category={achievement.tier}
-                    icon={achievement.icon_url}
+                    category={achievement.category}
+                    icon={achievement.icon}
                   />
                 ))}
               </div>
             </div>
 
             {/* Recent Activity Feed */}
-            <div className="bg-white border border-slate-100 rounded-[3rem] p-10 overflow-hidden relative shadow-sm">
-              <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-10">Recent Activity</h4>
+            <div className="bg-white border border-slate-100 rounded-3xl md:rounded-[3rem] p-6 sm:p-10 overflow-hidden relative shadow-sm">
+              <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-8 md:mb-10">Activity</h4>
               <div className="space-y-8">
                 {activities.length > 0 ? activities.map((activity) => (
                   <ActivitySummaryItem

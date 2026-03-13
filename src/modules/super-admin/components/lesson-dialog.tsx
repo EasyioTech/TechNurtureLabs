@@ -11,12 +11,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Lesson } from '../types';
 import { useAdminTheme, t } from '../theme-context';
-import { BookOpen, Play, FileText, MonitorPlay, HelpCircle, ExternalLink, Zap, Clock, X, Upload, Link2, Library, FileDown, Trophy } from 'lucide-react';
+import { BookOpen, Play, FileText, MonitorPlay, HelpCircle, ExternalLink, Zap, Clock, X, Upload, Link2, Library, FileDown, Trophy, Loader2, Cloud, HardDrive } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { MediaLibraryPicker } from './media-library-picker';
 import { EntityLibraryPicker } from './entity-library-picker';
 import { cloneQuizAction } from '@/modules/super-admin/actions';
+import { useUpload } from '@/hooks/use-upload';
+import { UploadProgress } from '@/components/shared/upload-progress';
+import { uploadStore } from '@/lib/upload-store';
 
 interface LessonDialogProps {
     open: boolean;
@@ -42,6 +45,31 @@ export function LessonDialog({
     const router = useRouter();
     const [libraryOpen, setLibraryOpen] = React.useState(false);
     const [importOpen, setImportOpen] = React.useState(false);
+    const [uploadFile, setUploadFile] = React.useState<File | null>(null);
+    const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
+
+    const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload({
+        onSuccess: (data) => {
+            setEditingLesson({ ...editingLesson, content_url: data.url });
+            toast.success('File uploaded successfully');
+            setUploadFile(null);
+        },
+        onError: (err) => {
+            toast.error(err || 'Failed to upload file');
+        }
+    });
+
+    // Notify upload store that this upload is being handled locally in this dialog
+    React.useEffect(() => {
+        if (isUploading && open) {
+            uploadStore.updateTask(uploadId, { isLocalVisible: true });
+        } else {
+            uploadStore.updateTask(uploadId, { isLocalVisible: false });
+        }
+        return () => {
+            uploadStore.updateTask(uploadId, { isLocalVisible: false });
+        };
+    }, [uploadId, isUploading, open]);
 
     // Determine library filter type from content type
     const libraryFilterType = React.useMemo(() => {
@@ -179,41 +207,91 @@ export function LessonDialog({
                                                 onChange={async (e) => {
                                                     const file = e.target.files?.[0];
                                                     if (!file) return;
-                                                    const formData = new FormData();
-                                                    formData.append('file', file);
-                                                    if (editingLesson?.id) {
-                                                        formData.append('contextType', 'lesson');
-                                                        formData.append('contextId', editingLesson.id);
+                                                    
+                                                    const maxSize = 2048 * 1024 * 1024; // 2GB
+                                                    if (file.size > maxSize) {
+                                                        toast.error('File too large. Maximum size is 2GB.');
+                                                        return;
                                                     }
-                                                    const loadingId = toast.loading(`Uploading asset...`);
+
+                                                    setUploadFile(file);
+                                                    
+                                                    const additionalData: Record<string, string> = {
+                                                        purpose: 'library',
+                                                        storagePreference: storagePref
+                                                    };
+                                                    if (editingLesson?.id) {
+                                                        additionalData.contextType = 'lesson';
+                                                        additionalData.contextId = editingLesson.id;
+                                                    }
+                                                    
                                                     try {
-                                                        const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                                                        const data = await res.json();
-                                                        if (data.url) {
-                                                            setEditingLesson({ ...editingLesson, content_url: data.url });
-                                                            toast.success('File uploaded successfully', { id: loadingId });
-                                                        } else {
-                                                            throw new Error(data.error || 'Upload failed');
-                                                        }
+                                                        await upload(file, additionalData);
                                                     } catch (error) {
                                                         console.error('Upload error:', error);
-                                                        toast.error('Failed to upload file', { id: loadingId });
                                                     }
                                                 }}
                                             />
                                             <Button
                                                 type="button"
                                                 onClick={() => document.getElementById('lesson-file-upload')?.click()}
+                                                disabled={isUploading}
                                                 className={`w-full h-12 rounded-full border-2 border-dashed flex items-center justify-center gap-2.5 font-bold text-[11px] uppercase tracking-wider transition-all bg-transparent
                                                 ${isDark
                                                         ? `border-white/10 text-slate-300 hover:border-${accent.name}-400/50 hover:bg-${accent.name}-400/5 hover:${accent.text}`
-                                                        : 'border-slate-200 text-slate-600 hover:border-slate-900 hover:bg-slate-50 hover:text-slate-900'}`}
+                                                        : 'border-slate-200 text-slate-600 hover:border-slate-900 hover:bg-slate-50 hover:text-slate-900'}
+                                                ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                             >
-                                                <Upload size={16} /> Choose File
+                                                {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} 
+                                                {isUploading ? 'Uploading...' : 'Choose File'}
                                             </Button>
-                                            <p className={`text-[9px] font-bold uppercase tracking-wider px-1 text-right ${t.textMuted(isDark)}`}>FILE UPLOAD SOURCE</p>
+                                            
+                                            {/* Storage Destination UI */}
+                                            <div className="flex items-center justify-between px-1">
+                                                <div className="flex items-center gap-3">
+                                                    <p className={`text-[9px] font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>
+                                                        Storage:
+                                                    </p>
+                                                    <div className={`p-1 rounded-full flex gap-1 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
+                                                        {[
+                                                            { id: 'r2', label: 'Cloud', icon: Cloud },
+                                                            { id: 'local', label: 'Server', icon: HardDrive }
+                                                        ].map(opt => {
+                                                            const isActive = storagePref === opt.id;
+                                                            return (
+                                                                <button
+                                                                    key={opt.id}
+                                                                    type="button"
+                                                                    onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
+                                                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[8px] font-black uppercase tracking-wider transition-all
+                                                                        ${isActive 
+                                                                            ? (isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm border border-slate-200') 
+                                                                            : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
+                                                                >
+                                                                    <opt.icon size={8} />
+                                                                    {opt.label}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                                
+                                            </div>
                                         </div>
                                     </div>
+
+                                    {/* Upload Progress */}
+                                    {uploadFile && (
+                                        <UploadProgress
+                                            progress={progress}
+                                            fileName={uploadFile.name}
+                                            isUploading={isUploading}
+                                            error={uploadError}
+                                            onCancel={abort}
+                                            onReset={resetUpload}
+                                            isDark={isDark}
+                                        />
+                                    )}
 
                                     {/* Uploaded / library-selected file preview */}
                                     {editingLesson?.content_url && editingLesson.content_url.startsWith('/api/media/') && (

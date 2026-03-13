@@ -68,39 +68,34 @@ export default function ChallengesPage() {
             <div className="relative bg-slate-900 overflow-hidden py-16 px-6 lg:px-12 border-b border-white/5">
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
 
-                <div className="max-w-[1400px] mx-auto relative z-10">
-                    <div className="flex items-center gap-4 mb-8">
-                        <Link href="/student">
-                            <button className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-white/10 hover:border-white/20">
-                                <ArrowLeft size={18} />
-                            </button>
-                        </Link>
+                <div className="max-w-[1400px] mx-auto relative z-10 px-4">
+                    <div className="mb-6 md:mb-8">
                         <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Challenges Hub</span>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                         <div>
-                            <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tight leading-none mb-8">
+                            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white uppercase tracking-tight leading-none mb-6 md:mb-8">
                                 Daily <span className="text-indigo-500">Challenges</span>
                             </h1>
-                            <p className="text-slate-400 font-medium text-lg max-w-lg mb-12">
+                            <p className="text-slate-400 font-medium text-sm md:text-lg max-w-lg mb-8 md:mb-12">
                                 Push your limits and earn extra rewards by completing daily learning goals.
                             </p>
 
-                            <div className="flex flex-wrap items-center gap-10">
+                            <div className="flex flex-wrap items-center gap-6 md:gap-10">
                                 <div className="space-y-1">
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Current Streak</span>
-                                    <div className="flex items-center gap-3">
-                                        <Flame size={24} className="text-orange-500" />
-                                        <span className="text-3xl font-black text-white">{stats.streak} Days</span>
+                                    <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">Current Streak</span>
+                                    <div className="flex items-center gap-2 md:gap-3">
+                                        <Flame size={20} className="text-orange-500 md:size-[24px]" />
+                                        <span className="text-xl md:text-3xl font-black text-white">{stats.streak} Days</span>
                                     </div>
                                 </div>
                                 <div className="h-10 w-px bg-white/10 hidden sm:block" />
                                 <div className="space-y-1">
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total XP</span>
-                                    <div className="flex items-center gap-3">
-                                        <Star size={24} className="text-amber-400" />
-                                        <span className="text-3xl font-black text-white">{stats.xp.toLocaleString()}</span>
+                                    <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">Total XP</span>
+                                    <div className="flex items-center gap-2 md:gap-3">
+                                        <Star size={20} className="text-amber-400 md:size-[24px]" />
+                                        <span className="text-xl md:text-3xl font-black text-white">{stats.xp.toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>
@@ -125,15 +120,15 @@ export default function ChallengesPage() {
             </div>
 
             {/* Main Content */}
-            <main className="max-w-[1400px] mx-auto px-6 lg:px-12 py-16">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+            <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-8 md:py-16">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12">
                     {/* Active Challenges List */}
-                    <div className="lg:col-span-8 space-y-12">
-                        <section className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm">
-                            <div className="flex items-center justify-between mb-12">
+                    <div className="lg:col-span-8 space-y-8 md:space-y-12">
+                        <section className="bg-white rounded-3xl md:rounded-[3rem] p-6 sm:p-10 border border-slate-100 shadow-sm">
+                            <div className="flex items-center justify-between mb-8 md:mb-12">
                                 <div>
-                                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">Active Tasks</h3>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <h3 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">Active Tasks</h3>
+                                    <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                         <Timer size={14} className="text-indigo-600" /> Resets daily at midnight
                                     </p>
                                 </div>
@@ -161,10 +156,10 @@ export default function ChallengesPage() {
                             </div>
                         </section>
 
-                        <section className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm">
-                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none mb-10">Learning Stats</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                                <StatItem label="Lessons Done" value={stats.lessonsCompleted} icon={LucideBookOpen} color="text-indigo-600" />
+                        <section className="bg-white rounded-3xl md:rounded-[3rem] p-6 sm:p-10 border border-slate-100 shadow-sm">
+                            <h3 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tight leading-none mb-8 md:mb-10">Learning Stats</h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-8">
+                                <StatItem label="Lessons" value={stats.lessonsCompleted} icon={LucideBookOpen} color="text-indigo-600" />
                                 <StatItem label="Accuracy" value={`${stats.accuracy}%`} icon={Target} color="text-emerald-600" />
                                 <StatItem label="XP Earned" value={stats.xp.toLocaleString()} icon={Star} color="text-amber-500" />
                             </div>
@@ -173,40 +168,40 @@ export default function ChallengesPage() {
 
                     {/* Sidebar / Profile Snapshot */}
                     <div className="lg:col-span-4 space-y-8">
-                        <div className="bg-indigo-600 rounded-[3rem] p-10 text-white shadow-xl shadow-indigo-200">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mb-8">Quick Progress</h4>
-                            <div className="space-y-8">
+                        <div className="bg-indigo-600 rounded-3xl md:rounded-[3rem] p-6 sm:p-10 text-white shadow-xl shadow-indigo-200">
+                            <h4 className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mb-6 md:mb-8">Quick Progress</h4>
+                            <div className="space-y-6 md:space-y-8">
                                 <div>
                                     <div className="flex items-center justify-between mb-4">
-                                        <span className="text-sm font-black uppercase tracking-tight">Performance</span>
-                                        <span className="text-xl font-black">{stats.accuracy}%</span>
+                                        <span className="text-sm font-black uppercase tracking-tight">Accuracy</span>
+                                        <span className="text-lg md:text-xl font-black">{stats.accuracy}%</span>
                                     </div>
-                                    <div className="h-4 bg-white/10 rounded-full p-1 overflow-hidden">
+                                    <div className="h-3 md:h-4 bg-white/10 rounded-full p-1 overflow-hidden">
                                         <div className="h-full bg-white rounded-full" style={{ width: `${stats.accuracy}%` }} />
                                     </div>
                                 </div>
                                 <Link href="/student/analytics" className="w-full block">
-                                    <Button className="w-full h-14 bg-white text-indigo-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-slate-50 transition-all">
+                                    <Button className="w-full h-12 md:h-14 bg-white text-indigo-600 font-black uppercase tracking-widest text-[10px] rounded-xl md:rounded-2xl hover:bg-slate-50 transition-all">
                                         Daily Analytics
                                     </Button>
                                 </Link>
                             </div>
                         </div>
 
-                        <div className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm group">
-                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-10">Reward Progress</h4>
-                            <div className="flex items-center gap-6 mb-10">
-                                <div className="w-16 h-16 rounded-[1.75rem] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-                                    <Award size={32} />
+                        <div className="bg-white border border-slate-100 rounded-3xl md:rounded-[3rem] p-6 sm:p-10 shadow-sm group">
+                            <h4 className="text-[10px] md:text-sm font-black text-slate-900 uppercase tracking-widest mb-8 md:mb-10">Reward Status</h4>
+                            <div className="flex items-center gap-4 md:gap-6 mb-8 md:mb-10">
+                                <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-[1.75rem] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                                    <Award size={24} className="md:size-[32px]" />
                                 </div>
                                 <div>
-                                    <p className="text-2xl font-black text-slate-900 leading-none">Level {Math.floor(stats.xp / 500) + 1}</p>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">{stats.xp % 500} / 500 XP to Next Level</p>
+                                    <p className="text-xl md:text-2xl font-black text-slate-900 leading-none">Level {Math.floor(stats.xp / 500) + 1}</p>
+                                    <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">{stats.xp % 500} / 500 XP to Next Level</p>
                                 </div>
                             </div>
                             <Link href="/student/achievements">
-                                <Button variant="ghost" className="w-full h-14 rounded-2xl border border-slate-100 font-black uppercase tracking-widest text-[10px] text-slate-900 group-hover:bg-slate-50">
-                                    My Achievements <ChevronRight size={14} className="ml-2" />
+                                <Button variant="ghost" className="w-full h-12 md:h-14 rounded-xl md:rounded-2xl border border-slate-100 font-black uppercase tracking-widest text-[10px] text-slate-900 group-hover:bg-slate-50">
+                                    Achievements <ChevronRight size={14} className="ml-2" />
                                 </Button>
                             </Link>
                         </div>
@@ -219,12 +214,12 @@ export default function ChallengesPage() {
 
 function StatItem({ label, value, icon: Icon, color }: any) {
     return (
-        <div className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100">
-            <div className={`w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center ${color} mb-4 shadow-sm`}>
-                <Icon size={20} />
+        <div className="p-4 md:p-6 rounded-2xl md:rounded-[2rem] bg-slate-50 border border-slate-100">
+            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-white border border-slate-100 flex items-center justify-center ${color} mb-3 md:mb-4 shadow-sm`}>
+                <Icon size={16} className="md:size-[20px]" />
             </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-            <p className="text-2xl font-black text-slate-900 leading-none">{value}</p>
+            <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">{label}</p>
+            <p className="text-lg md:text-2xl font-black text-slate-900 leading-none">{value}</p>
         </div>
     );
 }

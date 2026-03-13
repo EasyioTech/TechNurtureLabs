@@ -93,6 +93,14 @@ export function CourseBuilderTab({
                     className={`rounded-[24px] border overflow-hidden transition-all duration-500 shadow-xl shadow-black/5 flex flex-col h-[700px] ${t.card(isDark)}`}>
                     <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${t.border(isDark)}`}>
                         <h3 className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>All Courses</h3>
+                        <Button variant="ghost" size="sm"
+                            onClick={() => {
+                                setEditingCourse({ published: true, all_classes: true });
+                                setShowCourseDialog(true);
+                            }}
+                            className={`h-8 px-3 rounded-xl text-[10px] font-black border-2 ${t.btnOutline(isDark)}`}>
+                            <Plus size={14} className="mr-1" /> CREATE
+                        </Button>
                     </div>
 
                     {courses.length === 0 ? (
@@ -172,7 +180,23 @@ export function CourseBuilderTab({
                             {selectedCourse && <p className={`text-[12px] font-medium mt-0.5 ${t.textMuted(isDark)}`}>{lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'} in this course</p>}
                         </div>
                         <div className="flex gap-3">
-                            {/* Local actions replaced by global header buttons for cleaner UI */}
+                            <Button size="sm"
+                                disabled={!selectedCourse}
+                                onClick={() => {
+                                    if (selectedCourse) {
+                                        setEditingLesson({
+                                            course_id: selectedCourse.id,
+                                            is_published: true,
+                                            content_type: 'video'
+                                        });
+                                        setShowLessonDialog(true);
+                                    }
+                                }}
+                                className={`rounded-full gap-2 h-10 px-5 text-[11px] font-black shadow-xl transition-all
+                                    ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)} ${!selectedCourse ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                                style={isDark && selectedCourse ? t.glowStyle(isDark, accent) : {}}>
+                                <Plus size={16} strokeWidth={3} /> NEW LESSON
+                            </Button>
                         </div>
                     </div>
 

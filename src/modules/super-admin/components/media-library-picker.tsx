@@ -10,6 +10,9 @@ import {
     Cloud, HardDrive, AlertCircle, Trash2, Check, Upload, Folder
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useUpload } from '@/hooks/use-upload';
+import { UploadProgress } from '@/components/shared/upload-progress';
+import { uploadStore } from '@/lib/upload-store';
 
 type AssetType = 'all' | 'video' | 'image' | 'document';
 
@@ -70,8 +73,30 @@ export function MediaLibraryPicker({
     const [activeFolder, setActiveFolder] = React.useState<string>(folder ?? 'all');
     const [search, setSearch] = React.useState('');
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
-    const [uploading, setUploading] = React.useState(false);
+    const [uploadFile, setUploadFile] = React.useState<File | null>(null);
+    const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload({
+        onSuccess: () => {
+            toast.success('Upload complete');
+            setUploadFile(null);
+            loadAssets(activeTab);
+        },
+        onError: (err) => {
+            toast.error(err || 'Failed to upload file');
+        }
+    });
+
+    // Notify upload store that this upload is being handled locally in this dialog
+    React.useEffect(() => {
+        if (isUploading) {
+            uploadStore.updateTask(uploadId, { isLocalVisible: true });
+        }
+        return () => {
+            uploadStore.updateTask(uploadId, { isLocalVisible: false });
+        };
+    }, [uploadId, isUploading]);
 
     // Load assets when the sheet opens
     React.useEffect(() => {
@@ -147,8 +172,8 @@ export function MediaLibraryPicker({
             }
         }
 
-        const maxSize = 25 * 1024 * 1024; // 25MB for videos/other
-        const maxImageSize = 5 * 1024 * 1024; // 5MB limit requested for images specifically
+        const maxSize = 2048 * 1024 * 1024; // 2GB limit for all videos and other files
+        const maxImageSize = 25 * 1024 * 1024; // 25MB for images
 
         if (isImage && file.size > maxImageSize) {
             toast.error('Image too large. Maximum size is 5MB.');
@@ -160,33 +185,20 @@ export function MediaLibraryPicker({
             return;
         }
 
-        setUploading(true);
-        const formData = new FormData();
-        formData.append('file', file);
-        // Default to global purpose or user intent based on filter
-        formData.append('purpose', filterType === 'video' ? 'system_video' : 'library');
+        setUploadFile(file);
+        
+        const additionalData: Record<string, string> = {
+            purpose: filterType === 'video' ? 'system_video' : 'library',
+            storagePreference: storagePref
+        };
         const folderToSave = folder || (activeFolder !== 'all' ? activeFolder : 'library');
-        formData.append('folder', folderToSave);
+        additionalData.folder = folderToSave;
 
         try {
-            const res = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
-
-            const data = await res.json();
-            if (!res.ok || data.error) {
-                throw new Error(data.error || 'Upload failed');
-            }
-
-            toast.success('Upload complete');
-            // Reload the library so it shows up at the top
-            loadAssets(activeTab);
+            await upload(file, additionalData);
         } catch (err: any) {
             console.error('[Upload]', err);
-            toast.error(err.message || 'Failed to upload file');
         } finally {
-            setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     }
@@ -222,11 +234,11 @@ export function MediaLibraryPicker({
 
                         <Button
                             size="sm"
-                            disabled={uploading}
+                            disabled={isUploading}
                             onClick={() => fileInputRef.current?.click()}
                             className={`rounded-full h-8 px-4 text-xs font-black uppercase tracking-wider ${accent.bg} text-slate-900 shrink-0`}
                         >
-                            {uploading ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Upload size={14} className="mr-1.5" />}
+                            {isUploading ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Upload size={14} className="mr-1.5" />}
                             Upload New
                         </Button>
                         <input
@@ -237,6 +249,35 @@ export function MediaLibraryPicker({
                             accept={filterType === 'video' ? 'video/*' : filterType === 'image' ? 'image/*' : undefined}
                         />
                     </SheetTitle>
+
+                    {/* Storage Preference Toggle */}
+                    <div className="flex items-center gap-3 mt-4 px-1">
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
+                            Storage Destination:
+                        </p>
+                        <div className={`p-1 rounded-full flex gap-1 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
+                            {[
+                                { id: 'r2', label: 'Cloud (R2)', icon: Cloud },
+                                { id: 'local', label: 'Local Server', icon: HardDrive }
+                            ].map(opt => {
+                                const isActive = storagePref === opt.id;
+                                return (
+                                    <button
+                                        key={opt.id}
+                                        type="button"
+                                        onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all
+                                            ${isActive 
+                                                ? (isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm') 
+                                                : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
+                                    >
+                                        <opt.icon size={10} />
+                                        {opt.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
 
                     {/* Search */}
                     <div className="relative mt-4">
@@ -273,6 +314,7 @@ export function MediaLibraryPicker({
                         <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
                             {[
                                 { id: 'all', label: 'All Folders' },
+                                { id: 'lesson', label: 'Lessons' },
                                 { id: 'course', label: 'Courses' },
                                 { id: 'video', label: 'Videos' },
                                 { id: 'branding', label: 'Branding' },
@@ -299,7 +341,18 @@ export function MediaLibraryPicker({
                 </SheetHeader>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-4">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {uploadFile && (
+                        <UploadProgress
+                            progress={progress}
+                            fileName={uploadFile.name}
+                            isUploading={isUploading}
+                            error={uploadError}
+                            onCancel={abort}
+                            onReset={resetUpload}
+                            isDark={isDark}
+                        />
+                    )}
                     {loading ? (
                         <div className="flex flex-col items-center justify-center h-48 gap-3">
                             <Loader2 size={28} className={`animate-spin ${isDark ? accent.text : 'text-slate-900'}`} />
@@ -355,6 +408,24 @@ export function MediaLibraryPicker({
                                                     className="w-full h-full object-cover"
                                                     onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                                 />
+                                            ) : asset.asset_type === 'video' ? (
+                                                <div className="w-full h-full relative group/video">
+                                                    <video
+                                                        src={asset.file_url}
+                                                        className="w-full h-full object-cover"
+                                                        preload="metadata"
+                                                        muted
+                                                        onMouseOver={e => (e.target as HTMLVideoElement).play()}
+                                                        onMouseOut={e => {
+                                                            const v = e.target as HTMLVideoElement;
+                                                            v.pause();
+                                                            v.currentTime = 0;
+                                                        }}
+                                                    />
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/video:bg-transparent transition-all">
+                                                        <Film size={20} className="text-white drop-shadow-lg" />
+                                                    </div>
+                                                </div>
                                             ) : (
                                                 <AssetIcon
                                                     asset_type={asset.asset_type}

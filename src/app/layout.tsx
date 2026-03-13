@@ -6,6 +6,7 @@ import ErrorReporter from "@/components/ErrorReporter";
 import Script from "next/script";
 
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { BackgroundUploadManager } from "@/components/shared/background-upload-manager";
 import { Toaster } from 'sonner';
 import { Playfair_Display } from 'next/font/google';
 
@@ -38,6 +39,7 @@ export default function RootLayout({
         <Toaster position="top-center" expand={true} richColors closeButton />
         <AuthProvider>
           <ErrorReporter />
+          <BackgroundUploadManager />
           {children}
         </AuthProvider>
       </body>

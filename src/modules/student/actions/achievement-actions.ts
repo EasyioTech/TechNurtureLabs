@@ -13,7 +13,7 @@ import {
     auditLogs
 } from '@/db/schema';
 import { redirect } from 'next/navigation';
-import { eq, and, gt, sql, count, isNotNull, asc } from 'drizzle-orm';
+import { eq, and, gt, sql, count, isNotNull, asc, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getProgressCounter, isAchievementCheckNeeded, clearAchievementDirtyBit } from '@/lib/gamification';
 
@@ -170,7 +170,14 @@ export async function checkAndAwardAchievements() {
     }
 
     const user = await db.query.students.findFirst({
-        where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`)
+        where: and(eq(students.id, userId), isNull(students.deleted_at)),
+        columns: {
+            id: true,
+            school_id: true,
+            cumulative_xp: true,
+            current_streak: true,
+            bio: true
+        }
     });
     if (!user) return { success: false, error: 'Student profile not found' };
 
@@ -327,7 +334,12 @@ export async function getStudentAchievementsData() {
 
     // Fetch basic stats for the progress circle
     const profile = await db.query.students.findFirst({
-        where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`)
+        where: and(eq(students.id, userId), isNull(students.deleted_at)),
+        columns: {
+            id: true,
+            school_id: true,
+            cumulative_xp: true
+        }
     });
 
     // Fetch rank metrics
