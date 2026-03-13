@@ -148,7 +148,7 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                                             <Link href="/student/profile" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold">
                                                 <User size={16} /> My Profile
                                             </Link>
-                                            <Link href="/student/profile" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold">
+                                            <Link href="/student/settings" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold">
                                                 <Settings size={16} /> Settings
                                             </Link>
                                             <div className="pt-1 pb-1">
@@ -286,7 +286,7 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                                     <div className="h-px bg-slate-50" />
                                 </div>
                                 <NavItem icon={User} label="My Profile" href="/student/profile" active={pathname === '/student/profile'} close={() => setMobileOpen(false)} />
-                                <NavItem icon={Settings} label="Settings" href="/student/profile" active={false} close={() => setMobileOpen(false)} />
+                                <NavItem icon={Settings} label="Settings" href="/student/settings" active={pathname === '/student/settings'} close={() => setMobileOpen(false)} />
                             </nav>
 
                             {/* Sign out */}

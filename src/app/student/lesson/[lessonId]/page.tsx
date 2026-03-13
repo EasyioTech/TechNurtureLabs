@@ -51,6 +51,11 @@ type Lesson = {
   xp_reward: number;
   course_id: string;
   quiz_data: QuizData | null;
+  user_progress?: {
+    last_position_secs: number;
+    progress_pct: number;
+    completed_at: any;
+  } | null;
 };
 
 import { VideoPlayer } from '@/components/video/video-player';
@@ -286,6 +291,7 @@ export default function LessonPlayerPage() {
             <VideoPlayer
               src={lesson.content_url}
               lessonId={lessonId}
+              initialProgress={lesson.user_progress}
               onComplete={() => completeLesson()}
             />
           )}

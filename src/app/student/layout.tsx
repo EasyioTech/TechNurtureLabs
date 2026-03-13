@@ -19,6 +19,7 @@ export default async function StudentLayout({
             stats={data?.stats}
             courses={data?.courses}
             settings={settings}
+            profile={data?.profile}
         />
     );
 

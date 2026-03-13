@@ -438,6 +438,7 @@ export const lessonProgress = pgTable('lesson_progress', {
     started_at: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     completed_at: timestamp('completed_at', { withTimezone: true }),
     progress_pct: numeric('progress_pct', { precision: 5, scale: 2 }).notNull().default('0'),
+    last_position_secs: integer('last_position_secs').notNull().default(0),
     time_spent_secs: integer('time_spent_secs').notNull().default(0),
     xp_earned: integer('xp_earned').notNull().default(0),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

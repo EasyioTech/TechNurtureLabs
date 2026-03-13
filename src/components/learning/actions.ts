@@ -288,11 +288,20 @@ export async function getLessonData(lessonId: string) {
         };
     }
 
+    const progress = await db.query.lessonProgress.findFirst({
+        where: and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId))
+    });
+
     return {
         ...lesson,
         sequence_index: lesson.sequence_order,
         duration: lesson.duration_minutes || 10,
         quiz_data: quizData,
+        user_progress: progress ? {
+            completed_at: progress.completed_at,
+            progress_pct: Number(progress.progress_pct) || 0,
+            last_position_secs: progress.last_position_secs || 0
+        } : null
     };
 }
 
@@ -434,7 +443,7 @@ export async function getLessonsByCourse(courseId: string) {
     }));
 }
 
-export async function saveVideoProgress(lessonId: string, position: number) {
+export async function saveVideoProgress(lessonId: string, seconds: number, percentage: number) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
 
@@ -448,7 +457,8 @@ export async function saveVideoProgress(lessonId: string, position: number) {
     if (existing.length > 0) {
         await db.update(lessonProgress)
             .set({
-                progress_pct: position.toFixed(2),
+                progress_pct: percentage.toFixed(2),
+                last_position_secs: Math.floor(seconds),
                 updated_at: new Date()
             })
             .where(and(eq(lessonProgress.user_id, session.userId), eq(lessonProgress.lesson_id, lessonId)));
@@ -463,10 +473,10 @@ export async function saveVideoProgress(lessonId: string, position: number) {
             user_id: session.userId,
             lesson_id: lessonId,
             enrollment_id: enrollment.id,
-            // ISSUE 17 + 25: pass session_id and school_id from the enrollment row
             session_id: enrollment.session_id,
             school_id: enrollment.school_id,
-            progress_pct: position.toString(),
+            progress_pct: percentage.toFixed(2),
+            last_position_secs: Math.floor(seconds),
         });
     }
 }

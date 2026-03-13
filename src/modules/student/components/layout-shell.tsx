@@ -33,12 +33,14 @@ export function StudentLayoutShell({
                 !isLessonPage ? "lg:pl-64" : "w-full"
             )}>
                 {!isLessonPage && (
-                    <StudentHeader 
-                        profile={profile}
-                        school={school}
-                        stats={stats || { xp: 0, streak: 0, level: 1 }}
-                        settings={settings}
-                    />
+                    <div className="md:hidden">
+                        <StudentHeader 
+                            profile={profile}
+                            school={school}
+                            stats={stats || { xp: 0, streak: 0, level: 1 }}
+                            settings={settings}
+                        />
+                    </div>
                 )}
                 {children}
             </div>

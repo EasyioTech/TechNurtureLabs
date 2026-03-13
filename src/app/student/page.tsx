@@ -124,8 +124,8 @@ export default function StudentDashboard() {
         {/* Top Desktop Bar */}
         <div className="hidden lg:flex items-center justify-between mb-12">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-none uppercase">
-              {getGreeting()}, <span className="text-indigo-600">{userProfile?.full_name?.split(' ')[0]}</span>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tighter leading-none uppercase">
+              {getGreeting()}, <span className="text-indigo-600 font-black">{userProfile?.full_name?.split(' ')[0]}</span>
             </h1>
             <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-3 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -133,65 +133,7 @@ export default function StudentDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
-              <input
-                type="text"
-                placeholder="Search for courses..."
-                className="bg-white border border-slate-100 pl-12 pr-6 py-3 rounded-2xl w-80 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-indigo-600/5 focus:border-indigo-600 transition-all font-sans"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <button className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-100 transition-all">
-                <Bell size={20} />
-              </button>
-              <div className="relative">
-                <button
-                  onClick={() => setProfileMenuOpen(v => !v)}
-                  className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-900 hover:text-white transition-all outline-none"
-                >
-                  <User size={20} />
-                </button>
-                <AnimatePresence>
-                  {profileMenuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40 cursor-default" onClick={() => setProfileMenuOpen(false)} />
-                      <motion.div
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 6 }}
-                        transition={{ duration: 0.1 }}
-                        className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50 p-2 space-y-1"
-                      >
-                        <div className="px-3 py-2 mb-1 border-b border-slate-50 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                            {userProfile?.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'ST'}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-800 truncate">{userProfile?.full_name}</p>
-                            <p className="text-[10px] uppercase font-bold text-indigo-500 tracking-widest mt-0.5">Student</p>
-                          </div>
-                        </div>
-                        <Link href="/student/profile" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold">
-                          <User size={16} /> My Profile
-                        </Link>
-                        <Link href="/student/profile" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold">
-                          <Settings size={16} /> Settings
-                        </Link>
-                        <div className="pt-1 pb-1">
-                          <div className="w-full h-px bg-slate-100" />
-                        </div>
-                        <button onClick={() => { setProfileMenuOpen(false); signOut(); }} className="flex items-center gap-3 w-full px-4 py-3 text-rose-500 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition-colors text-sm font-bold border-t border-slate-50/0">
-                          <LogOut size={16} /> Logout
-                        </button>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
+             {/* We can put secondary actions here if needed later */}
           </div>
         </div>
 
