@@ -8,7 +8,7 @@
 
 # Step 2: Stop existing containers and prune old builds to save space
 echo "Shutting down existing containers..."
-docker-compose down
+docker compose down
 
 echo "Pruning unused Docker assets..."
 docker system prune -f
