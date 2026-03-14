@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { generate2FASecret, enable2FA, disable2FA } from '@/actions/2fa';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Slider } from '@/components/ui/slider';
-import { fetchAllClasses, createClass, deleteClass, ensureDefaultClasses } from '@/modules/super-admin/actions';
+import { fetchAllClasses, createClass, deleteClass, ensureDefaultClasses, syncPlatformMetrics } from '@/modules/super-admin/actions';
 
 export const SettingsTab = forwardRef<any, any>((props, ref) => {
     const { isDark, accent } = useAdminTheme();
@@ -55,6 +55,7 @@ export const SettingsTab = forwardRef<any, any>((props, ref) => {
     const [newClassLevel, setNewClassLevel] = useState('');
     const [classCreating, setClassCreating] = useState(false);
     const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
+    const [syncing, setSyncing] = useState(false);
 
     const loadClasses = async () => {
         setClassesLoading(true);
@@ -776,6 +777,61 @@ export const SettingsTab = forwardRef<any, any>((props, ref) => {
                             </div>
                         </div>
                     )}
+                </div>
+            </div>
+
+            {/* System Maintenance Section */}
+            <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
+                <div className="flex items-center gap-4 mb-8">
+                    <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
+                        <Settings2 className={accent.text} size={28} />
+                    </div>
+                    <div className="flex-1">
+                        <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>System Maintenance</h2>
+                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Perform critical system-wide data synchronization and cleanup tasks.</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className={`p-6 rounded-3xl border ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-neutral-50'} flex flex-col justify-between`}>
+                        <div className="space-y-2">
+                            <h4 className={`text-sm font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Sync Platform Metrics</h4>
+                            <p className={`text-[11px] font-medium leading-relaxed ${t.textMuted(isDark)}`}>
+                                Force a complete recalculation of total students, revenue, and active subscriptions. Use this if dashboard counters appear out of sync.
+                            </p>
+                        </div>
+                        <Button 
+                            disabled={syncing}
+                            onClick={async () => {
+                                setSyncing(true);
+                                try {
+                                    const res = await syncPlatformMetrics();
+                                    if (res.success) toast.success("Metrics synchronized");
+                                    else toast.error("Sync failed");
+                                } catch { toast.error("Network error"); }
+                                finally { setSyncing(false); }
+                            }}
+                            className={`mt-6 w-fit rounded-full h-11 px-8 font-black uppercase tracking-widest text-[10px] ${t.btnPrimary(isDark, accent)}`}
+                        >
+                            {syncing ? <Loader2 className="animate-spin mr-2" size={14} /> : null}
+                            RECALCULATE ALL DATA
+                        </Button>
+                    </div>
+
+                    <div className={`p-6 rounded-3xl border ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-neutral-50'} flex flex-col justify-between`}>
+                        <div className="space-y-2">
+                            <h4 className={`text-sm font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Database Integrity</h4>
+                            <p className={`text-[11px] font-medium leading-relaxed ${t.textMuted(isDark)}`}>
+                                Validates foreign key relationships and cleans up orphaned metadata. Recommended after massive course deletions.
+                            </p>
+                        </div>
+                        <Button 
+                            variant="outline"
+                            className={`mt-6 w-fit rounded-full h-11 px-8 font-black uppercase tracking-widest text-[10px] border-2 ${t.btnOutline(isDark)} opacity-50 cursor-not-allowed`}
+                        >
+                            RUN DIAGNOSTICS (SOON)
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

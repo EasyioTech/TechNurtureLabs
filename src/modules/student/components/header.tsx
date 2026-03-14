@@ -79,7 +79,7 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                         {(!school || settings?.show_platform_name !== false) && (
                             <div className="hidden min-[480px]:block leading-none max-w-[150px] sm:max-w-[200px]">
                                 <p className="text-[15px] sm:text-base font-extrabold text-slate-800 tracking-tight truncate">{displayName}</p>
-                                <p className="text-[10px] font-semibold text-indigo-500 tracking-wide uppercase">Institutional Portal</p>
+                                <p className="text-[10px] font-semibold text-indigo-500 tracking-wide uppercase">Student Portal</p>
                             </div>
                         )}
                     </Link>

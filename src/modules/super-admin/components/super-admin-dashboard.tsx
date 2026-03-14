@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
     LayoutGrid, BookOpen, CreditCard, Users, BarChart3,
     Building2, Bell, Search, Sun, Moon, Filter, LogOut, Plus, Palette, Check, Settings,
-    Menu, X, Save
+    Menu, X, Save, Library
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useAdminData } from '../hooks/use-admin-data';
@@ -20,6 +20,7 @@ import { SchoolsTab } from './tabs/schools-tab';
 import { SettingsTab } from './tabs/settings-tab';
 import { PromoCodesTab } from './tabs/promo-codes-tab';
 import { SystemHealthTab } from './tabs/system-health-tab';
+import { LibraryTab } from './tabs/library-tab';
 
 import {
     DropdownMenu,
@@ -46,6 +47,7 @@ const NAV_ITEMS = [
     { id: 'plans', label: 'PLANS', icon: CreditCard },
     { id: 'promo', label: 'PROMOS', icon: CreditCard },
     { id: 'schools', label: 'SCHOOLS', icon: Building2 },
+    { id: 'library', label: 'LIBRARY', icon: Library },
     { id: 'users', label: 'STUDENTS', icon: Users },
     { id: 'courseMetrics', label: 'REPORTS', icon: BarChart3, iconOnly: true },
     { id: 'system', label: 'SYSTEM', icon: LayoutGrid, iconOnly: true },
@@ -59,6 +61,7 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
     promo: { title: 'Promo Codes', subtitle: 'Manage platform-wide discount codes.' },
     schools: { title: 'Schools & Partners', subtitle: 'View and manage all registered school accounts.' },
     users: { title: 'Student Management', subtitle: 'Track student progress and overall engagement.' },
+    library: { title: 'Content Library', subtitle: 'Browse and reuse content across the platform.' },
     courseMetrics: { title: 'Performance Reports', subtitle: 'Analyze course effectiveness and student success.' },
     system: { title: 'Engine Status', subtitle: 'Monitor Redis performance and infrastructure health.' },
     settings: { title: 'Platform Settings', subtitle: 'Manage global platform configuration and hero video.' },
@@ -86,6 +89,20 @@ function DashboardContent() {
     const [searchQuery, setSearchQuery] = useState('');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const data = useAdminData();
+
+    // Trigger granular data loading based on active page
+    useEffect(() => {
+        if (activePage === 'users') {
+            data.loadStudents(data.userMetricsPage, searchQuery);
+        } else if (activePage === 'schools' || activePage === 'overview') {
+            data.loadSchools();
+        } else if (activePage === 'courses') {
+            data.loadCourses();
+        } else if (activePage === 'library') {
+            data.loadGlobalLessons();
+            data.loadGlobalQuizzes();
+        }
+    }, [activePage, data.userMetricsPage, searchQuery]);
 
     if (data.loading) {
         return (
@@ -446,8 +463,18 @@ function DashboardContent() {
                         )}
                         {activePage === 'users' && <MetricTables userMetrics={data.userMetrics} courseMetrics={[]} page={data.userMetricsPage} setPage={data.setUserMetricsPage} />}
                         {activePage === 'courseMetrics' && <MetricTables userMetrics={[]} courseMetrics={data.courseMetrics} />}
-                        {activePage === 'system' && <SystemHealthTab />}
-                        {activePage === 'settings' && <SettingsTab ref={settingsRef} />}
+                        { activePage === 'system' && <SystemHealthTab />}
+                        { activePage === 'library' && (
+                            <LibraryTab 
+                                lessons={data.globalLessons} 
+                                quizzes={data.globalQuizzes} 
+                                loading={data.globalLoading}
+                                courses={data.courses}
+                                onCloneLesson={data.cloneLesson}
+                                onCloneQuiz={data.cloneQuiz}
+                            />
+                        )}
+                        { activePage === 'settings' && <SettingsTab ref={settingsRef} />}
                     </motion.div>
                 </AnimatePresence>
 

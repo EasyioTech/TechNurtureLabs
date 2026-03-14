@@ -33,7 +33,7 @@ export function StudentLayoutShell({
                 !isLessonPage ? "lg:pl-64" : "w-full"
             )}>
                 {!isLessonPage && (
-                    <div className="md:hidden">
+                    <div className="lg:hidden">
                         <StudentHeader 
                             profile={profile}
                             school={school}

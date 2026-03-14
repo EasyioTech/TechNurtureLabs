@@ -1,5 +1,5 @@
 import { StudentSidebar } from '@/modules/student/components/sidebar';
-import { getStudentDashboardData } from '@/modules/student/actions';
+import { getStudentProfileAndStats, getStudentDashboardCourses } from '@/modules/student/actions';
 import { getPlatformSettings } from '@/components/landing/actions';
 import { StudentLayoutShell } from '@/modules/student/components/layout-shell';
 
@@ -8,10 +8,16 @@ export default async function StudentLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const [data, settings] = await Promise.all([
-        getStudentDashboardData().catch(() => null),
+    const [profileStats, coursesData, settings] = await Promise.all([
+        getStudentProfileAndStats().catch(() => null),
+        getStudentDashboardCourses().catch(() => null),
         getPlatformSettings().catch(() => null)
     ]);
+
+    const data = profileStats ? {
+        ...profileStats,
+        courses: coursesData?.courses || []
+    } : null;
 
     const sidebar = (
         <StudentSidebar

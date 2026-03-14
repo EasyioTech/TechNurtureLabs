@@ -278,15 +278,15 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                         )}
                         {activePage === 'students' && (
                             <SchoolStudentsTab
-                                students={data.students}
-                                filteredStudents={data.filteredStudents}
                                 pagedStudents={data.pagedStudents}
+                                totalStudentsCount={data.totalStudentsCount}
                                 totalStudentPages={data.totalStudentPages}
                                 studentsPage={data.studentsPage}
                                 setStudentsPage={data.setStudentsPage}
                                 studentSearch={data.studentSearch}
                                 setStudentSearch={data.setStudentSearch}
                                 onToggleStudent={data.toggleStudent}
+                                studentsLoading={data.studentsLoading}
                             />
                         )}
                         {activePage === 'courses' && <SchoolCoursesTab courseMetrics={data.courseMetrics} schoolClasses={data.classesData} />}

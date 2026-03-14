@@ -1,0 +1,323 @@
+'use server';
+
+import { db } from '@/lib/db';
+import { verifySession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { 
+    students, schoolAdmins, superAdmins, courses, lessons, 
+    lessonProgress, enrollments, quizAttempts, academicSessions, 
+    studentAcademicRecords, courseClassMapping, schools, auditLogs 
+} from '@/db/schema';
+import { eq, and, inArray, asc, desc, isNotNull, isNull, sql, count } from 'drizzle-orm';
+import { redis } from '@/lib/redis';
+
+/**
+ * Invalidate student dashboard cache
+ */
+export const invalidateStudentDashboardCache = async (userId: string) => {
+    await redis.del(`cache:student:${userId}:dashboard`);
+};
+
+/**
+ * Auto-enroll a student in a course if not already enrolled.
+ */
+export async function ensureEnrollment(userId: string, courseId: string) {
+    const session = await verifySession();
+    if (!session) return null;
+
+    const existingEnrollment = await db.query.enrollments.findFirst({
+        where: and(
+            eq(enrollments.user_id, userId),
+            eq(enrollments.course_id, courseId),
+            isNull(enrollments.deleted_at)
+        )
+    });
+
+    if (existingEnrollment) return existingEnrollment;
+
+    let user: any = null;
+    const role = session.userType;
+    if (role === 'student') {
+        user = await db.query.students.findFirst({ where: eq(students.id, userId), columns: { school_id: true } });
+    } else if (role === 'school_admin') {
+        user = await db.query.schoolAdmins.findFirst({ where: eq(schoolAdmins.id, userId), columns: { school_id: true } });
+    } else {
+        user = await db.query.superAdmins.findFirst({ where: eq(superAdmins.id, userId) });
+    }
+    
+    if (!user?.school_id) return null;
+
+    const currentSession = await db.query.academicSessions.findFirst({
+        where: and(eq(academicSessions.school_id, user.school_id), eq(academicSessions.is_current, true))
+    });
+
+    if (!currentSession) return null;
+
+    if (role === 'student') {
+        const course = await db.query.courses.findFirst({
+            where: and(eq(courses.id, courseId), eq(courses.is_published, true))
+        });
+        if (!course) return null;
+
+        if (!course.all_classes) {
+            const currentRecord = await db.query.studentAcademicRecords.findFirst({
+                where: and(eq(studentAcademicRecords.user_id, userId), eq(studentAcademicRecords.session_id, currentSession.id)),
+                orderBy: (records, { desc }) => [desc(records.created_at)]
+            });
+
+            if (!currentRecord?.class_id) return null;
+
+            const mapping = await db.query.courseClassMapping.findFirst({
+                where: and(eq(courseClassMapping.class_id, currentRecord.class_id), eq(courseClassMapping.course_id, courseId))
+            });
+
+            if (!mapping) return null;
+        }
+    }
+
+    const softDeleted = await db.query.enrollments.findFirst({
+        where: and(
+            eq(enrollments.user_id, userId),
+            eq(enrollments.course_id, courseId),
+            eq(enrollments.session_id, currentSession.id),
+            isNotNull(enrollments.deleted_at)
+        )
+    });
+
+    if (softDeleted) {
+        const [reactivated] = await db.update(enrollments)
+            .set({ deleted_at: null, is_active: true, updated_at: new Date() })
+            .where(eq(enrollments.id, softDeleted.id))
+            .returning();
+        return reactivated;
+    }
+
+    const [newEnrollment] = await db.insert(enrollments).values({
+        user_id: userId,
+        course_id: courseId,
+        school_id: user.school_id,
+        session_id: currentSession.id,
+        is_active: true,
+    } as any).returning();
+
+    if (role === 'student') {
+        await invalidateStudentDashboardCache(userId);
+    }
+
+    return newEnrollment;
+}
+
+/**
+ * Fetch course details with lessons and progress
+ */
+export async function getCourseDetailsData(courseId: string, bypassCache = false) {
+    const session = await verifySession();
+    if (!session) throw new Error("Unauthorized");
+    const userId = session.userId;
+    const role = session.userType;
+
+    const course = await db.query.courses.findFirst({
+        where: eq(courses.id, courseId)
+    });
+
+    if (!course) throw new Error("Course not found");
+
+    const cacheKey = `cache:student:${userId}:course:${courseId}`;
+    if (!bypassCache) {
+        try {
+            const cached = await redis.get(cacheKey);
+            if (cached) {
+                const data = JSON.parse(cached);
+                // Check if the cached structure version matches the current course version
+                if (data.v === (course.updated_at?.getTime() || 0)) {
+                    return data.result;
+                }
+            }
+        } catch (err) {
+            console.error("Redis cache read error (course details):", err);
+        }
+    }
+
+    if (role !== 'super_admin' && !course.is_published) {
+        throw new Error('Course not found');
+    }
+
+    if (role === 'student') {
+        const existingEnrollment = await db.query.enrollments.findFirst({
+            where: and(eq(enrollments.user_id, userId), eq(enrollments.course_id, courseId))
+        });
+
+        if (!existingEnrollment && !course.all_classes) {
+            const currentRecord = await db.query.studentAcademicRecords.findFirst({
+                where: eq(studentAcademicRecords.user_id, userId),
+                orderBy: (records, { desc }) => [desc(records.created_at)]
+            });
+
+            if (!currentRecord?.class_id) throw new Error('Course access denied');
+
+            const mapping = await db.query.courseClassMapping.findFirst({
+                where: and(eq(courseClassMapping.class_id, currentRecord.class_id), eq(courseClassMapping.course_id, courseId))
+            });
+
+            if (!mapping) throw new Error('Course access denied');
+        }
+    }
+
+    const courseLessons = await db.query.lessons.findMany({
+        where: eq(lessons.course_id, courseId),
+        orderBy: (lessons, { asc }) => [asc(lessons.sequence_order)]
+    });
+
+    const enrolledCountResult = await db.select({ count: count() }).from(enrollments).where(eq(enrollments.course_id, courseId));
+    const enrolledCount = Number(enrolledCountResult[0]?.count || 0);
+
+    let formattedLessons = courseLessons.map((l, i) => ({
+        ...l,
+        sequence_index: l.sequence_order,
+        duration: l.duration_minutes || 10,
+        xp_reward: l.xp_reward || 10,
+        status: (i === 0 ? 'available' : 'locked') as 'locked' | 'available' | 'completed'
+    }));
+
+    if (courseLessons.length > 0) {
+        const lessonIds = courseLessons.map(l => l.id);
+        const progressData = await db.select().from(lessonProgress).where(
+            and(
+                eq(lessonProgress.user_id, userId),
+                inArray(lessonProgress.lesson_id, lessonIds)
+            )
+        );
+
+        const progressMap = new Map();
+        progressData.forEach(p => {
+            const isDone = p.completed_at || p.content_watched || p.progress_pct === '100' || p.completion_locked;
+            const current = progressMap.get(p.lesson_id);
+            if (!current || (isDone && current !== 'completed')) {
+                progressMap.set(p.lesson_id, isDone ? 'completed' : 'in_progress');
+            }
+        });
+
+        let foundIncomplete = false;
+        const isAdmin = role === 'super_admin' || role === 'school_admin';
+
+        formattedLessons = courseLessons.map((l, i) => {
+            const status = progressMap.get(l.id);
+            let lessonStatus: 'locked' | 'available' | 'completed' = 'locked';
+
+            if (status === 'completed') {
+                lessonStatus = 'completed';
+            } else if (!foundIncomplete || isAdmin) {
+                // If admin, everything is available even if locked for ordinary students
+                lessonStatus = 'available';
+                foundIncomplete = true;
+            }
+
+            return {
+                ...l,
+                sequence_index: l.sequence_order,
+                duration: l.duration_minutes || 10,
+                xp_reward: l.xp_reward || 10,
+                status: lessonStatus
+            };
+        });
+    }
+
+    const result = {
+        course: {
+            ...course,
+            thumbnail: course.thumbnail_url,
+            published: course.is_published,
+        },
+        lessons: formattedLessons,
+        enrolledCount
+    };
+
+    try {
+        await redis.set(cacheKey, JSON.stringify({
+            v: course.updated_at?.getTime() || 0,
+            result: result
+        }), 'EX', 600);
+    } catch (err) {
+        console.error("Redis cache write error (course details):", err);
+    }
+
+    return result;
+}
+
+/**
+ * Fetch courses for student dashboard with progress
+ */
+export async function getStudentDashboardCourses() {
+    const session = await verifySession();
+    if (!session || session.role !== 'student') redirect('/login');
+    const userId = session.userId;
+
+    const currentRecord = await db.query.studentAcademicRecords.findFirst({
+        where: eq(studentAcademicRecords.user_id, userId),
+        orderBy: [desc(studentAcademicRecords.created_at)]
+    });
+    const classId = currentRecord?.class_id;
+
+    const [enrolled, global, classMapped] = await Promise.all([
+        db.query.enrollments.findMany({ 
+            where: and(eq(enrollments.user_id, userId), eq(enrollments.is_active, true)), 
+            with: { course: true } 
+        }),
+        db.query.courses.findMany({ 
+            where: and(eq(courses.all_classes, true), eq(courses.is_published, true)) 
+        }),
+        classId ? db.query.courseClassMapping.findMany({ 
+            where: eq(courseClassMapping.class_id, classId), 
+            with: { course: true } 
+        }) : Promise.resolve([])
+    ]);
+
+    const courseMap = new Map<string, any>();
+    enrolled.forEach(e => e.course?.is_published && courseMap.set(e.course.id, { ...e.course, isEnrolled: true }));
+    global.forEach(c => !courseMap.has(c.id) && courseMap.set(c.id, { ...c, isEnrolled: false }));
+    (classMapped as any[]).forEach(m => m.course?.is_published && !courseMap.has(m.course.id) && courseMap.set(m.course.id, { ...m.course, isEnrolled: false }));
+
+    const allCourses = Array.from(courseMap.values());
+    const courseIds = allCourses.map(c => c.id);
+
+    const [allLessons, userProgress] = await Promise.all([
+        courseIds.length > 0 ? db.query.lessons.findMany({ where: inArray(lessons.course_id, courseIds) }) : Promise.resolve([]),
+        courseIds.length > 0 ? db.select().from(lessonProgress).where(and(eq(lessonProgress.user_id, userId), isNotNull(lessonProgress.completed_at))) : Promise.resolve([])
+    ]);
+
+    const progressSet = new Set(userProgress.map(p => p.lesson_id));
+    const coursesWithProgress = allCourses.map(course => {
+        const cLessons = allLessons.filter(l => l.course_id === course.id);
+        const completed = cLessons.filter(l => progressSet.has(l.id)).length;
+        return {
+            ...course,
+            thumbnail: course.thumbnail_url,
+            totalLessons: cLessons.length,
+            completedLessons: completed
+        };
+    });
+
+    coursesWithProgress.sort((a, b) => {
+        const aActive = a.completedLessons > 0 && a.completedLessons < a.totalLessons;
+        const bActive = b.completedLessons > 0 && b.completedLessons < b.totalLessons;
+        if (aActive && !bActive) return -1;
+        if (!aActive && bActive) return 1;
+        return (a.completedLessons === a.totalLessons) ? 1 : -1;
+    });
+
+    return {
+        courses: coursesWithProgress,
+        categories: Array.from(new Set(coursesWithProgress.map(c => c.category))).filter(Boolean).map(cat => ({
+            name: cat,
+            count: coursesWithProgress.filter(c => c.category === cat).length
+        })),
+        topics: Array.from(new Set(coursesWithProgress.flatMap(c => {
+            const t = c.topics;
+            if (Array.isArray(t)) return t;
+            if (typeof t === 'string') return t.split(',').map(s => s.trim());
+            return [];
+        }))).filter(Boolean) as string[]
+    };
+}
+
+

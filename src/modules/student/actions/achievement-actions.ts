@@ -10,10 +10,11 @@ import {
     quizAttempts,
     xpEvents,
     enrollments,
-    auditLogs
+    auditLogs,
+    lessons
 } from '@/db/schema';
 import { redirect } from 'next/navigation';
-import { eq, and, gt, sql, count, isNotNull, asc, isNull } from 'drizzle-orm';
+import { eq, and, gt, sql, count, isNotNull, asc, isNull, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getProgressCounter, isAchievementCheckNeeded, clearAchievementDirtyBit } from '@/lib/gamification';
 
@@ -115,6 +116,31 @@ export async function seedAchievementsData() {
             category: 'Persistence',
             criteria: { type: 'lesson_count', value: 20 }
         },
+        // Course Achievement Badges
+        {
+            name: 'Course Initiate',
+            description: 'Enrolled and completed the first milestone of any module',
+            icon_url: 'target',
+            tier: 'bronze' as const,
+            category: 'Course',
+            criteria: { type: 'course_progress', value: 25 }
+        },
+        {
+            name: 'Course Vanguard',
+            description: 'Demonstrated persistence by reaching the halfway point of a module',
+            icon_url: 'zap',
+            tier: 'silver' as const,
+            category: 'Course',
+            criteria: { type: 'course_progress', value: 50 }
+        },
+        {
+            name: 'Course Master',
+            description: 'Successfully concluded all requirements for a complete module',
+            icon_url: 'award',
+            tier: 'gold' as const,
+            category: 'Course',
+            criteria: { type: 'course_complete', value: 1 }
+        },
         {
             name: 'Learning Marathon',
             description: 'Spend more than 5 hours (300 mins) actively learning',
@@ -160,8 +186,11 @@ export async function checkAndAwardAchievements() {
     // OPTIMIZATION: Check dirty bit first. If no new XP or progress event, skip heavy DB checks.
     const needed = await isAchievementCheckNeeded(userId);
     
-    // Ensure achievements exist in DB even if we don't need to check user progress yet
-    await seedAchievementsData();
+    // OPTIMIZATION: Only seed if achievements don't exist
+    const countResult = await db.select({ val: count() }).from(achievements);
+    if (Number(countResult[0]?.val || 0) === 0) {
+        await seedAchievementsData();
+    }
     
     if (!needed) return { success: true, unlocked: [] };
 
@@ -206,6 +235,40 @@ export async function checkAndAwardAchievements() {
         .where(and(eq(enrollments.user_id, userId), isNotNull(enrollments.completed_at)));
     const coursesCompleted = Number(fullCoursesResult[0]?.count) || 0;
 
+    // Fetch max course progress for milestone awards
+    const progressList = await db.select({
+        lesson_id: lessonProgress.lesson_id,
+        course_id: lessons.course_id
+    })
+    .from(lessonProgress)
+    .innerJoin(lessons, eq(lessonProgress.lesson_id, lessons.id))
+    .where(and(eq(lessonProgress.user_id, userId), isNotNull(lessonProgress.completed_at)));
+
+    const courseLessonCounts = new Map();
+    const userCompletedCounts = new Map();
+
+    // Group by course
+    for (const p of progressList) {
+        userCompletedCounts.set(p.course_id, (userCompletedCounts.get(p.course_id) || 0) + 1);
+    }
+    
+    // Get total lessons per course for those the user has progress in
+    const uniqueCourseIds = Array.from(userCompletedCounts.keys());
+    if (uniqueCourseIds.length > 0) {
+        const counts = await db.select({ course_id: lessons.course_id, count: count() })
+            .from(lessons)
+            .where(inArray(lessons.course_id, uniqueCourseIds))
+            .groupBy(lessons.course_id);
+        counts.forEach(c => courseLessonCounts.set(c.course_id, Number(c.count)));
+    }
+
+    let maxProgressPct = 0;
+    for (const [courseId, completed] of userCompletedCounts.entries()) {
+        const total = courseLessonCounts.get(courseId) || 1;
+        const pct = (completed / total) * 100;
+        if (pct > maxProgressPct) maxProgressPct = pct;
+    }
+
     const newlyUnlocked = [];
 
     for (const ach of allAchvs) {
@@ -232,6 +295,9 @@ export async function checkAndAwardAchievements() {
                 break;
             case 'course_complete':
                 isMet = coursesCompleted >= criteria.value;
+                break;
+            case 'course_progress':
+                isMet = maxProgressPct >= criteria.value;
                 break;
             case 'learning_time':
                 isMet = learningMinutes >= criteria.value;

@@ -3,7 +3,8 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, ChevronRight } from 'lucide-react';
+import { Play, ChevronRight, BookOpen, Clock, Star, Zap, Activity } from 'lucide-react';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 
 interface Course {
@@ -20,73 +21,99 @@ export function CourseCard({ course }: { course: Course }) {
         ? (course.completedLessons / course.totalLessons) * 100
         : 0;
 
-    // Generate a stable color based on the title
+    // Tactical Color Spectrum Matrix
     const colors = [
-        { accent: 'bg-indigo-600', text: 'text-indigo-600', ring: 'ring-indigo-100', border: 'hover:border-indigo-100', shadow: 'hover:shadow-indigo-500/5', badge: 'bg-indigo-505/10' },
-        { accent: 'bg-emerald-600', text: 'text-emerald-600', ring: 'ring-emerald-100', border: 'hover:border-emerald-100', shadow: 'hover:shadow-emerald-500/5', badge: 'bg-emerald-500/10' },
-        { accent: 'bg-rose-600', text: 'text-rose-600', ring: 'ring-rose-100', border: 'hover:border-rose-100', shadow: 'hover:shadow-rose-500/5', badge: 'bg-rose-500/10' },
-        { accent: 'bg-amber-600', text: 'text-amber-600', ring: 'ring-amber-100', border: 'hover:border-amber-100', shadow: 'hover:shadow-amber-500/5', badge: 'bg-amber-500/10' },
-        { accent: 'bg-sky-600', text: 'text-sky-600', ring: 'ring-sky-100', border: 'hover:border-sky-100', shadow: 'hover:shadow-sky-500/5', badge: 'bg-sky-500/10' },
-        { accent: 'bg-violet-600', text: 'text-violet-600', ring: 'ring-violet-100', border: 'hover:border-violet-100', shadow: 'hover:shadow-violet-500/5', badge: 'bg-violet-500/10' },
+        { accent: 'bg-indigo-600', text: 'text-indigo-600', border: 'hover:border-indigo-200', shadow: 'hover:shadow-indigo-500/10', glow: 'shadow-indigo-500/20' },
+        { accent: 'bg-emerald-600', text: 'text-emerald-600', border: 'hover:border-emerald-200', shadow: 'hover:shadow-emerald-500/10', glow: 'shadow-emerald-500/20' },
+        { accent: 'bg-rose-600', text: 'text-rose-600', border: 'hover:border-rose-200', shadow: 'hover:shadow-rose-500/10', glow: 'shadow-rose-500/20' },
+        { accent: 'bg-amber-600', text: 'text-amber-600', border: 'hover:border-amber-200', shadow: 'hover:shadow-amber-500/10', glow: 'shadow-amber-500/20' },
+        { accent: 'bg-sky-600', text: 'text-sky-600', border: 'hover:border-sky-200', shadow: 'hover:shadow-sky-500/10', glow: 'shadow-sky-500/20' },
+        { accent: 'bg-violet-600', text: 'text-violet-600', border: 'hover:border-violet-200', shadow: 'hover:shadow-violet-500/10', glow: 'shadow-violet-500/20' },
     ];
+    
     const hash = course.title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const theme = colors[hash % colors.length];
 
     return (
-        <Link href={`/student/course/${course.id}`}>
-            <div className={`group bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden ${theme.border} hover:shadow-2xl ${theme.shadow} transition-all duration-300 h-full flex flex-col`}>
-                <div className="relative h-48 sm:h-56 overflow-hidden bg-slate-100">
+        <Link href={`/student/course/${course.id}`} className="block h-full group">
+            <motion.div 
+                whileHover={{ y: -4 }}
+                className={`bg-white border border-slate-100 rounded-[3rem] overflow-hidden transition-all duration-500 h-full flex flex-col ${theme.shadow} hover:shadow-xl`}
+            >
+                {/* Course Thumbnail */}
+                <div className="relative h-48 overflow-hidden bg-slate-100">
                     <img
                         src={course.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600'}
                         alt={course.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-all duration-[1500ms] ease-out"
                     />
+                    
+                    {/* Tactical Overlays */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                    
                     <div className="absolute top-4 left-4">
-                        <div className="px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-[10px] font-black text-slate-900 uppercase tracking-widest shadow-sm border border-white/20">
+                        <div className="px-4 py-1.5 bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl text-[9px] font-black text-white uppercase tracking-[0.2em] shadow-2xl">
                             {course.totalLessons} Lessons
                         </div>
                     </div>
+
+                    <div className="absolute bottom-4 right-4">
+                        <div className={`w-10 h-10 rounded-2xl bg-white flex items-center justify-center ${theme.text} shadow-2xl group-hover:scale-110 transition-transform duration-500`}>
+                            <Play size={18} fill="currentColor" />
+                        </div>
+                    </div>
                 </div>
 
-                <div className="p-6 sm:p-8 flex-1 flex flex-col">
-                    <h4 className={`font-black text-xl text-slate-900 tracking-tight leading-tight group-hover:${theme.text} transition-colors duration-300 mb-2 uppercase leading-[0.9]`}>
-                        {course.title}
-                    </h4>
-                    <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed font-medium mb-6">
-                        {course.description || 'Interactive lessons and practice exercises designed for deep learning.'}
+                {/* Course Info */}
+                <div className="p-7 flex-1 flex flex-col">
+                    <div className="flex items-start justify-between mb-3">
+                        <h4 className={`font-black text-xl text-slate-950 tracking-tighter leading-[0.9] uppercase transition-colors duration-500`}>
+                            {course.title}
+                        </h4>
+                    </div>
+
+                    <p className="text-xs text-slate-500/80 font-bold uppercase tracking-wider line-clamp-2 leading-relaxed mb-6 opacity-80">
+                        {course.description || 'A comprehensive learning path designed for academic excellence.'}
                     </p>
 
-                    <div className="mt-auto space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Status</span>
-                                <span className="text-xs font-bold text-slate-700">{course.completedLessons} / {course.totalLessons} Completed</span>
+                    <div className="mt-auto space-y-6">
+                        {/* Learning Progress */}
+                        <div>
+                            <div className="flex items-end justify-between mb-3">
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Course Progress</span>
+                                <span className={`text-xs font-black ${theme.text}`}>{Math.round(progress)}% Complete</span>
                             </div>
-                            <div className="text-right">
-                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 block">Progress</span>
-                                <span className={`text-xs font-black ${theme.text}`}>{Math.round(progress)}%</span>
+
+                            <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/50 shadow-inner">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${progress}%` }}
+                                    className={`h-full ${theme.accent} rounded-full ${theme.glow} shadow-lg shadow-indigo-500/20`}
+                                    transition={{ duration: 1.5, ease: "circOut" }}
+                                />
                             </div>
                         </div>
 
-                        <div className="h-2 bg-slate-50 rounded-full overflow-hidden border border-slate-100 flex p-0.5">
-                            <div
-                                className={`h-full ${theme.accent} rounded-full transition-all duration-1000 ease-out`}
-                                style={{ width: `${progress}%` }}
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between pt-2">
-                            <div className="flex items-center gap-1">
-                                <span className={`w-1.5 h-1.5 rounded-full ${theme.accent}`} />
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ongoing</span>
+                        <div className="flex items-center justify-between pt-5 border-t border-slate-100">
+                            <div className="flex items-center gap-4">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Finished</span>
+                                    <span className="text-[10px] font-black text-slate-900">{course.completedLessons} / {course.totalLessons}</span>
+                                </div>
+                                <div className="w-px h-6 bg-slate-100" />
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Level</span>
+                                    <span className="text-[10px] font-black text-indigo-600">Standard</span>
+                                </div>
                             </div>
-                            <div className={`w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white group-hover:${theme.accent} transition-colors duration-300`}>
-                                <ChevronRight size={16} />
+
+                            <div className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.4em] ${theme.text} group-hover:translate-x-1 transition-transform duration-500`}>
+                                View Course <ChevronRight size={14} />
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </motion.div>
         </Link>
     );
 }

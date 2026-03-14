@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { dailyChallenges, userDailyChallenges, students } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { awardXP } from '@/lib/gamification';
 

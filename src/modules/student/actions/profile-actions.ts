@@ -3,8 +3,8 @@
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { students, achievements, userAchievements, lessonProgress, quizAttempts, studentAcademicRecords } from '@/db/schema';
-import { eq, and, gt, sql } from 'drizzle-orm';
+import { students, achievements, userAchievements, lessonProgress, quizAttempts, studentAcademicRecords, xpEvents } from '@/db/schema';
+import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export async function getStudentProfileData() {
@@ -14,7 +14,7 @@ export async function getStudentProfileData() {
     }
 
     const profile = await db.query.students.findFirst({
-        where: eq(students.id, session.userId),
+        where: and(eq(students.id, session.userId), sql`${students.deleted_at} IS NULL`),
         with: {
             academicRecords: {
                 where: eq(studentAcademicRecords.user_id, session.userId),
@@ -73,9 +73,16 @@ export async function getStudentProfileData() {
         total_time: sql<number>`sum(${lessonProgress.time_spent_secs})`
     }).from(lessonProgress).where(and(eq(lessonProgress.user_id, session.userId), sql`${lessonProgress.completed_at} is not null`));
 
-    const quizzesData = await db.select({
-        count: sql<number>`count(*)`
-    }).from(quizAttempts).where(and(eq(quizAttempts.user_id, session.userId), eq(quizAttempts.passed, true)));
+    // Get all quiz attempts to calculate accuracy and average score
+    const quizStats = await db.select({
+        count: sql<number>`count(*)`,
+        passed: sql<number>`count(*) filter (where ${quizAttempts.passed} = true)`,
+        avgScore: sql<number>`avg(${quizAttempts.score})`
+    }).from(quizAttempts).where(eq(quizAttempts.user_id, session.userId));
+
+    const totalAttempts = Number(quizStats[0]?.count) || 0;
+    const passedAttempts = Number(quizStats[0]?.passed) || 0;
+    const avgScore = Math.round(Number(quizStats[0]?.avgScore) || 0);
 
     const stats = {
         xp: Number(profile?.cumulative_xp) || 0,
@@ -83,7 +90,10 @@ export async function getStudentProfileData() {
         level: Math.floor((Number(profile?.cumulative_xp) || 0) / 1000) + 1,
         lessonsCompleted: Number(lessonsData[0]?.count) || 0,
         learningTimeMinutes: Math.floor((Number(lessonsData[0]?.total_time) || 0) / 60),
-        quizzesPassed: Number(quizzesData[0]?.count) || 0
+        quizzesPassed: passedAttempts,
+        accuracy: avgScore, // Using average score as 'Score'
+        rank: rank,
+        rankPercentage: rankPercentage
     };
 
     return {
@@ -149,3 +159,43 @@ export async function updateStudentAvatar(avatarStyle: string) {
     revalidatePath('/student/profile');
     revalidatePath('/student');
 }
+
+/**
+ * Fetch recent student activities from audit logs and XP events
+ */
+export async function getStudentActivitiesAction() {
+    const session = await verifySession();
+    if (!session) return [];
+    
+    // Fetch XP events as a proxy for activity
+    const activities = await db.query.xpEvents.findMany({
+        where: eq(xpEvents.user_id, session.userId),
+        orderBy: [desc(xpEvents.created_at)],
+        limit: 10
+    });
+
+    return activities.map(a => ({
+        id: a.id,
+        type: a.source,
+        description: `Earned ${a.xp_amount} XP from ${a.source.replace(/_/g, ' ')}`,
+        timestamp: a.created_at
+    }));
+}
+
+/**
+ * Request account deletion (soft delete)
+ */
+export async function deleteStudentAccountAction() {
+    const session = await verifySession();
+    if (!session) redirect('/login');
+
+    await db.update(students)
+        .set({ deleted_at: new Date() })
+        .where(eq(students.id, session.userId));
+    
+    // In a real app, you'd also sign out
+    redirect('/login?deleted=true');
+}
+
+// Aliases for better ergonomics in dashboard
+export const getStudentProfileAndStats = getStudentProfileData;

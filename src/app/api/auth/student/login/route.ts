@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { students } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { checkRateLimit } from '@/lib/rate-limit';
@@ -23,9 +23,10 @@ export async function POST(request: NextRequest) {
         const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
 
         const user = await db.query.students.findFirst({
-            where: isEmail 
-                ? eq(students.email, identifier)
-                : eq(students.phone, identifier)
+            where: and(
+                isEmail ? eq(students.email, identifier) : eq(students.phone, identifier),
+                sql`${students.deleted_at} IS NULL`
+            )
         });
 
         if (!user) {

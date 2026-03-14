@@ -6,7 +6,7 @@ import {
     Database, Activity, Zap, ShieldAlert, CheckCircle2,
     RefreshCw, Cpu, HardDrive, Users, Clock, AlertTriangle, Info, Server, Network
 } from 'lucide-react';
-import { getSystemHealth } from '../../actions';
+import { getSystemHealth } from '../../actions/redis-monitoring';
 import { type SystemHealthData } from '../../types';
 import { useAdminTheme, t } from '../../theme-context';
 import { Button } from '@/components/ui/button';

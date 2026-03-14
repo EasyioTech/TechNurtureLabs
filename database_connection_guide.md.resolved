@@ -1,0 +1,76 @@
+# Production Database Connection & Management Guide
+
+This guide explains how to connect to the TechNurture production database running on your VPS using a PostgreSQL dashboard (like pgAdmin or DBeaver).
+
+## 1. Connection Parameters
+
+To connect securely, use the following settings in your SQL client:
+
+| Parameter | Value |
+| :--- | :--- |
+| **Host** | `187.124.98.192` |
+| **Port** | `5433` (Note: We use 5433 to avoid conflict with other apps) |
+| **Database** | `orchids` |
+| **Username** | `postgres` |
+| **Password** | `admin` |
+
+> [!IMPORTANT]
+> **Security Tip**: For the best security, we recommend using an **SSH Tunnel**.
+> - Set Host to `localhost` and Port to `5432` in the "Main" connection tab.
+> - Go to the "SSH" or "SSL" tab in your client and add your VPS IP `187.124.98.192` with the `root` user and your private key.
+
+---
+
+## 2. Current Database Snapshot
+
+As of now, the production database contains:
+- **Schools**: 0
+- **Students**: 0
+- **Super Admins**: 1 (`admin@technurture.com`)
+- **Total Tables**: 40 (All verified and repaired)
+
+---
+
+## 3. Common Operations (SQL Workbench)
+
+You can run these queries inside your dashboard to inspect or manage data:
+
+### View All Data Tables
+```sql
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public';
+```
+
+### List All Schools
+```sql
+SELECT id, name, slug, email, is_active FROM schools;
+```
+
+### List Registered Students
+```sql
+SELECT id, first_name, last_name, email, cumulative_xp FROM students;
+```
+
+### Check Lesson Progress (The 500 Error Fix)
+```sql
+-- Verify the missing columns are now present
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'lesson_progress';
+```
+
+### Create a Test School (Emergency)
+```sql
+INSERT INTO schools (name, slug, email, is_active) 
+VALUES ('TechNurture Academy', 'technurture-academy', 'contact@academy.io', true);
+```
+
+---
+
+## 4. Troubleshooting Connection Issues
+
+If you cannot connect:
+1. **Firewall**: Ensure port `5433` is open on your VPS firewall (`ufw allow 5433`).
+2. **Container Status**: Run `docker ps` on the VPS to ensure `LMS_postgres` is healthy.
+3. **Listen Address**: The database is configured to listen inside the Docker network; the host port mapping `5433:5432` handles the external connection.

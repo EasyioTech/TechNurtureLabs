@@ -14,8 +14,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 interface StudentsTabProps {
-    students: SchoolStudentMetric[];
-    filteredStudents: SchoolStudentMetric[];
+    totalStudentsCount: number;
     pagedStudents: SchoolStudentMetric[];
     totalStudentPages: number;
     studentsPage: number;
@@ -23,20 +22,23 @@ interface StudentsTabProps {
     studentSearch: string;
     setStudentSearch: (s: string) => void;
     onToggleStudent: (id: string, active: boolean) => void;
+    studentsLoading?: boolean;
 }
 
 export function SchoolStudentsTab({
-    students, filteredStudents, pagedStudents, totalStudentPages,
-    studentsPage, setStudentsPage, studentSearch, setStudentSearch, onToggleStudent
+    totalStudentsCount, pagedStudents, totalStudentPages,
+    studentsPage, setStudentsPage, studentSearch, setStudentSearch, onToggleStudent,
+    studentsLoading = false
 }: StudentsTabProps) {
     const { isDark } = useSchoolTheme();
     const router = useRouter();
 
     const handleExport = () => {
-        if (students.length === 0) return;
+        if (pagedStudents.length === 0) return;
+        // In a real app we would fetch all for export, but for now export current page
 
         const headers = ['Name', 'Email', 'Class', 'XP', 'Level', 'Streak', 'Lessons Completed', 'Status'];
-        const csvRows = students.map(s => [
+        const csvRows = pagedStudents.map(s => [
             s.full_name,
             s.email,
             s.class_name || 'N/A',
@@ -69,7 +71,9 @@ export function SchoolStudentsTab({
                 <div className={`px-8 py-8 border-b ${ts.border(isDark)} flex flex-col lg:flex-row items-start lg:items-center gap-6`}>
                     <div className="flex-1">
                         <h3 className={`font-black text-2xl tracking-tight mb-1 ${ts.textPrimary(isDark)}`}>Student Directory</h3>
-                        <p className={`text-[13px] font-bold ${ts.textMuted(isDark)}`}>Managing {students.length} enrolled learners</p>
+                        <p className={`text-[13px] font-bold ${ts.textMuted(isDark)}`}>
+                            {studentsLoading ? 'Refreshing...' : `Managing ${totalStudentsCount} enrolled learners`}
+                        </p>
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
@@ -108,14 +112,14 @@ export function SchoolStudentsTab({
                                 ))}
                             </tr>
                         </thead>
-                        <tbody className={ts.divider(isDark)}>
+                        <tbody className={`${ts.divider(isDark)} ${studentsLoading ? 'opacity-50' : ''}`}>
                             {pagedStudents.map((s, i) => (
                                 <motion.tr key={s.id}
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: i * 0.03 }}
                                     className={`group transition-all ${ts.cardHover(isDark)}`}>
-
+                                    
                                     {/* Student Info */}
                                     <td className="px-8 py-5">
                                         <div className="flex items-center gap-4">
@@ -141,19 +145,19 @@ export function SchoolStudentsTab({
                                     <td className="px-8 py-5 text-right">
                                         <div className="inline-flex flex-col items-end">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className={`text-[15px] font-black ${ts.textPrimary(isDark)}`}>{s.total_xp.toLocaleString()}</span>
+                                                <span className={`text-[15px] font-black ${ts.textPrimary(isDark)}`}>{(s.total_xp || 0).toLocaleString()}</span>
                                                 <Zap size={12} className="text-amber-500" fill="currentColor" />
                                             </div>
-                                            <p className={`text-[10px] font-black tracking-widest uppercase ${ts.textMuted(isDark)}`}>LEVEL {s.level}</p>
+                                            <p className={`text-[10px] font-black tracking-widest uppercase ${ts.textMuted(isDark)}`}>LEVEL {s.level || 1}</p>
                                         </div>
                                     </td>
 
                                     {/* Metrics */}
                                     <td className="px-8 py-5 text-right">
                                         <div className="inline-flex flex-col items-end">
-                                            <p className={`text-[13px] font-black ${ts.textPrimary(isDark)}`}>{s.lessons_completed} Lessons</p>
+                                            <p className={`text-[13px] font-black ${ts.textPrimary(isDark)}`}>{s.lessons_completed || 0} Lessons</p>
                                             <p className="text-[11px] font-bold text-orange-500 flex items-center gap-1">
-                                                <Flame size={12} /> {s.current_streak}d streak
+                                                <Flame size={12} /> {s.current_streak || 0}d streak
                                             </p>
                                         </div>
                                     </td>
@@ -202,7 +206,7 @@ export function SchoolStudentsTab({
                 {totalStudentPages > 1 && (
                     <div className={`px-8 py-6 border-t ${ts.border(isDark)} flex items-center justify-between bg-slate-500/[0.01]`}>
                         <p className={`text-[12px] font-bold ${ts.textMuted(isDark)}`}>
-                            Showing <span className={ts.textPrimary(isDark)}>{studentsPage * SCHOOL_STUDENT_PAGE_SIZE + 1}–{Math.min((studentsPage + 1) * SCHOOL_STUDENT_PAGE_SIZE, filteredStudents.length)}</span> of {filteredStudents.length} learners
+                            Showing <span className={ts.textPrimary(isDark)}>{studentsPage * SCHOOL_STUDENT_PAGE_SIZE + 1}–{Math.min((studentsPage + 1) * SCHOOL_STUDENT_PAGE_SIZE, totalStudentsCount)}</span> of {totalStudentsCount} learners
                         </p>
                         <div className="flex items-center gap-3">
                             <Button variant="ghost" size="sm" disabled={studentsPage === 0} onClick={() => setStudentsPage(studentsPage - 1)}

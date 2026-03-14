@@ -3,13 +3,24 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
-    fetchAllAdminData,
+    fetchAdminStats,
+    fetchAdminStudents,
+    fetchAdminSchools,
+    fetchAdminCourses,
+    fetchAdminMetadata,
     fetchCourseLessons,
     saveCourseAdmin,
     deleteCourseAdmin,
     saveLessonAdmin,
     deleteLessonAdmin,
     saveLessonOrderAdmin,
+    fetchLessonAdmin,
+    cloneLessonAction,
+    fetchGlobalLessons,
+    fetchQuizAdmin,
+    saveQuizAdmin,
+    cloneQuizAction,
+    fetchGlobalQuizzes,
     savePlanAdmin,
     deletePlanAdmin,
     toggleSchoolStatus as toggleSchoolStatusAction,
@@ -18,6 +29,7 @@ import {
     assignPlanToSchool,
     savePromoCode as savePromoCodeAction,
     deletePromoCode as deletePromoCodeAction,
+    syncPlatformMetrics,
 } from '../actions';
 
 export const USER_METRICS_PAGE_SIZE = 25;
@@ -48,8 +60,14 @@ export function useAdminData() {
     const [courseClassMappings, setCourseClassMappings] = useState<any[]>([]);
     const [platformSettings, setPlatformSettings] = useState<any | null>(null);
     const [platformMetrics, setPlatformMetrics] = useState<any[]>([]);
+    const [globalLessons, setGlobalLessons] = useState<any[]>([]);
+    const [globalQuizzes, setGlobalQuizzes] = useState<any[]>([]);
+    const [globalLoading, setGlobalLoading] = useState(false);
     // Pagination
     const [userMetricsPage, setUserMetricsPage] = useState(0);
+    const [totalStudentsCount, setTotalStudentsCount] = useState(0);
+    const [totalStudentPages, setTotalStudentPages] = useState(0);
+    const [studentsLoading, setStudentsLoading] = useState(false);
 
     // Dialog state
     const [showCourseDialog, setShowCourseDialog] = useState(false);
@@ -63,148 +81,79 @@ export function useAdminData() {
     const [editingPromoCode, setEditingPromoCode] = useState<Partial<PromoCode> | null>(null);
     const [editingSchoolItem, setEditingSchoolItem] = useState<Partial<SchoolInfo> | null>(null);
 
-    useEffect(() => { fetchAllData(true); }, []);
+    useEffect(() => { fetchInitialData(); }, []);
 
-    async function fetchAllData(isInitial = false) {
-        if (isInitial) setLoading(true);
-        const data = await fetchAllAdminData();
+    async function fetchInitialData() {
+        setLoading(true);
+        try {
+            const [statsData, metaData] = await Promise.all([
+                fetchAdminStats(),
+                fetchAdminMetadata()
+            ]);
 
-        const students = data.students || [];
-        const schoolsRaw = data.schools || [];
-        const coursesData = data.courses || [];
-        const lessonsData = data.lessons || [];
-        const plansData = data.plans || [];
-        const progressData = data.progress || [];
-        const enrollmentsData = data.enrollments || [];
-        const subscriptionsData = data.subscriptions || [];
-        const transactionsData = data.transactions || [];
-        const courseProgressData = data.courseProgress || [];
-        const promoCodesData = data.promoCodes || [];
-
-        const getUserLastActivity = (studentId: string) => {
-            const userProgress = progressData.filter((p: any) => p.user_id === studentId);
-            if (userProgress.length === 0) return null;
-            return userProgress.reduce((latest: number, p: any) => {
-                const pDate = p.updated_at ? new Date(p.updated_at).getTime() : 0;
-                return pDate > latest ? pDate : latest;
-            }, 0);
-        };
-
-        const activeCount = students.filter((s: any) =>
-            getUserLastActivity(s.id) && getUserLastActivity(s.id)! > Date.now() - 7 * 24 * 60 * 60 * 1000
-        ).length;
-
-        const completedLessons = progressData.filter((p: any) => p.completed_at != null).length;
-        const avgCompletion = progressData.length > 0
-            ? Math.round((completedLessons / progressData.length) * 100) : 0;
-
-        const activeSubs = subscriptionsData.filter((s: any) => s.status === 'active' || s.status === 'trialing').length;
-        const totalRevenue = transactionsData
-            .filter((t: any) => t.status === 'captured')
-            .reduce((a: number, t: any) => a + Number(t.amount || 0), 0);
-
-        setStats({
-            totalStudents: students.length,
-            activeStudents: activeCount,
-            totalSchools: schoolsRaw.length,
-            activeSchools: schoolsRaw.filter((s: any) => s.is_active).length,
-            totalCourses: coursesData.length,
-            publishedCourses: coursesData.filter((c: any) => c.is_published).length,
-            totalLessons: lessonsData.length,
-            totalXp: students.reduce((a: number, s: any) => a + (s.total_xp || 0), 0),
-            avgCompletion,
-            totalRevenue,
-            activeSubscriptions: activeSubs,
-            totalEnrollments: enrollmentsData.length,
-        });
-
-        setCourses(coursesData.map((c: any) => {
-            const courseLessonIds = lessonsData.filter((l: any) => l.course_id === c.id).map((l: any) => l.id);
-            const enrolledUsers = new Set(enrollmentsData.filter((e: any) => e.course_id === c.id).map((e: any) => e.user_id));
-            return {
-                ...c,
-                lesson_count: courseLessonIds.length,
-                enrolled_count: enrolledUsers.size,
-                total_lessons: c.total_lessons || courseLessonIds.length,
-                total_xp: c.total_xp || 0,
-            };
-        }));
-
-        setPaymentPlans(plansData.map((p: any) => ({
-            ...p,
-            price: Number(p.price),
-            description: p.description || '',
-            features: Array.isArray(p.features) ? p.features : [],
-            trial_days: p.trial_days || 0,
-            currency: p.currency || 'INR',
-        })));
-
-        setSchoolsList(schoolsRaw.map((s: any) => {
-            const sub = subscriptionsData.find((sub: any) => sub.school_id === s.id);
-            const plan = sub ? plansData.find((p: any) => p.id === sub.plan_id) : null;
-            return {
-                ...s,
-                plan_name: plan?.name || 'No Plan',
-                subscription_status: sub?.status || 'inactive',
-                student_count: students.filter((st: any) => st.school_id === s.id).length,
-                data_processing_consent: true,
-                minor_data_guardian_consent: true,
-            };
-        }));
-        setPromoCodes(promoCodesData);
-        setUserMetricsPage(0); // reset to page 1 on data refresh
-        setUserMetrics(students.map((s: any) => {
-            const school = schoolsRaw.find((sch: any) => sch.id === s.school_id);
-            const userProgress = progressData.filter((p: any) => p.user_id === s.id);
-
-            let activeStreak = s.current_streak || 0;
-            const actTime = getUserLastActivity(s.id) || (s.last_active_at ? new Date(s.last_active_at).getTime() : 0);
-            if (actTime && activeStreak > 0) {
-                const lastDate = new Date(actTime);
-                lastDate.setHours(0, 0, 0, 0);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const diffDays = Math.round(Math.abs(today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-                if (diffDays > 1) activeStreak = 0; // Streak currently broken
-            }
-
-            return {
-                id: s.id, full_name: s.full_name, email: s.email,
-                school_name: school?.name || 'Unassigned',
-                total_xp: s.total_xp || 0, level: s.level || 1,
-                current_streak: activeStreak,
-                longest_streak: s.longest_streak || 0,
-                lessons_completed: userProgress.filter((p: any) => p.completed_at != null).length,
-                last_activity: actTime ? new Date(actTime).toISOString() : null,
-            };
-        }));
-
-        setCourseMetrics(coursesData.map((c: any) => {
-            const courseLessons = lessonsData.filter((l: any) => l.course_id === c.id);
-            const courseProgressEntry = courseProgressData.filter((cp: any) => cp.course_id === c.id);
-            const uniqueEnrolled = new Set(enrollmentsData.filter((e: any) => e.course_id === c.id).map((e: any) => e.user_id));
-            const completed = courseProgressEntry.filter((cp: any) => cp.completed_at != null).length;
-            const totalTimeSecs = courseProgressEntry.reduce((sum: number, cp: any) => sum + (cp.total_time_secs || 0), 0);
-            const totalXpEarned = courseProgressEntry.reduce((sum: number, cp: any) => sum + (cp.total_xp_earned || 0), 0);
-            return {
-                id: c.id, title: c.title,
-                is_published: c.is_published,
-                lesson_count: courseLessons.length,
-                enrolled_count: uniqueEnrolled.size,
-                completion_rate: courseProgressEntry.length > 0 ? Math.round((completed / courseProgressEntry.length) * 100) : 0,
-                avg_xp: courseProgressEntry.length > 0 ? Math.round(totalXpEarned / courseProgressEntry.length) : 0,
-                total_time_mins: Math.round(totalTimeSecs / 60),
-            };
-        }));
-
-        setClasses(data.classes || []);
-        setCourseClassMappings(data.courseClassMappings || []);
-        setPlatformSettings(data.platformSettings || null);
-
-        setPlatformMetrics(data.platformMetrics || []);
-
-        setLoading(false);
+            setStats(statsData);
+            setPaymentPlans(metaData.plans);
+            setPromoCodes(metaData.promoCodes);
+            setClasses(metaData.classes);
+            setPlatformSettings(metaData.platformSettings);
+            setPlatformMetrics(metaData.platformMetrics);
+        } catch (error) {
+            console.error("Initial load error:", error);
+            toast.error("Failed to load dashboard stats");
+        } finally {
+            setLoading(false);
+        }
     }
+
+    async function loadStudents(page = 0, search?: string) {
+        setStudentsLoading(true);
+        try {
+            const data = await fetchAdminStudents(page, USER_METRICS_PAGE_SIZE, search);
+            setUserMetrics(data.students.map((s: any) => ({
+                id: s.id,
+                full_name: s.full_name,
+                email: s.email || '',
+                school_name: 'Loading...', 
+                total_xp: s.total_xp,
+                level: s.level,
+                current_streak: s.current_streak || 0,
+                longest_streak: s.longest_streak || 0,
+                lessons_completed: 0, 
+                last_activity: s.last_active_at ? s.last_active_at.toISOString() : null,
+            })));
+            setTotalStudentsCount(data.total);
+            setTotalStudentPages(data.pages);
+        } catch (error) {
+            toast.error("Failed to load students");
+            console.error(error);
+        } finally {
+            setStudentsLoading(false);
+        }
+    }
+
+    async function loadSchools() {
+        try {
+            const data = await fetchAdminSchools();
+            setSchoolsList(data as any);
+        } catch (error) {
+            toast.error("Failed to load schools");
+        }
+    }
+
+    async function loadCourses() {
+        try {
+            const data = await fetchAdminCourses();
+            setCourses(data as any);
+        } catch (error) {
+            toast.error("Failed to load courses");
+        }
+    }
+
+    // Legacy support for refresh requests
+    async function fetchAllData() {
+        await fetchInitialData();
+    }
+
 
     // Course CRUD
     async function selectCourse(course: Course) {
@@ -367,14 +316,52 @@ export function useAdminData() {
         paymentPlans, promoCodes, schoolsList, userMetrics, courseMetrics,
         classes, courseClassMappings, platformSettings, platformMetrics,
         userMetricsPage, setUserMetricsPage,
+        totalStudentsCount, totalStudentPages, studentsLoading,
         showCourseDialog, setShowCourseDialog, editingCourse, setEditingCourse,
         showLessonDialog, setShowLessonDialog, editingLesson, setEditingLesson,
         showPlanDialog, setShowPlanDialog, editingPlan, setEditingPlan,
         showPromoCodeDialog, setShowPromoCodeDialog, editingPromoCode, setEditingPromoCode,
         showSchoolDialog, setShowSchoolDialog, editingSchoolItem, setEditingSchoolItem,
 
-        fetchAllData, selectCourse, saveCourse, deleteCourse,
+        fetchAllData, fetchInitialData, loadStudents, loadSchools, loadCourses, selectCourse, saveCourse, deleteCourse,
         saveLesson, deleteLesson, saveLessonOrder, deleteQuiz,
         savePlan, deletePlan, savePromoCode, deletePromoCode, toggleSchoolStatus, saveSchool, assignPlan,
+
+        loadGlobalLessons: async () => {
+            setGlobalLoading(true);
+            try { setGlobalLessons(await fetchGlobalLessons()); }
+            catch { toast.error("Failed to load global lessons"); }
+            finally { setGlobalLoading(false); }
+        },
+        loadGlobalQuizzes: async () => {
+            setGlobalLoading(true);
+            try { setGlobalQuizzes(await fetchGlobalQuizzes()); }
+            catch { toast.error("Failed to load global quizzes"); }
+            finally { setGlobalLoading(false); }
+        },
+        cloneLesson: async (lessonId: string, targetCourseId: string) => {
+            try {
+                await cloneLessonAction(lessonId, targetCourseId);
+                toast.success("Lesson cloned successfully");
+                if (selectedCourse?.id === targetCourseId) selectCourse(selectedCourse);
+            } catch { toast.error("Failed to clone lesson"); }
+        },
+        cloneQuiz: async (quizId: string, targetCourseId: string) => {
+            try {
+                await cloneQuizAction(quizId, targetCourseId);
+                toast.success("Quiz cloned successfully");
+                if (selectedCourse?.id === targetCourseId) selectCourse(selectedCourse);
+            } catch { toast.error("Failed to clone quiz"); }
+        },
+        syncMetrics: async () => {
+            try {
+                const res = await syncPlatformMetrics();
+                if (res.success) {
+                    toast.success("Metrics synced");
+                    fetchInitialData();
+                } else throw new Error();
+            } catch { toast.error("Sync failed"); }
+        },
+        globalLessons, globalQuizzes, globalLoading
     };
 }

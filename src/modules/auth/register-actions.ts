@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { students, schoolAdmins, superAdmins, schools, paymentPlans, studentAcademicRecords, academicSessions, schoolClassMapping, classes } from '@/db/schema';
-import { eq, and, or } from 'drizzle-orm';
+import { eq, and, or, sql } from 'drizzle-orm';
 import { asc } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { assignPlanToSchool } from '@/modules/super-admin/actions';
@@ -97,11 +97,12 @@ export async function registerStudent(formData: any) {
         const phone = isEmail ? '' : formData.email.trim();
 
         return await db.transaction(async (tx) => {
-            // Check for existing student with this email (Platform-wide)
+            // Check for existing student with this email (Platform-wide, non-deleted)
             const existingGlobally = await tx.query.students.findFirst({
-                where: isEmail 
-                    ? eq(students.email, email)
-                    : eq(students.phone, phone)
+                where: and(
+                    isEmail ? eq(students.email, email) : eq(students.phone, phone),
+                    sql`deleted_at IS NULL`
+                )
             });
 
             if (existingGlobally) {
@@ -199,7 +200,10 @@ export async function registerSchool(formData: any) {
 
             // 3. Check for existing school admin with this email (Platform-wide)
             const checkUser = await tx.query.schoolAdmins.findFirst({
-                where: eq(schoolAdmins.email, email)
+                where: and(
+                    eq(schoolAdmins.email, email),
+                    sql`deleted_at IS NULL`
+                )
             });
 
             if (checkUser) {
@@ -254,15 +258,15 @@ export async function checkIdentifierExists(value: string) {
 
     if (isEmail) {
         const student = await db.query.students.findFirst({
-            where: eq(students.email, identifier)
+            where: and(eq(students.email, identifier), sql`deleted_at IS NULL`)
         });
         const admin = await db.query.schoolAdmins.findFirst({
-            where: eq(schoolAdmins.email, identifier)
+            where: and(eq(schoolAdmins.email, identifier), sql`deleted_at IS NULL`)
         });
         return !!student || !!admin;
     } else {
         const student = await db.query.students.findFirst({
-            where: eq(students.phone, identifier)
+            where: and(eq(students.phone, identifier), sql`deleted_at IS NULL`)
         });
         return !!student;
     }

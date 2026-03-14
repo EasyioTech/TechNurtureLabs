@@ -30,7 +30,10 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
         }
     });
 
-    if (!currentUser) throw new Error('Student profile not found');
+    if (!currentUser) {
+        console.warn(`Leaderboard access attempt by missing/deleted student: ${userId}`);
+        redirect('/login');
+    }
 
     const schoolId = currentUser.school_id;
     const cacheKey = schoolId ? `lb:school:${schoolId}` : `lb:global`;
@@ -42,7 +45,10 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
         if (count === 0) {
             // Lazy sync: If Redis is empty, sync from DB
             const allInScope = await db.query.students.findMany({
-                where: schoolId ? eq(students.school_id, schoolId) : undefined,
+                where: and(
+                    schoolId ? eq(students.school_id, schoolId) : undefined,
+                    sql`${students.deleted_at} IS NULL`
+                ),
                 orderBy: [desc(students.cumulative_xp)],
                 limit: 1000 // Only sync top 1000
             });
@@ -63,7 +69,10 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     // 2. Fetch metadata from SQL for the top IDs
     if (topUserIdsWithScores.length > 0) {
         const dbStudents = await db.query.students.findMany({
-            where: inArray(students.id, topUserIdsWithScores)
+            where: and(
+                inArray(students.id, topUserIdsWithScores),
+                sql`${students.deleted_at} IS NULL`
+            )
         });
 
         // Re-sort to match Redis order (by XP desc)
@@ -84,7 +93,10 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
 
     // Fallback to legacy SQL if Redis fails
     const fallbackStudents = await db.query.students.findMany({
-        where: schoolId ? eq(students.school_id, schoolId) : undefined,
+        where: and(
+            schoolId ? eq(students.school_id, schoolId) : undefined,
+            sql`${students.deleted_at} IS NULL`
+        ),
         orderBy: [desc(students.cumulative_xp)],
         limit: 50
     });

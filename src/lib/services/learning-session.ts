@@ -1,7 +1,8 @@
 import { db } from '@/lib/db';
-import { lessonSessions, lessonProgress, lessons, enrollments } from '@/db/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, isNotNull } from 'drizzle-orm';
 import { redis } from '@/lib/redis';
+import { awardXP, incrementProgressCounter, handleStudentEngagement } from '@/lib/gamification';
+import { students, schoolAdmins, superAdmins, lessonSessions, lessonProgress, lessons, enrollments, auditLogs, xpEvents } from '@/db/schema';
 import crypto from 'crypto';
 
 export interface SessionContext {
@@ -147,39 +148,29 @@ export async function processHeartbeat(token: string, payload: {
 
     const realElapsed = (now - session.lastHeartbeatAt) / 1000;
     
-    // Rate limit heartbeats (minimum 10s interval to allow for 15s client pulses)
-    if (realElapsed < 10) {
+    // Rate limit heartbeats (minimum 5s interval to allow for network jitter)
+    if (realElapsed < 5) {
         return { error: "Heartbeat too frequent", code: "RATE_LIMITED" };
     }
 
-    // 5. Security: Temporal Jump Protection (Anti-Skip)
+    // 5. Verified Increment Calculation
+    // Instead of REJECTING jumps (which resets the user's video - very annoying),
+    // we simply cap the awarded increment at the actual wall-clock elapsed time.
+    // If they skip forward 10 minutes, they only get 10-15 seconds of credit.
     const playbackDelta = payload.playbackTime - session.lastPlaybackTime;
-    
-    // Jump Grace Policy:
-    // Enforce maxJump (realElapsed * 2) to catch skipped segments.
-    // If it's the first heartbeat, realElapsed will be around the interval (e.g. 15s),
-    // so maxJump will be 30s. This protects against spoofed initial positions.
-    const maxJump = Math.min(realElapsed * 2, 120);
-    
-    if (playbackDelta > maxJump) {
-        return { 
-            error: "Playback jump detected (Anti-skip active)", 
-            code: "SKIP_REJECTED",
-            resumeTo: session.lastPlaybackTime 
-        };
-    }
-
-    // 6. Verified Increment Calculation
-    // We award credit for the time elapsed between heartbeats if playing.
-    // Safety: we cap the awarded increment at the actual wall-clock elapsed time (realElapsed)
-    // plus a small grace (10%) to allow for playback rate drift.
     let increment = 0;
+    
     if (payload.playerState === 'PLAYING') {
-        const measured = Math.max(0, playbackDelta);
-        const wallClockMax = realElapsed * 1.5; // wall clock + 50% grace for stability
+        const wallClockMax = realElapsed * 1.5; // wall clock + 50% grace
         
-        // Award the smaller of the two to prevent delta-spoofing
-        increment = Math.min(measured / payload.playbackRate, wallClockMax);
+        if (playbackDelta > 0) {
+            // Forward movement: award smaller of (playback jump / speed) or wall clock
+            // This allows they to skip forward, but they don't get 'free' progress.
+            increment = Math.min(playbackDelta / payload.playbackRate, wallClockMax);
+        } else {
+            // Backward movement or same spot: zero increment, but don't punish
+            increment = 0;
+        }
     }
 
     // 7. Sync Strategy: Flash to DB every heartbeat (15s) for high durability
@@ -293,6 +284,24 @@ export async function finalizeAndCompleteLesson(lessonId: string, token: string)
 
     const userId = session.user_id;
 
+    // 3. Robust Identity Lookup for Gamification
+    const sessionData = await redis.get(`learning:session:${token}`);
+    const redisSession = sessionData ? JSON.parse(sessionData) : null;
+    
+    if (!redisSession) {
+        return { error: "Session expired or invalid", code: "SESSION_EXPIRED" };
+    }
+
+    const enrollment = await db.query.enrollments.findFirst({
+        where: eq(enrollments.id, redisSession.enrollmentId),
+        with: { school: true }
+    });
+
+    if (!enrollment) {
+        return { error: "Security context invalid", code: "NOT_ENROLLED" };
+    }
+    const schoolId = enrollment.school_id;
+
     // 3. Check for existing progress and the completion_locked flag
     const progress = await db.query.lessonProgress.findFirst({
         where: and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId))
@@ -302,53 +311,87 @@ export async function finalizeAndCompleteLesson(lessonId: string, token: string)
         return { success: true, message: "Lesson already finalized and locked." };
     }
 
-    // 4. Threshold Verification (80% rule for production grace)
+    // 4. Threshold Verification (75% rule for production grace)
     const totalVerified = session.total_verified_seconds;
-    
-    // Safety: If the student's player reported a duration (stored in Redis during heartbeat),
-    // and it differs significantly from DB, we use the player's duration as proof of work.
-    const sessionData = await redis.get(`learning:session:${token}`);
-    const redisSession = sessionData ? JSON.parse(sessionData) : null;
     const actualDuration = redisSession?.videoDuration || (lesson.duration_minutes || 1) * 60;
-    
-    const required = actualDuration * 0.8;
+    const required = actualDuration * 0.75;
 
-    if (totalVerified < required && (!progress || Number(progress.progress_pct) < 80)) {
+    if (totalVerified < required && (!progress || Number(progress.progress_pct) < 75)) {
         return { 
-            error: "Content threshold not reached. Please complete at least 80% of the lesson.", 
+            error: "Content threshold not reached. Please complete at least 75% of the lesson.", 
             code: "INCOMPLETE_CONTENT",
             verified: totalVerified,
             required: Math.round(required)
         };
     }
 
-    // 5. Atomic Update: Mark complete and lock
-    if (progress) {
-        await db.update(lessonProgress)
-            .set({
+    const xpToAdd = lesson.xp_reward || 10;
+
+    // 5. Atomic Completion Transaction
+    await db.transaction(async (tx) => {
+        // Update Progress
+        if (progress) {
+            await tx.update(lessonProgress)
+                .set({
+                    content_watched: true,
+                    completed_at: progress.completed_at || new Date(),
+                    verified_watch_seconds: Math.floor(Math.max(totalVerified, progress.verified_watch_seconds || 0)),
+                    progress_pct: '100',
+                    completion_locked: true,
+                    xp_earned: xpToAdd,
+                    updated_at: new Date()
+                })
+                .where(eq(lessonProgress.id, progress.id));
+        } else {
+            await tx.insert(lessonProgress).values({
+                user_id: userId,
+                lesson_id: lessonId,
+                enrollment_id: enrollment.id,
+                session_id: enrollment.session_id,
+                school_id: schoolId,
                 content_watched: true,
-                completed_at: progress.completed_at || new Date(),
-                verified_watch_seconds: Math.floor(Math.max(totalVerified, progress.verified_watch_seconds || 0)),
+                completed_at: new Date(),
+                verified_watch_seconds: Math.floor(totalVerified),
                 progress_pct: '100',
                 completion_locked: true,
-                updated_at: new Date()
-            })
-            .where(eq(lessonProgress.id, progress.id));
-    } else {
-        // This case shouldn't normally happen as initLessonSession creates progress, but handles edge case
-        await db.insert(lessonProgress).values({
+                xp_earned: xpToAdd
+            } as any);
+        }
+
+        // Create XP Event
+        await tx.insert(xpEvents).values({
             user_id: userId,
-            lesson_id: lessonId,
-            content_watched: true,
-            completed_at: new Date(),
-            verified_watch_seconds: Math.floor(totalVerified),
-            progress_pct: '100',
-            completion_locked: true,
-            // session_id and school_id would need enrollment lookup here if missing
-        } as any);
+            school_id: schoolId,
+            source: 'lesson_completion',
+            xp_amount: xpToAdd,
+            reference_type: 'lesson',
+            reference_id: lessonId,
+            description: `Completed lesson: ${lesson.title}`
+        });
+    });
+
+    // 6. Gamification Hooks (Outside transaction to allow Redis failures to handle gracefully)
+    try {
+        await awardXP(userId, xpToAdd, schoolId, 'student');
+        await incrementProgressCounter(userId, 'lessons');
+        await handleStudentEngagement(userId);
+        
+        // Final triggers
+        const { checkAndAwardAchievements } = await import('@/modules/student/actions/achievement-actions');
+        await checkAndAwardAchievements();
+    } catch (e) {
+        console.error("Post-completion gamification failed:", e);
     }
 
-    // 6. Invalidate session
+    // 7. Multi-Level Cache Invalidation
+    try {
+        await redis.del(`cache:student:${userId}:course:${lesson.course_id}`);
+        await redis.del(`cache:student:${userId}:dashboard`);
+    } catch (err) {
+        console.error("Cache invalidation error:", err);
+    }
+
+    // 8. Invalidate secure session
     await invalidateSession(token);
 
     return { success: true };
