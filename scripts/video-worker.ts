@@ -116,6 +116,16 @@ async function processJob(job: TranscodeJob) {
 // ── UTILITIES ──────────────────────────────────────────────────
 
 async function downloadFromR2(key: string, dest: string) {
+    if (!process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID === 'dummy') {
+        console.warn('[Worker] R2 credentials not configured. Checking local storage fallback...');
+        const localPath = path.join(process.cwd(), 'local_storage', key);
+        if (fs.existsSync(localPath)) {
+            fs.copyFileSync(localPath, dest);
+            console.log('[Worker] Source found in local storage.');
+            return;
+        }
+    }
+
     const client = getClient();
     const cmd = new GetObjectCommand({
         Bucket: process.env.CLOUDFLARE_BUCKET_NAME,
@@ -132,6 +142,16 @@ async function downloadFromR2(key: string, dest: string) {
 }
 
 async function uploadToR2(key: string, body: Buffer, contentType: string) {
+    if (!process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID === 'dummy') {
+        console.warn('[Worker] R2 credentials not configured. Saving HLS segments to local storage...');
+        const localPath = path.join(process.cwd(), 'local_storage', key);
+        const localDir = path.dirname(localPath);
+        if (!fs.existsSync(localDir)) fs.mkdirSync(localDir, { recursive: true });
+        fs.writeFileSync(localPath, body);
+        console.log(`[Worker] Saved ${key} locally.`);
+        return;
+    }
+
     const client = getClient();
     const cmd = new PutObjectCommand({
         Bucket: process.env.CLOUDFLARE_BUCKET_NAME,

@@ -1,4 +1,4 @@
-import 'server-only';
+// import 'server-only';
 import Redis from 'ioredis';
 
 const globalForRedis = global as unknown as { redis: Redis };
