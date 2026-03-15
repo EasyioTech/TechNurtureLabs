@@ -1,24 +1,3 @@
--- ============================================================================
--- TechNurture LMS — CLEAN PRODUCTION SCHEMA & SEED
--- Generated: 2026-03-13
--- Focus: Student Experience, Course Completion, and Stability
--- ============================================================================
-
--- [INSTRUCTIONS]
--- 1. Execute this file in a fresh PostgreSQL database.
--- 2. Ensure the 'pgcrypto' extension is available if gen_random_uuid() is used.
--- 3. Default Super Admin: admin@technurture.com / AdminPassword123!
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
--- 1. DROP EXISTING (Clean Start)
--- Uncomment if you want to wipe everything first
--- DROP SCHEMA public CASCADE;
--- CREATE SCHEMA public;
--- GRANT ALL ON SCHEMA public TO postgres;
--- GRANT ALL ON SCHEMA public TO public;
-
--- 2. CREATE ENUMS
 CREATE TYPE "public"."achievement_tier" AS ENUM('bronze', 'silver', 'gold', 'platinum');
 CREATE TYPE "public"."asset_type" AS ENUM('video', 'image', 'document');
 CREATE TYPE "public"."audit_action" AS ENUM('create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion');
@@ -34,8 +13,6 @@ CREATE TYPE "public"."subscription_status" AS ENUM('active', 'trialing', 'past_d
 CREATE TYPE "public"."user_role" AS ENUM('super_admin', 'school_admin', 'student');
 CREATE TYPE "public"."user_type" AS ENUM('super_admin', 'school_admin', 'student');
 CREATE TYPE "public"."xp_source" AS ENUM('lesson_completion', 'quiz_score', 'daily_streak', 'challenge_win', 'badge_earned', 'bonus', 'manual_adjustment');
-
--- 3. CREATE TABLES (Drizzle Optimized)
 CREATE TABLE "academic_sessions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"school_id" uuid NOT NULL,
@@ -74,7 +51,7 @@ CREATE TABLE "audit_logs" (
 	"old_values" jsonb,
 	"new_values" jsonb,
 	"metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
-	"ip_address" inet,
+	"ip_address" "inet",
 	"user_agent" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -231,9 +208,33 @@ CREATE TABLE "lesson_progress" (
 	"progress_pct" numeric(5, 2) DEFAULT '0' NOT NULL,
 	"last_position_secs" integer DEFAULT 0 NOT NULL,
 	"time_spent_secs" integer DEFAULT 0 NOT NULL,
+	"verified_watch_seconds" integer DEFAULT 0 NOT NULL,
+	"content_watched" boolean DEFAULT false NOT NULL,
+	"completion_locked" boolean DEFAULT false NOT NULL,
+	"max_page_viewed" integer DEFAULT 0 NOT NULL,
+	"slides_viewed_array" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"xp_earned" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "lesson_sessions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"lesson_id" uuid NOT NULL,
+	"session_token" text NOT NULL,
+	"device_hash" text,
+	"user_agent" text,
+	"ip_hash" text,
+	"last_nonce" bigint DEFAULT 0 NOT NULL,
+	"ip_address" "inet",
+	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_heartbeat_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_playback_time" integer DEFAULT 0 NOT NULL,
+	"total_verified_seconds" integer DEFAULT 0 NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	CONSTRAINT "lesson_sessions_session_token_unique" UNIQUE("session_token")
 );
 
 CREATE TABLE "lesson_submissions" (
@@ -268,7 +269,7 @@ CREATE TABLE "login_attempts" (
 	"email" text NOT NULL,
 	"user_id" uuid,
 	"user_type" "user_type",
-	"ip_address" inet NOT NULL,
+	"ip_address" "inet" NOT NULL,
 	"user_agent" text,
 	"success" boolean NOT NULL,
 	"failure_reason" text,
@@ -349,6 +350,7 @@ CREATE TABLE "platform_metrics_daily" (
 	"revenue_total" numeric(14, 2) DEFAULT '0' NOT NULL,
 	"new_subscriptions" integer DEFAULT 0 NOT NULL,
 	"churned_subscriptions" integer DEFAULT 0 NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "platform_metrics_daily_metric_date_unique" UNIQUE("metric_date")
 );
@@ -604,7 +606,7 @@ CREATE TABLE "user_sessions" (
 	"user_type" "user_type" NOT NULL,
 	"refresh_token_hash" text NOT NULL,
 	"device_info" text,
-	"ip_address" inet,
+	"ip_address" "inet",
 	"expires_at" timestamp with time zone NOT NULL,
 	"revoked_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -623,7 +625,6 @@ CREATE TABLE "xp_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
--- 4. CONSTRAINTS (Foreign Keys)
 ALTER TABLE "academic_sessions" ADD CONSTRAINT "academic_sessions_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE set null ON UPDATE no action;
 ALTER TABLE "certificates" ADD CONSTRAINT "certificates_course_id_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE cascade ON UPDATE no action;
@@ -648,6 +649,8 @@ ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_lesson_id_lessons_
 ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_enrollment_id_enrollments_id_fk" FOREIGN KEY ("enrollment_id") REFERENCES "public"."enrollments"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_session_id_academic_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."academic_sessions"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "lesson_sessions" ADD CONSTRAINT "lesson_sessions_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "lesson_sessions" ADD CONSTRAINT "lesson_sessions_lesson_id_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."lessons"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "lesson_submissions" ADD CONSTRAINT "lesson_submissions_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "lesson_submissions" ADD CONSTRAINT "lesson_submissions_lesson_id_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."lessons"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "lesson_submissions" ADD CONSTRAINT "lesson_submissions_asset_id_media_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."media_assets"("id") ON DELETE cascade ON UPDATE no action;
@@ -683,8 +686,6 @@ ALTER TABLE "user_daily_challenges" ADD CONSTRAINT "user_daily_challenges_user_i
 ALTER TABLE "user_daily_challenges" ADD CONSTRAINT "user_daily_challenges_challenge_id_daily_challenges_id_fk" FOREIGN KEY ("challenge_id") REFERENCES "public"."daily_challenges"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "xp_events" ADD CONSTRAINT "xp_events_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "xp_events" ADD CONSTRAINT "xp_events_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;
-
--- 5. INDEXES
 CREATE INDEX "idx_audit_user" ON "audit_logs" USING btree ("user_id");
 CREATE INDEX "idx_audit_created" ON "audit_logs" USING btree ("created_at");
 CREATE UNIQUE INDEX "uq_course_class" ON "course_class_mapping" USING btree ("course_id","class_id") WHERE deleted_at IS NULL;
@@ -706,6 +707,10 @@ CREATE INDEX "idx_lp_user" ON "lesson_progress" USING btree ("user_id");
 CREATE INDEX "idx_lp_enrollment" ON "lesson_progress" USING btree ("enrollment_id");
 CREATE INDEX "idx_lp_session" ON "lesson_progress" USING btree ("session_id");
 CREATE INDEX "idx_lp_school" ON "lesson_progress" USING btree ("school_id");
+CREATE INDEX "idx_lp_content_watched" ON "lesson_progress" USING btree ("content_watched");
+CREATE INDEX "idx_sessions_user_lesson" ON "lesson_sessions" USING btree ("user_id","lesson_id");
+CREATE INDEX "idx_sessions_token" ON "lesson_sessions" USING btree ("session_token");
+CREATE INDEX "idx_sessions_active" ON "lesson_sessions" USING btree ("is_active");
 CREATE INDEX "idx_submission_user_lesson" ON "lesson_submissions" USING btree ("user_id","lesson_id");
 CREATE INDEX "idx_lessons_course" ON "lessons" USING btree ("course_id");
 CREATE INDEX "idx_lessons_active" ON "lessons" USING btree ("course_id") WHERE deleted_at IS NULL;
@@ -746,51 +751,6 @@ CREATE INDEX "idx_xp_school" ON "xp_events" USING btree ("school_id");
 CREATE INDEX "idx_xp_created" ON "xp_events" USING btree ("created_at");
 CREATE INDEX "idx_xp_user_created" ON "xp_events" USING btree ("user_id","created_at");
 
--- ============================================================================
--- 6. CORE SEED DATA
--- ============================================================================
+ALTER TABLE lessons ADD CONSTRAINT uq_lesson_sequence_per_course UNIQUE (course_id, sequence_order) DEFERRABLE INITIALLY DEFERRED;
 
--- Classes (Level 1-12)
-INSERT INTO classes (name, level) VALUES
-    ('Class 1',  1),  ('Class 2',  2),  ('Class 3',  3),  ('Class 4',  4),
-    ('Class 5',  5),  ('Class 6',  6),  ('Class 7',  7),  ('Class 8',  8),
-    ('Class 9',  9),  ('Class 10', 10), ('Class 11', 11), ('Class 12', 12)
-ON CONFLICT (name) DO NOTHING;
-
--- Payment Plans
-INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
-VALUES
-    ('Basic Education',  'Foundation for primary classes.',       'annual', 999,  50,  '{"lms": true, "analytics": false}'::jsonb, true, false),
-    ('Pro Academy',      'Advanced tools for the whole school.',  'annual', 4999, 500, '{"lms": true, "analytics": true, "priority_support": true}'::jsonb, true, true)
-ON CONFLICT (name) DO NOTHING;
-
--- Platform Global Settings
-INSERT INTO platform_settings (id, platform_name, support_email, currency_default)
-VALUES ('global', 'TechNurture Labs', 'support@technurture.io', 'INR')
-ON CONFLICT (id) DO NOTHING;
-
--- Default Super Admin
--- Password: AdminPassword123!
-INSERT INTO super_admins (id, first_name, last_name, email, password_hash, is_active)
-VALUES (
-    gen_random_uuid(),
-    'Super',
-    'Admin',
-    'admin@technurture.com',
-    '$2b$10$Sk9UyIVPSe2I5lf9.R7QO.3O2TKys2Rly4Z2LbyTvn1sTde8mDtlu',
-    TRUE
-) ON CONFLICT (email) DO NOTHING;
-
--- Audit Trail Initialization
-INSERT INTO audit_logs (id, user_type, action, entity_type, metadata)
-VALUES (
-    gen_random_uuid(),
-    'super_admin',
-    'create',
-    'system_init',
-    '{"event": "Clean Production Schema initialized with seeds"}'::jsonb
-);
-
--- ============================================================================
--- END OF SCRIPT
--- ============================================================================
+ALTER TABLE quiz_questions ADD CONSTRAINT uq_quiz_question_sequence UNIQUE (quiz_id, sequence_order) DEFERRABLE INITIALLY DEFERRED;

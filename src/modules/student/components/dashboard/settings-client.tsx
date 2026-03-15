@@ -190,12 +190,12 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                         title="Subscription & Billing" 
                         description="Manage your current plan and billing status."
                     >
-                        <div className="py-24 px-12 text-center border-2 border-dashed border-slate-100 rounded-[4rem] bg-slate-50/50">
-                            <div className="w-24 h-24 bg-white border border-slate-100 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 text-slate-300 shadow-xl group-hover:scale-110 transition-transform">
-                                <CreditCard size={40} />
+                        <div className="py-12 md:py-24 px-6 md:px-12 text-center border-2 border-dashed border-slate-100 rounded-[2rem] md:rounded-[4rem] bg-slate-50/50">
+                            <div className="w-16 h-16 md:w-24 md:h-24 bg-white border border-slate-100 rounded-[1.5rem] md:rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 md:mb-10 text-slate-300 shadow-xl group-hover:scale-110 transition-transform">
+                                <CreditCard size={28} className="md:w-[40px] md:h-[40px]" />
                             </div>
-                            <h4 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-4">Institutional Billing</h4>
-                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] max-w-sm mx-auto leading-relaxed">Your access is currently managed and funded by your school administration.</p>
+                            <h4 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter mb-3 md:mb-4">Institutional Billing</h4>
+                            <p className="text-[9px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] max-w-[280px] md:max-w-sm mx-auto leading-relaxed">Your access is currently managed and funded by your school administration.</p>
                         </div>
                     </SettingsSection>
                 );
@@ -205,10 +205,10 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
     return (
         <div className="min-h-screen bg-slate-50/10 pb-32 animate-in fade-in duration-700">
             {/* Command Header */}
-            <div className="relative bg-white border-b border-slate-100 overflow-hidden py-24 lg:py-32 px-6 lg:px-12">
+            <div className="relative bg-white border-b border-slate-100 overflow-hidden py-16 md:py-24 lg:py-32 px-6 lg:px-12">
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-50/50 rounded-full blur-[150px] pointer-events-none translate-x-1/3 -translate-y-1/3" />
                 
-                <div className="max-w-[1440px] mx-auto relative z-10 flex flex-col lg:flex-row items-end justify-between gap-16">
+                <div className="max-w-[1440px] mx-auto relative z-10 flex flex-col lg:flex-row items-end justify-between gap-10 md:gap-16">
                     <div>
                          <motion.div 
                             initial={{ opacity: 0, x: -20 }}
@@ -219,17 +219,17 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                             <span className="text-[10px] font-black uppercase tracking-[0.4em]">App Settings</span>
                         </motion.div>
 
-                        <h1 className="text-6xl lg:text-8xl font-black text-slate-900 uppercase tracking-tighter leading-[0.85] mb-12">
+                        <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-slate-900 uppercase tracking-tighter leading-[0.85] mb-8 md:mb-12">
                             Account <br />
                             <span className="text-indigo-600">Settings</span>
                         </h1>
                         
-                        <p className="max-w-xl text-slate-500 font-bold text-sm lg:text-base uppercase tracking-[0.2em] leading-relaxed">
+                        <p className="max-w-xl text-slate-500 font-bold text-xs md:text-sm lg:text-base uppercase tracking-[0.15em] md:tracking-[0.2em] leading-relaxed">
                             Customize your app experience and manage your privacy settings.
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4 md:gap-6">
                          <div className="relative group hidden xl:block">
                             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
                             <input
@@ -237,21 +237,22 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                                 placeholder="Search settings..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-80 h-20 bg-slate-50/50 border-2 border-slate-100 rounded-[2.25rem] pl-16 pr-8 text-[11px] font-black uppercase tracking-widest outline-none focus:ring-8 focus:ring-indigo-600/5 focus:border-indigo-600 transition-all shadow-xl"
+                                className="w-80 h-16 md:h-20 bg-slate-50/50 border-2 border-slate-100 rounded-2xl md:rounded-[2.25rem] pl-16 pr-8 text-[11px] font-black uppercase tracking-widest outline-none focus:ring-8 focus:ring-indigo-600/5 focus:border-indigo-600 transition-all shadow-xl"
                             />
                         </div>
                         
                         <button 
                             onClick={() => signOut()}
-                            className="w-20 h-20 rounded-[2.25rem] bg-rose-50 border-2 border-rose-100 flex items-center justify-center text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-xl group active:scale-95"
+                            className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-[2.25rem] bg-rose-50 border-2 border-rose-100 flex items-center justify-center text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-xl group active:scale-95"
                         >
-                            <LogOut size={28} className="group-hover:translate-x-1 transition-transform" />
+                            <LogOut size={24} className="md:hidden group-hover:translate-x-1 transition-transform" />
+                            <LogOut size={28} className="hidden md:block group-hover:translate-x-1 transition-transform" />
                         </button>
                     </div>
                 </div>
             </div>
 
-            <main className="max-w-[1440px] mx-auto px-6 lg:px-12 py-20">
+            <main className="max-w-[1440px] mx-auto px-6 lg:px-12 py-10 md:py-20">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24">
                     {/* Navigation Matrix */}
                     <div className="lg:col-span-3 space-y-4">
@@ -297,10 +298,10 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                                 <Button 
                                     onClick={handleSave}
                                     disabled={saving}
-                                    className="h-24 px-16 bg-slate-950 text-white rounded-[2.5rem] font-black uppercase tracking-[0.3em] text-[12px] hover:bg-indigo-600 transition-all shadow-2xl active:scale-95 flex items-center gap-6"
+                                    className="h-16 md:h-24 px-10 md:px-16 bg-slate-950 text-white rounded-2xl md:rounded-[2.5rem] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[10px] md:text-[12px] hover:bg-indigo-600 transition-all shadow-2xl active:scale-95 flex items-center gap-4 md:gap-6"
                                 >
-                                    {saving ? <Loader2 className="animate-spin" size={24} /> : (
-                                        <>Save Settings <ArrowRight size={20} /></>
+                                    {saving ? <Loader2 className="animate-spin" size={20} /> : (
+                                        <>Save Settings <ArrowRight size={18} className="md:hidden" /><ArrowRight size={20} className="hidden md:block" /></>
                                     )}
                                 </Button>
                             </div>
@@ -316,23 +317,24 @@ function NavButton({ active, icon: Icon, label, onClick }: any) {
     return (
         <button 
             onClick={onClick}
-            className={`w-full flex items-center justify-between p-8 rounded-[2.5rem] text-sm font-black transition-all group border-2 ${active ? 'bg-indigo-600 text-white border-indigo-500 shadow-2xl shadow-indigo-200 translate-x-4' : 'bg-white text-slate-400 border-slate-50 hover:border-slate-200 hover:text-slate-900 shadow-sm'}`}
+            className={`w-full flex items-center justify-between p-4 md:p-8 rounded-xl md:rounded-[2.5rem] text-sm font-black transition-all group border-2 ${active ? 'bg-indigo-600 text-white border-indigo-500 shadow-2xl shadow-indigo-200 translate-x-1 md:translate-x-4' : 'bg-white text-slate-400 border-slate-50 hover:border-slate-200 hover:text-slate-900 shadow-sm'}`}
         >
-            <div className="flex items-center gap-5">
-                <Icon size={24} strokeWidth={active ? 2.5 : 2} className={active ? 'text-white' : 'text-slate-300 group-hover:text-indigo-600'} />
-                <span className="uppercase tracking-widest text-[11px]">{label}</span>
+            <div className="flex items-center gap-3 md:gap-5">
+                <Icon size={18} strokeWidth={active ? 2.5 : 2} className={`md:hidden ${active ? 'text-white' : 'text-slate-300 group-hover:text-indigo-600'}`} />
+                <Icon size={24} strokeWidth={active ? 2.5 : 2} className={`hidden md:block ${active ? 'text-white' : 'text-slate-300 group-hover:text-indigo-600'}`} />
+                <span className="uppercase tracking-widest text-[8px] md:text-[11px]">{label}</span>
             </div>
-            {active && <ChevronRight size={18} />}
+            {active && <ChevronRight size={16} className="md:w-[18px] md:h-[18px]" />}
         </button>
     );
 }
 
 function SettingsSection({ title, description, children }: any) {
     return (
-        <section className="bg-white rounded-[4rem] p-12 lg:p-20 border border-slate-100 shadow-2xl shadow-slate-200/40 relative overflow-hidden group">
-            <div className="mb-20 relative z-10 border-l-8 border-indigo-600 pl-10">
-                <h3 className="text-4xl font-black text-slate-950 uppercase tracking-tighter mb-4 leading-none">{title}</h3>
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] max-w-2xl leading-relaxed">{description}</p>
+        <section className="bg-white rounded-[2rem] md:rounded-[4rem] p-6 md:p-12 lg:p-20 border border-slate-100 shadow-2xl shadow-slate-200/40 relative overflow-hidden group">
+            <div className="mb-10 md:mb-20 relative z-10 border-l-4 md:border-l-8 border-indigo-600 pl-4 md:pl-10">
+                <h3 className="text-xl md:text-4xl font-black text-slate-950 uppercase tracking-tighter mb-2 md:mb-4 leading-none">{title}</h3>
+                <p className="text-[9px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] md:tracking-[0.4em] max-w-2xl leading-relaxed">{description}</p>
             </div>
             <div className="relative z-10">
                 {children}
@@ -343,15 +345,15 @@ function SettingsSection({ title, description, children }: any) {
 
 function ToggleItem({ title, description, checked, onChange }: any) {
     return (
-        <div className="flex items-center justify-between gap-12 group/item">
-            <div className="space-y-3">
-                <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter leading-none group-hover/item:text-indigo-600 transition-colors">{title}</h4>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{description}</p>
+        <div className="flex items-center justify-between gap-6 md:gap-12 group/item">
+            <div className="space-y-2 md:space-y-3">
+                <h4 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tighter leading-none group-hover/item:text-indigo-600 transition-colors">{title}</h4>
+                <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{description}</p>
             </div>
             <Switch 
                 checked={checked} 
                 onCheckedChange={onChange} 
-                className="scale-150 data-[state=checked]:bg-indigo-600"
+                className="scale-125 md:scale-150 data-[state=checked]:bg-indigo-600"
             />
         </div>
     );
@@ -361,23 +363,24 @@ function ThemeCard({ active, onClick, icon: Icon, label, description, premium }:
     return (
         <button 
             onClick={onClick}
-            className={`flex flex-col text-left p-12 rounded-[3rem] border-4 transition-all duration-500 relative group ${active ? 'border-indigo-600 bg-indigo-50/50 shadow-2xl shadow-indigo-100' : 'border-slate-50 bg-white hover:border-slate-200 shadow-sm'}`}
+            className={`flex flex-col text-left p-6 md:p-12 rounded-[2rem] md:rounded-[3rem] border-4 transition-all duration-500 relative group ${active ? 'border-indigo-600 bg-indigo-50/50 shadow-2xl shadow-indigo-100' : 'border-slate-50 bg-white hover:border-slate-200 shadow-sm'}`}
         >
-            <div className={`w-16 h-16 rounded-[1.75rem] flex items-center justify-center mb-8 transition-all ${active ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-300 group-hover:bg-slate-100'}`}>
-                <Icon size={32} />
+            <div className={`w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-[1.75rem] flex items-center justify-center mb-6 md:mb-8 transition-all ${active ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-300 group-hover:bg-slate-100'}`}>
+                <Icon size={24} className="md:hidden" />
+                <Icon size={32} className="hidden md:block" />
             </div>
-            <h4 className={`text-xl font-black uppercase tracking-tight mb-4 ${active ? 'text-slate-900' : 'text-slate-900'}`}>{label}</h4>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-relaxed line-clamp-2">{description}</p>
+            <h4 className={`text-lg md:text-xl font-black uppercase tracking-tight mb-2 md:mb-4 ${active ? 'text-slate-900' : 'text-slate-900'}`}>{label}</h4>
+            <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-relaxed line-clamp-2">{description}</p>
             
             {premium && !active && (
-                <div className="absolute top-10 right-10 px-3 py-1 bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-[0.3em] rounded-lg border border-amber-200">
+                <div className="absolute top-6 right-6 md:top-10 md:right-10 px-2 md:px-3 py-1 bg-amber-100 text-amber-700 text-[8px] md:text-[9px] font-black uppercase tracking-[0.3em] rounded-lg border border-amber-200">
                     Elite
                 </div>
             )}
             
             {active && (
-                <div className="absolute -top-3 -right-3 w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white border-4 border-white shadow-xl">
-                    <CheckCircle2 size={18} fill="currentColor" />
+                <div className="absolute -top-3 -right-3 w-8 h-8 md:w-10 md:h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white border-2 md:border-4 border-white shadow-xl">
+                    <CheckCircle2 size={14} className="md:w-[18px] md:h-[18px]" fill="currentColor" />
                 </div>
             )}
         </button>

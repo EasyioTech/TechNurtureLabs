@@ -47,7 +47,7 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
     return (
         <div className="min-h-screen bg-slate-50/10 pb-32 animate-in fade-in duration-700">
             {/* Strategic Header */}
-            <div className="relative bg-slate-950 overflow-hidden py-24 lg:py-32 px-6 lg:px-12 border-b border-white/5">
+            <div className="relative bg-slate-950 overflow-hidden py-16 md:py-24 lg:py-32 px-6 lg:px-12 border-b border-white/5">
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                 
                 <div className="max-w-[1440px] mx-auto relative z-10">
@@ -62,12 +62,12 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
                                 <span className="text-[10px] font-black uppercase tracking-[0.4em]">Learning Goals</span>
                             </motion.div>
 
-                            <h1 className="text-6xl lg:text-8xl font-black text-white uppercase tracking-tighter leading-[0.85] mb-12">
+                            <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white uppercase tracking-tighter leading-[0.85] mb-8 md:mb-12">
                                 Daily <br />
                                 <span className="text-indigo-500">Challenges</span>
                             </h1>
 
-                            <div className="flex flex-wrap items-center gap-12 mt-16">
+                            <div className="flex flex-wrap items-center gap-6 md:gap-12 mt-10 md:mt-16">
                                 <QuickStat label="Learning Streak" value={`${stats.streak} Days`} icon={Flame} color="text-orange-500" />
                                 <div className="hidden sm:block w-px h-16 bg-white/10" />
                                 <QuickStat label="Total Points Earned" value={stats.xp.toLocaleString()} icon={Star} color="text-amber-400" />
@@ -75,17 +75,18 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
                         </div>
 
                         <div className="lg:col-span-5 flex justify-end">
-                            <div className="w-full max-w-md p-12 rounded-[4rem] bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl relative overflow-hidden group">
+                            <div className="w-full max-w-md p-6 md:p-12 rounded-[2rem] md:rounded-[4rem] bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
                                 <div className="relative z-10 flex flex-col items-center text-center">
-                                    <div className="w-24 h-24 rounded-[2.5rem] bg-indigo-600 flex items-center justify-center text-white mb-8 shadow-2xl shadow-indigo-600/40 group-hover:scale-110 transition-transform duration-500">
-                                        <Trophy size={48} />
+                                    <div className="w-14 h-14 md:w-24 md:h-24 rounded-2xl md:rounded-[2.5rem] bg-indigo-600 flex items-center justify-center text-white mb-4 md:mb-8 shadow-2xl shadow-indigo-600/40 group-hover:scale-110 transition-transform duration-500">
+                                        <Trophy size={28} className="md:hidden" />
+                                        <Trophy size={48} className="hidden md:block" />
                                     </div>
-                                    <h3 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Your Standing</h3>
-                                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] mb-12">Rank #{stats.rank} / Top {stats.rankPercentage}%</p>
+                                    <h3 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter mb-2 md:mb-4">Your Standing</h3>
+                                    <p className="text-[9px] md:text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6 md:mb-12">Rank #{stats.rank} / Top {stats.rankPercentage}%</p>
                                     <Link href="/student/leaderboard" className="w-full">
-                                        <Button className="w-full h-20 bg-white text-slate-900 font-black uppercase tracking-widest text-[11px] rounded-[2.25rem] hover:bg-slate-50 transition-all flex items-center justify-center gap-4 hover:shadow-2xl active:scale-95">
-                                            View Leaderboard <ArrowRight size={18} />
+                                        <Button className="w-full h-12 md:h-20 bg-white text-slate-900 font-black uppercase tracking-widest text-[9px] md:text-[11px] rounded-xl md:rounded-[2.25rem] hover:bg-slate-50 transition-all flex items-center justify-center gap-3 md:gap-4 hover:shadow-2xl active:scale-95">
+                                            View Leaderboard <ArrowRight size={16} className="md:w-[18px] md:h-[18px]" />
                                         </Button>
                                     </Link>
                                 </div>
@@ -96,23 +97,23 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
             </div>
 
             {/* Tactical Content */}
-            <main className="max-w-[1440px] mx-auto px-6 lg:px-12 -mt-16 relative z-20">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
+            <main className="max-w-[1440px] mx-auto px-6 lg:px-12 -mt-10 md:-mt-16 relative z-20">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 lg:gap-16">
                     {/* Primary Objectives */}
-                    <div className="lg:col-span-8 space-y-12">
-                        <section className="bg-white rounded-[4rem] p-10 lg:p-16 border border-slate-100 shadow-2xl shadow-slate-200/40 relative overflow-hidden">
+                    <div className="lg:col-span-8 space-y-8 md:space-y-12">
+                        <section className="bg-white rounded-[2rem] md:rounded-[4rem] p-6 md:p-10 lg:p-16 border border-slate-100 shadow-2xl shadow-slate-200/40 relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-12 opacity-[0.03] text-slate-950 pointer-events-none">
                                 <Activity size={200} />
                             </div>
                             
-                            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8 mb-16 pb-8 border-b border-slate-50">
+                            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10 md:mb-16 pb-8 border-b border-slate-50">
                                 <div>
-                                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-3">Active Challenges</h3>
+                                    <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter mb-3">Active Challenges</h3>
                                     <div className="flex items-center gap-3 text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">
                                         <Timer size={16} /> Resets in {24 - new Date().getHours()}H
                                     </div>
                                 </div>
-                                <div className="text-[11px] font-black text-slate-300 uppercase tracking-[0.4em]">ID: CHALLENGE_SRV_2024</div>
+                                <div className="text-[10px] md:text-[11px] font-black text-slate-300 uppercase tracking-[0.4em]">ID: CHALLENGE_SRV_2024</div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-12">
@@ -140,19 +141,19 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
                             </div>
                         </section>
 
-                        <section className="bg-slate-900 rounded-[4rem] p-10 lg:p-16 text-white border border-white/5 shadow-2xl shadow-indigo-950/20">
-                            <h3 className="text-2xl font-black uppercase tracking-tighter mb-12">Your Stats Summary</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                                <DetailedStat label="Lessons Completed" value={stats.lessonsCompleted} icon={BookIcon} color="bg-indigo-600" />
-                                <DetailedStat label="Average Accuracy" value={`${stats.accuracy}%`} icon={Target} color="bg-emerald-600" />
-                                <DetailedStat label="Total XP Earned" value={stats.xp.toLocaleString()} icon={Star} color="bg-amber-500" />
+                        <section className="bg-slate-900 rounded-[2rem] md:rounded-[4rem] p-6 md:p-12 lg:p-16 text-white border border-white/5 shadow-2xl shadow-indigo-950/20">
+                            <h3 className="text-lg md:text-2xl font-black uppercase tracking-tighter mb-8 md:mb-12">Your Stats Summary</h3>
+                            <div className="grid grid-cols-3 gap-3 md:gap-8">
+                                <DetailedStat label="Lessons Mastered" value={stats.lessonsCompleted} icon={AwardIcon} color="text-indigo-400" bg="bg-indigo-500/10" />
+                                <DetailedStat label="Accuracy Rate" value={`${stats.accuracy}%`} icon={Activity} color="text-emerald-400" bg="bg-emerald-500/10" />
+                                <DetailedStat label="Total XP" value={stats.xp.toLocaleString()} icon={Zap} color="text-amber-400" bg="bg-amber-500/10" />
                             </div>
                         </section>
                     </div>
 
                     {/* Support Modules */}
-                    <div className="lg:col-span-4 space-y-12">
-                        <div className="bg-indigo-600 rounded-[4rem] p-12 text-white shadow-2xl shadow-indigo-200 relative overflow-hidden group">
+                    <div className="lg:col-span-4 space-y-8 md:space-y-12">
+                        <div className="bg-indigo-600 rounded-[2rem] md:rounded-[4rem] p-8 md:p-12 text-white shadow-2xl shadow-indigo-200 relative overflow-hidden group">
                             <div className="absolute bottom-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] translate-y-1/2 translate-x-1/2 pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
                             <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/50 mb-12">Study Efficiency</h4>
                             
@@ -174,13 +175,13 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
                             </div>
 
                             <Link href="/student/analytics">
-                                <Button className="w-full h-20 bg-white text-indigo-600 font-black uppercase tracking-widest text-[11px] rounded-[2.25rem] hover:bg-slate-50 transition-all shadow-xl active:scale-95">
+                                <Button className="w-full h-14 md:h-20 bg-white text-indigo-600 font-black uppercase tracking-widest text-[10px] md:text-[11px] rounded-2xl md:rounded-[2.25rem] hover:bg-slate-50 transition-all shadow-xl active:scale-95">
                                     View Detailed Stats
                                 </Button>
                             </Link>
                         </div>
 
-                        <div className="bg-white border border-slate-100 rounded-[4rem] p-12 shadow-xl shadow-slate-200/20 group">
+                        <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[4rem] p-8 md:p-12 shadow-xl shadow-slate-200/20 group">
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-12 text-center underline decoration-indigo-200 decoration-4 underline-offset-8">My Progress</h4>
                             <div className="flex flex-col items-center text-center">
                                 <div className="w-24 h-24 rounded-[2.5rem] bg-slate-50 border border-slate-100 flex items-center justify-center text-indigo-600 mb-8 group-hover:rotate-12 transition-transform duration-500 shadow-sm relative">
@@ -193,7 +194,7 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-12">{1000 - (stats.xp % 1000)} XP to Next Level</p>
                                 
                                 <Link href="/student/achievements" className="w-full">
-                                    <Button variant="ghost" className="w-full h-20 rounded-[2.25rem] border-2 border-slate-100 font-black uppercase tracking-widest text-[11px] text-slate-900 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all flex items-center justify-center gap-4">
+                                    <Button variant="ghost" className="w-full h-14 md:h-20 rounded-2xl md:rounded-[2.25rem] border-2 border-slate-100 font-black uppercase tracking-widest text-[10px] md:text-[11px] text-slate-900 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all flex items-center justify-center gap-4">
                                         View Achievements <ChevronRight size={18} />
                                     </Button>
                                 </Link>
@@ -208,26 +209,28 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
 
 function QuickStat({ label, value, icon: Icon, color }: any) {
     return (
-        <div className="flex items-center gap-5">
-            <div className={`w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center ${color} shadow-2xl`}>
-                <Icon size={28} />
+        <div className="flex items-center gap-3 md:gap-5">
+            <div className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center ${color} shadow-2xl`}>
+                <Icon size={20} className="md:hidden" />
+                <Icon size={28} className="hidden md:block" />
             </div>
             <div>
-                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">{label}</p>
-                <p className="text-2xl font-black text-white uppercase tracking-tighter leading-none">{value}</p>
+                <p className="text-[7px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5 md:mb-1">{label}</p>
+                <p className="text-lg md:text-2xl font-black text-white uppercase tracking-tighter leading-none">{value}</p>
             </div>
         </div>
     );
 }
 
-function DetailedStat({ label, value, icon: Icon, color }: any) {
+function DetailedStat({ label, value, icon: Icon, color, bg }: any) {
     return (
-        <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/5 flex flex-col items-center text-center">
-            <div className={`w-14 h-14 rounded-2xl ${color} text-white flex items-center justify-center mb-6 shadow-xl`}>
-                <Icon size={24} />
+        <div className="p-4 md:p-10 rounded-2xl md:rounded-[2.5rem] bg-white/5 border border-white/5 flex flex-col items-center text-center group hover:bg-white/10 transition-all">
+            <div className={`w-10 h-10 md:w-16 md:h-16 rounded-xl md:rounded-2xl ${bg} ${color} flex items-center justify-center mb-4 md:mb-8 shadow-xl group-hover:scale-110 group-hover:rotate-3 transition-all duration-500`}>
+                <Icon size={20} className="md:hidden" strokeWidth={2.5} />
+                <Icon size={32} className="hidden md:block" strokeWidth={2.5} />
             </div>
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">{label}</p>
-            <p className="text-3xl font-black text-white leading-none tracking-tighter uppercase">{value}</p>
+            <p className="text-[7px] md:text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] md:tracking-[0.3em] mb-2 md:mb-3">{label}</p>
+            <p className="text-base md:text-4xl font-black text-white leading-none tracking-tighter uppercase">{value}</p>
         </div>
     );
 }

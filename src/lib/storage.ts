@@ -95,16 +95,27 @@ export async function getSignedDownloadUrl(key: string, expiresIn: number = 300,
 // ─────────────────────────────────────────────
 
 /** Determine folder prefix from MIME type and optional context */
-function getFolderPrefix(mimeType: string, context?: StorageContext): string {
+function getFolderPrefix(mimeType: string, context?: StorageContext, folderHint?: string): string {
     const typeFolder = mimeType.startsWith('image/') ? 'images' :
         mimeType.startsWith('video/') ? 'videos' : 'documents';
 
+    // 1. If we have a specific context (like a specific course/lesson)
     if (context && context.id && context.type) {
         // e.g., "courses/123/images" or "lessons/456/videos"
         return `${context.type}s/${context.id}/${typeFolder}`;
     }
 
-    return typeFolder;
+    // 2. If we have a generic folder hint (like 'branding', 'settings', etc.)
+    if (folderHint) {
+        // Sanitize folder hint to lowercase and replace spaces
+        const sanitized = folderHint.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+        if (sanitized) {
+            return `${sanitized}/${typeFolder}`;
+        }
+    }
+
+    // 3. Fallback to a generic library structure
+    return `library/${typeFolder}`;
 }
 
 /** Derive normalized asset_type from MIME type */
@@ -119,7 +130,7 @@ function buildPublicUrl(key: string): string {
     if (publicDomain && !publicDomain.startsWith('http')) {
         publicDomain = `https://${publicDomain}`;
     }
-    if (publicDomain.endsWith('/')) {
+    if (publicDomain && publicDomain.endsWith('/')) {
         publicDomain = publicDomain.slice(0, -1);
     }
 
@@ -201,7 +212,8 @@ export async function uploadFile(
     originalFilename: string,
     mimeType: string,
     context?: StorageContext,
-    preferredStorage?: 'r2' | 'local'
+    preferredStorage?: 'r2' | 'local',
+    folderHint?: string
 ): Promise<UploadResult> {
     const fileSize = buffer.length;
 
@@ -216,7 +228,7 @@ export async function uploadFile(
     }
 
     const ext = path.extname(originalFilename);
-    const folder = getFolderPrefix(mimeType, context);
+    const folder = getFolderPrefix(mimeType, context, folderHint);
     const fileName = `${uuidv4()}${ext}`;
 
     // ── Attempt R2 upload ──────────────────────────────────────────────

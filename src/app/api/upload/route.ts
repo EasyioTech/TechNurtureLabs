@@ -16,12 +16,22 @@ export async function POST(request: NextRequest) {
 
         const contextType = formData.get('contextType') as 'course' | 'lesson' | null;
         const contextId = formData.get('contextId') as string | null;
-        const targetFolder = formData.get('folder') as string | null;
-        const context = (contextType && contextId) ? { type: contextType, id: contextId } : undefined;
         const storagePreference = formData.get('storagePreference') as 'r2' | 'local' | null;
+        const targetFolder = formData.get('folder') as string | null;
+        const context = (contextType && contextId) ? { type: contextType as 'course' | 'lesson', id: contextId } : undefined;
+
+        // Optimization: Determine logical folder grouping for the library
+        const folderHint = targetFolder || (context ? context.type : 'library');
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        const result = await uploadFile(buffer, file.name, file.type, context, storagePreference || undefined);
+        const result = await uploadFile(
+            buffer, 
+            file.name, 
+            file.type, 
+            context, 
+            storagePreference || undefined,
+            folderHint
+        );
 
         // Derive the bare filename from the path (e.g. "videos/uuid.mp4" → "uuid.mp4")
         const fileName = path.basename(result.path);
@@ -54,7 +64,7 @@ export async function POST(request: NextRequest) {
             storage_type: result.storageType,
             asset_type: getAssetType(result.mimeType),
             uploaded_by: uploadedBy || undefined,
-            folder: targetFolder || undefined,
+            folder: folderHint,
         } as any).returning();
 
         return NextResponse.json({

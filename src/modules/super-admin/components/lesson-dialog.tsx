@@ -176,28 +176,29 @@ export function LessonDialog({
                             </div>
 
                             {editingLesson?.content_type !== 'quiz' ? (
-                                <div className="space-y-3">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {/* External URL Input */}
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* External Link Input */}
                                         <div className="space-y-2">
+                                            <Label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${t.textMuted(isDark)}`}>Quick Link</Label>
                                             <div className="relative group">
                                                 <Link2 size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isDark ? `text-slate-400 group-focus-within:${accent.text}` : 'text-slate-400 group-focus-within:text-slate-900'}`} />
                                                 <Input
                                                     id="content-url"
                                                     placeholder="Paste Link URL..."
-                                                    value={editingLesson?.content_url && !editingLesson.content_url.startsWith('/api/media/') ? editingLesson.content_url : ''}
+                                                    value={editingLesson?.content_url && !editingLesson.content_url.startsWith('/api/media/') && !editingLesson.content_url.includes('r2.cloudflarestorage.com') ? editingLesson.content_url : ''}
                                                     onChange={(e) => setEditingLesson({ ...editingLesson, content_url: e.target.value })}
                                                     className={`rounded-full h-12 pl-11 pr-5 shadow-inner text-sm font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] text-white border-white/5' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                                                 />
                                             </div>
-                                            <p className={`text-[9px] font-bold uppercase tracking-wider px-1 ${t.textMuted(isDark)}`}>EXTERNAL LINK SOURCE</p>
                                         </div>
 
-                                        {/* File Upload Button */}
+                                        {/* Direct Upload Button */}
                                         <div className="space-y-2">
+                                            <Label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${t.textMuted(isDark)}`}>Local Upload</Label>
                                             <input
                                                 type="file"
-                                                id="lesson-file-upload"
+                                                id="lesson-file-upload-dialog"
                                                 className="hidden"
                                                 accept={
                                                     editingLesson?.content_type === 'video' ? 'video/*' :
@@ -207,24 +208,21 @@ export function LessonDialog({
                                                 onChange={async (e) => {
                                                     const file = e.target.files?.[0];
                                                     if (!file) return;
-                                                    
                                                     const maxSize = 2048 * 1024 * 1024; // 2GB
                                                     if (file.size > maxSize) {
                                                         toast.error('File too large. Maximum size is 2GB.');
                                                         return;
                                                     }
-
                                                     setUploadFile(file);
-                                                    
                                                     const additionalData: Record<string, string> = {
                                                         purpose: 'library',
-                                                        storagePreference: storagePref
+                                                        storagePreference: storagePref,
+                                                        folder: 'lesson'
                                                     };
                                                     if (editingLesson?.id) {
                                                         additionalData.contextType = 'lesson';
                                                         additionalData.contextId = editingLesson.id;
                                                     }
-                                                    
                                                     try {
                                                         await upload(file, additionalData);
                                                     } catch (error) {
@@ -234,48 +232,58 @@ export function LessonDialog({
                                             />
                                             <Button
                                                 type="button"
-                                                onClick={() => document.getElementById('lesson-file-upload')?.click()}
+                                                onClick={() => document.getElementById('lesson-file-upload-dialog')?.click()}
                                                 disabled={isUploading}
                                                 className={`w-full h-12 rounded-full border-2 border-dashed flex items-center justify-center gap-2.5 font-bold text-[11px] uppercase tracking-wider transition-all bg-transparent
                                                 ${isDark
                                                         ? `border-white/10 text-slate-300 hover:border-${accent.name}-400/50 hover:bg-${accent.name}-400/5 hover:${accent.text}`
-                                                        : 'border-slate-200 text-slate-600 hover:border-slate-900 hover:bg-slate-50 hover:text-slate-900'}
-                                                ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        : 'border-slate-200 text-slate-600 hover:border-slate-900 hover:bg-slate-50 hover:text-slate-900'}`}
                                             >
                                                 {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} 
                                                 {isUploading ? 'Uploading...' : 'Choose File'}
                                             </Button>
-                                            
-                                            {/* Storage Destination UI */}
-                                            <div className="flex items-center justify-between px-1">
-                                                <div className="flex items-center gap-3">
-                                                    <p className={`text-[9px] font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>
-                                                        Storage:
-                                                    </p>
-                                                    <div className={`p-1 rounded-full flex gap-1 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-                                                        {[
-                                                            { id: 'r2', label: 'Cloud', icon: Cloud },
-                                                            { id: 'local', label: 'Server', icon: HardDrive }
-                                                        ].map(opt => {
-                                                            const isActive = storagePref === opt.id;
-                                                            return (
-                                                                <button
-                                                                    key={opt.id}
-                                                                    type="button"
-                                                                    onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
-                                                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[8px] font-black uppercase tracking-wider transition-all
-                                                                        ${isActive 
-                                                                            ? (isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm border border-slate-200') 
-                                                                            : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
-                                                                >
-                                                                    <opt.icon size={8} />
-                                                                    {opt.label}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                                
+                                        </div>
+                                    </div>
+
+                                    {/* Storage Destination & Library Row */}
+                                    <div className="flex flex-col sm:flex-row gap-4">
+                                        <div className="flex-1 space-y-2">
+                                            <Label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${t.textMuted(isDark)}`}>Storage Vault</Label>
+                                            <Button
+                                                type="button"
+                                                onClick={() => setLibraryOpen(true)}
+                                                className={`w-full h-11 rounded-full border-2 flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all bg-transparent
+                                                ${isDark
+                                                        ? `border-white/10 text-slate-400 hover:border-${accent.name}-400/30 hover:bg-${accent.name}-400/5 hover:${accent.text}`
+                                                        : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700'}`}
+                                            >
+                                                <Library size={16} /> Browse Media Library
+                                            </Button>
+                                        </div>
+                                        
+                                        <div className="space-y-2">
+                                            <Label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${t.textMuted(isDark)}`}>Destination</Label>
+                                            <div className={`p-1 h-11 rounded-full flex gap-1 border-2 ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-200'}`}>
+                                                {[
+                                                    { id: 'r2', label: 'Cloud', icon: Cloud },
+                                                    { id: 'local', label: 'Server', icon: HardDrive }
+                                                ].map(opt => {
+                                                    const isActive = storagePref === opt.id;
+                                                    return (
+                                                        <button
+                                                            key={opt.id}
+                                                            type="button"
+                                                            onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
+                                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all
+                                                                ${isActive 
+                                                                    ? (isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm border border-slate-200') 
+                                                                    : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
+                                                        >
+                                                            <opt.icon size={10} />
+                                                            {opt.label}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </div>
@@ -293,43 +301,50 @@ export function LessonDialog({
                                         />
                                     )}
 
-                                    {/* Uploaded / library-selected file preview */}
-                                    {editingLesson?.content_url && editingLesson.content_url.startsWith('/api/media/') && (
-                                        <div className={`relative flex items-center gap-3 p-3 rounded-2xl border-2 ${isDark ? `border-${accent.name}-400/20 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-300/50 ${accent.softLight.split(' ')[0]}`}`}>
-                                            <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${isDark ? accent.softDark.split(' ')[0] : 'bg-white shadow-sm'}`}>
-                                                <FileText size={16} className={isDark ? accent.text : `text-${accent.name}-700`} />
+                                    {/* Selected Content Preview */}
+                                    {editingLesson?.content_url && (
+                                        <div className={`relative flex items-center gap-3 p-4 rounded-3xl border-2 transition-all group/preview ${isDark ? `border-${accent.name}-400/20 bg-white/[0.01]` : `border-${accent.name}-100 bg-slate-50/50`}`}>
+                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${isDark ? 'bg-white/[0.03] text-white' : 'bg-white text-slate-600'}`}>
+                                                {editingLesson.content_type === 'video' ? <MonitorPlay size={20} /> : <FileText size={20} />}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className={`text-[11px] font-black truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                                    {editingLesson.content_url.split('/').pop()}
+                                                <p className={`text-[11px] font-black uppercase tracking-tight truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                                    {editingLesson.content_url.split('/').pop()?.split('?')[0]}
                                                 </p>
-                                                <p className={`text-[9px] font-bold uppercase tracking-wider ${t.textMuted(isDark)}`}>Uploaded file</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                    <p className={`text-[9px] font-bold uppercase tracking-widest ${t.textMuted(isDark)} truncate max-w-[200px]`}>
+                                                        {editingLesson.content_url}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <Button
-                                                type="button" variant="ghost" size="icon"
-                                                className={`w-8 h-8 rounded-full flex-shrink-0 ${isDark ? 'hover:bg-rose-500/20 text-slate-500 hover:text-rose-400' : 'hover:bg-rose-100 text-slate-400 hover:text-rose-600'}`}
-                                                onClick={() => setEditingLesson({ ...editingLesson, content_url: '' })}
-                                            >
-                                                <X size={14} />
-                                            </Button>
+                                            <div className="flex items-center gap-1.5 px-2">
+                                                <Button
+                                                    type="button" variant="ghost" size="icon"
+                                                    className={`w-9 h-9 rounded-full ${isDark ? 'hover:bg-white/10 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}
+                                                    onClick={() => window.open(editingLesson.content_url, '_blank')}
+                                                >
+                                                    <ExternalLink size={16} />
+                                                </Button>
+                                                <Button
+                                                    type="button" variant="ghost" size="icon"
+                                                    className={`w-9 h-9 rounded-full ${isDark ? 'hover:bg-rose-500/20 text-rose-500/40 hover:text-rose-400' : 'hover:bg-rose-100 text-rose-300 hover:text-rose-600'}`}
+                                                    onClick={() => setEditingLesson({ ...editingLesson, content_url: '' })}
+                                                >
+                                                    <X size={16} />
+                                                </Button>
+                                            </div>
                                         </div>
                                     )}
-
-                                    {/* Browse Media Library */}
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        onClick={() => setLibraryOpen(true)}
-                                        className={`w-full h-11 rounded-full border-2 flex items-center justify-center gap-2 font-bold text-[11px] uppercase tracking-wider transition-all bg-transparent
-                                        ${isDark
-                                                ? `border-white/10 text-slate-400 hover:border-${accent.name}-400/30 hover:bg-${accent.name}-400/5 hover:${accent.text}`
-                                                : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700'}`}
-                                    >
-                                        <Library size={15} /> Browse Media Library
-                                    </Button>
                                 </div>
                             ) : (
-                                <p className={`text-[11px] font-bold italic ${t.textMuted(isDark)}`}>This is an interactive assessment.</p>
+                                <div className={`p-8 rounded-[32px] border-2 border-dashed flex flex-col items-center justify-center text-center ${isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50/50'}`}>
+                                    <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center mb-4 ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                                        <Trophy size={32} />
+                                    </div>
+                                    <h4 className={`text-sm font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Assessment Mission</h4>
+                                    <p className={`text-[10px] font-bold italic mt-2 ${t.textMuted(isDark)} max-w-[200px]`}>Quiz questions and settings are managed in the main lesson editor after creation.</p>
+                                </div>
                             )}
                         </div>
 
@@ -433,6 +448,7 @@ export function LessonDialog({
                 open={libraryOpen}
                 onOpenChange={setLibraryOpen}
                 filterType={libraryFilterType}
+                folder="lesson"
                 currentUrl={editingLesson?.content_url}
                 onSelect={(url) => setEditingLesson({ ...editingLesson, content_url: url })}
             />

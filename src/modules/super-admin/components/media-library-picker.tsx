@@ -129,7 +129,7 @@ export function MediaLibraryPicker({
     }
 
     function handleTabChange(tab: AssetType) {
-        if (filterType) return; // locked to filter type
+        // Allow switching between visible tabs (e.g. "All" and "Videos")
         setActiveTab(tab);
         loadAssets(tab);
     }
@@ -309,35 +309,32 @@ export function MediaLibraryPicker({
                             );
                         })}
                     </div>
-                    {/* Folders */}
-                    {!folder && (
-                        <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
-                            {[
-                                { id: 'all', label: 'All Folders' },
-                                { id: 'lesson', label: 'Lessons' },
-                                { id: 'course', label: 'Courses' },
-                                { id: 'video', label: 'Videos' },
-                                { id: 'branding', label: 'Branding' },
-                                { id: 'asset', label: 'Assets' },
-                                { id: 'setting', label: 'Settings' },
-                            ].map(f => {
-                                const isActive = activeFolder === f.id;
-                                return (
-                                    <button
-                                        key={f.id}
-                                        onClick={() => { setActiveFolder(f.id); loadAssets(activeTab, f.id); }}
-                                        className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all whitespace-nowrap border
-                                            ${isActive
-                                                ? (isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/10')
-                                                : (isDark ? 'bg-white/[0.03] border-white/5 text-slate-500 hover:bg-white/[0.06]' : 'bg-slate-100 border-transparent text-slate-500 hover:bg-slate-200')}`}
-                                    >
-                                        <Folder size={12} className={isActive ? 'text-blue-400' : 'text-slate-400'} />
-                                        {f.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
+                {/* Folders */}
+                <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
+                        {[
+                            { id: 'all', label: 'All Assets', color: 'text-slate-400' },
+                            { id: 'lesson', label: 'Lessons', color: 'text-sky-400' },
+                            { id: 'course', label: 'Courses', color: 'text-indigo-400' },
+                            { id: 'branding', label: 'Branding', color: 'text-amber-400' },
+                            { id: 'library', label: 'General', color: 'text-emerald-400' },
+                            { id: 'video', label: 'Videos', color: 'text-rose-400' },
+                        ].map(f => {
+                            const isActive = activeFolder === f.id;
+                            return (
+                                <button
+                                    key={f.id}
+                                    onClick={() => { setActiveFolder(f.id); loadAssets(activeTab, f.id); }}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all whitespace-nowrap border-2
+                                        ${isActive
+                                            ? (isDark ? `${accent.bg} text-slate-900 border-white shadow-lg` : `${accent.bg} text-slate-900 border-slate-900 shadow-lg`)
+                                            : (isDark ? 'bg-white/[0.03] border-white/5 text-slate-500 hover:bg-white/[0.06]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100')}`}
+                                >
+                                    <Folder size={12} className={isActive ? 'text-slate-900' : f.color} />
+                                    {f.label}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </SheetHeader>
 
                 {/* Content */}

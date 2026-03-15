@@ -351,10 +351,8 @@ export const lessons = pgTable('lessons', {
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => [
-    // ISSUE 6: uniqueIndex REMOVED from Drizzle — replaced by DEFERRABLE UNIQUE constraint in
-    // audit_fixes.sql so that reorder transactions don't violate the constraint on intermediate steps.
-    // Run: ALTER TABLE lessons ADD CONSTRAINT uq_lesson_sequence_per_course
-    //      UNIQUE (course_id, sequence_order) DEFERRABLE INITIALLY DEFERRED;
+    // INTEGRATED CONSTRAINT: uniqueIndex replaced by DEFERRABLE UNIQUE constraint in base schema
+    // to allow reorder transactions without temporary violations. (uq_lesson_sequence_per_course)
     index('idx_lessons_course').on(table.course_id),
     // ISSUE 9: Partial index — only active (non-deleted) lessons
     index('idx_lessons_active').on(table.course_id).where(sql`deleted_at IS NULL`),
@@ -392,10 +390,8 @@ export const quizQuestions = pgTable('quiz_questions', {
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    // NEW BUG 4: uniqueIndex REMOVED — same deferrable problem as lessons.sequence_order.
-    // Replaced by deferrable constraint in audit_fixes.sql:
-    // ALTER TABLE quiz_questions ADD CONSTRAINT uq_quiz_question_sequence
-    //     UNIQUE (quiz_id, sequence_order) DEFERRABLE INITIALLY DEFERRED;
+    // INTEGRATED CONSTRAINT: uniqueIndex replaced by DEFERRABLE UNIQUE constraint in base schema
+    // to allow reorder transactions without temporary violations. (uq_quiz_question_sequence)
 ]);
 
 // ============================================================================
@@ -653,6 +649,7 @@ export const platformMetricsDaily = pgTable('platform_metrics_daily', {
     revenue_total: numeric('revenue_total', { precision: 14, scale: 2 }).notNull().default('0'),
     new_subscriptions: integer('new_subscriptions').notNull().default(0),
     churned_subscriptions: integer('churned_subscriptions').notNull().default(0),
+    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

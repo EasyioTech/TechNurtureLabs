@@ -36,27 +36,28 @@ export function AchievementsClient({ initialData }: AchievementsClientProps) {
     return (
         <div className="min-h-screen bg-slate-50/10 pb-32 animate-in fade-in duration-700">
             {/* Elite Header */}
-            <div className="relative bg-slate-950 overflow-hidden py-24 lg:py-32 px-6 lg:px-12 border-b border-white/5">
+            <div className="relative bg-slate-950 overflow-hidden py-16 md:py-24 lg:py-32 px-6 lg:px-12 border-b border-white/5">
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[150px] pointer-events-none" />
                 
                 <div className="max-w-[1440px] mx-auto relative z-10 flex flex-col items-center text-center">
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="w-24 h-24 rounded-[2.5rem] bg-indigo-600 flex items-center justify-center text-white mb-10 shadow-2xl shadow-indigo-600/40"
+                        className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[2.5rem] bg-indigo-600 flex items-center justify-center text-white mb-6 md:mb-10 shadow-2xl shadow-indigo-600/40"
                     >
-                        <Trophy size={48} />
+                        <Trophy size={32} className="md:hidden" />
+                        <Trophy size={48} className="hidden md:block" />
                     </motion.div>
 
-                    <h1 className="text-6xl md:text-8xl font-black text-white uppercase tracking-tighter leading-none mb-8">
+                    <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white uppercase tracking-tighter leading-none mb-6 md:mb-8">
                         My <span className="text-indigo-500">Achievements</span>
                     </h1>
                     
-                    <p className="max-w-2xl text-slate-400 font-bold text-sm lg:text-base uppercase tracking-[0.3em] leading-relaxed mb-16">
+                    <p className="max-w-2xl text-slate-400 font-bold text-xs md:text-sm lg:text-base uppercase tracking-[0.2em] md:tracking-[0.3em] leading-relaxed mb-10 md:mb-16">
                         A complete record of your academic milestones and learning achievements.
                     </p>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-4xl">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8 w-full max-w-4xl">
                         <StatusCard label="Milestones" value={`${unlockedCount} / ${achievements.length}`} icon={Award} />
                         <StatusCard label="Completion" value={`${progressPct}%`} icon={Star} />
                         <StatusCard label="Rank" value={`#${stats.rank || '-'}`} icon={Trophy} />
@@ -65,31 +66,31 @@ export function AchievementsClient({ initialData }: AchievementsClientProps) {
                 </div>
             </div>
 
-            <main className="max-w-[1440px] mx-auto px-6 lg:px-12 -mt-16 relative z-20">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
+            <main className="max-w-[1440px] mx-auto px-6 lg:px-12 -mt-10 md:-mt-16 relative z-20">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 lg:gap-16">
                     {/* Mastery Analysis */}
-                    <div className="lg:col-span-4 space-y-12">
-                        <section className="bg-white rounded-[4rem] p-12 lg:p-16 border border-slate-100 shadow-2xl shadow-slate-200/40 flex flex-col items-center">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-12">Overall Progress</h3>
+                    <div className="lg:col-span-4 space-y-8 md:space-y-12">
+                        <section className="bg-white rounded-[2rem] md:rounded-[4rem] p-8 md:p-12 lg:p-16 border border-slate-100 shadow-2xl shadow-slate-200/40 flex flex-col items-center">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] md:tracking-[0.4em] mb-8 md:mb-12">Overall Progress</h3>
                             
-                            <div className="relative w-64 h-64 mb-16">
+                            <div className="relative w-40 h-40 md:w-64 md:h-64 mb-10 md:mb-16">
                                 <svg className="w-full h-full -rotate-90">
-                                    <circle cx="50%" cy="50%" r="45%" stroke="currentColor" strokeWidth="15" fill="none" className="text-slate-50" />
+                                    <circle cx="50%" cy="50%" r="45%" stroke="currentColor" strokeWidth="12" fill="none" className="text-slate-50 md:stroke-[15px]" />
                                     <motion.circle
                                         cx="50%" cy="50%" r="45%"
-                                        stroke="currentColor" strokeWidth="15" fill="none"
+                                        stroke="currentColor" strokeWidth="12" fill="none"
                                         strokeDasharray="282.7"
                                         initial={{ strokeDashoffset: 282.7 }}
                                         animate={{ strokeDashoffset: 282.7 - (progressPct * 2.827) }}
-                                        className="text-indigo-600"
+                                        className="text-indigo-600 md:stroke-[15px]"
                                         strokeLinecap="round"
                                         transition={{ duration: 2, ease: "easeOut" }}
                                         style={{ filter: 'drop-shadow(0 0 12px rgba(79, 70, 229, 0.4))' }}
                                     />
                                 </svg>
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span className="text-6xl font-black text-slate-900 tracking-tighter">{progressPct}%</span>
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">{unlockedCount} Units</span>
+                                    <span className="text-3xl md:text-6xl font-black text-slate-900 tracking-tighter">{progressPct}%</span>
+                                    <span className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 md:mt-2">{unlockedCount} Units</span>
                                 </div>
                             </div>
 
@@ -99,19 +100,20 @@ export function AchievementsClient({ initialData }: AchievementsClientProps) {
                             </div>
                         </section>
 
-                        <div className="bg-slate-950 rounded-[4rem] p-12 lg:p-16 text-white shadow-2xl shadow-indigo-950/20 border border-white/5 relative overflow-hidden group">
+                        <div className="bg-slate-950 rounded-[2rem] md:rounded-[4rem] p-8 md:p-12 lg:p-16 text-white shadow-2xl shadow-indigo-950/20 border border-white/5 relative overflow-hidden group">
                             <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 to-transparent pointer-events-none" />
                             <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 mb-12">Next Milestone Goal</h4>
                             
                             {nextGoal ? (
                                 <div className="relative z-10">
-                                    <div className="flex items-center gap-6 mb-12">
-                                        <div className="w-20 h-20 rounded-[2rem] bg-white/5 border border-white/10 flex items-center justify-center text-amber-400 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                                            <Award size={40} strokeWidth={1.5} />
+                                    <div className="flex items-center gap-4 md:gap-6 mb-8 md:mb-12">
+                                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-amber-400 shadow-inner group-hover:scale-110 transition-transform duration-500">
+                                            <Award size={32} className="md:hidden" strokeWidth={1.5} />
+                                            <Award size={40} className="hidden md:block" strokeWidth={1.5} />
                                         </div>
                                         <div>
-                                            <p className="text-2xl font-black uppercase tracking-tight mb-2 text-white group-hover:text-amber-400 transition-colors">{nextGoal.name}</p>
-                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-relaxed">{nextGoal.requirement}</p>
+                                            <p className="text-xl md:text-2xl font-black uppercase tracking-tight mb-1 md:mb-2 text-white group-hover:text-amber-400 transition-colors">{nextGoal.name}</p>
+                                            <p className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-relaxed">{nextGoal.requirement}</p>
                                         </div>
                                     </div>
                                     <div className="space-y-4">
@@ -139,9 +141,9 @@ export function AchievementsClient({ initialData }: AchievementsClientProps) {
                     </div>
 
                     {/* Operational Gallery */}
-                    <div className="lg:col-span-8 space-y-12">
-                        <section className="bg-white rounded-[4rem] p-12 lg:p-16 border border-slate-100 shadow-2xl shadow-slate-200/40">
-                             <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tighter mb-16 pb-8 border-b border-slate-50 flex items-center justify-between">
+                    <div className="lg:col-span-8 space-y-8 md:space-y-12">
+                        <section className="bg-white rounded-[2rem] md:rounded-[4rem] p-8 md:p-12 lg:p-16 border border-slate-100 shadow-2xl shadow-slate-200/40">
+                             <h2 className="text-2xl md:text-4xl font-black text-slate-900 uppercase tracking-tighter mb-10 md:mb-16 pb-6 md:pb-8 border-b border-slate-50 flex items-center justify-between">
                                 Achievement Gallery
                                 <span className="text-[11px] font-black text-slate-300 tracking-[0.4em] uppercase">Badge Tier</span>
                              </h2>
@@ -169,12 +171,13 @@ export function AchievementsClient({ initialData }: AchievementsClientProps) {
 
 function StatusCard({ label, value, icon: Icon }: any) {
     return (
-        <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-center group hover:bg-white/10 transition-colors">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
-                <Icon size={24} />
+        <div className="p-3 md:p-8 rounded-xl md:rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-center group hover:bg-white/10 transition-colors">
+            <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-2 md:mb-6 group-hover:scale-110 transition-transform">
+                <Icon size={16} className="md:hidden" />
+                <Icon size={24} className="hidden md:block" />
             </div>
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2">{label}</p>
-            <p className="text-2xl font-black text-white uppercase tracking-tighter">{value}</p>
+            <p className="text-[7px] md:text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] md:tracking-[0.3em] mb-1 md:mb-2 text-center">{label}</p>
+            <p className="text-base md:text-2xl font-black text-white uppercase tracking-tighter">{value}</p>
         </div>
     );
 }

@@ -208,9 +208,33 @@ CREATE TABLE "lesson_progress" (
 	"progress_pct" numeric(5, 2) DEFAULT '0' NOT NULL,
 	"last_position_secs" integer DEFAULT 0 NOT NULL,
 	"time_spent_secs" integer DEFAULT 0 NOT NULL,
+	"verified_watch_seconds" integer DEFAULT 0 NOT NULL,
+	"content_watched" boolean DEFAULT false NOT NULL,
+	"completion_locked" boolean DEFAULT false NOT NULL,
+	"max_page_viewed" integer DEFAULT 0 NOT NULL,
+	"slides_viewed_array" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"xp_earned" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "lesson_sessions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"lesson_id" uuid NOT NULL,
+	"session_token" text NOT NULL,
+	"device_hash" text,
+	"user_agent" text,
+	"ip_hash" text,
+	"last_nonce" bigint DEFAULT 0 NOT NULL,
+	"ip_address" "inet",
+	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_heartbeat_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_playback_time" integer DEFAULT 0 NOT NULL,
+	"total_verified_seconds" integer DEFAULT 0 NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	CONSTRAINT "lesson_sessions_session_token_unique" UNIQUE("session_token")
 );
 --> statement-breakpoint
 CREATE TABLE "lesson_submissions" (
@@ -326,6 +350,7 @@ CREATE TABLE "platform_metrics_daily" (
 	"revenue_total" numeric(14, 2) DEFAULT '0' NOT NULL,
 	"new_subscriptions" integer DEFAULT 0 NOT NULL,
 	"churned_subscriptions" integer DEFAULT 0 NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "platform_metrics_daily_metric_date_unique" UNIQUE("metric_date")
 );
@@ -624,6 +649,8 @@ ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_lesson_id_lessons_
 ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_enrollment_id_enrollments_id_fk" FOREIGN KEY ("enrollment_id") REFERENCES "public"."enrollments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_session_id_academic_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."academic_sessions"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "lesson_progress" ADD CONSTRAINT "lesson_progress_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "lesson_sessions" ADD CONSTRAINT "lesson_sessions_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "lesson_sessions" ADD CONSTRAINT "lesson_sessions_lesson_id_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."lessons"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "lesson_submissions" ADD CONSTRAINT "lesson_submissions_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "lesson_submissions" ADD CONSTRAINT "lesson_submissions_lesson_id_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."lessons"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "lesson_submissions" ADD CONSTRAINT "lesson_submissions_asset_id_media_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."media_assets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -680,6 +707,10 @@ CREATE INDEX "idx_lp_user" ON "lesson_progress" USING btree ("user_id");--> stat
 CREATE INDEX "idx_lp_enrollment" ON "lesson_progress" USING btree ("enrollment_id");--> statement-breakpoint
 CREATE INDEX "idx_lp_session" ON "lesson_progress" USING btree ("session_id");--> statement-breakpoint
 CREATE INDEX "idx_lp_school" ON "lesson_progress" USING btree ("school_id");--> statement-breakpoint
+CREATE INDEX "idx_lp_content_watched" ON "lesson_progress" USING btree ("content_watched");--> statement-breakpoint
+CREATE INDEX "idx_sessions_user_lesson" ON "lesson_sessions" USING btree ("user_id","lesson_id");--> statement-breakpoint
+CREATE INDEX "idx_sessions_token" ON "lesson_sessions" USING btree ("session_token");--> statement-breakpoint
+CREATE INDEX "idx_sessions_active" ON "lesson_sessions" USING btree ("is_active");--> statement-breakpoint
 CREATE INDEX "idx_submission_user_lesson" ON "lesson_submissions" USING btree ("user_id","lesson_id");--> statement-breakpoint
 CREATE INDEX "idx_lessons_course" ON "lessons" USING btree ("course_id");--> statement-breakpoint
 CREATE INDEX "idx_lessons_active" ON "lessons" USING btree ("course_id") WHERE deleted_at IS NULL;--> statement-breakpoint

@@ -12,12 +12,10 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Course } from '../types';
 import { useAdminTheme, t } from '../theme-context';
-import { BookOpen, ExternalLink, Zap, Upload, ImageIcon, Loader2, X, Eye, Library, Cloud, HardDrive } from 'lucide-react';
+import { BookOpen, ExternalLink, Zap, Eye, Library } from 'lucide-react';
 import { toast } from 'sonner';
 import { MediaLibraryPicker } from './media-library-picker';
-import { useUpload } from '@/hooks/use-upload';
-import { UploadProgress } from '@/components/shared/upload-progress';
-import { uploadStore } from '@/lib/upload-store';
+import { ImageUpload } from '@/modules/shared/components/image-upload';
 
 interface CourseDialogProps {
     open: boolean;
@@ -33,34 +31,6 @@ export function CourseDialog({
     open, onOpenChange, editingCourse, setEditingCourse, onSave, classes, courseClassMappings
 }: CourseDialogProps) {
     const { isDark, accent } = useAdminTheme();
-    const [showFullPreview, setShowFullPreview] = React.useState(false);
-    const [libraryOpen, setLibraryOpen] = React.useState(false);
-    const [uploadFile, setUploadFile] = React.useState<File | null>(null);
-    const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
-
-    const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload({
-        onSuccess: (data) => {
-            setEditingCourse({ ...editingCourse, thumbnail: data.url });
-            toast.success('Thumbnail uploaded successfully');
-            setUploadFile(null);
-        },
-        onError: (err) => {
-            toast.error(err || 'Failed to upload thumbnail');
-        }
-    });
-
-    // Notify upload store that this upload is being handled locally in this dialog
-    React.useEffect(() => {
-        if (isUploading && open) {
-            uploadStore.updateTask(uploadId, { isLocalVisible: true });
-        } else {
-            uploadStore.updateTask(uploadId, { isLocalVisible: false });
-        }
-        return () => {
-            uploadStore.updateTask(uploadId, { isLocalVisible: false });
-        };
-    }, [uploadId, isUploading, open]);
-
     const isEditing = !!editingCourse?.id;
 
     // Local state for selected classes to avoid immediate parent updates
@@ -150,151 +120,16 @@ export function CourseDialog({
                         </div>
 
                         <div className="space-y-3">
-                            <Label htmlFor="thumbnail" className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Thumbnail Source</Label>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {/* Manual URL Input */}
-                                <div className="relative group">
-                                    <Input
-                                        id="thumbnail"
-                                        placeholder="Paste Image URL..."
-                                        value={editingCourse?.thumbnail || ''}
-                                        onChange={(e) => setEditingCourse({ ...editingCourse, thumbnail: e.target.value })}
-                                        className={`rounded-full h-12 pl-11 pr-5 shadow-inner text-sm font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] text-white border-white/5 shadow-inner' : 'bg-slate-50 border-slate-200'}`}
-                                    />
-                                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>
-                                        <ExternalLink size={16} />
-                                    </div>
-                                </div>
-
-                                {/* Upload Button with Integrated Preview */}
-                                <div className="relative group/thumb">
-                                    <input
-                                        type="file"
-                                        id="thumbnail-upload"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={async (e) => {
-                                            const file = e.target.files?.[0];
-                                            if (!file) return;
-                                            setUploadFile(file);
-
-                                            const additionalData: Record<string, string> = {
-                                                storagePreference: storagePref
-                                            };
-                                            if (editingCourse?.id) {
-                                                additionalData.contextType = 'course';
-                                                additionalData.contextId = editingCourse.id;
-                                            }
-
-                                            try {
-                                                await upload(file, additionalData);
-                                            } catch (error) {
-                                                console.error('Upload error:', error);
-                                            }
-                                        }}
-                                    />
-
-                                    {editingCourse?.thumbnail ? (
-                                        <div className={`relative h-12 w-full rounded-full overflow-hidden border-2 transition-all ${isDark ? `border-${accent.name}-400/30` : `border-${accent.name}-400/20`}`}>
-                                            <img
-                                                src={editingCourse.thumbnail}
-                                                alt="Thumbnail"
-                                                className="w-full h-full object-cover"
-                                            />
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 shadow-lg backdrop-blur-sm"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setShowFullPreview(true);
-                                                    }}
-                                                >
-                                                    <Eye size={16} strokeWidth={2.5} />
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="destructive"
-                                                    size="icon"
-                                                    className="w-9 h-9 rounded-full shadow-lg"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setEditingCourse({ ...editingCourse, thumbnail: '' });
-                                                    }}
-                                                >
-                                                    <X size={16} strokeWidth={2.5} />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <Button
-                                            type="button"
-                                            onClick={() => document.getElementById('thumbnail-upload')?.click()}
-                                            disabled={isUploading}
-                                            className={`w-full h-12 rounded-full border-2 border-dashed flex items-center justify-center gap-2.5 font-bold transition-all hover:border-${accent.name}-400/50 hover:bg-${accent.name}-400/5 ${isDark ? `border-white/10 text-slate-300 hover:${accent.text} bg-transparent` : 'border-slate-200 text-slate-600 hover:text-slate-900 bg-transparent'} ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        >
-                                            {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                                            {isUploading ? 'UPLOADING...' : 'UPLOAD IMAGE'}
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {uploadFile && (
-                                <UploadProgress
-                                    progress={progress}
-                                    fileName={uploadFile.name}
-                                    isUploading={isUploading}
-                                    error={uploadError}
-                                    onCancel={abort}
-                                    onReset={resetUpload}
-                                    isDark={isDark}
-                                />
-                            )}
-
-                            {/* Storage Preference Toggle */}
-                            <div className="flex items-center gap-3 px-1">
-                                <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
-                                    Storage:
-                                </p>
-                                <div className={`p-1 rounded-full flex gap-1 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-                                    {[
-                                        { id: 'r2', label: 'Cloud', icon: Cloud },
-                                        { id: 'local', label: 'Server', icon: HardDrive }
-                                    ].map(opt => {
-                                        const isActive = storagePref === opt.id;
-                                        return (
-                                            <button
-                                                key={opt.id}
-                                                type="button"
-                                                onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
-                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all
-                                                    ${isActive 
-                                                        ? (isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm border border-slate-200') 
-                                                        : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
-                                            >
-                                                <opt.icon size={10} />
-                                                {opt.label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Browse Library for Thumbnail */}
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => setLibraryOpen(true)}
-                                className={`w-full h-11 rounded-full border-2 flex items-center justify-center gap-2 font-bold text-[11px] uppercase tracking-wider transition-all bg-transparent
-                                ${isDark
-                                        ? `border-white/10 text-slate-400 hover:border-${accent.name}-400/30 hover:bg-${accent.name}-400/5 hover:${accent.text}`
-                                        : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700'}`}
-                            >
-                                <Library size={15} /> Browse Image Library
-                            </Button>
+                            <Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Course Thumbnail</Label>
+                            <ImageUpload
+                                value={editingCourse?.thumbnail || ''}
+                                onChange={(url) => setEditingCourse({ ...editingCourse, thumbnail: url })}
+                                isDark={isDark}
+                                folder="course"
+                            />
+                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)} px-1 italic`}>
+                                Primary course image used in the student dashboard and search results.
+                            </p>
                         </div>
 
                         {/* Class Assignment Section */}
@@ -364,40 +199,8 @@ export function CourseDialog({
                         </Button>
                     </div>
 
-                    {/* Full Image Preview Overlay */}
-                    {showFullPreview && editingCourse?.thumbnail && (
-                        <div
-                            className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300"
-                            onClick={() => setShowFullPreview(false)}
-                        >
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="absolute top-6 right-6 text-white/50 hover:text-white hover:bg-white/10 rounded-full w-12 h-12"
-                                onClick={() => setShowFullPreview(false)}
-                            >
-                                <X size={32} />
-                            </Button>
-                            <div className="relative max-w-full max-h-full flex items-center justify-center">
-                                <img
-                                    src={editingCourse.thumbnail}
-                                    alt="Full Preview"
-                                    className="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain animate-in zoom-in-95 duration-300"
-                                />
-                            </div>
-                        </div>
-                    )}
-
                 </DialogContent>
             </Dialog>
-
-            <MediaLibraryPicker
-                open={libraryOpen}
-                onOpenChange={setLibraryOpen}
-                filterType="image"
-                currentUrl={editingCourse?.thumbnail ?? undefined}
-                onSelect={(url) => setEditingCourse({ ...editingCourse, thumbnail: url })}
-            />
         </>
     );
 }

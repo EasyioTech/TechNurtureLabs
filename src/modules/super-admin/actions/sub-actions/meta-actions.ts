@@ -295,3 +295,40 @@ export async function deleteClass(classId: string) {
         return { success: false, error: error.message };
     }
 }
+
+export async function validatePromoCode(code: string) {
+    // PUBLIC ACTION - No session check required for registration validation
+    try {
+        const promo = await db.query.promoCodes.findFirst({
+            where: and(
+                eq(promoCodes.code, code.toUpperCase()),
+                eq(promoCodes.is_active, true)
+            )
+        });
+
+        if (!promo) {
+            return { success: false, error: 'Invalid or expired promo code' };
+        }
+
+        const now = new Date();
+        if (promo.valid_from && now < new Date(promo.valid_from)) {
+            return { success: false, error: 'Promo code is not yet active' };
+        }
+        if (promo.valid_until && now > new Date(promo.valid_until)) {
+            return { success: false, error: 'Promo code has expired' };
+        }
+        if (promo.max_uses && promo.current_uses >= promo.max_uses) {
+            return { success: false, error: 'Promo code use limit reached' };
+        }
+
+        return { 
+            success: true, 
+            promo: {
+                ...promo,
+                discount_value: Number(promo.discount_value)
+            } 
+        };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
