@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { 
-    quizzes, quizQuestions, courses
+    quizzes, quizQuestions, quizOptions, courses
 } from '@/db/schema';
 import { eq, asc, desc, sql } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
@@ -17,7 +17,12 @@ export async function fetchQuizAdmin(lessonId: string) {
         where: eq(quizzes.lesson_id, lessonId),
         with: {
             questions: {
-                orderBy: [asc(quizQuestions.sequence_order)]
+                orderBy: [asc(quizQuestions.sequence_order)],
+                with: {
+                    options: {
+                        orderBy: [asc(quizOptions.sequence_order)]
+                    }
+                }
             }
         }
     });
@@ -58,21 +63,31 @@ export async function saveQuizAdmin(quizData: any) {
     }
 
     if (quizData.questions && Array.isArray(quizData.questions)) {
+        // Delete old questions (cascade will delete options)
         await db.delete(quizQuestions).where(eq(quizQuestions.quiz_id, quizId));
-        if (quizData.questions.length > 0) {
-            await db.insert(quizQuestions).values(
-                quizData.questions.map((q: any, idx: number) => ({
-                    quiz_id: quizId,
-                    question_text: q.question_text,
-                    question_type: q.question_type || 'mcq',
-                    options: q.options || [],
-                    correct_answer: q.correct_answer,
-                    explanation: q.explanation || '',
-                    points: q.points || 1,
-                    time_limit_secs: q.time_limit_secs || 0,
-                    sequence_order: idx + 1,
-                }))
-            );
+        
+        for (let i = 0; i < quizData.questions.length; i++) {
+            const q = quizData.questions[i];
+            const [newQuestion] = await db.insert(quizQuestions).values({
+                quiz_id: quizId,
+                question_text: q.question_text,
+                question_type: q.question_type || 'mcq',
+                explanation: q.explanation || '',
+                points: q.points || 1,
+                time_limit_secs: q.time_limit_secs || 0,
+                sequence_order: i + 1,
+            }).returning();
+
+            if (q.options && Array.isArray(q.options)) {
+                await db.insert(quizOptions).values(
+                    q.options.map((opt: any, optIdx: number) => ({
+                        question_id: newQuestion.id,
+                        option_text: typeof opt === 'string' ? opt : opt.option_text,
+                        is_correct: typeof opt === 'string' ? (opt === q.correct_answer) : !!opt.is_correct,
+                        sequence_order: optIdx + 1
+                    }))
+                );
+            }
         }
     }
 
@@ -113,19 +128,32 @@ export async function cloneQuizAction(quizId: string, targetLessonId: string, ta
         } as any).returning();
 
         if (sourceQuiz.questions && sourceQuiz.questions.length > 0) {
-            await tx.insert(quizQuestions).values(
-                sourceQuiz.questions.map(q => ({
+            for (const q of sourceQuiz.questions) {
+                const [clonedQuestion] = await tx.insert(quizQuestions).values({
                     quiz_id: clonedQuiz.id,
                     question_text: q.question_text,
                     question_type: q.question_type,
-                    options: q.options,
-                    correct_answer: q.correct_answer,
                     explanation: q.explanation,
                     points: q.points,
                     time_limit_secs: q.time_limit_secs,
                     sequence_order: q.sequence_order,
-                }))
-            );
+                }).returning();
+
+                const sourceOptions = await tx.query.quizOptions.findMany({
+                    where: eq(quizOptions.question_id, q.id)
+                });
+
+                if (sourceOptions.length > 0) {
+                    await tx.insert(quizOptions).values(
+                        sourceOptions.map(opt => ({
+                            question_id: clonedQuestion.id,
+                            option_text: opt.option_text,
+                            is_correct: opt.is_correct,
+                            sequence_order: opt.sequence_order
+                        }))
+                    );
+                }
+            }
         }
 
         return clonedQuiz;

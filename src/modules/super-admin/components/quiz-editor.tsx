@@ -63,11 +63,16 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                     setQuiz({
                         ...data,
                         pass_percentage: Number(data.pass_percentage),
-                        questions: (data.questions || []).map((q: any) => ({
-                            ...q,
-                            options: Array.isArray(q.options) ? q.options : [],
-                            correct_answer: q.correct_answer || 0
-                        }))
+                        questions: (data.questions || []).map((q: any) => {
+                            // Map relational options to UI state (simple array and index)
+                            const simpleOptions = (q.options || []).map((opt: any) => opt.option_text);
+                            const correctIdx = (q.options || []).findIndex((opt: any) => opt.is_correct);
+                            return {
+                                ...q,
+                                options: simpleOptions.length > 0 ? simpleOptions : ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
+                                correct_answer: correctIdx !== -1 ? correctIdx : 0
+                            };
+                        })
                     } as any);
                 } else {
                     setQuiz({

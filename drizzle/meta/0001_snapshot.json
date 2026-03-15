@@ -1,6 +1,6 @@
 {
-  "id": "3b9900bb-49ad-412b-aebe-9c1885a027ef",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "8fc849dd-c293-48d9-bfa1-4e6f5357a486",
+  "prevId": "3b9900bb-49ad-412b-aebe-9c1885a027ef",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2355,6 +2355,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "asset_id": {
+          "name": "asset_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "sequence_order": {
           "name": "sequence_order",
           "type": "integer",
@@ -2468,6 +2474,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "lessons_asset_id_media_assets_id_fk": {
+          "name": "lessons_asset_id_media_assets_id_fk",
+          "tableFrom": "lessons",
+          "tableTo": "media_assets",
+          "columnsFrom": [
+            "asset_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -2605,7 +2624,7 @@
           "name": "file_url",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "file_path": {
           "name": "file_path",
@@ -2650,6 +2669,19 @@
         },
         "folder": {
           "name": "folder",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "processing_status": {
+          "name": "processing_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'completed'"
+        },
+        "error_message": {
+          "name": "error_message",
           "type": "text",
           "primaryKey": false,
           "notNull": false

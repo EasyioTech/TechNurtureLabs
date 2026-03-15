@@ -49,6 +49,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             '.svg': 'image/svg+xml',
             '.mp3': 'audio/mpeg',
             '.txt': 'text/plain',
+            '.m3u8': 'application/x-mpegURL',
+            '.ts': 'video/MP2T',
         };
         const mimeType = MIME_MAP[ext] ?? 'application/octet-stream';
 

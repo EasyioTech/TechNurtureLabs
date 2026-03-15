@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { 
     students, schoolAdmins, superAdmins, lessons, lessonProgress, 
-    quizzes, quizQuestions, auditLogs, lessonSubmissions, xpEvents, enrollments 
+    quizzes, quizQuestions, quizOptions, auditLogs, lessonSubmissions, xpEvents, enrollments 
 } from '@/db/schema';
 import { eq, and, asc, isNotNull, sql } from 'drizzle-orm';
 import { awardXP, incrementProgressCounter, handleStudentEngagement } from '@/lib/gamification';
@@ -20,10 +20,19 @@ export async function getLessonData(lessonId: string) {
     const userId = session.userId;
 
     const lesson = await db.query.lessons.findFirst({
-        where: eq(lessons.id, lessonId)
+        where: eq(lessons.id, lessonId),
+        with: {
+            asset: true
+        }
     });
 
     if (!lesson) return null;
+
+    // Use computed HLS URL if it's a video, otherwise use direct URL
+    const { computeMediaUrl } = await import('@/lib/media');
+    const contentUrl = (lesson.content_type === 'video' && lesson.asset)
+        ? computeMediaUrl(lesson.asset as any, 'hls')
+        : (lesson.asset ? computeMediaUrl(lesson.asset as any) : lesson.content_url);
 
     const enrollment = await ensureEnrollment(userId, lesson.course_id);
     if (!enrollment) return null;
@@ -52,7 +61,12 @@ export async function getLessonData(lessonId: string) {
     if (quiz) {
         const questions = await db.query.quizQuestions.findMany({
             where: eq(quizQuestions.quiz_id, quiz.id),
-            orderBy: [asc(quizQuestions.sequence_order)]
+            orderBy: [asc(quizQuestions.sequence_order)],
+            with: {
+                options: {
+                    orderBy: [asc(quizOptions.sequence_order)]
+                }
+            }
         });
         quizData = {
             quiz: {
@@ -65,24 +79,29 @@ export async function getLessonData(lessonId: string) {
                 is_locked: isQuizLocked,
                 lock_reason: lockReason
             },
-            questions: isQuizLocked ? [] : questions.map(q => ({
-                id: q.id,
-                text: q.question_text,
-                question_type: q.question_type,
-                options: Array.isArray(q.options) ? q.options : [],
-                correct_answer: q.correct_answer,
-                explanation: q.explanation,
-                points: q.points,
-                time_limit_secs: q.time_limit_secs,
-            }))
+            questions: isQuizLocked ? [] : questions.map(q => {
+                const correctIdx = q.options.findIndex(opt => opt.is_correct);
+                return {
+                    id: q.id,
+                    text: q.question_text,
+                    question_type: q.question_type,
+                    options: q.options.map(opt => opt.option_text),
+                    correct_answer: correctIdx !== -1 ? correctIdx : 0,
+                    explanation: q.explanation,
+                    points: q.points,
+                    time_limit_secs: q.time_limit_secs,
+                };
+            })
         };
     }
 
     return {
         ...lesson,
+        content_url: contentUrl,
         sequence_index: lesson.sequence_order,
         duration: lesson.duration_minutes || 10,
         quiz_data: quizData,
+        processing_status: (lesson as any).asset?.processing_status || 'completed',
         user_progress: progress ? {
             completed_at: progress.completed_at,
             progress_pct: Number(progress.progress_pct) || 0,
@@ -308,8 +327,21 @@ export async function getSubmissionStatus(lessonId: string) {
     const session = await verifySession();
     if (!session) return null;
 
-    return await db.query.lessonSubmissions.findFirst({
+    const submission = await db.query.lessonSubmissions.findFirst({
         where: and(eq(lessonSubmissions.user_id, session.userId), eq(lessonSubmissions.lesson_id, lessonId)),
         with: { asset: true }
     });
+
+    if (submission && submission.asset) {
+        const { computeMediaUrl } = await import('@/lib/media');
+        return {
+            ...submission,
+            asset: {
+                ...submission.asset,
+                file_url: computeMediaUrl(submission.asset)
+            }
+        };
+    }
+
+    return submission;
 }

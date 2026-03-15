@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
 import { processHeartbeat } from '@/lib/services/learning-session';
 import crypto from 'crypto';
+import { rateLimitService } from '@/lib/services/rate-limit';
 
 /**
  * Handles student learning heartbeats with replay and jump protection.
@@ -11,6 +12,14 @@ export async function POST(req: NextRequest) {
         const session = await verifySession();
         if (!session || session.role !== 'student') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userId = session.userId;
+
+        // Rate Limit: Max 15 heartbeats per minute (standard is one every 10-15s)
+        const { allowed } = await rateLimitService.checkUserLimit(userId, 'heartbeat', 15, 60);
+        if (!allowed) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
         }
 
         const payload = await req.json();

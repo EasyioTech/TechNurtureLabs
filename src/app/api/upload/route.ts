@@ -53,25 +53,45 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const assetType = getAssetType(result.mimeType);
+        const isProcessableVideo = assetType === 'video' && result.storageType === 'r2';
+
         // Persist to media library
         const [asset] = await db.insert(mediaAssets).values({
             file_name: fileName,
             original_name: file.name,
-            file_url: result.url,
             file_path: result.path,
             mime_type: result.mimeType,
             file_size: result.fileSize,
             storage_type: result.storageType,
-            asset_type: getAssetType(result.mimeType),
+            asset_type: assetType,
             uploaded_by: uploadedBy || undefined,
             folder: folderHint,
+            processing_status: isProcessableVideo ? 'pending' : 'completed',
         } as any).returning();
+
+        // 5. Trigger Transcoding Queue if needed
+        if (isProcessableVideo) {
+            try {
+                const { queueService } = await import('@/lib/services/queue-service');
+                await queueService.enqueueVideo({
+                    assetId: asset.id,
+                    filePath: result.path,
+                    folder: folderHint || 'library',
+                    timestamp: Date.now()
+                });
+            } catch (qError) {
+                console.error('[Upload] Failed to enqueue transcoding task:', qError);
+                // System remains functional, but video will stay in 'pending'
+            }
+        }
 
         return NextResponse.json({
             url: result.url,
             path: result.path,
             assetId: asset.id,
             storageType: result.storageType,
+            processingStatus: asset.processing_status,
         });
     } catch (error: any) {
         console.error('[Upload] CRITICAL ERROR:', {

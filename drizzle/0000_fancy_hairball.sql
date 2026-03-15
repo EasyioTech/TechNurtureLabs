@@ -215,7 +215,8 @@ CREATE TABLE "lesson_progress" (
 	"slides_viewed_array" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"xp_earned" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "lp_progress_pct_range" CHECK ("lesson_progress"."progress_pct" >= 0 AND "lesson_progress"."progress_pct" <= 100)
 );
 --> statement-breakpoint
 CREATE TABLE "lesson_sessions" (
@@ -385,6 +386,16 @@ CREATE TABLE "promo_codes" (
 	CONSTRAINT "promo_codes_code_unique" UNIQUE("code")
 );
 --> statement-breakpoint
+CREATE TABLE "quiz_attempt_answers" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"attempt_id" uuid NOT NULL,
+	"question_id" uuid NOT NULL,
+	"option_id" uuid,
+	"text_answer" text,
+	"is_correct" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "quiz_attempts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -394,11 +405,19 @@ CREATE TABLE "quiz_attempts" (
 	"score" numeric(5, 2) DEFAULT '0' NOT NULL,
 	"max_score" numeric(5, 2) NOT NULL,
 	"passed" boolean DEFAULT false NOT NULL,
-	"answers" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"completed_at" timestamp with time zone,
 	"time_taken_secs" integer,
 	"xp_earned" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "quiz_options" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"question_id" uuid NOT NULL,
+	"option_text" text NOT NULL,
+	"is_correct" boolean DEFAULT false NOT NULL,
+	"sequence_order" integer NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -407,8 +426,6 @@ CREATE TABLE "quiz_questions" (
 	"quiz_id" uuid NOT NULL,
 	"question_text" text NOT NULL,
 	"question_type" "question_type" NOT NULL,
-	"options" jsonb DEFAULT '[]'::jsonb NOT NULL,
-	"correct_answer" jsonb NOT NULL,
 	"explanation" text,
 	"points" integer DEFAULT 1 NOT NULL,
 	"time_limit_secs" integer,
@@ -658,9 +675,13 @@ ALTER TABLE "lessons" ADD CONSTRAINT "lessons_course_id_courses_id_fk" FOREIGN K
 ALTER TABLE "payment_transactions" ADD CONSTRAINT "payment_transactions_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payment_transactions" ADD CONSTRAINT "payment_transactions_subscription_id_school_subscriptions_id_fk" FOREIGN KEY ("subscription_id") REFERENCES "public"."school_subscriptions"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payment_transactions" ADD CONSTRAINT "payment_transactions_promo_code_id_promo_codes_id_fk" FOREIGN KEY ("promo_code_id") REFERENCES "public"."promo_codes"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "quiz_attempt_answers" ADD CONSTRAINT "quiz_attempt_answers_attempt_id_quiz_attempts_id_fk" FOREIGN KEY ("attempt_id") REFERENCES "public"."quiz_attempts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "quiz_attempt_answers" ADD CONSTRAINT "quiz_attempt_answers_question_id_quiz_questions_id_fk" FOREIGN KEY ("question_id") REFERENCES "public"."quiz_questions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "quiz_attempt_answers" ADD CONSTRAINT "quiz_attempt_answers_option_id_quiz_options_id_fk" FOREIGN KEY ("option_id") REFERENCES "public"."quiz_options"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quiz_attempts" ADD CONSTRAINT "quiz_attempts_user_id_students_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."students"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quiz_attempts" ADD CONSTRAINT "quiz_attempts_quiz_id_quizzes_id_fk" FOREIGN KEY ("quiz_id") REFERENCES "public"."quizzes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quiz_attempts" ADD CONSTRAINT "quiz_attempts_enrollment_id_enrollments_id_fk" FOREIGN KEY ("enrollment_id") REFERENCES "public"."enrollments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "quiz_options" ADD CONSTRAINT "quiz_options_question_id_quiz_questions_id_fk" FOREIGN KEY ("question_id") REFERENCES "public"."quiz_questions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quiz_questions" ADD CONSTRAINT "quiz_questions_quiz_id_quizzes_id_fk" FOREIGN KEY ("quiz_id") REFERENCES "public"."quizzes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quizzes" ADD CONSTRAINT "quizzes_lesson_id_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."lessons"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quizzes" ADD CONSTRAINT "quizzes_course_id_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."courses"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -725,7 +746,10 @@ CREATE INDEX "idx_prt_user" ON "password_reset_tokens" USING btree ("user_id");-
 CREATE INDEX "idx_prt_expires" ON "password_reset_tokens" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "idx_transactions_school" ON "payment_transactions" USING btree ("school_id");--> statement-breakpoint
 CREATE INDEX "idx_transactions_status" ON "payment_transactions" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "idx_qa_answers_attempt" ON "quiz_attempt_answers" USING btree ("attempt_id");--> statement-breakpoint
 CREATE INDEX "idx_qattempts_user" ON "quiz_attempts" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "idx_quiz_options_question" ON "quiz_options" USING btree ("question_id");--> statement-breakpoint
+CREATE INDEX "idx_quiz_questions_quiz" ON "quiz_questions" USING btree ("quiz_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "uq_school_admins_email" ON "school_admins" USING btree ("email") WHERE deleted_at IS NULL;--> statement-breakpoint
 CREATE INDEX "idx_school_admins_school" ON "school_admins" USING btree ("school_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "uq_school_class" ON "school_class_mapping" USING btree ("school_id","class_id") WHERE deleted_at IS NULL;--> statement-breakpoint

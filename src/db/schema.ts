@@ -1,7 +1,7 @@
 import {
     pgTable, pgEnum,
     text, timestamp, boolean, integer, bigint, numeric, jsonb, uuid, date, inet,
-    uniqueIndex, index,
+    uniqueIndex, index, check
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
@@ -343,6 +343,7 @@ export const lessons = pgTable('lessons', {
     description: text('description'),
     content_type: lessonContentTypeEnum('content_type').notNull(),
     content_url: text('content_url'),
+    asset_id: uuid('asset_id').references(() => mediaAssets.id, { onDelete: 'set null' }),
     sequence_order: integer('sequence_order').notNull(),
     duration_minutes: integer('duration_minutes'),
     xp_reward: integer('xp_reward').notNull().default(10),
@@ -381,8 +382,6 @@ export const quizQuestions = pgTable('quiz_questions', {
     quiz_id: uuid('quiz_id').notNull().references(() => quizzes.id, { onDelete: 'cascade' }),
     question_text: text('question_text').notNull(),
     question_type: questionTypeEnum('question_type').notNull(),
-    options: jsonb('options').notNull().default([]),
-    correct_answer: jsonb('correct_answer').notNull(),
     explanation: text('explanation'),
     points: integer('points').notNull().default(1),
     time_limit_secs: integer('time_limit_secs'),
@@ -392,6 +391,18 @@ export const quizQuestions = pgTable('quiz_questions', {
 }, (table) => [
     // INTEGRATED CONSTRAINT: uniqueIndex replaced by DEFERRABLE UNIQUE constraint in base schema
     // to allow reorder transactions without temporary violations. (uq_quiz_question_sequence)
+    index('idx_quiz_questions_quiz').on(table.quiz_id),
+]);
+
+export const quizOptions = pgTable('quiz_options', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    question_id: uuid('question_id').notNull().references(() => quizQuestions.id, { onDelete: 'cascade' }),
+    option_text: text('option_text').notNull(),
+    is_correct: boolean('is_correct').notNull().default(false),
+    sequence_order: integer('sequence_order').notNull(),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+    index('idx_quiz_options_question').on(table.question_id),
 ]);
 
 // ============================================================================
@@ -451,6 +462,8 @@ export const lessonProgress = pgTable('lesson_progress', {
     index('idx_lp_session').on(table.session_id),
     index('idx_lp_school').on(table.school_id),
     index('idx_lp_content_watched').on(table.content_watched),
+    // High-Integrity Completion Logic: Database enforces valid percentage ranges
+    check('lp_progress_pct_range', sql`${table.progress_pct} >= 0 AND ${table.progress_pct} <= 100`)
 ]);
 
 export const lessonSessions = pgTable('lesson_sessions', {
@@ -508,7 +521,6 @@ export const quizAttempts = pgTable('quiz_attempts', {
     score: numeric('score', { precision: 5, scale: 2 }).notNull().default('0'),
     max_score: numeric('max_score', { precision: 5, scale: 2 }).notNull(),
     passed: boolean('passed').notNull().default(false),
-    answers: jsonb('answers').notNull().default([]),
     started_at: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     completed_at: timestamp('completed_at', { withTimezone: true }),
     time_taken_secs: integer('time_taken_secs'),
@@ -516,6 +528,18 @@ export const quizAttempts = pgTable('quiz_attempts', {
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
     index('idx_qattempts_user').on(table.user_id),
+]);
+
+export const quizAttemptAnswers = pgTable('quiz_attempt_answers', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    attempt_id: uuid('attempt_id').notNull().references(() => quizAttempts.id, { onDelete: 'cascade' }),
+    question_id: uuid('question_id').notNull().references(() => quizQuestions.id, { onDelete: 'cascade' }),
+    option_id: uuid('option_id').references(() => quizOptions.id, { onDelete: 'set null' }),
+    text_answer: text('text_answer'),
+    is_correct: boolean('is_correct').notNull().default(false),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+    index('idx_qa_answers_attempt').on(table.attempt_id),
 ]);
 
 export const lessonSubmissions = pgTable('lesson_submissions', {
@@ -733,7 +757,7 @@ export const mediaAssets = pgTable('media_assets', {
     // ISSUE 19 TODO: Remove file_url in a future migration once all API serializers compute
     // the URL at runtime from file_path + storage_type (avoids CDN domain coupling).
     // Until then, keep it to avoid breaking existing integrations.
-    file_url: text('file_url').notNull(),            // Public URL (R2 or /api/media/...)
+    file_url: text('file_url'),            // Public URL (R2 or /api/media/...) - DEPRECATED: use computeMediaUrl instead
     file_path: text('file_path').notNull(),          // Storage key (R2) or relative local path
     mime_type: text('mime_type').notNull(),
     file_size: bigint('file_size', { mode: 'number' }).notNull().default(0),
@@ -741,6 +765,8 @@ export const mediaAssets = pgTable('media_assets', {
     asset_type: assetTypeEnum('asset_type').notNull().default('document'),
     uploaded_by: uuid('uploaded_by'), // Polymorphic - students, school_admins, or super_admins
     folder: text('folder'), // course, lesson, settings, etc
+    processing_status: text('processing_status').notNull().default('completed'), // 'pending', 'processing', 'completed', 'failed'
+    error_message: text('error_message'),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
     index('idx_media_asset_type').on(table.asset_type),
@@ -869,6 +895,7 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
 export const lessonsRelations = relations(lessons, ({ one, many }) => ({
     course: one(courses, { fields: [lessons.course_id], references: [courses.id] }),
     quiz: one(quizzes, { fields: [lessons.id], references: [quizzes.lesson_id] }),
+    asset: one(mediaAssets, { fields: [lessons.asset_id], references: [mediaAssets.id] }),
     progress: many(lessonProgress),
     submissions: many(lessonSubmissions),
     sessions: many(lessonSessions),
@@ -950,14 +977,26 @@ export const quizzesRelations = relations(quizzes, ({ one, many }) => ({
     attempts: many(quizAttempts),
 }));
 
-export const quizQuestionsRelations = relations(quizQuestions, ({ one }) => ({
+export const quizQuestionsRelations = relations(quizQuestions, ({ one, many }) => ({
     quiz: one(quizzes, { fields: [quizQuestions.quiz_id], references: [quizzes.id] }),
+    options: many(quizOptions),
 }));
 
-export const quizAttemptsRelations = relations(quizAttempts, ({ one }) => ({
+export const quizOptionsRelations = relations(quizOptions, ({ one }) => ({
+    question: one(quizQuestions, { fields: [quizOptions.question_id], references: [quizQuestions.id] }),
+}));
+
+export const quizAttemptsRelations = relations(quizAttempts, ({ one, many }) => ({
     student: one(students, { fields: [quizAttempts.user_id], references: [students.id] }),
     quiz: one(quizzes, { fields: [quizAttempts.quiz_id], references: [quizzes.id] }),
     enrollment: one(enrollments, { fields: [quizAttempts.enrollment_id], references: [enrollments.id] }),
+    answers: many(quizAttemptAnswers),
+}));
+
+export const quizAttemptAnswersRelations = relations(quizAttemptAnswers, ({ one }) => ({
+    attempt: one(quizAttempts, { fields: [quizAttemptAnswers.attempt_id], references: [quizAttempts.id] }),
+    question: one(quizQuestions, { fields: [quizAttemptAnswers.question_id], references: [quizQuestions.id] }),
+    option: one(quizOptions, { fields: [quizAttemptAnswers.option_id], references: [quizOptions.id] }),
 }));
 
 export const schoolClassMappingRelations = relations(schoolClassMapping, ({ one }) => ({

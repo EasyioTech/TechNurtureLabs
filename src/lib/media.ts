@@ -15,21 +15,70 @@
  *                      and remove it from the schema.
  */
 
+import crypto from 'crypto';
+
 export function computeMediaUrl(asset: {
     storage_type: string;
     file_path: string;
-    file_url?: string;  // kept during Phase 1 transition; remove in Phase 2
-}): string {
+    file_url?: string | null;
+}, variant: 'original' | 'hls' = 'original'): string {
+    let path = asset.file_path;
+
+    // 1. Detect Video & HLS Variant
+    const isVideo = path.toLowerCase().match(/\.(mp4|mov|avi|mkv)$/);
+    if (variant === 'hls' && isVideo) {
+        // Convention: "video1.mp4" -> "video1/master.m3u8"
+        path = path.replace(/\.[^/.]+$/, "") + '/master.m3u8';
+    }
+
+    let finalUrl = '';
+
+    // 2. Compute Base URL
     if (asset.storage_type === 'r2') {
-        const base = process.env.R2_PUBLIC_URL ?? process.env.NEXT_PUBLIC_R2_URL;
-        if (base) {
-            return `${base.replace(/\/$/, '')}/${asset.file_path}`;
+        const workerUrl = process.env.CLOUDFLARE_WORKER_URL;
+        const publicDomain = process.env.CLOUDFLARE_PUBLIC_DOMAIN;
+        
+        if (workerUrl && isVideo) {
+            // High-performance HLS Gateway
+            const base = workerUrl.startsWith('http') ? workerUrl : `https://${workerUrl}`;
+            finalUrl = `${base.replace(/\/$/, '')}/${path}`;
+        } else if (publicDomain) {
+            // Direct Public Domain access
+            const base = publicDomain.startsWith('http') ? publicDomain : `https://${publicDomain}`;
+            finalUrl = `${base.replace(/\/$/, '')}/${path}`;
+        } else {
+            const r2Base = process.env.R2_PUBLIC_URL ?? process.env.NEXT_PUBLIC_R2_URL;
+            if (r2Base) {
+                finalUrl = `${r2Base.replace(/\/$/, '')}/${path}`;
+            }
         }
     }
 
-    // Local storage: serve via the media API route
-    const apiBase = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? '';
-    return `${apiBase.replace(/\/$/, '')}/api/media/${asset.file_path}`;
+    // 3. Fallback to Local
+    if (!finalUrl) {
+        const apiBase = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+        finalUrl = `${apiBase.replace(/\/$/, '')}/api/media/${path}`;
+    }
+
+    // 4. Security: Add temporary access token (sign the path or prefix)
+    const mediaSecret = process.env.MEDIA_SECRET;
+    if (mediaSecret && (asset.storage_type === 'r2' || isVideo)) {
+        // For HLS, we sign the parent directory so segments (.ts) are also authorized
+        const signTarget = (variant === 'hls' || path.endsWith('.m3u8') || path.endsWith('.ts'))
+            ? path.split('/').slice(0, -1).join('/') // Sign the folder
+            : path; // Sign the file
+
+        const hash = crypto
+            .createHmac('sha256', mediaSecret)
+            .update(signTarget)
+            .digest('hex')
+            .slice(0, 16);
+        
+        const connector = finalUrl.includes('?') ? '&' : '?';
+        return `${finalUrl}${connector}token=${hash}`;
+    }
+
+    return finalUrl;
 }
 
 /**
@@ -39,5 +88,5 @@ export function computeMediaUrl(asset: {
 export type MediaAssetForUrl = {
     storage_type: string;
     file_path: string;
-    file_url?: string;
+    file_url?: string | null;
 };

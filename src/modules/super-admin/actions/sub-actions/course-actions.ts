@@ -63,6 +63,8 @@ export async function updateCourseTotals(courseId: string) {
     await redis.del('cache:admin:meta');
 }
 
+import { analyticsService } from '@/lib/services/analytics-service';
+
 export async function saveCourseAdmin(courseData: any) {
     const session = await verifySession();
     if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
@@ -71,6 +73,7 @@ export async function saveCourseAdmin(courseData: any) {
     const slug = courseData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
     let courseId = courseData.id;
+    let isNew = false;
 
     if (courseId) {
         await db.update(courses).set({
@@ -98,6 +101,7 @@ export async function saveCourseAdmin(courseData: any) {
             total_xp: 0,
         } as any).returning();
         courseId = created.id;
+        isNew = true;
     }
 
     if (courseData.classIds && Array.isArray(courseData.classIds)) {
@@ -114,6 +118,10 @@ export async function saveCourseAdmin(courseData: any) {
 
     await updateCourseTotals(courseId);
     
+    if (isNew) {
+        analyticsService.incrementMetric('total_courses').catch(() => {});
+    }
+
     const updatedCourse = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
     return { ...updatedCourse, thumbnail: updatedCourse?.thumbnail_url, published: updatedCourse?.is_published };
 }
@@ -127,6 +135,7 @@ export async function deleteCourseAdmin(id: string) {
     await db.delete(courses).where(eq(courses.id, id));
     
     if (session && course) {
+        analyticsService.decrementMetric('total_courses').catch(() => {});
         await db.insert(auditLogs).values({
             user_id: session.userId,
             user_type: session.userType,

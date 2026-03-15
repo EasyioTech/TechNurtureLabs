@@ -34,11 +34,18 @@ export async function GET(request: NextRequest) {
             filters.push(eq(mediaAssets.folder, folder));
         }
 
+        const { computeMediaUrl } = await import('@/lib/media');
+
         const assets = await db.select().from(mediaAssets)
             .where(filters.length > 0 ? (filters.length > 1 ? and(...filters) : filters[0]) : undefined)
             .orderBy(desc(mediaAssets.created_at));
 
-        return NextResponse.json(assets);
+        const mapped = assets.map(asset => ({
+            ...asset,
+            file_url: computeMediaUrl(asset) // Dynamically compute
+        }));
+
+        return NextResponse.json(mapped);
     } catch (error) {
         console.error('[Media Library] GET error:', error);
         return NextResponse.json({ error: 'Failed to fetch media library' }, { status: 500 });

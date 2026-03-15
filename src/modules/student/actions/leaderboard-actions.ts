@@ -7,6 +7,8 @@ import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { redis } from '@/lib/redis';
 
+import { leaderboardService } from '@/lib/services/leaderboard-service';
+
 const LEADERBOARD_CACHE_TTL = 3600; // 1 hour for sync logic
 
 export async function getStudentLeaderboard(scope: 'school' | 'class') {
@@ -36,13 +38,26 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     }
 
     const schoolId = currentUser.school_id;
+    const finalScope = schoolId ? 'school' : 'global';
+
+    // 1. High-level Serialized Cache Check
+    const cachedLeaderboard = await leaderboardService.getCachedLeaderboard(finalScope, schoolId);
+    if (cachedLeaderboard) {
+        return {
+            scope: finalScope,
+            data: cachedLeaderboard,
+            title: schoolId ? 'Institution Leaderboard' : 'Global Leaderboard',
+            cached: true
+        };
+    }
+
     const cacheKey = schoolId ? `lb:school:${schoolId}` : `lb:global`;
 
-    // 1. Check if Redis has data for this scope
+    // 2. Fallback to Redis ZSET
     let topUserIdsWithScores: string[] = [];
     try {
-        const count = await redis.zcard(cacheKey);
-        if (count === 0) {
+        const countRes = await redis.zcard(cacheKey);
+        if (countRes === 0) {
             // Lazy sync: If Redis is empty, sync from DB
             const allInScope = await db.query.students.findMany({
                 where: and(
@@ -66,7 +81,9 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
         console.error("Redis leaderboard error:", err);
     }
 
-    // 2. Fetch metadata from SQL for the top IDs
+    let finalData = [];
+
+    // 3. Fetch metadata from SQL for the top IDs
     if (topUserIdsWithScores.length > 0) {
         const dbStudents = await db.query.students.findMany({
             where: and(
@@ -84,26 +101,29 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
             };
         }).sort((a, b) => b.cumulative_xp - a.cumulative_xp);
 
-        return {
-            scope: schoolId ? 'school' : 'global',
-            data: serializeLeaderboard(mapped, userId),
-            title: schoolId ? 'Institution Leaderboard' : 'Global Leaderboard'
-        };
+        finalData = serializeLeaderboard(mapped, userId);
+    } else {
+        // Fallback to legacy SQL if Redis fails
+        const fallbackStudents = await db.query.students.findMany({
+            where: and(
+                schoolId ? eq(students.school_id, schoolId) : undefined,
+                sql`${students.deleted_at} IS NULL`
+            ),
+            orderBy: [desc(students.cumulative_xp)],
+            limit: 50
+        });
+        finalData = serializeLeaderboard(fallbackStudents, userId);
     }
 
-    // Fallback to legacy SQL if Redis fails
-    const fallbackStudents = await db.query.students.findMany({
-        where: and(
-            schoolId ? eq(students.school_id, schoolId) : undefined,
-            sql`${students.deleted_at} IS NULL`
-        ),
-        orderBy: [desc(students.cumulative_xp)],
-        limit: 50
-    });
+    // 4. Update High-level Serialized Cache
+    if (finalData.length > 0) {
+        leaderboardService.setCachedLeaderboard(finalScope, finalData, schoolId).catch(() => {});
+    }
+
     return {
-        scope: schoolId ? 'school' : 'global',
-        data: serializeLeaderboard(fallbackStudents, userId),
-        title: schoolId ? 'Institution Leaderboard (SQL)' : 'Global Leaderboard'
+        scope: finalScope,
+        data: finalData,
+        title: schoolId ? 'Institution Leaderboard' : 'Global Leaderboard'
     };
 }
 

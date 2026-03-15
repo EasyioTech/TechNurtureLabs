@@ -4,13 +4,23 @@ import { schoolAdmins } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { rateLimitService } from '@/lib/services/rate-limit';
 
 export async function POST(request: NextRequest) {
     try {
         const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '127.0.0.1';
-        const { isRateLimited, response } = await checkRateLimit(`login-school:${ip}`, 10, 900);
-        if (isRateLimited) return response!;
+        const { allowed, reset } = await rateLimitService.check({
+            key: `login-school:${ip}`,
+            limit: 10,
+            windowSeconds: 900
+        });
+
+        if (!allowed) {
+            return NextResponse.json(
+                { error: 'Too many attempts. Please try again later.' },
+                { status: 429, headers: { 'Retry-After': reset.toString() } }
+            );
+        }
 
         const { email, password } = await request.json();
 

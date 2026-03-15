@@ -74,6 +74,8 @@ export async function fetchActivePaymentPlans() {
     }
 }
 
+import { analyticsService } from '@/lib/services/analytics-service';
+
 export async function registerStudent(formData: any) {
     try {
         if (!formData.email || !formData.password || !formData.full_name || !formData.school_id || (!formData.class_id && !formData.grade)) {
@@ -96,7 +98,7 @@ export async function registerStudent(formData: any) {
         const email = isEmail ? formData.email.toLowerCase().trim() : '';
         const phone = isEmail ? '' : formData.email.trim();
 
-        return await db.transaction(async (tx) => {
+        const result = await db.transaction(async (tx) => {
             // Check for existing student with this email (Platform-wide, non-deleted)
             const existingGlobally = await tx.query.students.findFirst({
                 where: and(
@@ -155,6 +157,11 @@ export async function registerStudent(formData: any) {
 
             return { success: true, user: newStudent };
         });
+
+        if (result.success) {
+            analyticsService.incrementMetric('total_students').catch(() => {});
+        }
+        return result;
     } catch (error: any) {
         console.error('Student registration error:', error);
         return { success: false, error: error.message || 'An unexpected error occurred.' };
@@ -237,9 +244,14 @@ export async function registerSchool(formData: any) {
             return { success: true, school: newSchool };
         });
 
+        if (result.success) {
+            analyticsService.incrementMetric('total_schools').catch(() => {});
+        }
+
         if (formData.plan_id && result?.school?.id) {
             try {
                 await assignPlanToSchool(result.school.id, formData.plan_id, 12, formData.promo_code_id);
+                analyticsService.incrementMetric('total_subscriptions').catch(() => {});
             } catch (err) {
                 console.error("Plan assignment failed during registration:", err);
             }

@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { analyticsService } from '@/lib/services/analytics-service';
 import { 
     students, schoolAdmins, superAdmins, courses, lessons, 
     lessonProgress, enrollments, quizAttempts, academicSessions, 
@@ -92,6 +93,7 @@ export async function ensureEnrollment(userId: string, courseId: string) {
         return reactivated;
     }
 
+
     const [newEnrollment] = await db.insert(enrollments).values({
         user_id: userId,
         course_id: courseId,
@@ -103,6 +105,8 @@ export async function ensureEnrollment(userId: string, courseId: string) {
     if (role === 'student') {
         await invalidateStudentDashboardCache(userId);
     }
+    
+    analyticsService.incrementMetric('total_enrollments').catch(() => {});
 
     return newEnrollment;
 }

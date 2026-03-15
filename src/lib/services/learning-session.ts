@@ -108,6 +108,8 @@ export async function initLessonSession(context: SessionContext) {
     return newSession;
 }
 
+const DB_SYNC_INTERVAL_MS = 300000; // 5 minutes: Enterprise scale persistence interval
+
 /**
  * Validates and processes a learning heartbeat.
  * Implements: Nonce check, Playback speed validation, Temporal jump protection, 
@@ -154,42 +156,41 @@ export async function processHeartbeat(token: string, payload: {
     }
 
     // 5. Verified Increment Calculation
-    // Instead of REJECTING jumps (which resets the user's video - very annoying),
-    // we simply cap the awarded increment at the actual wall-clock elapsed time.
-    // If they skip forward 10 minutes, they only get 10-15 seconds of credit.
     const playbackDelta = payload.playbackTime - session.lastPlaybackTime;
     let increment = 0;
     
     if (payload.playerState === 'PLAYING') {
-        const wallClockMax = realElapsed * 1.5; // wall clock + 50% grace
+        const wallClockMax = realElapsed * 1.5; 
         
         if (playbackDelta > 0) {
-            // Forward movement: award smaller of (playback jump / speed) or wall clock
-            // This allows they to skip forward, but they don't get 'free' progress.
             increment = Math.min(playbackDelta / payload.playbackRate, wallClockMax);
         } else {
-            // Backward movement or same spot: zero increment, but don't punish
             increment = 0;
         }
     }
 
-    // 7. Sync Strategy: Flash to DB every heartbeat (15s) for high durability
-    // We run sync in background (fire and forget)
-    syncSessionToDb(token).catch(err => console.error("Session sync error:", err));
+    const newVerifiedSeconds = session.verifiedSeconds + increment;
+    const shouldSync = session.isFirstHeartbeat || (now - session.lastDbSync) > DB_SYNC_INTERVAL_MS;
 
-    // 8. Update Redis State
+    // 8. Update Redis State FIRST
     const updatedSession = {
         ...session,
         lastNonce: payload.nonce,
         lastPlaybackTime: payload.playbackTime,
         lastHeartbeatAt: now,
-        lastDbSync: now,
-        verifiedSeconds: session.verifiedSeconds + increment,
+        lastDbSync: shouldSync ? now : session.lastDbSync,
+        verifiedSeconds: newVerifiedSeconds,
         videoDuration: payload.videoDuration || session.videoDuration,
-        isFirstHeartbeat: false // Permission used
+        isFirstHeartbeat: false 
     };
 
     await redis.set(cacheKey, JSON.stringify(updatedSession), 'EX', 3600 * 4);
+
+    // 7. Sync Strategy: Only flash to DB periodically or on first hit
+    if (shouldSync) {
+        // Fire and forget, but logic inside syncSessionToDb now uses the values we just set in Redis
+        syncSessionToDb(token).catch(err => console.error("Session sync error:", err));
+    }
 
     // 8. Progress Counters & Observability
     // Record rejection metrics if they occurred (logic would be in the caller or logging)
