@@ -58,7 +58,88 @@ export function useUpload(options?: UploadOptions) {
             formData.append(key, value);
         });
 
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
+            // 🚀 LARGE FILE OPTIMIZATION
+            // If the file is > 50MB, use Presigned URL flow to avoid Next.js memory limits
+            if (file.size > 50 * 1024 * 1024) {
+                try {
+                    console.log('[Upload] Large file detected, switching to Direct R2 flow...');
+                    const presignRes = await fetch('/api/media/presign', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            fileName: file.name,
+                            fileType: file.type,
+                            folder: additionalData.folder || 'library'
+                        })
+                    });
+
+                    if (!presignRes.ok) throw new Error('Failed to generate secure upload gateway');
+                    const { uploadUrl, key, publicUrl } = await presignRes.json();
+
+                    // Perform direct XHR to R2
+                    const xhr = new XMLHttpRequest();
+                    xhrRef.current = xhr;
+
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable) {
+                            const pct = Math.round((e.loaded * 100) / e.total);
+                            setProgress(pct);
+                            uploadStore.updateTask(uploadId, { progress: pct });
+                        }
+                    });
+
+                    xhr.addEventListener('load', async () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            // 📝 Register with DB
+                            const regRes = await fetch('/api/media/register', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    fileName: file.name,
+                                    filePath: key,
+                                    fileSize: file.size,
+                                    mimeType: file.type,
+                                    folder: additionalData.folder || 'library'
+                                })
+                            });
+
+                            if (!regRes.ok) throw new Error('Failed to register asset in database');
+                            const regData = await regRes.json();
+
+                            const finalResult = {
+                                url: regData.url,
+                                path: key,
+                                assetId: regData.assetId,
+                                storageType: 'r2',
+                                fileSize: file.size,
+                                mimeType: file.type,
+                                processingStatus: regData.processingStatus
+                            };
+                            
+                            setResult(finalResult);
+                            setIsUploading(false);
+                            uploadStore.updateTask(uploadId, { isUploading: false, progress: 100 });
+                            options?.onSuccess?.(finalResult);
+                            resolve(finalResult);
+                        } else {
+                             const errorMessage = `Upload failed: ${xhr.statusText || 'Gateway Error'}`;
+                             setError(errorMessage);
+                             uploadStore.updateTask(uploadId, { isUploading: false, error: errorMessage });
+                             reject(new Error(errorMessage));
+                        }
+                    });
+
+                    xhr.open('PUT', uploadUrl);
+                    xhr.setRequestHeader('Content-Type', file.type);
+                    xhr.send(file);
+                    return;
+                } catch (err: any) {
+                    setError(err.message);
+                    setIsUploading(false);
+                    reject(err);
+                    return;
+                }
+            }
+
             const xhr = new XMLHttpRequest();
             xhrRef.current = xhr;
 

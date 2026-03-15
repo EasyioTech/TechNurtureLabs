@@ -46,7 +46,13 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
         if (response.ok) {
           const data = await response.json();
           setSessionToken(data.sessionToken);
-          setSource(`/api/video/stream/${lessonId}?token=${data.sessionToken}`);
+          // 🚀 FIX: Use the 'src' prop from the lesson which should be HLS or high-performance URL
+          // If 'src' is missing, fallback to the proxy.
+          if (src && !src.includes('undefined')) {
+            setSource(src);
+          } else {
+            setSource(`/api/video/stream/${lessonId}?token=${data.sessionToken}`);
+          }
         }
       } catch (err) {
         console.error('Video Error:', err);
@@ -142,6 +148,7 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
             className="w-full h-full"
             playsInline
             crossOrigin
+            key={source} // Force re-mount on source change
           >
             <MediaProvider>
               {poster && <Poster src={poster} className="object-cover w-full h-full" />}

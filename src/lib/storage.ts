@@ -219,7 +219,7 @@ export async function uploadFile(
 
     // Security Guard: Check Size limits
     if (fileSize > MAX_FILE_SIZE) {
-        throw new Error(`File size validation failed: EXCEEDS 500 MB.`);
+        throw new Error(`File size validation failed: EXCEEDS 2 GB.`);
     }
 
     // Security Guard: Soft Magic checking

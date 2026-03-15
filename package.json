@@ -13,7 +13,8 @@
         "db:seed": "npx tsx scripts/seed.ts",
         "db:studio": "drizzle-kit studio",
         "setup": "npm run infra:up && npm run db:push && npm run db:seed",
-        "worker:video": "npx tsx scripts/video-worker.ts"
+        "worker:video": "npx tsx scripts/video-worker.ts",
+        "worker:events": "npx tsx scripts/event-worker.ts"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.995.0",

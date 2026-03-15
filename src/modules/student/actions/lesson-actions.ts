@@ -215,8 +215,39 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
         await handleStudentEngagement(userId);
     }
 
-    // Secondary triggers
+    // 🚀 EVENT-DRIVEN SECONDARY TRIGGERS
+    // We emit events to Redis. The EventWorker handles the heavy lifting (achievements, streaks, challenges).
     try {
+        const { eventService } = await import('@/lib/services/event-service');
+        
+        // 1. Core Completion Event
+        await eventService.emit('student.lesson_completed', {
+            userId,
+            schoolId: existingUser.school_id || undefined,
+            courseId: lesson.course_id,
+            lessonId: lessonId,
+            amount: xpToAdd,
+            timestamp: Date.now()
+        });
+
+        // 2. XP Gain Event (triggers level checks & xp challenges)
+        await eventService.emit('student.xp_gained', {
+            userId,
+            schoolId: existingUser.school_id || undefined,
+            amount: xpToAdd,
+            timestamp: Date.now()
+        });
+
+        // 3. Perfect Quiz Event if applicable
+        if (quizScore !== undefined && isPerfect) {
+            await eventService.emit('student.quiz_perfect', {
+                userId,
+                schoolId: existingUser.school_id || undefined,
+                timestamp: Date.now()
+            });
+        }
+
+        // 4. Maintenance / Metadata
         await db.insert(auditLogs).values({
             user_id: userId,
             school_id: existingUser.school_id,
@@ -226,17 +257,10 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
             new_values: { lesson_title: lesson.title, xp_earned: xpToAdd }
         } as any);
 
-        const { checkAndAwardAchievements } = await import('./achievement-actions');
-        await checkAndAwardAchievements();
-
-        const { updateDailyChallengeProgress } = await import('./challenge-actions');
-        await updateDailyChallengeProgress(userId, 'quiz_complete', xpToAdd);
-        await updateDailyChallengeProgress(userId, 'xp_gain', xpToAdd);
-
         await redis.del(`cache:student:${userId}:course:${lesson.course_id}`);
         await invalidateStudentDashboardCache(userId);
     } catch (e) {
-        console.error('Failed to process post-completion triggers:', e);
+        console.error('Failed to dispatch platform events:', e);
     }
 
     return { success: true };

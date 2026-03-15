@@ -193,6 +193,10 @@ export async function isAchievementCheckNeeded(userId: string): Promise<boolean>
     return dirty === '1';
 }
 
+export async function markAchievementCheckNeeded(userId: string) {
+    await redis.setex(`user:${userId}:achievements_dirty`, 3600, '1');
+}
+
 export async function clearAchievementDirtyBit(userId: string) {
     await redis.del(`user:${userId}:achievements_dirty`);
 }

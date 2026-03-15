@@ -10,10 +10,7 @@ import { redis } from '@/lib/redis';
  * Streaming Proxy: Verifies lesson sessions before piping the R2 stream directly.
  * Native support for Range requests (Partial Content) to ensure smooth playback and seeking.
  */
-export async function GET(
-    req: NextRequest,
-    context: { params: Promise<{ lessonId: string }> }
-) {
+async function handleStream(req: NextRequest, context: { params: Promise<{ lessonId: string }> }, method: 'GET' | 'HEAD') {
     try {
         const { lessonId } = await context.params;
         const searchParams = req.nextUrl.searchParams;
@@ -23,13 +20,13 @@ export async function GET(
             return new NextResponse('Missing session token', { status: 401 });
         }
 
-        // 1. Authenticate the User (Student)
+        // 1. Authenticate the User
         const userSession = await verifySession();
-        if (!userSession || userSession.role !== 'student') {
+        if (!userSession) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
 
-        // 2. Validate the Lesson Session (from Redis for speed)
+        // 2. Validate the Learning Session
         const sessionData = await redis.get(`learning:session:${token}`);
         if (!sessionData) {
             return new NextResponse('Invalid or expired learning session', { status: 403 });
@@ -54,42 +51,42 @@ export async function GET(
         // Remove local proxy prefix if present
         if (key.includes('/api/media/r2/')) {
             key = key.split('/api/media/r2/')[1];
-        }
-
-        // Strip any leading slashes
-        if (key.startsWith('/')) {
-            key = key.slice(1);
-        }
-
-        // If it was a full URL but didn't have the proxy prefix, handle it
-        if (key.startsWith('http')) {
+        } else if (key.startsWith('http')) {
             try {
                 const url = new URL(key);
                 key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
-            } catch (e) {
-                // Not a valid URL, use as is
-            }
+            } catch (e) {}
         }
 
-        // 4. Pipe the R2 stream to the client with Range support
+        // 4. Pipe the R2 stream / Get Metadata
         const range = req.headers.get('range');
+        
+        // Use HeadObjectCommand for HEAD requests to save bandwidth and prevent body errors
+        if (method === 'HEAD') {
+            const { getSignedDownloadUrl } = await import('@/lib/storage');
+            const headUrl = await getSignedDownloadUrl(key, 60, 'HEAD');
+            const headRes = await fetch(headUrl, { method: 'HEAD' });
+            
+            return new Response(null, {
+                status: headRes.status,
+                headers: headRes.headers
+            });
+        }
+
         const { body, contentType, contentLength, contentRange, acceptRanges } = await getObjectStream(key, range || undefined);
 
         if (!body) {
             return new NextResponse('Empty stream', { status: 404 });
         }
 
-        // Forward appropriate headers for partial content
+        // Forward appropriate headers
         const resHeaders = new Headers();
         if (contentType) resHeaders.set('Content-Type', contentType);
         if (contentLength) resHeaders.set('Content-Length', contentLength.toString());
         if (contentRange) resHeaders.set('Content-Range', contentRange);
         if (acceptRanges) resHeaders.set('Accept-Ranges', acceptRanges);
         
-        // Performance & Stream Stability Headers
         resHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-        resHeaders.set('Pragma', 'no-cache');
-        resHeaders.set('Expires', '0');
         resHeaders.set('Connection', 'keep-alive');
 
         return new Response(body as any, {
@@ -98,7 +95,15 @@ export async function GET(
         });
         
     } catch (error: any) {
-        console.error('[Video Stream Proxy Error]:', error);
+        console.error(`[Video Stream ${method} Error]:`, error);
         return new NextResponse('Internal Server Error', { status: 500 });
     }
+}
+
+export async function GET(req: NextRequest, context: { params: Promise<{ lessonId: string }> }) {
+    return handleStream(req, context, 'GET');
+}
+
+export async function HEAD(req: NextRequest, context: { params: Promise<{ lessonId: string }> }) {
+    return handleStream(req, context, 'HEAD');
 }
