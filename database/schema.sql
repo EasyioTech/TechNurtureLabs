@@ -262,7 +262,8 @@ CREATE TABLE "lessons" (
 	"is_published" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"deleted_at" timestamp with time zone
+	"deleted_at" timestamp with time zone,
+	"asset_id" uuid REFERENCES "media_assets"("id")
 );
 
 CREATE TABLE "login_attempts" (
@@ -289,6 +290,9 @@ CREATE TABLE "media_assets" (
 	"asset_type" "asset_type" DEFAULT 'document' NOT NULL,
 	"uploaded_by" uuid,
 	"folder" text,
+	"processing_status" text DEFAULT 'pending' NOT NULL,
+	"error_message" text,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
