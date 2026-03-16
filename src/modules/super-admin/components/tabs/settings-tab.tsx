@@ -16,7 +16,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Slider } from '@/components/ui/slider';
 import { fetchAllClasses, createClass, deleteClass, ensureDefaultClasses, syncPlatformMetrics } from '@/modules/super-admin/actions';
 
-export const SettingsTab = forwardRef<any, any>((props, ref) => {
+export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref) {
     const { isDark, accent } = useAdminTheme();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);

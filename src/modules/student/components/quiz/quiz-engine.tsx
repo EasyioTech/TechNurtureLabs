@@ -4,17 +4,21 @@ import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, ShieldAlert, Timer, Trophy, Star, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, Timer, Trophy, Star, ArrowLeft, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { QuizData } from '@/modules/student/types';
+import { submitQuizAttempt } from '@/modules/student/actions';
+import { toast } from 'sonner';
 
 // ─── Quiz Results Sub-component ───
-export function QuizResults({ score, total, percentage, xp, onComplete }: {
+export function QuizResults({ score, total, percentage, xp, feedback, feedbackData, onComplete }: {
   score: number;
   total: number;
   percentage: number;
   xp: number;
+  feedback?: string;
+  feedbackData?: any[];
   onComplete?: () => void;
 }) {
   const passed = percentage >= 60;
@@ -92,9 +96,11 @@ export function QuizEngine({ quizData, lessonXp, lessonComplete, onComplete }: {
 }) {
   const [isStarted, setIsStarted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [responses, setResponses] = useState<Record<string, string>>({});
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [quizFinished, setQuizFinished] = useState(false);
-  const [score, setScore] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverResults, setServerResults] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [strikes, setStrikes] = useState(0);
   const [securityWarning, setSecurityWarning] = useState<string | null>(null);
@@ -222,50 +228,67 @@ export function QuizEngine({ quizData, lessonXp, lessonComplete, onComplete }: {
   const handleTimeout = () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(c => c + 1);
-      setSelectedAnswer(null);
+      setSelectedOptionId(null);
     } else {
       finishQuiz();
     }
   };
 
-  const finishQuiz = () => {
-    setQuizFinished(true);
-    const finalPct = Math.round((score / totalPoints) * 100);
-    onComplete(finalPct, score === totalPoints);
+  const finishQuiz = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    
+    try {
+      const res = await submitQuizAttempt(quizData.quiz.id, responses);
+      if (res.success) {
+        setServerResults(res);
+        setQuizFinished(true);
+        onComplete(res.percentage, res.score === res.total);
+      } else {
+        toast.error("Failed to submit assessment. Please try again.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "An error occurred during submission.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleSelect = (optionIndex: number) => {
-    if (selectedAnswer !== null) return;
-    setSelectedAnswer(optionIndex);
-
-    let correctIdx: number;
-    if (typeof question.correct_answer === 'number') {
-      correctIdx = question.correct_answer;
-    } else {
-      correctIdx = question.options.findIndex(o =>
-        o.toLowerCase().trim() === String(question.correct_answer).toLowerCase().trim()
-      );
-    }
-
-    const isCorrect = optionIndex === correctIdx;
-    const newScore = isCorrect ? score + (question.points || 1) : score;
-    if (isCorrect) setScore(newScore);
+  const handleSelect = (optionId: string) => {
+    if (selectedOptionId !== null) return;
+    setSelectedOptionId(optionId);
+    setResponses(prev => ({ ...prev, [question.id]: optionId }));
 
     setTimeout(() => {
       if (currentQuestion < questions.length - 1) {
         setCurrentQuestion(c => c + 1);
-        setSelectedAnswer(null);
+        setSelectedOptionId(null);
       } else {
-        setQuizFinished(true);
-        const pct = Math.round((newScore / totalPoints) * 100);
-        onComplete(pct, newScore === totalPoints);
+        finishQuiz();
       }
-    }, 1500);
+    }, 1000);
   };
 
   if (quizFinished || lessonComplete) {
-    const pct = Math.round((score / totalPoints) * 100);
-    return <QuizResults score={score} total={totalPoints} percentage={pct} xp={lessonXp} onComplete={finishQuiz} />;
+    if (lessonComplete && !serverResults) {
+        return (
+            <div className="text-center p-20">
+                <h2 className="text-2xl font-bold mb-4">Assessment Already Completed</h2>
+                <Link href="/student" className="text-indigo-600 font-bold uppercase tracking-widest text-xs">Return to Dashboard</Link>
+            </div>
+        );
+    }
+    const pct = serverResults?.percentage || 0;
+    return (
+        <QuizResults 
+            score={serverResults?.score || 0} 
+            total={serverResults?.total || 100} 
+            percentage={pct} 
+            xp={lessonXp} 
+            feedbackData={serverResults?.feedback}
+            onComplete={finishQuiz} 
+        />
+    );
   }
 
   return (
@@ -336,42 +359,38 @@ export function QuizEngine({ quizData, lessonXp, lessonComplete, onComplete }: {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4">
                 {question.options.map((option, i) => {
-                  const isSelected = selectedAnswer === i;
-                  const showResult = selectedAnswer !== null;
-                  const correctIdx = typeof question.correct_answer === 'number' ? question.correct_answer : question.options.findIndex(o => o.toLowerCase().trim() === String(question.correct_answer).toLowerCase().trim());
-                  const isCorrect = i === correctIdx;
+                  const isSelected = selectedOptionId === option.id;
+                  const showResult = selectedOptionId !== null;
 
                   return (
                     <button
-                      key={i}
-                      onClick={() => handleSelect(i)}
-                      disabled={selectedAnswer !== null}
+                      key={option.id}
+                      onClick={() => handleSelect(option.id)}
+                      disabled={selectedOptionId !== null || isSubmitting}
                       className={cn(
                         "w-full group relative p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl text-left border-2 transition-all duration-300 flex items-center gap-4 sm:gap-6",
-                        showResult && isCorrect ? "bg-emerald-50 border-emerald-500 text-emerald-900" :
-                        showResult && isSelected && !isCorrect ? "bg-rose-50 border-rose-500 text-rose-900" :
+                        isSelected ? "bg-indigo-50 border-indigo-500 text-indigo-900" :
                         "bg-slate-50/50 border-transparent hover:border-indigo-200 hover:bg-white text-slate-700"
                       )}
                     >
                       <span className={cn(
                         "w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center text-[10px] sm:text-xs font-black shrink-0 transition-all",
-                        showResult && isCorrect ? "bg-emerald-500 text-white" :
-                        showResult && isSelected && !isCorrect ? "bg-rose-500 text-white" :
+                        isSelected ? "bg-indigo-600 text-white" :
                         "bg-slate-900 text-white group-hover:bg-indigo-600"
                       )}>
                         {String.fromCharCode(65 + i)}
                       </span>
-                      <span className="text-[12px] sm:text-sm lg:text-base font-black uppercase tracking-tight font-outfit">{option}</span>
+                      <span className="text-[12px] sm:text-sm lg:text-base font-black uppercase tracking-tight font-outfit">{option.option_text}</span>
                     </button>
                   );
                 })}
               </div>
 
-              {selectedAnswer !== null && question.explanation && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-8 sm:mt-12 p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-indigo-50/30 border border-indigo-100">
-                    <p className="text-[8px] sm:text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2 font-outfit">Explanatory Rationale</p>
-                    <p className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wide leading-relaxed font-outfit">{question.explanation}</p>
-                </motion.div>
+              {isSubmitting && (
+                <div className="mt-8 flex items-center justify-center gap-4 text-slate-400">
+                    <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">Grading Assessment...</p>
+                </div>
               )}
           </CardContent>
       </Card>

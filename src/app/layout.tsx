@@ -8,13 +8,6 @@ import Script from "next/script";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { BackgroundUploadManager } from "@/components/shared/background-upload-manager";
 import { Toaster } from 'sonner';
-import { Playfair_Display } from 'next/font/google';
-
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  variable: '--font-playfair',
-});
-
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getPlatformSettings();
   return {
@@ -35,7 +28,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`antialiased font-sans ${playfair.variable}`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
+      </head>
+      <body className="antialiased font-sans">
         <Toaster position="top-center" expand={true} richColors closeButton />
         <AuthProvider>
           <ErrorReporter />

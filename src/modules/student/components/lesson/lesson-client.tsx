@@ -41,6 +41,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
   // If already complete, ensure all pages are unlocked on load
   useEffect(() => {
     if (lessonComplete && docTotal > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDocMax(docTotal);
     }
   }, [lessonComplete, docTotal]);

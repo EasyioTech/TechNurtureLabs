@@ -60,8 +60,8 @@ export function useUpload(options?: UploadOptions) {
 
         return new Promise(async (resolve, reject) => {
             // 🚀 LARGE FILE OPTIMIZATION
-            // If the file is > 50MB, use Presigned URL flow to avoid Next.js memory limits
-            if (file.size > 50 * 1024 * 1024) {
+            // If the file is > 50MB, use Presigned URL flow to avoid Next.js memory limits (unless local storage is preferred)
+            if (file.size > 50 * 1024 * 1024 && additionalData.storagePreference !== 'local') {
                 try {
                     console.log('[Upload] Large file detected, switching to Direct R2 flow...');
                     const presignRes = await fetch('/api/media/presign', {

@@ -510,6 +510,8 @@ export const courseProgress = pgTable('course_progress', {
     uniqueIndex('uq_user_course_enrollment').on(table.user_id, table.course_id, table.enrollment_id),
     index('idx_cp_session').on(table.session_id),
     index('idx_cp_school').on(table.school_id),
+    // High-Integrity Progress Tracking: Database enforces valid percentage ranges
+    check('cp_progress_pct_range', sql`${table.progress_pct} >= 0 AND ${table.progress_pct} <= 100`)
 ]);
 
 export const quizAttempts = pgTable('quiz_attempts', {
@@ -642,7 +644,10 @@ export const certificates = pgTable('certificates', {
     is_active: boolean('is_active').notNull().default(true),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+    check('cert_min_progress_range', sql`${table.min_progress_pct} >= 0 AND ${table.min_progress_pct} <= 100`),
+    check('cert_min_quiz_score_range', sql`${table.min_quiz_score} >= 0 AND ${table.min_quiz_score} <= 100`)
+]);
 
 export const userCertificates = pgTable('user_certificates', {
     id: uuid('id').defaultRandom().primaryKey(),

@@ -30,7 +30,8 @@ import {
     saveVideoProgress, 
     submitAssignment, 
     getSubmissionStatus,
-    updateTimeSpent
+    updateTimeSpent,
+    submitQuizAttempt
 } from './lesson-actions';
 
 import { 
@@ -74,6 +75,7 @@ export {
     submitAssignment,
     getSubmissionStatus,
     updateTimeSpent,
+    submitQuizAttempt,
 
     // Challenges
     getOrGenerateDailyChallenges,

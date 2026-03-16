@@ -58,15 +58,6 @@ export default function SchoolAdminCourseView() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  useEffect(() => {
-    const u = user as any;
-    if (u && u.role === 'school_admin' && u.school_id) {
-      if (courseId) fetchCourseData(u.school_id);
-    } else if (user) {
-      setLoading(false);
-    }
-  }, [courseId, user]);
-
   async function fetchCourseData(schoolId: string | null) {
     if (!schoolId) {
       setLoading(false);
@@ -115,12 +106,12 @@ export default function SchoolAdminCourseView() {
               lessons_completed: prog.completed,
               total_xp: s.total_xp || 0,
               avg_score: prog.scores.length > 0
-                ? Math.round(prog.scores.reduce((a, b) => a + b, 0) / prog.scores.length)
+                ? Math.round(prog.scores.reduce((a: number, b: number) => a + b, 0) / prog.scores.length)
                 : 0,
               last_activity: prog.lastActivity
             };
           })
-          .sort((a, b) => b.lessons_completed - a.lessons_completed);
+          .sort((a, b) => (b.lessons_completed || 0) - (a.lessons_completed || 0));
 
         setStudentProgress(studentProgressList);
 
@@ -143,6 +134,16 @@ export default function SchoolAdminCourseView() {
     }
     setLoading(false);
   }
+
+  useEffect(() => {
+    const u = user as any;
+    if (u && u.role === 'school_admin' && u.school_id) {
+      if (courseId) fetchCourseData(u.school_id);
+    } else if (user) {
+      setLoading(false);
+    }
+  }, [courseId, user]);
+
 
   const getLessonIcon = (type: string) => {
     switch (type) {

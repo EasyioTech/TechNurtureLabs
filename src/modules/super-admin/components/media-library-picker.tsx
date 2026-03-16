@@ -176,12 +176,12 @@ export function MediaLibraryPicker({
         const maxImageSize = 25 * 1024 * 1024; // 25MB for images
 
         if (isImage && file.size > maxImageSize) {
-            toast.error('Image too large. Maximum size is 5MB.');
+            toast.error('Image too large. Maximum size is 25MB.');
             return;
         }
 
         if (file.size > maxSize) {
-            toast.error('File too large. Maximum size is 25MB.');
+            toast.error('File too large. Maximum size is 2GB.');
             return;
         }
 

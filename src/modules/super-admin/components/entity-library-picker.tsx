@@ -35,12 +35,6 @@ export function EntityLibraryPicker({
     const [searchQuery, setSearchQuery] = useState('');
     const [cloningId, setCloningId] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (open) {
-            loadData();
-        }
-    }, [open, type]);
-
     async function loadData() {
         setLoading(true);
         try {
@@ -57,7 +51,16 @@ export function EntityLibraryPicker({
         setLoading(false);
     }
 
+    useEffect(() => {
+        if (open) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            loadData();
+        }
+    }, [open, type]);
+
+
     const filteredData = data.filter((item) =>
+
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.course_title?.toLowerCase().includes(searchQuery.toLowerCase())
     );

@@ -70,6 +70,61 @@ export async function getObjectStream(key: string, range?: string) {
 }
 
 /**
+ * Fetches an object from local storage as a stream.
+ * Pass range to support partial content (seeking).
+ */
+export async function getLocalObjectStream(key: string, rangeHeader?: string) {
+    const filePath = path.join(LOCAL_STORAGE_DIR, key);
+    if (!fs.existsSync(filePath)) {
+        throw new Error("File not found in local storage.");
+    }
+
+    const stats = await fs.promises.stat(filePath);
+    const fileSize = stats.size;
+    
+    // Determine mime type from extension
+    const ext = path.extname(key).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+        '.mp4': 'video/mp4',
+        '.webm': 'video/webm',
+        '.ogg': 'video/ogg',
+        '.mov': 'video/quicktime',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.pdf': 'application/pdf',
+    };
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+    if (rangeHeader) {
+        const parts = rangeHeader.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunksize = (end - start) + 1;
+        
+        const stream = fs.createReadStream(filePath, { start, end });
+        
+        return {
+            body: stream as any,
+            contentType,
+            contentLength: chunksize,
+            contentRange: `bytes ${start}-${end}/${fileSize}`,
+            acceptRanges: 'bytes'
+        };
+    } else {
+        const stream = fs.createReadStream(filePath);
+        return {
+            body: stream as any,
+            contentType,
+            contentLength: fileSize,
+            contentRange: undefined,
+            acceptRanges: 'bytes'
+        };
+    }
+}
+
+/**
  * Generates a short-lived signed URL for an R2 object.
  * Perfect for protected video streaming.
  */

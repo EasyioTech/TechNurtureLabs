@@ -114,9 +114,12 @@ export function AdminThemeProvider({ children }: { children: React.ReactNode }) 
         try {
             const savedTheme = localStorage.getItem(LS_THEME_KEY) as Theme | null;
             const savedColor = localStorage.getItem(LS_COLOR_KEY) as ColorScheme | null;
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             if (savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) setTheme(savedTheme);
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             if (savedColor && savedColor in COLOR_SCHEMES) setColorSchemeState(savedColor);
         } catch { }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setHydrated(true);
     }, []);
 

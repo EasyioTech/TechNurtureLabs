@@ -52,6 +52,7 @@ export function CourseBuilder({ courseId }: { courseId: string }) {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshLessons();
   }, [courseId]);
 

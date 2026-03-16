@@ -14,6 +14,7 @@ export default async function CourseDetailsPage({ params }: { params: Promise<{ 
 
     const { courseId } = await params;
     
+    let initialData;
     try {
         const data = await getCourseDetailsData(courseId);
         
@@ -21,15 +22,16 @@ export default async function CourseDetailsPage({ params }: { params: Promise<{ 
             notFound();
         }
 
-        const initialData = {
+        initialData = {
             course: data.course,
             lessons: data.lessons || [],
             enrolledCount: data.enrolledCount || 0
         };
-
-        return <CourseDetailsClient initialData={initialData} />;
     } catch (error) {
         console.error('Failed to fetch course details:', error);
         notFound();
     }
+
+    return <CourseDetailsClient initialData={initialData} />;
 }
+

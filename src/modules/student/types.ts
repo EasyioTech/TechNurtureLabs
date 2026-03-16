@@ -67,11 +67,11 @@ export type Question = {
     id: string;
     text: string;
     question_type: string;
-    options: string[];
-    correct_answer: any;
-    explanation: string;
+    options: { id: string; option_text: string; }[];
     points: number;
     time_limit_secs: number;
+    correct_answer?: any;
+    explanation?: string;
 };
 
 export type QuizData = {

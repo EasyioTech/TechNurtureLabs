@@ -51,6 +51,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setResetTime(calculateResetTime());
     const interval = setInterval(() => setResetTime(calculateResetTime()), 60000);
     return () => clearInterval(interval);

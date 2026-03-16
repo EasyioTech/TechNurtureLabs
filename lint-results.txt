@@ -1,0 +1,179 @@
+
+C:\Users\cristy's\TechNurtureLabs\eslint.config.mjs
+  3:1  warning  Assign array to a variable before exporting as module default  import/no-anonymous-default-export
+
+C:\Users\cristy's\TechNurtureLabs\src\app\school-admin\course\[courseId]\page.tsx
+  64:21  error  Error: Cannot access variable before it is declared
+
+`fetchCourseData` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\cristy's\TechNurtureLabs\src\app\school-admin\course\[courseId]\page.tsx:64:21
+  62 |     const u = user as any;
+  63 |     if (u && u.role === 'school_admin' && u.school_id) {
+> 64 |       if (courseId) fetchCourseData(u.school_id);
+     |                     ^^^^^^^^^^^^^^^ `fetchCourseData` accessed before it is declared
+  65 |     } else if (user) {
+  66 |       setLoading(false);
+  67 |     }
+
+C:\Users\cristy's\TechNurtureLabs\src\app\school-admin\course\[courseId]\page.tsx:70:3
+   68 |   }, [courseId, user]);
+   69 |
+>  70 |   async function fetchCourseData(schoolId: string | null) {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  71 |     if (!schoolId) {
+      | ^^^^^^^^^^^^^^^^^^^^
+>  72 |       setLoading(false);
+      …
+      | ^^^^^^^^^^^^^^^^^^^^
+> 144 |     setLoading(false);
+      | ^^^^^^^^^^^^^^^^^^^^
+> 145 |   }
+      | ^^^^ `fetchCourseData` is declared here
+  146 |
+  147 |   const getLessonIcon = (type: string) => {
+  148 |     switch (type) {  react-hooks/immutability
+
+C:\Users\cristy's\TechNurtureLabs\src\app\student\course\[courseId]\page.tsx
+  30:16  error  Error: Avoid constructing JSX within try/catch
+
+React does not immediately render components when JSX is rendered, so any errors from this component will not be caught by the try/catch. To catch errors in rendering a given component, wrap that component in an error boundary. (https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary).
+
+C:\Users\cristy's\TechNurtureLabs\src\app\student\course\[courseId]\page.tsx:30:16
+  28 |         };
+  29 |
+> 30 |         return <CourseDetailsClient initialData={initialData} />;
+     |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Avoid constructing JSX within try/catch
+  31 |     } catch (error) {
+  32 |         console.error('Failed to fetch course details:', error);
+  33 |         notFound();  react-hooks/error-boundaries
+
+C:\Users\cristy's\TechNurtureLabs\src\components\ui\sidebar.tsx
+  611:26  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\cristy's\TechNurtureLabs\src\components\ui\sidebar.tsx:611:26
+  609 |   // Random width between 50 to 90%.
+  610 |   const width = React.useMemo(() => {
+> 611 |     return `${Math.floor(Math.random() * 40) + 50}%`
+      |                          ^^^^^^^^^^^^^ Cannot call impure function
+  612 |   }, [])
+  613 |
+  614 |   return (  react-hooks/purity
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\student\components\dashboard\client-dashboard.tsx
+  54:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\student\components\dashboard\client-dashboard.tsx:54:5
+  52 |
+  53 |   useEffect(() => {
+> 54 |     setResetTime(calculateResetTime());
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  55 |     const interval = setInterval(() => setResetTime(calculateResetTime()), 60000);
+  56 |     return () => clearInterval(interval);
+  57 |   }, []);  react-hooks/set-state-in-effect
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\student\components\lesson\lesson-client.tsx
+  44:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\student\components\lesson\lesson-client.tsx:44:7
+  42 |   useEffect(() => {
+  43 |     if (lessonComplete && docTotal > 0) {
+> 44 |       setDocMax(docTotal);
+     |       ^^^^^^^^^ Avoid calling setState() directly within an effect
+  45 |     }
+  46 |   }, [lessonComplete, docTotal]);
+  47 |  react-hooks/set-state-in-effect
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\student\components\quiz\quiz-engine.tsx
+  194:18  error  'ArrowRight' is not defined  react/jsx-no-undef
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\super-admin\components\course-builder.tsx
+  55:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\super-admin\components\course-builder.tsx:55:5
+  53 |
+  54 |   useEffect(() => {
+> 55 |     refreshLessons();
+     |     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  56 |   }, [courseId]);
+  57 |
+  58 |   const handleImportLesson = async (lessonId: string) => {  react-hooks/set-state-in-effect
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\super-admin\components\entity-library-picker.tsx
+  40:13  error  Error: Cannot access variable before it is declared
+
+`loadData` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\super-admin\components\entity-library-picker.tsx:40:13
+  38 |     useEffect(() => {
+  39 |         if (open) {
+> 40 |             loadData();
+     |             ^^^^^^^^ `loadData` accessed before it is declared
+  41 |         }
+  42 |     }, [open, type]);
+  43 |
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\super-admin\components\entity-library-picker.tsx:44:5
+  42 |     }, [open, type]);
+  43 |
+> 44 |     async function loadData() {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 45 |         setLoading(true);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 46 |         try {
+     …
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 57 |         setLoading(false);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 58 |     }
+     | ^^^^^^ `loadData` is declared here
+  59 |
+  60 |     const filteredData = data.filter((item) =>
+  61 |         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||  react-hooks/immutability
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\super-admin\components\tabs\settings-tab.tsx
+  19:28  error  Component definition is missing display name  react/display-name
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\super-admin\theme-context.tsx
+  117:82  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\cristy's\TechNurtureLabs\src\modules\super-admin\theme-context.tsx:117:82
+  115 |             const savedTheme = localStorage.getItem(LS_THEME_KEY) as Theme | null;
+  116 |             const savedColor = localStorage.getItem(LS_COLOR_KEY) as ColorScheme | null;
+> 117 |             if (savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) setTheme(savedTheme);
+      |                                                                                  ^^^^^^^^ Avoid calling setState() directly within an effect
+  118 |             if (savedColor && savedColor in COLOR_SCHEMES) setColorSchemeState(savedColor);
+  119 |         } catch { }
+  120 |         setHydrated(true);  react-hooks/set-state-in-effect
+
+C:\Users\cristy's\TechNurtureLabs\src\visual-edits\VisualEditsMessenger.tsx
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+✖ 12 problems (10 errors, 2 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.

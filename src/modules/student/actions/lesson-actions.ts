@@ -4,7 +4,8 @@ import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { 
     students, schoolAdmins, superAdmins, lessons, lessonProgress, 
-    quizzes, quizQuestions, quizOptions, auditLogs, lessonSubmissions, xpEvents, enrollments 
+    quizzes, quizQuestions, quizOptions, auditLogs, lessonSubmissions, xpEvents, enrollments,
+    quizAttempts, quizAttemptAnswers
 } from '@/db/schema';
 import { eq, and, asc, isNotNull, sql } from 'drizzle-orm';
 import { awardXP, incrementProgressCounter, handleStudentEngagement } from '@/lib/gamification';
@@ -80,14 +81,12 @@ export async function getLessonData(lessonId: string) {
                 lock_reason: lockReason
             },
             questions: isQuizLocked ? [] : questions.map(q => {
-                const correctIdx = q.options.findIndex(opt => opt.is_correct);
                 return {
                     id: q.id,
                     text: q.question_text,
                     question_type: q.question_type,
-                    options: q.options.map(opt => opt.option_text),
-                    correct_answer: correctIdx !== -1 ? correctIdx : 0,
-                    explanation: q.explanation,
+                    options: q.options.map(opt => ({ id: opt.id, option_text: opt.option_text })),
+                    // Security: Hide correct_answer and explanation from student payload
                     points: q.points,
                     time_limit_secs: q.time_limit_secs,
                 };
@@ -145,6 +144,21 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
     });
 
     if (existingProgress) return { success: true, alreadyCompleted: true };
+
+    // 🛡️ Integrity Check: Enforce completion requirements based on content type
+    if (lesson.content_type === 'video') {
+        const threshold = (lesson.duration_minutes || 0) * 60 * 0.75;
+        const progress = await db.query.lessonProgress.findFirst({
+            where: and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId))
+        });
+        if ((progress?.verified_watch_seconds || 0) < threshold) {
+            return { success: false, error: 'Watch threshold (75%) not met. Cannot complete lesson.' };
+        }
+    }
+
+    if (lesson.content_type === 'quiz' && quizScore === undefined) {
+        return { success: false, error: 'Quizzes must be submitted via the assessment engine.' };
+    }
 
     const xpToAdd = lesson.xp_reward || 10;
 
@@ -277,10 +291,12 @@ export async function saveVideoProgress(lessonId: string, seconds: number, perce
         where: and(eq(lessonProgress.user_id, session.userId), eq(lessonProgress.lesson_id, lessonId))
     });
 
+    const clampedPercentage = Math.min(100, Math.max(0, percentage));
+
     if (existing) {
         await db.update(lessonProgress)
             .set({
-                progress_pct: percentage.toFixed(2),
+                progress_pct: clampedPercentage.toFixed(2),
                 last_position_secs: Math.floor(seconds),
                 updated_at: new Date()
             })
@@ -368,4 +384,96 @@ export async function getSubmissionStatus(lessonId: string) {
     }
 
     return submission;
+}
+
+/**
+ * Server-side Quiz Grading & Recording (High Integrity)
+ */
+export async function submitQuizAttempt(quizId: string, responses: Record<string, string>) {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+    const userId = session.userId;
+
+    const quiz = await db.query.quizzes.findFirst({
+        where: eq(quizzes.id, quizId),
+        with: { questions: { with: { options: true } } }
+    });
+
+    if (!quiz) throw new Error('Quiz not found');
+
+    const enrollment = await ensureEnrollment(userId, quiz.course_id);
+    if (!enrollment) throw new Error('Enrollment not found');
+
+    const previousAttempts = await db.query.quizAttempts.findMany({
+        where: and(eq(quizAttempts.user_id, userId), eq(quizAttempts.quiz_id, quizId))
+    });
+
+    if (previousAttempts.length >= quiz.max_attempts) {
+        throw new Error('Maximum attempts reached');
+    }
+
+    let earnedScore = 0;
+    let totalScorePossible = 0;
+    const answerRecords: any[] = [];
+    const feedback: any[] = [];
+
+    for (const q of quiz.questions) {
+        totalScorePossible += q.points;
+        const studentOptionId = responses[q.id];
+        const correctOption = q.options.find(opt => opt.is_correct);
+        const isCorrect = studentOptionId === correctOption?.id;
+        
+        if (isCorrect) earnedScore += q.points;
+
+        answerRecords.push({
+            question_id: q.id,
+            option_id: studentOptionId || null,
+            is_correct: isCorrect,
+            created_at: new Date()
+        });
+
+        feedback.push({
+            question_id: q.id,
+            is_correct: isCorrect,
+            correct_option_id: correctOption?.id,
+            explanation: q.explanation
+        });
+    }
+
+    const percentage = Math.round((earnedScore / totalScorePossible) * 100);
+    const passed = percentage >= Number(quiz.pass_percentage);
+
+    const attemptId = await db.transaction(async (tx) => {
+        const [attempt] = await tx.insert(quizAttempts).values({
+            user_id: userId,
+            quiz_id: quizId,
+            enrollment_id: enrollment.id,
+            attempt_number: previousAttempts.length + 1,
+            score: earnedScore.toString(),
+            max_score: totalScorePossible.toString(),
+            passed: passed,
+            completed_at: new Date()
+        }).returning({ id: quizAttempts.id });
+
+        if (answerRecords.length > 0) {
+            await tx.insert(quizAttemptAnswers).values(
+                answerRecords.map(ar => ({ ...ar, attempt_id: attempt.id }))
+            );
+        }
+
+        return attempt.id;
+    });
+
+    if (passed && quiz.lesson_id) {
+        await completeLessonAndReward(quiz.lesson_id, percentage, percentage === 100);
+    }
+
+    return {
+        success: true,
+        score: earnedScore,
+        total: totalScorePossible,
+        percentage,
+        passed,
+        feedback
+    };
 }
