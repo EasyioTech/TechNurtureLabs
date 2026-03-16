@@ -50,14 +50,17 @@ export function computeMediaUrl(asset: {
             const r2Base = process.env.R2_PUBLIC_URL ?? process.env.NEXT_PUBLIC_R2_URL;
             if (r2Base) {
                 finalUrl = `${r2Base.replace(/\/$/, '')}/${path}`;
+            } else {
+                // Fallback to local proxy
+                finalUrl = `/api/media/r2/${path}`;
             }
         }
     }
 
     // 3. Fallback to Local
     if (!finalUrl) {
-        const apiBase = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-        finalUrl = `${apiBase.replace(/\/$/, '')}/api/media/${path}`;
+        // Use relative URL to avoid CORS/Host mismatch issues in production
+        finalUrl = `/api/media/${path}`;
     }
 
     // 4. Security: Add temporary access token (sign the path or prefix)
