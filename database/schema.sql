@@ -249,6 +249,24 @@ CREATE TABLE "lesson_submissions" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
+CREATE TABLE "media_assets" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"file_name" text NOT NULL,
+	"original_name" text NOT NULL,
+	"file_url" text NOT NULL,
+	"file_path" text NOT NULL,
+	"mime_type" text NOT NULL,
+	"file_size" bigint DEFAULT 0 NOT NULL,
+	"storage_type" "storage_type" DEFAULT 'local' NOT NULL,
+	"asset_type" "asset_type" DEFAULT 'document' NOT NULL,
+	"uploaded_by" uuid,
+	"folder" text,
+	"processing_status" text DEFAULT 'pending' NOT NULL,
+	"error_message" text,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE "lessons" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"course_id" uuid NOT NULL,
@@ -275,24 +293,6 @@ CREATE TABLE "login_attempts" (
 	"user_agent" text,
 	"success" boolean NOT NULL,
 	"failure_reason" text,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
-);
-
-CREATE TABLE "media_assets" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"file_name" text NOT NULL,
-	"original_name" text NOT NULL,
-	"file_url" text NOT NULL,
-	"file_path" text NOT NULL,
-	"mime_type" text NOT NULL,
-	"file_size" bigint DEFAULT 0 NOT NULL,
-	"storage_type" "storage_type" DEFAULT 'local' NOT NULL,
-	"asset_type" "asset_type" DEFAULT 'document' NOT NULL,
-	"uploaded_by" uuid,
-	"folder" text,
-	"processing_status" text DEFAULT 'pending' NOT NULL,
-	"error_message" text,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
