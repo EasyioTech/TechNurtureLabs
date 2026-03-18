@@ -29,9 +29,11 @@ export async function getLessonData(lessonId: string) {
 
     if (!lesson) return null;
 
-    // Use computed HLS URL if it's a video, otherwise use direct URL
-    const { computeMediaUrl } = await import('@/lib/media');
-    const contentUrl = (lesson.content_type === 'video' && lesson.asset)
+    const useHls = lesson.content_type === 'video' && 
+                   lesson.asset && 
+                   (lesson.asset as any).processing_status === 'completed';
+    
+    const contentUrl = useHls
         ? computeMediaUrl(lesson.asset as any, 'hls')
         : (lesson.asset ? computeMediaUrl(lesson.asset as any) : lesson.content_url);
 

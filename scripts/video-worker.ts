@@ -80,11 +80,18 @@ async function processJob(job: TranscodeJob) {
 
         try {
             await execPromise(ffmpegCmd);
-        } catch (fErr) {
-            console.warn('[Worker] FFmpeg failed or not found. SIMULATING HLS output for testing parity.');
-            // Fallback for local dev if ffmpeg is missing
-            fs.writeFileSync(path.join(hlsDir, 'master.m3u8'), '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:10.0,\nseg000.ts\n#EXT-X-ENDLIST');
-            fs.writeFileSync(path.join(hlsDir, 'seg000.ts'), 'DUMMY_DATA');
+        } catch (fErr: any) {
+            console.warn('[Worker] FFmpeg failed or not found:', fErr.message);
+            
+            // Only use dummy fallback if explicitly in development mode without R2
+            if (process.env.NODE_ENV !== 'production' && (!process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID === 'dummy')) {
+                console.log('[Worker] Using SIMULATED HLS output for development...');
+                fs.writeFileSync(path.join(hlsDir, 'master.m3u8'), '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:10.0,\nseg000.ts\n#EXT-X-ENDLIST');
+                fs.writeFileSync(path.join(hlsDir, 'seg000.ts'), 'DUMMY_DATA');
+            } else {
+                // In production or with R2, we must fail if transcoding failed
+                throw new Error(`FFmpeg transcoding failed: ${fErr.message}`);
+            }
         }
 
         // 4. Upload HLS folder to R2

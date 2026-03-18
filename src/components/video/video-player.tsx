@@ -100,8 +100,8 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
           onCanPlay={onCanPlay}
           className="w-full h-full"
           playsInline
-          crossOrigin
           key={src}
+          crossOrigin={src.startsWith('http') ? 'anonymous' : 'use-credentials'}
         >
           <MediaProvider>
             {poster && <Poster src={poster} className="object-cover w-full h-full" />}
