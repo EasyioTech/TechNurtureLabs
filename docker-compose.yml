@@ -46,6 +46,49 @@ services:
       - storage_data:/app/local_storage
 
   # ----------------------------
+  # Video Transcode & Processing Worker
+  # ----------------------------
+  video-worker:
+    image: technurturelabs-app:latest
+    container_name: LMS_video_worker
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:admin@db:5432/orchids}
+      - REDIS_URL=redis://redis:6379
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID:-}
+      - CLOUDFLARE_ACCESS_KEY_ID=${CLOUDFLARE_ACCESS_KEY_ID:-}
+      - CLOUDFLARE_SECRET_ACCESS_KEY=${CLOUDFLARE_SECRET_ACCESS_KEY:-}
+      - CLOUDFLARE_BUCKET_NAME=${CLOUDFLARE_BUCKET_NAME:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - storage_data:/app/local_storage
+    # Run using the globally installed tsx
+    command: tsx scripts/video-worker.ts
+
+  # ----------------------------
+  # Event Processing Worker (Achievements, Streaks, Challenges)
+  # ----------------------------
+  event-worker:
+    image: technurturelabs-app:latest
+    container_name: LMS_event_worker
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:admin@db:5432/orchids}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: tsx scripts/event-worker.ts
+
+  # ----------------------------
   # Database Migration Runner
   # Run with: docker compose --profile setup up migration
   # ----------------------------

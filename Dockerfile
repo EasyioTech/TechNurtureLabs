@@ -47,10 +47,12 @@ ENV NODE_ENV=production
 # --no-install-recommends keeps the layer as small as possible
 RUN apt-get update && apt-get install -y \
     wget \
+    ffmpeg \
     libreoffice-impress \
     fonts-liberation \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
+RUN npm install -g tsx
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
@@ -63,6 +65,7 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/database ./database
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 
 # Create local_storage directory for fallback uploads
 RUN mkdir -p /app/local_storage && chown nextjs:nodejs /app/local_storage
