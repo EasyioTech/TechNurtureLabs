@@ -48,12 +48,7 @@ export async function getLessonData(lessonId: string) {
     let lockReason = "";
 
     if (lesson.content_type === 'video') {
-        const threshold = (lesson.duration_minutes || 0) * 60 * 0.75;
-        const watched = progress?.verified_watch_seconds || 0;
-        if (watched < threshold && !progress?.completed_at) {
-            isQuizLocked = true;
-            lockReason = `Please watch at least 75% of the video to unlock the assessment. (${Math.round(watched/60)}m / ${Math.round(threshold/60)}m watched)`;
-        }
+        // Threshold removed as per user request
     }
 
     let quizData: any = null;
@@ -147,16 +142,7 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
 
     if (existingProgress) return { success: true, alreadyCompleted: true };
 
-    // 🛡️ Integrity Check: Enforce completion requirements based on content type
-    if (lesson.content_type === 'video') {
-        const threshold = (lesson.duration_minutes || 0) * 60 * 0.75;
-        const progress = await db.query.lessonProgress.findFirst({
-            where: and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId))
-        });
-        if ((progress?.verified_watch_seconds || 0) < threshold) {
-            return { success: false, error: 'Watch threshold (75%) not met. Cannot complete lesson.' };
-        }
-    }
+    // Watch threshold check removed as per user request to allow immediate completion
 
     if (lesson.content_type === 'quiz' && quizScore === undefined) {
         return { success: false, error: 'Quizzes must be submitted via the assessment engine.' };

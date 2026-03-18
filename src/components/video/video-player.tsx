@@ -144,43 +144,21 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
                       )}
 
                       <div className="flex flex-col gap-3">
-                        {verifiedProgress >= 75 ? (
-                          <button 
-                            onClick={handleComplete}
-                            disabled={isSubmitting}
-                            className="w-full h-12 bg-slate-900 text-white rounded-xl font-bold text-[11px] uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
-                          >
-                            {isSubmitting ? (
-                              <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                            ) : "Save Progress"}
-                          </button>
-                        ) : (
-                          <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
-                                  <div 
-                                    className="h-full bg-slate-900 transition-all duration-1000" 
-                                    style={{ width: `${verifiedProgress}%` }}
-                                  />
-                                </div>
-                                <div className="text-[9px] font-bold text-slate-400 text-right">
-                                  {verifiedProgress}% Complete
-                                </div>
-                            </div>
-                            <button 
-                              onClick={() => setShowCompletionOverlay(false)}
-                              className="w-full h-12 bg-white border border-slate-200 text-slate-900 rounded-xl font-bold text-[11px] uppercase tracking-widest hover:bg-slate-50 transition-all"
-                            >
-                              Resume Video
-                            </button>
-                          </div>
-                        )}
+                        <button 
+                          onClick={handleComplete}
+                          disabled={isSubmitting}
+                          className="w-full h-12 bg-slate-900 text-white rounded-xl font-bold text-[11px] uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
+                        >
+                          {isSubmitting ? (
+                            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                          ) : "Save Progress"}
+                        </button>
                         {!isSubmitting && (
                           <button 
                             onClick={() => setShowCompletionOverlay(false)}
                             className="text-[10px] font-bold text-slate-400 hover:text-slate-600 uppercase tracking-widest pt-1"
                           >
-                            Close
+                            Cancel
                           </button>
                         )}
                       </div>
