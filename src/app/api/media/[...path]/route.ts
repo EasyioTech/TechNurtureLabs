@@ -5,6 +5,23 @@ import { verifySession } from '@/lib/auth';
 
 const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'local_storage');
 
+const CORS_HEADERS = {
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Range, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+};
+
+export async function OPTIONS(request: NextRequest) {
+    const origin = request.headers.get('origin');
+    return new NextResponse(null, {
+        status: 204,
+        headers: {
+            ...CORS_HEADERS,
+            'Access-Control-Allow-Origin': origin || '*',
+        },
+    });
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
     try {
         const session = await verifySession();

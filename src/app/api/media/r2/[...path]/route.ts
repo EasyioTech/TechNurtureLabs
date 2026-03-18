@@ -5,6 +5,23 @@ import path from 'path';
 import { serverEnv } from '@/lib/env.server';
 import { verifySession } from '@/lib/auth';
 
+const CORS_HEADERS = {
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Range, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+};
+
+export async function OPTIONS(request: NextRequest) {
+    const origin = request.headers.get('origin');
+    return new NextResponse(null, {
+        status: 204,
+        headers: {
+            ...CORS_HEADERS,
+            'Access-Control-Allow-Origin': origin || '*',
+        },
+    });
+}
+
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ path: string[] }> }
