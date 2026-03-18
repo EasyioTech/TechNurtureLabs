@@ -11,6 +11,7 @@ import { eq, and, asc, isNotNull, sql } from 'drizzle-orm';
 import { awardXP, incrementProgressCounter, handleStudentEngagement } from '@/lib/gamification';
 import { redis } from '@/lib/redis';
 import { ensureEnrollment, invalidateStudentDashboardCache } from './course-actions';
+import { computeMediaUrl } from '@/lib/media';
 
 /**
  * Fetch detailed lesson data including quiz and user progress
