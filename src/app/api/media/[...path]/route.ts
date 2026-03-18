@@ -77,14 +77,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 }
             });
 
+            const headers = new Headers({
+                'Content-Range': `bytes ${start}-${end}/${stats.size}`,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': chunksize.toString(),
+                'Content-Type': mimeType,
+            });
+
+            const origin = request.headers.get('origin');
+            if (origin) {
+                headers.set('Access-Control-Allow-Origin', origin);
+                headers.set('Access-Control-Allow-Credentials', 'true');
+            }
+
             return new NextResponse(stream, {
                 status: 206,
-                headers: {
-                    'Content-Range': `bytes ${start}-${end}/${stats.size}`,
-                    'Accept-Ranges': 'bytes',
-                    'Content-Length': chunksize.toString(),
-                    'Content-Type': mimeType,
-                }
+                headers,
             });
         }
 
@@ -98,12 +106,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             }
         });
 
+        const headers = new Headers({
+            'Content-Type': mimeType,
+            'Content-Length': stats.size.toString(),
+            'Cache-Control': 'private, max-age=3600',
+        });
+
+        const origin = request.headers.get('origin');
+        if (origin) {
+            headers.set('Access-Control-Allow-Origin', origin);
+            headers.set('Access-Control-Allow-Credentials', 'true');
+        }
+
         return new NextResponse(stream, {
-            headers: {
-                'Content-Type': mimeType,
-                'Content-Length': stats.size.toString(),
-                'Cache-Control': 'private, max-age=3600',
-            },
+            headers,
         });
     } catch (error) {
         console.error('[Media] Serving error:', error);
