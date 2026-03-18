@@ -101,11 +101,20 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                                         alt={schoolName}
                                         className="object-contain"
                                         style={{ height: `${platformSettings?.logo_height || 40}px`, width: 'auto', maxHeight: '48px' }}
+                                        onError={(e) => {
+                                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                            (e.currentTarget.parentElement?.nextElementSibling as HTMLElement)?.classList.remove('hidden');
+                                        }}
                                     />
                                 </div>
-                            ) : (
+                            ) : null}
+                            {(!(schoolProfile?.logo_url || platformSettings?.logo_url)) ? (
                                 <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-600 shadow-indigo-600/20'
                                     }`}>
+                                    <GraduationCap size={22} className={isDark ? 'text-indigo-400' : 'text-white'} strokeWidth={2.5} />
+                                </div>
+                            ) : (
+                                <div className={`hidden w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-600 shadow-indigo-600/20'}`}>
                                     <GraduationCap size={22} className={isDark ? 'text-indigo-400' : 'text-white'} strokeWidth={2.5} />
                                 </div>
                             )}
@@ -212,7 +221,20 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                             <div className="w-20 h-20 flex items-center justify-center flex-shrink-0">
                                 {(schoolProfile?.logo_url || platformSettings?.logo_url) ? (
-                                    <img src={schoolProfile?.logo_url || platformSettings?.logo_url} alt={schoolName} className="w-full h-full object-contain" />
+                                    <div className="relative w-full h-full">
+                                        <img 
+                                            src={schoolProfile?.logo_url || platformSettings?.logo_url} 
+                                            alt={schoolName} 
+                                            className="w-full h-full object-contain" 
+                                            onError={(e) => {
+                                                (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                                (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove('hidden');
+                                            }}
+                                        />
+                                        <div className="hidden w-full h-full rounded-[28px] flex items-center justify-center shadow-2xl bg-indigo-50 dark:bg-indigo-500/10 border dark:border-indigo-500/20 shadow-indigo-100 dark:shadow-indigo-500/5">
+                                            <GraduationCap size={40} className="text-indigo-600 dark:text-indigo-400" />
+                                        </div>
+                                    </div>
                                 ) : (
                                     <div className={`w-full h-full rounded-[28px] flex items-center justify-center shadow-2xl ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20 shadow-indigo-500/5' : 'bg-indigo-50 shadow-indigo-100'}`}>
                                         <GraduationCap size={40} className={isDark ? 'text-indigo-400' : 'text-indigo-600'} />

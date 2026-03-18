@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { superAdmins, schoolAdmins, students, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts, auditLogs, userSessions, invoices } from '@/db/schema';
-import { eq, asc, desc, inArray, and, sql, or, count, isNull, isNotNull } from 'drizzle-orm';
+import { eq, asc, desc, inArray, and, sql, or, count, isNull, isNotNull, gt, avg, sum } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -231,11 +231,11 @@ export async function getSchoolStats(schoolId: string) {
     // Optimized SQL aggregations
     const [basicStats, activeCount, lessonsCompleted, quizCount, avgProgress, xpStats] = await Promise.all([
         db.select({ count: count() }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at))),
-        db.select({ count: count() }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at), sql`${students.last_active_at} > ${sevenDaysAgo}`)),
+        db.select({ count: count() }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at), gt(students.last_active_at, sevenDaysAgo))),
         db.select({ count: count() }).from(lessonProgress).innerJoin(students, eq(lessonProgress.user_id, students.id)).where(and(eq(students.school_id, schoolId), isNotNull(lessonProgress.completed_at))),
         db.select({ count: count() }).from(quizAttempts).innerJoin(students, eq(quizAttempts.user_id, students.id)).where(eq(students.school_id, schoolId)),
-        db.select({ avg_pct: sql<number>`avg(${courseProgress.progress_pct})` }).from(courseProgress).innerJoin(students, eq(courseProgress.user_id, students.id)).where(eq(students.school_id, schoolId)),
-        db.select({ total: sql<number>`sum(${students.cumulative_xp})`, avg: sql<number>`avg(${students.cumulative_xp})` }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at)))
+        db.select({ avg_pct: avg(courseProgress.progress_pct) }).from(courseProgress).innerJoin(students, eq(courseProgress.user_id, students.id)).where(eq(students.school_id, schoolId)),
+        db.select({ total: sum(students.cumulative_xp), avg: avg(students.cumulative_xp) }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at)))
     ]);
 
     // Subscription info
@@ -266,7 +266,7 @@ export async function getSchoolStats(schoolId: string) {
 export async function getSchoolStudents(schoolId: string) {
     await verifySchoolAdminContext(schoolId);
     const studentsData = await db.query.students.findMany({
-        where: and(eq(students.school_id, schoolId), sql`${students.deleted_at} IS NULL`),
+        where: and(eq(students.school_id, schoolId), isNull(students.deleted_at)),
         orderBy: [desc(students.cumulative_xp)],
     });
     const studentIds = studentsData.map(s => s.id);
@@ -303,7 +303,7 @@ export async function getSchoolStudents(schoolId: string) {
 export async function getSchoolStudentDetails(userId: string) {
     await verifyStudentContext(userId);
     const student = await db.query.students.findFirst({
-        where: and(eq(students.id, userId), sql`deleted_at IS NULL`)
+        where: and(eq(students.id, userId), isNull(students.deleted_at))
     });
     if (!student) return null;
 
@@ -338,13 +338,13 @@ export async function getSchoolStudentDetails(userId: string) {
 
     // Rank calculation within their school
     const rankResult = await db.select({
-        count: sql<number>`count(*)`
+        count: count()
     })
     .from(students)
     .where(and(
         eq(students.school_id, student.school_id),
-        sql`${students.cumulative_xp} > ${student.cumulative_xp}`,
-        sql`deleted_at IS NULL`
+        gt(students.cumulative_xp, student.cumulative_xp),
+        isNull(students.deleted_at)
     ));
     const rank = Number(rankResult[0].count) + 1;
 

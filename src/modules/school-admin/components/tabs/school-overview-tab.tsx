@@ -312,7 +312,7 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                                         <div className={`h-3 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
                                             <motion.div
                                                 initial={{ width: 0 }}
-                                                animate={{ width: `${(c.enrolled / stats.totalStudents) * 100}%` }}
+                                                animate={{ width: `${stats.totalStudents > 0 ? (c.enrolled / stats.totalStudents) * 100 : 0}%` }}
                                                 transition={{ delay: 0.5 + i * 0.1, duration: 1 }}
                                                 className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-full"
                                             />
