@@ -136,8 +136,8 @@ export default function StudentRegistrationPage() {
       const result = await registerStudent(formData);
 
       if (result.success) {
-        toast.success('Registration complete! You can now sign in.', { id: toastId });
-        router.push('/login');
+        toast.success(result.isExisting ? 'Welcome back! You are now logged in.' : 'Registration complete! You are now logged in.', { id: toastId });
+        router.push('/student');
       } else {
         toast.error(result.error || 'Registration failed. Please verify your details.', { id: toastId });
       }
@@ -424,8 +424,14 @@ export default function StudentRegistrationPage() {
                           try {
                             const res = await checkIdentifierExists(formData.email);
                             if (res.exists) {
-                              setErrors(prev => ({ ...prev, email: `This ${(res.role ?? 'account').replace('_', ' ')} is already registered` }));
-                              toast.error('Identity already registered');
+                              if (res.role === 'student' || !res.role) {
+                                  setEmailVerified(true);
+                                  setErrors(prev => ({ ...prev, email: '' }));
+                                  toast.info('Account found. Please enter your PIN to login.');
+                              } else {
+                                  setErrors(prev => ({ ...prev, email: `Identity is registered as a ${res.role.replace('_', ' ')}` }));
+                                  toast.error('Identity already registered as Admin');
+                              }
                             } else {
                               setEmailVerified(true);
                               setErrors(prev => ({ ...prev, email: '' }));

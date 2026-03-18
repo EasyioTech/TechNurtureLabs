@@ -6,6 +6,8 @@ import { eq, and, or, sql, isNull } from 'drizzle-orm';
 import { asc } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { assignPlanToSchool } from '@/modules/super-admin/actions';
+import { createSession } from '@/lib/auth';
+import { handleStudentEngagement } from '@/lib/gamification';
 
 export async function fetchGlobalClasses() {
     let allClasses = await db.query.classes.findMany({
@@ -99,8 +101,8 @@ export async function registerStudent(formData: any) {
 
         const [firstName, ...lastNameParts] = formData.full_name.trim().split(/\s+/);
         const lastName = lastNameParts.join(' ');
-        const email = isEmail ? formData.email.toLowerCase().trim() : '';
-        const phone = isEmail ? '' : formData.email.replace(/\D/g, ''); // Extract only digits for phone normalization
+        const email = isEmail ? formData.email.toLowerCase().trim() : null;
+        const phone = isEmail ? null : formData.email.replace(/\D/g, ''); // Extract only digits for phone normalization
 
         const result = await db.transaction(async (tx) => {
             // Check for existing student with this email/phone (Platform-wide, non-deleted)
@@ -112,7 +114,16 @@ export async function registerStudent(formData: any) {
             });
 
             if (existingGlobally) {
-                return { success: false, error: `This ${isEmail ? 'email' : 'phone number'} is already registered on the platform.` };
+                const isValidPassword = await bcrypt.compare(formData.password, existingGlobally.password_hash);
+                if (!isValidPassword) {
+                    return { success: false, error: `This ${isEmail ? 'email' : 'phone number'} is already registered. Please enter the correct PIN.` };
+                }
+                
+                // If PIN matches, log them in
+                await createSession({ userId: existingGlobally.id, userType: 'student' });
+                await handleStudentEngagement(existingGlobally.id);
+                
+                return { success: true, user: existingGlobally, isExisting: true };
             }
 
             const hashedPassword = await bcrypt.hash(formData.password, 10);
@@ -158,6 +169,10 @@ export async function registerStudent(formData: any) {
                 session_id: session.id,
                 class_id: formData.class_id || formData.grade,
             } as any).onConflictDoNothing();
+
+            // Auto-login after successful registration
+            await createSession({ userId: newStudent.id, userType: 'student' });
+            await handleStudentEngagement(newStudent.id);
 
             return { success: true, user: newStudent };
         });
