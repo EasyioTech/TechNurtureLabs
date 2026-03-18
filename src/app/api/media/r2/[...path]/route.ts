@@ -5,23 +5,6 @@ import path from 'path';
 import { serverEnv } from '@/lib/env.server';
 import { verifySession } from '@/lib/auth';
 
-const CORS_HEADERS = {
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Range, Authorization',
-    'Access-Control-Allow-Credentials': 'true',
-};
-
-export async function OPTIONS(request: NextRequest) {
-    const origin = request.headers.get('origin');
-    return new NextResponse(null, {
-        status: 204,
-        headers: {
-            ...CORS_HEADERS,
-            'Access-Control-Allow-Origin': origin || '*',
-        },
-    });
-}
-
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ path: string[] }> }
@@ -89,12 +72,6 @@ export async function GET(
         if (response.ContentRange) headers.set('Content-Range', response.ContentRange);
         if (response.AcceptRanges) headers.set('Accept-Ranges', response.AcceptRanges);
         headers.set('Cache-Control', 'private, max-age=3600');
-        
-        const origin = request.headers.get('origin');
-        if (origin) {
-            headers.set('Access-Control-Allow-Origin', origin);
-            headers.set('Access-Control-Allow-Credentials', 'true');
-        }
 
         // Return 206 only when R2 actually returned a Content-Range (confirmed partial content)
         const isPartial = range && !!response.ContentRange;

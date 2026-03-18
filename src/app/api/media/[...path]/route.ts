@@ -5,23 +5,6 @@ import { verifySession } from '@/lib/auth';
 
 const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'local_storage');
 
-const CORS_HEADERS = {
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Range, Authorization',
-    'Access-Control-Allow-Credentials': 'true',
-};
-
-export async function OPTIONS(request: NextRequest) {
-    const origin = request.headers.get('origin');
-    return new NextResponse(null, {
-        status: 204,
-        headers: {
-            ...CORS_HEADERS,
-            'Access-Control-Allow-Origin': origin || '*',
-        },
-    });
-}
-
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
     try {
         const session = await verifySession();
@@ -94,22 +77,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 }
             });
 
-            const headers = new Headers({
-                'Content-Range': `bytes ${start}-${end}/${stats.size}`,
-                'Accept-Ranges': 'bytes',
-                'Content-Length': chunksize.toString(),
-                'Content-Type': mimeType,
-            });
-
-            const origin = request.headers.get('origin');
-            if (origin) {
-                headers.set('Access-Control-Allow-Origin', origin);
-                headers.set('Access-Control-Allow-Credentials', 'true');
-            }
-
             return new NextResponse(stream, {
                 status: 206,
-                headers,
+                headers: {
+                    'Content-Range': `bytes ${start}-${end}/${stats.size}`,
+                    'Accept-Ranges': 'bytes',
+                    'Content-Length': chunksize.toString(),
+                    'Content-Type': mimeType,
+                }
             });
         }
 
@@ -123,20 +98,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             }
         });
 
-        const headers = new Headers({
-            'Content-Type': mimeType,
-            'Content-Length': stats.size.toString(),
-            'Cache-Control': 'private, max-age=3600',
-        });
-
-        const origin = request.headers.get('origin');
-        if (origin) {
-            headers.set('Access-Control-Allow-Origin', origin);
-            headers.set('Access-Control-Allow-Credentials', 'true');
-        }
-
         return new NextResponse(stream, {
-            headers,
+            headers: {
+                'Content-Type': mimeType,
+                'Content-Length': stats.size.toString(),
+                'Cache-Control': 'private, max-age=3600',
+            },
         });
     } catch (error) {
         console.error('[Media] Serving error:', error);
