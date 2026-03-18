@@ -14,7 +14,7 @@ export function useUpload(options?: UploadOptions) {
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<any>(null);
     const xhrRef = useRef<XMLHttpRequest | null>(null);
-    
+
     // Stable ID for this upload instance
     const uploadId = useMemo(() => options?.id || uuidv4(), [options?.id]);
 
@@ -66,6 +66,7 @@ export function useUpload(options?: UploadOptions) {
                     console.log('[Upload] Large file detected, switching to Direct R2 flow...');
                     const presignRes = await fetch('/api/media/presign', {
                         method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             fileName: file.name,
                             fileType: file.type,
@@ -73,8 +74,11 @@ export function useUpload(options?: UploadOptions) {
                         })
                     });
 
-                    if (!presignRes.ok) throw new Error('Failed to generate secure upload gateway');
-                    const { uploadUrl, key, publicUrl } = await presignRes.json();
+                    if (!presignRes.ok) {
+                        const errData = await presignRes.json().catch(() => ({}));
+                        throw new Error(errData.error || 'Failed to generate secure upload gateway');
+                    }
+                    const { uploadUrl, key } = await presignRes.json();
 
                     // Perform direct XHR to R2
                     const xhr = new XMLHttpRequest();
@@ -90,42 +94,72 @@ export function useUpload(options?: UploadOptions) {
 
                     xhr.addEventListener('load', async () => {
                         if (xhr.status >= 200 && xhr.status < 300) {
-                            // 📝 Register with DB
-                            const regRes = await fetch('/api/media/register', {
-                                method: 'POST',
-                                body: JSON.stringify({
-                                    fileName: file.name,
-                                    filePath: key,
+                            // 📝 Register with DB — wrapped in try/catch so errors are properly propagated
+                            try {
+                                const regRes = await fetch('/api/media/register', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        fileName: file.name,
+                                        filePath: key,
+                                        fileSize: file.size,
+                                        mimeType: file.type,
+                                        folder: additionalData.folder || 'library'
+                                    })
+                                });
+
+                                if (!regRes.ok) {
+                                    const errData = await regRes.json().catch(() => ({}));
+                                    throw new Error(errData.error || 'Failed to register asset in database');
+                                }
+                                const regData = await regRes.json();
+
+                                const finalResult = {
+                                    url: regData.url,
+                                    path: key,
+                                    assetId: regData.assetId,
+                                    storageType: 'r2',
                                     fileSize: file.size,
                                     mimeType: file.type,
-                                    folder: additionalData.folder || 'library'
-                                })
-                            });
+                                    processingStatus: regData.processingStatus
+                                };
 
-                            if (!regRes.ok) throw new Error('Failed to register asset in database');
-                            const regData = await regRes.json();
-
-                            const finalResult = {
-                                url: regData.url,
-                                path: key,
-                                assetId: regData.assetId,
-                                storageType: 'r2',
-                                fileSize: file.size,
-                                mimeType: file.type,
-                                processingStatus: regData.processingStatus
-                            };
-                            
-                            setResult(finalResult);
-                            setIsUploading(false);
-                            uploadStore.updateTask(uploadId, { isUploading: false, progress: 100 });
-                            options?.onSuccess?.(finalResult);
-                            resolve(finalResult);
+                                setResult(finalResult);
+                                setIsUploading(false);
+                                uploadStore.updateTask(uploadId, { isUploading: false, progress: 100 });
+                                options?.onSuccess?.(finalResult);
+                                resolve(finalResult);
+                            } catch (regErr: any) {
+                                const msg = regErr.message || 'Failed to register uploaded asset';
+                                setError(msg);
+                                setIsUploading(false);
+                                uploadStore.updateTask(uploadId, { isUploading: false, error: msg });
+                                options?.onError?.(msg);
+                                reject(regErr);
+                            }
                         } else {
                              const errorMessage = `Upload failed: ${xhr.statusText || 'Gateway Error'}`;
                              setError(errorMessage);
+                             setIsUploading(false);
                              uploadStore.updateTask(uploadId, { isUploading: false, error: errorMessage });
+                             options?.onError?.(errorMessage);
                              reject(new Error(errorMessage));
                         }
+                    });
+
+                    xhr.addEventListener('error', () => {
+                        setIsUploading(false);
+                        const errorMessage = 'Network error during upload';
+                        setError(errorMessage);
+                        uploadStore.updateTask(uploadId, { isUploading: false, error: errorMessage });
+                        options?.onError?.(errorMessage);
+                        reject(new Error(errorMessage));
+                    });
+
+                    xhr.addEventListener('abort', () => {
+                        setIsUploading(false);
+                        setProgress(0);
+                        uploadStore.removeTask(uploadId);
                     });
 
                     xhr.open('PUT', uploadUrl);
@@ -133,13 +167,17 @@ export function useUpload(options?: UploadOptions) {
                     xhr.send(file);
                     return;
                 } catch (err: any) {
-                    setError(err.message);
+                    const msg = err.message || 'Upload failed';
+                    setError(msg);
                     setIsUploading(false);
+                    uploadStore.updateTask(uploadId, { isUploading: false, error: msg });
+                    options?.onError?.(msg);
                     reject(err);
                     return;
                 }
             }
 
+            // Small file path — POST via FormData to /api/upload
             const xhr = new XMLHttpRequest();
             xhrRef.current = xhr;
 
@@ -157,7 +195,7 @@ export function useUpload(options?: UploadOptions) {
                     const response = JSON.parse(xhr.responseText);
                     setResult(response);
                     uploadStore.updateTask(uploadId, { isUploading: false, progress: 100 });
-                    
+
                     // Auto-remove successful tasks after 5 seconds to keep UI clean
                     setTimeout(() => {
                         uploadStore.removeTask(uploadId);

@@ -22,5 +22,9 @@ export default async function StudentProfilePage() {
         rankPercentage: data.rankPercentage
     };
 
+    if (!initialData.profile) {
+        redirect('/login');
+    }
+
     return <ProfileClient initialData={initialData} />;
 }

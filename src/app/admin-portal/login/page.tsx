@@ -15,7 +15,7 @@ import { ScrollReveal } from '@/components/landing/ScrollReveal';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 export default function AdminLoginPage() {
-  const { signIn, setTransition, refreshProfile } = useAuth();
+  const { signIn, refreshProfile, profile, loading: authLoading } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -25,6 +25,12 @@ export default function AdminLoginPage() {
   const [userIdFor2FA, setUserIdFor2FA] = useState('');
   const [otpToken, setOtpToken] = useState('');
   const [verifying2FA, setVerifying2FA] = useState(false);
+
+  React.useEffect(() => {
+    if (!authLoading && profile?.role === 'super_admin') {
+      router.replace('/admin');
+    }
+  }, [profile, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +53,6 @@ export default function AdminLoginPage() {
           setLoading(false);
         } else {
           toast.success('Credentials Accepted. Entering Mainframe...', { id: toastId });
-          setTransition(true);
           router.push('/admin');
         }
       } else {
@@ -78,7 +83,6 @@ export default function AdminLoginPage() {
       if (result.success) {
         await refreshProfile();
         toast.success('Identity Confirmed. Access Granted.', { id: toastId });
-        setTransition(true);
         router.push('/admin');
       } else {
         toast.error(result.error || 'Invalid Identity Token', { id: toastId });

@@ -346,7 +346,7 @@ export default function StudentRegistrationPage() {
                         <SelectContent className="bg-white border-slate-200 rounded-xl overflow-hidden shadow-2xl">
                           {availableClasses.map((cls) => (
                             <SelectItem key={cls.id} value={cls.id}>
-                              Class {cls.name}
+                              {cls.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -422,9 +422,9 @@ export default function StudentRegistrationPage() {
 
                           setLoading(true);
                           try {
-                            const exists = await checkIdentifierExists(formData.email);
-                            if (exists) {
-                              setErrors(prev => ({ ...prev, email: 'A user with this info already exists' }));
+                            const res = await checkIdentifierExists(formData.email);
+                            if (res.exists) {
+                              setErrors(prev => ({ ...prev, email: `This ${(res.role ?? 'account').replace('_', ' ')} is already registered` }));
                               toast.error('Identity already registered');
                             } else {
                               setEmailVerified(true);

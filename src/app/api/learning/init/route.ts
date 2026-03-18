@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
         }
 
         const userAgent = req.headers.get('user-agent') || 'unknown';
-        const ip = req.headers.get('x-forwarded-for') || req.ip || '127.0.0.1';
+        const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '127.0.0.1';
         
         // Create hashes for session binding
         const deviceHash = crypto.createHash('sha256').update(userAgent).digest('hex');

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { superAdmins, schoolAdmins, students } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 
 export async function GET() {
     try {
@@ -16,20 +16,20 @@ export async function GET() {
 
         if (userType === 'student') {
             user = await db.query.students.findFirst({
-                where: eq(students.id, userId)
+                where: and(eq(students.id, userId), isNull(students.deleted_at), eq(students.is_active, true))
             });
         } else if (userType === 'school_admin') {
             user = await db.query.schoolAdmins.findFirst({
-                where: eq(schoolAdmins.id, userId)
+                where: and(eq(schoolAdmins.id, userId), isNull(schoolAdmins.deleted_at), eq(schoolAdmins.is_active, true))
             });
         } else if (userType === 'super_admin') {
             user = await db.query.superAdmins.findFirst({
-                where: eq(superAdmins.id, userId)
+                where: and(eq(superAdmins.id, userId), isNull(superAdmins.deleted_at), eq(superAdmins.is_active, true))
             });
         }
 
         if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const now = new Date();
@@ -50,9 +50,9 @@ export async function GET() {
                     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
                     if (diffDays === 1) {
-                        newStreak += 1; // Consecutive day
+                        newStreak += 1;
                     } else if (diffDays > 1) {
-                        newStreak = 1; // Streak broken
+                        newStreak = 1;
                     }
                 } else {
                     newStreak = 1;

@@ -88,15 +88,23 @@ async function processJob(job: TranscodeJob) {
         }
 
         // 4. Upload HLS folder to R2
-        console.log('[Worker] Uploading HLS fragments to R2...');
+        console.log('[Worker] Uploading HLS fragments to R2 in parallel...');
         const files = fs.readdirSync(hlsDir);
         const folderKey = job.filePath.replace(/\.[^/.]+$/, ""); // "videos/uuid"
         
-        for (const file of files) {
-            const fileData = fs.readFileSync(path.join(hlsDir, file));
+        const uploadPromises = files.map(async (file) => {
+            const filePath = path.join(hlsDir, file);
             const key = `${folderKey}/${file}`;
-            await uploadToR2(key, fileData, file.endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/MP2T');
-        }
+            const contentType = file.endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/MP2T';
+            
+            // Optimization: Stream the file to R2 instead of reading into a Buffer
+            const fileStream = fs.createReadStream(filePath);
+            await uploadStreamToR2(key, fileStream, contentType, fs.statSync(filePath).size);
+            console.log(`[Worker] Uploaded ${file}`);
+        });
+
+        // Use Promise.all with chunks if necessary, but for small HLS segments, parallel is fine
+        await Promise.all(uploadPromises);
 
         // 5. Success
         const duration = (Date.now() - start) / 1000;
@@ -114,6 +122,30 @@ async function processJob(job: TranscodeJob) {
 }
 
 // ── UTILITIES ──────────────────────────────────────────────────
+
+async function uploadStreamToR2(key: string, body: fs.ReadStream, contentType: string, contentLength: number) {
+    if (!process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID === 'dummy') {
+        const localPath = path.join(process.cwd(), 'local_storage', key);
+        const localDir = path.dirname(localPath);
+        if (!fs.existsSync(localDir)) fs.mkdirSync(localDir, { recursive: true });
+        const writeStream = fs.createWriteStream(localPath);
+        return new Promise<void>((resolve, reject) => {
+            body.pipe(writeStream);
+            writeStream.on('finish', () => resolve());
+            writeStream.on('error', reject);
+        });
+    }
+
+    const client = getClient();
+    const cmd = new PutObjectCommand({
+        Bucket: process.env.CLOUDFLARE_BUCKET_NAME,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+        ContentLength: contentLength
+    });
+    await client.send(cmd);
+}
 
 async function downloadFromR2(key: string, dest: string) {
     if (!process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID === 'dummy') {

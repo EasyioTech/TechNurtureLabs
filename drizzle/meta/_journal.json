@@ -15,6 +15,13 @@
       "when": 1773551025300,
       "tag": "0001_hard_expediter",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1742169600000,
+      "tag": "0002_student_preferences",
+      "breakpoints": true
     }
   ]
 }

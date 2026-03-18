@@ -4,10 +4,11 @@ import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { analyticsService } from '@/lib/services/analytics-service';
-import { 
-    students, schoolAdmins, superAdmins, courses, lessons, 
-    lessonProgress, enrollments, quizAttempts, academicSessions, 
-    studentAcademicRecords, courseClassMapping, schools, auditLogs 
+import {
+    students, schoolAdmins, superAdmins, courses, lessons,
+    lessonProgress, enrollments, quizAttempts, academicSessions,
+    studentAcademicRecords, courseClassMapping, schools, auditLogs,
+    schoolSubscriptions
 } from '@/db/schema';
 import { eq, and, inArray, asc, desc, isNotNull, isNull, sql, count } from 'drizzle-orm';
 import { redis } from '@/lib/redis';
@@ -47,6 +48,19 @@ export async function ensureEnrollment(userId: string, courseId: string) {
     }
     
     if (!user?.school_id) return null;
+
+    // Block enrollment if the school's subscription is not in good standing
+    if (role === 'student') {
+        const subscription = await db.query.schoolSubscriptions.findFirst({
+            where: eq(schoolSubscriptions.school_id, user.school_id),
+            columns: { status: true },
+            orderBy: (sub, { desc }) => [desc(sub.created_at)],
+        });
+        const blockedStatuses = ['cancelled', 'expired'];
+        if (!subscription || blockedStatuses.includes(subscription.status)) {
+            return null;
+        }
+    }
 
     const currentSession = await db.query.academicSessions.findFirst({
         where: and(eq(academicSessions.school_id, user.school_id), eq(academicSessions.is_current, true))

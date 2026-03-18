@@ -3,7 +3,7 @@ import Razorpay from 'razorpay';
 import { db } from '@/lib/db';
 import { paymentPlans, promoCodes } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-
+import { rateLimitService } from '@/lib/services/rate-limit';
 import { serverEnv } from '@/lib/env.server';
 
 const isBuild = process.env.NEXT_SKIP_TYPECHECK === '1' || process.env.npm_lifecycle_event === 'build';
@@ -14,6 +14,17 @@ const razorpay = (!isBuild && serverEnv.RAZORPAY_KEY_ID && serverEnv.RAZORPAY_KE
 
 export async function POST(req: NextRequest) {
     try {
+        // Rate-limit by IP — this endpoint is used during registration (pre-auth) and in-portal
+        const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '127.0.0.1';
+        const { allowed } = await rateLimitService.check({
+            key: `payment-create:${ip}`,
+            limit: 20,
+            windowSeconds: 900
+        });
+        if (!allowed) {
+            return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
+        }
+
         const { plan_id, promo_code_id } = await req.json();
 
         if (!plan_id) {

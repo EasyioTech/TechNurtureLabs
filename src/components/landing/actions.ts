@@ -3,8 +3,19 @@
 import { db } from '@/lib/db';
 import { paymentPlans, platformSettings } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
+import { unstable_cache } from 'next/cache';
 
 const isBuild = process.env.NEXT_SKIP_TYPECHECK === '1' || process.env.npm_lifecycle_event === 'build';
+
+const getCachedPlatformSettings = unstable_cache(
+    async () => {
+        return await db.query.platformSettings.findFirst({
+            where: eq(platformSettings.id, 'global')
+        });
+    },
+    ['platform-settings'],
+    { tags: ['platform-settings'] }
+);
 
 export async function getPublicPricingPlans() {
     if (isBuild) return [];
@@ -37,7 +48,5 @@ export async function getPlatformSettings() {
         created_at: new Date(),
         updated_at: new Date()
     };
-    return await db.query.platformSettings.findFirst({
-        where: eq(platformSettings.id, 'global')
-    });
+    return await getCachedPlatformSettings();
 }

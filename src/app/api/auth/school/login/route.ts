@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { schoolAdmins } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { rateLimitService } from '@/lib/services/rate-limit';
@@ -29,7 +29,11 @@ export async function POST(request: NextRequest) {
         }
 
         const user = await db.query.schoolAdmins.findFirst({
-            where: eq(schoolAdmins.email, email.toLowerCase())
+            where: and(
+                eq(schoolAdmins.email, email.toLowerCase().trim()),
+                eq(schoolAdmins.is_active, true),
+                sql`${schoolAdmins.deleted_at} IS NULL`
+            )
         });
 
         if (!user) {

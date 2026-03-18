@@ -569,6 +569,9 @@ CREATE TABLE "students" (
 	"longest_streak" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"last_active_at" timestamp with time zone,
+	"notification_preferences" jsonb DEFAULT '{"mobile_push":true,"email_reports":true,"new_content":true}'::jsonb NOT NULL,
+	"appearance_settings" jsonb DEFAULT '{"dark_mode":false}'::jsonb NOT NULL,
+	"privacy_settings" jsonb DEFAULT '{"public_profile":true}'::jsonb NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone

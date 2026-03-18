@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
     LayoutGrid, BookOpen, CreditCard, Users, BarChart3,
@@ -85,8 +86,20 @@ function DashboardContent() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showColorPicker]);
 
-    const [activePage, setActivePage] = useState('overview');
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const [activePage, setActivePage] = useState(searchParams.get('tab') || 'overview');
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Sync activePage with URL
+    useEffect(() => {
+        const currentTab = searchParams.get('tab');
+        if (activePage !== currentTab) {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set('tab', activePage);
+            router.replace(`?${params.toString()}`, { scroll: false });
+        }
+    }, [activePage, router, searchParams]);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const data = useAdminData();
 
@@ -132,17 +145,24 @@ function DashboardContent() {
                         {/* Left: Logo */}
                         <div className="flex items-center gap-3 group cursor-pointer flex-shrink-0 z-10" onClick={() => setActivePage('overview')}>
                             {data.platformSettings?.logo_url ? (
-                                <div className="w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center transition-all group-hover:scale-105 flex-shrink-0">
-                                    <img src={data.platformSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                                <div className="flex items-center justify-center transition-all group-hover:scale-105 flex-shrink-0">
+                                    <img
+                                        src={data.platformSettings.logo_url}
+                                        alt="Logo"
+                                        className="object-contain"
+                                        style={{ height: `${data.platformSettings.logo_height || 40}px`, width: 'auto', maxHeight: '48px' }}
+                                    />
                                 </div>
                             ) : (
                                 <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-full ${accent.bg} flex items-center justify-center ring-4 ring-transparent transition-all flex-shrink-0 group-hover:rotate-12 group-hover:shadow-lg`}>
                                     <LayoutGrid className='text-slate-900 w-5 h-5 sm:w-6 sm:h-6' />
                                 </div>
                             )}
-                            <span className={`hidden md:block text-xl font-black tracking-tighter ${t.textPrimary(isDark)} whitespace-nowrap overflow-hidden text-ellipsis`}>
-                                {data.platformSettings?.platform_name || 'TechNurture'}
-                            </span>
+                            {data.platformSettings?.show_platform_name !== false && (
+                                <span className={`hidden md:block text-xl font-black tracking-tighter ${t.textPrimary(isDark)} whitespace-nowrap overflow-hidden text-ellipsis`}>
+                                    {data.platformSettings?.platform_name || 'TechNurture'}
+                                </span>
+                            )}
                         </div>
 
                         {/* Center: Desktop Nav - Hidden on mobile, visible from medium screens */}

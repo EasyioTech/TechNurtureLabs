@@ -68,8 +68,13 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                     {/* ── Left: Logo ── */}
                     <Link href="/student" className="flex items-center gap-2.5 flex-shrink-0 select-none">
                         {logoUrl ? (
-                            <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center overflow-hidden">
-                                <img src={logoUrl} alt={displayName} className="w-full h-full object-contain" />
+                            <div className="flex items-center justify-center overflow-hidden flex-shrink-0">
+                                <img
+                                    src={logoUrl}
+                                    alt={displayName}
+                                    className="object-contain"
+                                    style={{ height: `${settings?.logo_height || 36}px`, width: 'auto', maxHeight: '44px' }}
+                                />
                             </div>
                         ) : (
                             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm">

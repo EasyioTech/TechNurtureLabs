@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { platformSettings } from '@/db/schema';
 import { verifySession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,9 +73,13 @@ export async function POST(request: NextRequest) {
                 });
         }
 
+        revalidateTag('platform-settings');
         revalidatePath('/', 'layout');
         revalidatePath('/admin-portal', 'layout');
         revalidatePath('/school-portal', 'layout');
+        revalidatePath('/admin', 'layout');
+        revalidatePath('/school-admin', 'layout');
+        revalidatePath('/student', 'layout');
 
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import postgres from 'postgres';
-import fs from 'fs';
-import path from 'path';
+import { serverEnv } from '@/lib/env.server';
 
 export async function GET(req: NextRequest) {
+    // Require CRON_SECRET header to prevent unauthorized execution
+    const authHeader = req.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
-        // Use raw postgres connection as the built-in superuser 'postgres' from docker-compose.yml
+        // Use the DATABASE_URL from environment — never hardcode credentials
+        const dbUrl = serverEnv.DATABASE_URL;
         // max: 1 is explicitly required by postgres.js when executing massive raw SQL scripts containing BEGIN/COMMIT blocks.
-        const sql = postgres('postgresql://postgres:admin@db:5432/LMS_postgres', { max: 1 });
+        const sql = postgres(dbUrl, { max: 1 });
 
         // 1. Force create the application role
         await sql.unsafe(`
@@ -23,19 +30,7 @@ export async function GET(req: NextRequest) {
             GRANT ALL ON SCHEMA public TO technurture_app;
         `);
 
-        // 2. Locate and Read the actual Database Schema
-        const schemaPath = path.join(process.cwd(), 'database', 'schema.sql');
-        const schemaText = fs.readFileSync(schemaPath, 'utf8');
-
-        // 3. SAFE INITIALIZATION ONLY
-        // We NO LONGER drop the schema here. Drizzle handles migrations safely.
-        // This endpoint is now for idempotent infrastructure setup (Roles & Permissions).
-        console.log("Starting idempotent infrastructure setup...");
-
-        // 4. (Optional) Run migrations/push if needed, but we do this in CI/CD now.
-        // We will just ensure the role and database settings are correct.
-
-        // 5. Explicitly grant permissions ensuring technurture_app can manage the schema
+        // 2. Explicitly grant permissions ensuring technurture_app can manage the schema
         await sql.unsafe(`
             GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO technurture_app;
             GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO technurture_app;

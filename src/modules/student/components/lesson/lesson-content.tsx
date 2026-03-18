@@ -79,7 +79,16 @@ export function LessonContent({
           
           {lesson.content_type === 'ppt' && (
             <div className="w-full h-full">
-              <PPTViewer url={lesson.content_url!} onComplete={() => onComplete()} lessonComplete={lessonComplete} />
+              <PPTViewer
+                url={lesson.content_url!}
+                assetId={(lesson as any).asset_id ?? null}
+                onComplete={() => onComplete()}
+                lessonComplete={lessonComplete}
+                pageNumber={pageNumber}
+                docMax={docMax}
+                onLoadTotalPages={(total) => onDocStateChange?.(total)}
+                onPageChange={onPageChange}
+              />
             </div>
           )}
 

@@ -17,9 +17,9 @@ export async function updateNotificationPreferences(data: {
         redirect('/login');
     }
 
-    // In a real app, you'd have columns for these in the students table
-    // For now, we'll simulate success. If columns exist, we'd update them.
-    // await db.update(students).set({ ... }).where(eq(students.id, session.userId));
+    await db.update(students)
+        .set({ notification_preferences: data as any })
+        .where(eq(students.id, session.userId));
 
     revalidatePath('/student/settings');
     return { success: true };
@@ -33,7 +33,10 @@ export async function updateAppearanceSettings(data: {
         redirect('/login');
     }
 
-    // Simulate updating preference
+    await db.update(students)
+        .set({ appearance_settings: data as any })
+        .where(eq(students.id, session.userId));
+
     revalidatePath('/student/settings');
     return { success: true };
 }
@@ -46,7 +49,10 @@ export async function updatePrivacySettings(data: {
         redirect('/login');
     }
 
-    // Simulate updating preference
+    await db.update(students)
+        .set({ privacy_settings: data as any })
+        .where(eq(students.id, session.userId));
+
     revalidatePath('/student/settings');
     return { success: true };
 }

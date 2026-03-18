@@ -25,28 +25,28 @@ export async function getOrGenerateDailyChallenges(userId: string) {
         try {
             const newChallenges = await db.insert(dailyChallenges).values([
                 {
-                    title: 'Quick Learner',
-                    description: 'Complete 2 lessons today.',
-                    xp_reward: 50,
+                    title: 'Strategic Learner',
+                    description: 'Complete 3 lessons today.',
+                    xp_reward: 75,
                     challenge_date: todayStr,
                     status: 'active',
-                    criteria: { type: 'quiz_complete', target: 2, icon: 'book-open' }
+                    criteria: { type: 'lesson_complete', target: 3, icon: 'book-open' }
                 },
                 {
-                    title: 'Perfect Streak',
-                    description: 'Log in and study today.',
-                    xp_reward: 20,
-                    challenge_date: todayStr,
-                    status: 'active',
-                    criteria: { type: 'streak', target: 1, icon: 'flame' }
-                },
-                {
-                    title: 'Master Scorer',
-                    description: 'Earn 100 XP today.',
+                    title: 'Quiz Master',
+                    description: 'Complete 2 quizzes with 80%+ score.',
                     xp_reward: 100,
                     challenge_date: todayStr,
                     status: 'active',
-                    criteria: { type: 'xp_gain', target: 100, icon: 'star' }
+                    criteria: { type: 'quiz_complete', target: 2, icon: 'target' }
+                },
+                {
+                    title: 'Power Hour',
+                    description: 'Study for at least 30 minutes.',
+                    xp_reward: 50,
+                    challenge_date: todayStr,
+                    status: 'active',
+                    criteria: { type: 'learning_time', target: 30, icon: 'clock' }
                 }
             ]).returning();
             todayChallenges = newChallenges;

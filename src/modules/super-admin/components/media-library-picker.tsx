@@ -32,7 +32,7 @@ interface MediaAsset {
 interface MediaLibraryPickerProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSelect: (url: string) => void;
+    onSelect: (url: string, assetId: string) => void;
     /** If set, only assets of this type are shown */
     filterType?: 'video' | 'image' | 'document';
     /** Current selected URL to highlight */
@@ -62,26 +62,47 @@ const TABS: { id: AssetType; label: string; icon: React.ElementType }[] = [
     { id: 'document', label: 'Docs', icon: FileText },
 ];
 
+const FOLDERS = [
+    { id: 'all', label: 'All Assets', color: 'text-slate-400' },
+    { id: 'lesson', label: 'Lessons', color: 'text-sky-400' },
+    { id: 'course', label: 'Courses', color: 'text-indigo-400' },
+    { id: 'branding', label: 'Branding', color: 'text-amber-400' },
+    { id: 'library', label: 'General', color: 'text-emerald-400' },
+    { id: 'video', label: 'Videos', color: 'text-rose-400' },
+];
+
 export function MediaLibraryPicker({
     open, onOpenChange, onSelect, filterType, currentUrl, folder
 }: MediaLibraryPickerProps) {
     const { isDark, accent } = useAdminTheme();
     const [assets, setAssets] = React.useState<MediaAsset[]>([]);
     const [loading, setLoading] = React.useState(false);
+    const [loadingMore, setLoadingMore] = React.useState(false);
+    const [hasMore, setHasMore] = React.useState(true);
+    const [page, setPage] = React.useState(1);
     const [error, setError] = React.useState<string | null>(null);
     const [activeTab, setActiveTab] = React.useState<AssetType>(filterType ?? 'all');
     const [activeFolder, setActiveFolder] = React.useState<string>(folder ?? 'all');
     const [search, setSearch] = React.useState('');
+    const [debouncedSearch, setDebouncedSearch] = React.useState('');
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
     const [uploadFile, setUploadFile] = React.useState<File | null>(null);
     const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+    // Debounce search
+    React.useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(search), 500);
+        return () => clearTimeout(timer);
+    }, [search]);
+
     const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload({
         onSuccess: () => {
             toast.success('Upload complete');
             setUploadFile(null);
-            loadAssets(activeTab);
+            // Reload from scratch after upload
+            setPage(1);
+            loadAssets(activeTab, activeFolder, 1, debouncedSearch, false);
         },
         onError: (err) => {
             toast.error(err || 'Failed to upload file');
@@ -98,40 +119,122 @@ export function MediaLibraryPicker({
         };
     }, [uploadId, isUploading]);
 
-    // Load assets when the sheet opens
+    // Reset state and load assets whenever the sheet opens or the filter/folder props change
     React.useEffect(() => {
         if (!open) return;
-        setActiveTab(filterType ?? 'all');
-        loadAssets(filterType ?? 'all');
-    }, [open, filterType]);
+        const newTab = filterType ?? 'all';
+        const newFolder = folder ?? 'all';
+        setActiveTab(newTab);
+        setActiveFolder(newFolder);
+        setSearch('');
+        setPage(1);
+        loadAssets(newTab, newFolder, 1, '', false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, filterType, folder]);
 
-    async function loadAssets(type: AssetType, targetFolder: string = activeFolder) {
-        setLoading(true);
+    // Trigger load on debounced search
+    React.useEffect(() => {
+        if (!open) return;
+        setPage(1);
+        loadAssets(activeTab, activeFolder, 1, debouncedSearch, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debouncedSearch]);
+
+    async function loadAssets(type: AssetType, targetFolder: string, targetPage: number, query: string, append: boolean) {
+        if (append) setLoadingMore(true);
+        else setLoading(true);
+        
         setError(null);
         try {
-            const folderQuery = targetFolder !== 'all' ? `&folder=${targetFolder}` : '';
-            const url = type === 'all'
-                ? `/api/media/library?_t=${Date.now()}${folderQuery}`
-                : `/api/media/library?type=${type}${folderQuery}`;
-            const res = await fetch(url);
+            const params = new URLSearchParams({ 
+                _t: Date.now().toString(),
+                page: targetPage.toString(),
+                limit: '24'
+            });
+            if (type !== 'all') params.set('type', type);
+            if (targetFolder !== 'all') params.set('folder', targetFolder);
+            if (query) params.set('search', query);
+
+            const res = await fetch(`/api/media/library?${params.toString()}`);
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({ error: 'Unknown server error' }));
                 throw new Error(errorData.details || errorData.error || 'Failed to load library');
             }
             const data = await res.json();
-            setAssets(data);
+            
+            if (append) {
+                setAssets(prev => [...prev, ...data.assets]);
+            } else {
+                setAssets(data.assets);
+            }
+            
+            setHasMore(data.pagination.currentPage < data.pagination.pages);
         } catch (err: any) {
             console.error('[Media Library] Load error:', err);
             setError(err.message || 'Could not load the media library. Please try again.');
         } finally {
             setLoading(false);
+            setLoadingMore(false);
         }
     }
 
+    function handleLoadMore() {
+        if (loadingMore || !hasMore) return;
+        const nextPage = page + 1;
+        setPage(nextPage);
+        loadAssets(activeTab, activeFolder, nextPage, debouncedSearch, true);
+    }
+
     function handleTabChange(tab: AssetType) {
-        // Allow switching between visible tabs (e.g. "All" and "Videos")
         setActiveTab(tab);
-        loadAssets(tab);
+        setPage(1);
+        loadAssets(tab, activeFolder, 1, debouncedSearch, false);
+    }
+
+    function handleFolderChange(folderId: string) {
+        setActiveFolder(folderId);
+        setPage(1);
+        loadAssets(activeTab, folderId, 1, debouncedSearch, false);
+    }
+
+    const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+    const [isMultiSelect, setIsMultiSelect] = React.useState(false);
+
+    async function handleSelection(asset: MediaAsset) {
+        if (isMultiSelect) {
+            setSelectedIds(prev => 
+                prev.includes(asset.id) 
+                    ? prev.filter(id => id !== asset.id) 
+                    : [...prev, asset.id]
+            );
+        } else {
+            onSelect(asset.file_url, asset.id);
+            onOpenChange(false);
+        }
+    }
+
+    async function handleBulkDelete() {
+        if (selectedIds.length === 0) return;
+        if (!confirm(`Delete ${selectedIds.length} assets permanently?`)) return;
+        
+        setLoading(true);
+        try {
+            const res = await fetch('/api/media/library/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: selectedIds })
+            });
+            if (!res.ok) throw new Error('Bulk delete failed');
+            
+            setAssets(prev => prev.filter(a => !selectedIds.includes(a.id)));
+            setSelectedIds([]);
+            setIsMultiSelect(false);
+            toast.success(`Deleted ${selectedIds.length} assets`);
+        } catch (err) {
+            toast.error('Failed to delete assets');
+        } finally {
+            setLoading(false);
+        }
     }
 
     async function handleDelete(asset: MediaAsset, e: React.MouseEvent) {
@@ -162,37 +265,41 @@ export function MediaLibraryPicker({
             const validVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
             if (!validVideoTypes.includes(file.type)) {
                 toast.error('Invalid video format. Please upload MP4 or WebM.');
+                if (fileInputRef.current) fileInputRef.current.value = '';
                 return;
             }
         } else if (isImage) {
-            const validImageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+            const validImageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp', 'image/gif'];
             if (!validImageTypes.includes(file.type)) {
-                toast.error('Invalid image type. Please upload PNG, JPG, or SVG.');
+                toast.error('Invalid image type. Please upload PNG, JPG, SVG, WEBP or GIF.');
+                if (fileInputRef.current) fileInputRef.current.value = '';
                 return;
             }
         }
 
-        const maxSize = 2048 * 1024 * 1024; // 2GB limit for all videos and other files
+        const maxSize = 2048 * 1024 * 1024; // 2GB limit
         const maxImageSize = 25 * 1024 * 1024; // 25MB for images
 
         if (isImage && file.size > maxImageSize) {
             toast.error('Image too large. Maximum size is 25MB.');
+            if (fileInputRef.current) fileInputRef.current.value = '';
             return;
         }
 
         if (file.size > maxSize) {
             toast.error('File too large. Maximum size is 2GB.');
+            if (fileInputRef.current) fileInputRef.current.value = '';
             return;
         }
 
         setUploadFile(file);
-        
+
+        const folderToSave = folder || (activeFolder !== 'all' ? activeFolder : 'library');
         const additionalData: Record<string, string> = {
             purpose: filterType === 'video' ? 'system_video' : 'library',
-            storagePreference: storagePref
+            storagePreference: storagePref,
+            folder: folderToSave,
         };
-        const folderToSave = folder || (activeFolder !== 'all' ? activeFolder : 'library');
-        additionalData.folder = folderToSave;
 
         try {
             await upload(file, additionalData);
@@ -203,12 +310,8 @@ export function MediaLibraryPicker({
         }
     }
 
-    const filtered = assets.filter(a =>
-        a.original_name.toLowerCase().includes(search.toLowerCase())
-    );
-
     const visibleTabs = filterType
-        ? TABS.filter(t => t.id === filterType || t.id === 'all')
+        ? TABS.filter(tab => tab.id === filterType || tab.id === 'all')
         : TABS;
 
     return (
@@ -267,8 +370,8 @@ export function MediaLibraryPicker({
                                         type="button"
                                         onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
                                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all
-                                            ${isActive 
-                                                ? (isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm') 
+                                            ${isActive
+                                                ? (isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm')
                                                 : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
                                     >
                                         <opt.icon size={10} />
@@ -290,7 +393,7 @@ export function MediaLibraryPicker({
                         />
                     </div>
 
-                    {/* Tabs */}
+                    {/* Type Tabs */}
                     <div className="flex gap-1 mt-3">
                         {visibleTabs.map(tab => {
                             const isActive = activeTab === tab.id;
@@ -309,21 +412,15 @@ export function MediaLibraryPicker({
                             );
                         })}
                     </div>
-                {/* Folders */}
-                <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
-                        {[
-                            { id: 'all', label: 'All Assets', color: 'text-slate-400' },
-                            { id: 'lesson', label: 'Lessons', color: 'text-sky-400' },
-                            { id: 'course', label: 'Courses', color: 'text-indigo-400' },
-                            { id: 'branding', label: 'Branding', color: 'text-amber-400' },
-                            { id: 'library', label: 'General', color: 'text-emerald-400' },
-                            { id: 'video', label: 'Videos', color: 'text-rose-400' },
-                        ].map(f => {
+
+                    {/* Folder Tabs */}
+                    <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
+                        {FOLDERS.map(f => {
                             const isActive = activeFolder === f.id;
                             return (
                                 <button
                                     key={f.id}
-                                    onClick={() => { setActiveFolder(f.id); loadAssets(activeTab, f.id); }}
+                                    onClick={() => handleFolderChange(f.id)}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all whitespace-nowrap border-2
                                         ${isActive
                                             ? (isDark ? `${accent.bg} text-slate-900 border-white shadow-lg` : `${accent.bg} text-slate-900 border-slate-900 shadow-lg`)
@@ -339,6 +436,44 @@ export function MediaLibraryPicker({
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {/* Bulk Selection Controls */}
+                    <div className={`p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${isMultiSelect ? (isDark ? 'bg-white/[0.04] border-white/10' : 'bg-slate-50 border-slate-200') : 'border-transparent'}`}>
+                        <div className="space-y-0.5">
+                            <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
+                                {isMultiSelect ? `${selectedIds.length} items selected` : 'Library Assets'}
+                            </p>
+                            {isMultiSelect && (
+                                <p className={`text-[9px] font-bold ${t.textMuted(isDark)} italic`}>
+                                    Click items to select/deselect
+                                </p>
+                            )}
+                        </div>
+                        <div className="flex gap-2">
+                            {isMultiSelect && selectedIds.length > 0 && (
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={handleBulkDelete}
+                                    className="h-8 px-4 text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all"
+                                >
+                                    <Trash2 size={12} className="mr-2" />
+                                    Delete {selectedIds.length}
+                                </Button>
+                            )}
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                    setIsMultiSelect(!isMultiSelect);
+                                    setSelectedIds([]);
+                                }}
+                                className={`h-8 px-4 text-[10px] font-black uppercase tracking-widest rounded-full border-2 transition-all ${isMultiSelect ? (isDark ? 'bg-white/10 border-white text-white' : 'bg-slate-900 border-slate-900 text-white') : ''}`}
+                            >
+                                {isMultiSelect ? 'Cancel' : 'Bulk Select'}
+                            </Button>
+                        </div>
+                    </div>
+
                     {uploadFile && (
                         <UploadProgress
                             progress={progress}
@@ -362,13 +497,13 @@ export function MediaLibraryPicker({
                             <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => loadAssets(activeTab)}
+                                onClick={() => loadAssets(activeTab, activeFolder, 1, debouncedSearch, false)}
                                 className="rounded-full font-bold text-xs"
                             >
                                 Retry
                             </Button>
                         </div>
-                    ) : filtered.length === 0 ? (
+                    ) : assets.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-48 gap-3">
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
                                 <ImageIcon size={24} className={t.textMuted(isDark)} />
@@ -378,105 +513,150 @@ export function MediaLibraryPicker({
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 gap-3">
-                            {filtered.map(asset => {
-                                const isSelected = asset.file_url === currentUrl;
-                                const isDeleting = deletingId === asset.id;
-                                return (
-                                    <div
-                                        key={asset.id}
-                                        className={`relative group/card text-left rounded-2xl border-2 overflow-hidden transition-all cursor-pointer
-                                            ${isSelected
-                                                ? (isDark ? `border-${accent.name}-400 ring-2 ring-${accent.name}-400/20` : `border-${accent.name}-400 ring-2 ring-${accent.name}-400/10`)
-                                                : (isDark ? 'border-white/5 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]' : 'border-slate-100 hover:border-slate-300 bg-slate-50 hover:bg-white')
-                                            } ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        onClick={() => {
-                                            if (isDeleting) return;
-                                            onSelect(asset.file_url);
-                                            onOpenChange(false);
-                                        }}
-                                    >
-                                        {/* Preview area */}
-                                        <div className={`aspect-video relative flex items-center justify-center ${isDark ? 'bg-white/[0.03]' : 'bg-slate-100'}`}>
-                                            {asset.asset_type === 'image' ? (
-                                                <img
-                                                    src={asset.file_url}
-                                                    alt={asset.original_name}
-                                                    className="w-full h-full object-cover"
-                                                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                                />
-                                            ) : asset.asset_type === 'video' ? (
-                                                <div className="w-full h-full relative group/video">
-                                                    <video
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-2 gap-3">
+                                {assets.map(asset => {
+                                    const isSelected = asset.file_url === currentUrl;
+                                    const isInBulk = selectedIds.includes(asset.id);
+                                    const isDeleting = deletingId === asset.id;
+                                    return (
+                                        <div
+                                            key={asset.id}
+                                            className={`relative group/card text-left rounded-2xl border-2 overflow-hidden transition-all cursor-pointer
+                                                ${(isSelected || isInBulk)
+                                                    ? (isDark ? `border-${accent.name}-400 ring-2 ring-${accent.name}-400/20` : `border-${accent.name}-400 ring-2 ring-${accent.name}-400/10`)
+                                                    : (isDark ? 'border-white/5 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]' : 'border-slate-100 hover:border-slate-300 bg-slate-50 hover:bg-white')
+                                                } ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            onClick={() => {
+                                                if (isDeleting) return;
+                                                handleSelection(asset);
+                                            }}
+                                        >
+                                            {/* Preview area */}
+                                            <div className={`aspect-video relative flex items-center justify-center ${isDark ? 'bg-white/[0.03]' : 'bg-slate-100'}`}>
+                                                {asset.asset_type === 'image' ? (
+                                                    <img
                                                         src={asset.file_url}
+                                                        alt={asset.original_name}
                                                         className="w-full h-full object-cover"
-                                                        preload="metadata"
-                                                        muted
-                                                        onMouseOver={e => (e.target as HTMLVideoElement).play()}
-                                                        onMouseOut={e => {
-                                                            const v = e.target as HTMLVideoElement;
-                                                            v.pause();
-                                                            v.currentTime = 0;
+                                                        onError={e => {
+                                                            const el = e.target as HTMLImageElement;
+                                                            el.style.display = 'none';
+                                                            el.nextElementSibling?.classList.remove('hidden');
                                                         }}
                                                     />
-                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/video:bg-transparent transition-all">
-                                                        <Film size={20} className="text-white drop-shadow-lg" />
+                                                ) : asset.asset_type === 'video' ? (
+                                                    <VideoPreview src={asset.file_url} isDark={isDark} />
+                                                ) : (
+                                                    <AssetIcon
+                                                        asset_type={asset.asset_type}
+                                                        mime_type={asset.mime_type}
+                                                        className={isDark ? 'text-slate-400' : 'text-slate-500'}
+                                                    />
+                                                )}
+
+                                                {/* Selected check */}
+                                                {(isSelected || isInBulk) && (
+                                                    <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-lg ${accent.bg} text-slate-900`}>
+                                                        <Check size={12} strokeWidth={3} />
                                                     </div>
-                                                </div>
-                                            ) : (
-                                                <AssetIcon
-                                                    asset_type={asset.asset_type}
-                                                    mime_type={asset.mime_type}
-                                                    className={isDark ? 'text-slate-400' : 'text-slate-500'}
-                                                />
-                                            )}
+                                                )}
 
-                                            {/* Selected check */}
-                                            {isSelected && (
-                                                <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-lg ${accent.bg} text-slate-900`}>
-                                                    <Check size={12} strokeWidth={3} />
+                                                {/* Storage badge */}
+                                                <div className={`absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase
+                                                    ${asset.storage_type === 'r2'
+                                                        ? (isDark ? `${accent.softDark.split(' ').slice(0, 2).join(' ')}` : `${accent.softLight.split(' ').slice(0, 2).join(' ')}`)
+                                                        : (isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-500')}`}
+                                                >
+                                                    {asset.storage_type === 'r2' ? <Cloud size={8} /> : <HardDrive size={8} />}
+                                                    {asset.storage_type === 'r2' ? 'R2' : 'Local'}
                                                 </div>
-                                            )}
 
-                                            {/* Storage badge */}
-                                            <div className={`absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase
-                                                ${asset.storage_type === 'r2'
-                                                    ? (isDark ? `${accent.softDark.split(' ').slice(0, 2).join(' ')}` : `${accent.softLight.split(' ').slice(0, 2).join(' ')}`)
-                                                    : (isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-500')}`}
-                                            >
-                                                {asset.storage_type === 'r2' ? <Cloud size={8} /> : <HardDrive size={8} />}
-                                                {asset.storage_type === 'r2' ? 'R2' : 'Local'}
+                                                {/* Delete button on hover */}
+                                                <button
+                                                    type="button"
+                                                    onClick={e => handleDelete(asset, e)}
+                                                    disabled={isDeleting}
+                                                    className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity
+                                                        ${isDark ? 'bg-rose-500/80 text-white hover:bg-rose-500' : 'bg-rose-500 text-white hover:bg-rose-600'}`}
+                                                    title="Delete"
+                                                >
+                                                    {isDeleting ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} />}
+                                                </button>
                                             </div>
 
-                                            {/* Delete button on hover */}
-                                            <button
-                                                type="button"
-                                                onClick={e => handleDelete(asset, e)}
-                                                disabled={isDeleting}
-                                                className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity
-                                                    ${isDark ? 'bg-rose-500/80 text-white hover:bg-rose-500' : 'bg-rose-500 text-white hover:bg-rose-600'}`}
-                                                title="Delete"
-                                            >
-                                                {isDeleting ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} />}
-                                            </button>
+                                            {/* Info */}
+                                            <div className="p-2.5 space-y-0.5">
+                                                <p className={`text-[11px] font-black truncate ${t.textPrimary(isDark)}`}>
+                                                    {asset.original_name}
+                                                </p>
+                                                <p className={`text-[9px] font-bold uppercase tracking-wider ${t.textMuted(isDark)}`}>
+                                                    {formatBytes(asset.file_size)} · {asset.asset_type}
+                                                </p>
+                                            </div>
                                         </div>
+                                    );
+                                })}
+                            </div>
 
-                                        {/* Info */}
-                                        <div className="p-2.5 space-y-0.5">
-                                            <p className={`text-[11px] font-black truncate ${t.textPrimary(isDark)}`}>
-                                                {asset.original_name}
-                                            </p>
-                                            <p className={`text-[9px] font-bold uppercase tracking-wider ${t.textMuted(isDark)}`}>
-                                                {formatBytes(asset.file_size)} · {asset.asset_type}
-                                            </p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                            {hasMore && (
+                                <div className="flex justify-center pt-2 pb-6">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={loadingMore}
+                                        onClick={handleLoadMore}
+                                        className={`rounded-full px-6 font-black uppercase tracking-widest text-[10px] ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-slate-200'}`}
+                                    >
+                                        {loadingMore ? (
+                                            <>
+                                                <Loader2 size={12} className="animate-spin mr-2" />
+                                                Loading...
+                                            </>
+                                        ) : (
+                                            'Load More Assets'
+                                        )}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
             </SheetContent>
         </Sheet>
+    );
+}
+
+/** Video thumbnail with graceful fallback when the src can't be loaded */
+function VideoPreview({ src, isDark }: { src: string; isDark: boolean }) {
+    const [failed, setFailed] = React.useState(false);
+
+    if (failed) {
+        return (
+            <div className="w-full h-full flex items-center justify-center">
+                <Film size={24} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full h-full relative group/video">
+            <video
+                src={src}
+                className="w-full h-full object-cover"
+                preload="none"
+                muted
+                onError={() => setFailed(true)}
+                onMouseOver={e => (e.target as HTMLVideoElement).play().catch(() => {})}
+                onMouseOut={e => {
+                    const v = e.target as HTMLVideoElement;
+                    v.pause();
+                    v.currentTime = 0;
+                }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/video:bg-transparent transition-all pointer-events-none">
+                <Film size={20} className="text-white drop-shadow-lg" />
+            </div>
+        </div>
     );
 }

@@ -102,7 +102,7 @@ export async function deleteQuizAdmin(quizId: string) {
     await db.delete(quizzes).where(eq(quizzes.id, quizId));
 }
 
-export async function cloneQuizAction(quizId: string, targetLessonId: string, targetCourseId: string) {
+export async function cloneQuizAction(quizId: string, targetLessonId: string | null | undefined, targetCourseId: string) {
     const session = await verifySession();
     if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
         redirect('/admin-portal/login');

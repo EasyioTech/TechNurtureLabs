@@ -55,6 +55,9 @@ export async function POST(request: NextRequest) {
 
         const assetType = getAssetType(result.mimeType);
         const isProcessableVideo = assetType === 'video' && result.storageType === 'r2';
+        const isPptx =
+            result.mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+            result.mimeType === 'application/vnd.ms-powerpoint';
 
         // Persist to media library
         const [asset] = await db.insert(mediaAssets).values({
@@ -67,10 +70,11 @@ export async function POST(request: NextRequest) {
             asset_type: assetType,
             uploaded_by: uploadedBy || undefined,
             folder: folderHint,
-            processing_status: isProcessableVideo ? 'pending' : 'completed',
+            // PPTX and video both go through background processing
+            processing_status: (isProcessableVideo || isPptx) ? 'processing' : 'completed',
         } as any).returning();
 
-        // 5. Trigger Transcoding Queue if needed
+        // Trigger video transcoding queue
         if (isProcessableVideo) {
             try {
                 const { queueService } = await import('@/lib/services/queue-service');
@@ -82,8 +86,35 @@ export async function POST(request: NextRequest) {
                 });
             } catch (qError) {
                 console.error('[Upload] Failed to enqueue transcoding task:', qError);
-                // System remains functional, but video will stay in 'pending'
             }
+        }
+
+        // Trigger PPTX → slide images conversion in the background
+        if (isPptx) {
+            setImmediate(async () => {
+                try {
+                    const { processPptxToSlides } = await import('@/lib/pptx-processor');
+                    const convResult = await processPptxToSlides(
+                        asset.id,
+                        result.path,
+                        result.storageType
+                    );
+                    const { eq } = await import('drizzle-orm');
+                    if (convResult.success) {
+                        await db.update(mediaAssets)
+                            .set({ processing_status: 'completed' })
+                            .where(eq(mediaAssets.id, asset.id));
+                        console.log(`[Upload] PPTX slides ready: ${asset.id} (${convResult.slideCount} slides)`);
+                    } else {
+                        await db.update(mediaAssets)
+                            .set({ processing_status: 'failed', error_message: convResult.error })
+                            .where(eq(mediaAssets.id, asset.id));
+                        console.error('[Upload] PPTX conversion failed:', convResult.error);
+                    }
+                } catch (err: any) {
+                    console.error('[Upload] PPTX conversion threw:', err?.message);
+                }
+            });
         }
 
         return NextResponse.json({

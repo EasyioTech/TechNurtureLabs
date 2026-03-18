@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 type UserProfile = {
   id: string;
   full_name: string;
+  first_name?: string | null;
+  last_name?: string | null;
   email: string;
   role: 'student' | 'school_admin' | 'super_admin' | 'admin';
   school_id?: string | null;
@@ -14,7 +16,8 @@ type UserProfile = {
   total_xp?: number;
   level?: number;
   current_streak?: number;
-  avatar_style: string | null;
+  avatar_style?: string | null;
+  avatar_url?: string | null;
   bio?: string | null;
   phone?: string | null;
 };
@@ -30,8 +33,6 @@ type AuthContextType = {
   profile: UserProfile | null;
   session: any | null; // Placeholder for legacy session checks
   loading: boolean;
-  isTransitioning: boolean;
-  setTransition: (val: boolean) => void;
   signOut: () => Promise<void>;
   signIn: (email: string, password: string, role: string) => Promise<{ success: boolean; error?: string; two_factor_required?: boolean; userId?: string }>;
   refreshProfile: () => Promise<void>;
@@ -42,8 +43,6 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   session: null,
   loading: true,
-  isTransitioning: false,
-  setTransition: () => { },
   signOut: async () => { },
   signIn: async () => ({ success: false }),
   refreshProfile: async () => { },
@@ -55,11 +54,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-
-  const setTransition = useCallback((val: boolean) => {
-    setIsTransitioning(val);
-  }, []);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -119,7 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchProfile]);
 
   const signOut = useCallback(async () => {
-    setIsTransitioning(true);
     const toastId = toast.loading('Terminating secure session...');
 
     try {
@@ -134,15 +127,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toast.error('Log out failed. Force redirecting...', { id: toastId });
       window.location.href = '/';
     } finally {
-      // Transition state stays true until the global layout/next page mounts
+      // Clean up
     }
   }, [router]);
-
-  const pathname = usePathname();
-
-  useEffect(() => {
-    setIsTransitioning(false);
-  }, [pathname]);
 
   useEffect(() => {
     fetchProfile().finally(() => setLoading(false));
@@ -150,20 +137,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, profile, session, loading, isTransitioning, setTransition,
+      user, profile, session, loading,
       signIn, signOut, refreshProfile: fetchProfile
     }}>
-      {isTransitioning && (
-        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50/90 backdrop-blur-md transition-opacity duration-500">
-          <div className="relative w-24 h-24">
-            <img src="/assets/loading.svg" alt="Loading" className="w-full h-full object-contain mix-blend-multiply opacity-70" />
-            <div className="absolute inset-0 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin opacity-20" />
-          </div>
-          <p className="mt-6 text-slate-400 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">
-            Finalizing Secure Channel
-          </p>
-        </div>
-      )}
       {children}
     </AuthContext.Provider>
   );

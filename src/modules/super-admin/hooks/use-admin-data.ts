@@ -348,7 +348,7 @@ export function useAdminData() {
         },
         cloneQuiz: async (quizId: string, targetCourseId: string) => {
             try {
-                await cloneQuizAction(quizId, targetCourseId);
+                await cloneQuizAction(quizId, null, targetCourseId);
                 toast.success("Quiz cloned successfully");
                 if (selectedCourse?.id === targetCourseId) selectCourse(selectedCourse);
             } catch { toast.error("Failed to clone quiz"); }

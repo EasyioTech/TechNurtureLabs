@@ -127,6 +127,30 @@ export function CourseDialog({
                                 isDark={isDark}
                                 folder="course"
                             />
+                            {editingCourse?.thumbnail && (
+                                (() => {
+                                    const validateImageUrl = (url: string) => {
+                                        if (!url) return null;
+                                        try {
+                                            const parsed = new URL(url);
+                                            const ext = parsed.pathname.split('.').pop()?.toLowerCase();
+                                            const isImageFile = ['png', 'jpg', 'jpeg', 'svg', 'webp', 'gif'].includes(ext || '');
+                                            const isR2 = url.includes('r2.cloudflarestorage.com') || url.startsWith('/api/media/');
+                                            if (!isImageFile && !isR2) return 'Invalid image format. Please use PNG, JPG, SVG, WEBP or R2 storage.';
+                                        } catch (e) {
+                                            if (!url.startsWith('/') && !url.startsWith('./')) return 'Invalid URL format.';
+                                        }
+                                        return null;
+                                    };
+                                    const error = validateImageUrl(editingCourse.thumbnail);
+                                    return error ? (
+                                        <div className="flex items-center gap-1.5 px-1 mt-1">
+                                            <div className="w-1 h-1 rounded-full bg-rose-500" />
+                                            <p className="text-[10px] font-bold text-rose-500 uppercase tracking-tight">{error}</p>
+                                        </div>
+                                    ) : null;
+                                })()
+                            )}
                             <p className={`text-[10px] font-bold ${t.textMuted(isDark)} px-1 italic`}>
                                 Primary course image used in the student dashboard and search results.
                             </p>
@@ -192,8 +216,32 @@ export function CourseDialog({
                             className={`rounded-full h-11 px-6 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white hover:text-white' : 'hover:bg-slate-200 text-slate-700'}`}>
                             Cancel
                         </Button>
-                        <Button onClick={onSave} disabled={!editingCourse?.title?.trim()}
-                            className={`rounded-full h-11 px-8 font-black text-sm shadow-xl transition-all border-0 ${!editingCourse?.title?.trim() ? 'opacity-50 cursor-not-allowed' : ''} ${t.btnPrimary(isDark, accent)}`}
+                        <Button onClick={onSave} disabled={!editingCourse?.title?.trim() || !!(editingCourse?.thumbnail && (() => {
+                            const url = editingCourse.thumbnail;
+                            try {
+                                const parsed = new URL(url);
+                                const ext = parsed.pathname.split('.').pop()?.toLowerCase();
+                                const isImageFile = ['png', 'jpg', 'jpeg', 'svg', 'webp', 'gif'].includes(ext || '');
+                                const isR2 = url.includes('r2.cloudflarestorage.com') || url.startsWith('/api/media/');
+                                if (!isImageFile && !isR2) return true;
+                            } catch (e) {
+                                if (!url.startsWith('/') && !url.startsWith('./')) return true;
+                            }
+                            return false;
+                        })())}
+                            className={`rounded-full h-11 px-8 font-black text-sm shadow-xl transition-all border-0 ${(!editingCourse?.title?.trim() || !!(editingCourse?.thumbnail && (() => {
+                                const url = editingCourse.thumbnail;
+                                try {
+                                    const parsed = new URL(url);
+                                    const ext = parsed.pathname.split('.').pop()?.toLowerCase();
+                                    const isImageFile = ['png', 'jpg', 'jpeg', 'svg', 'webp', 'gif'].includes(ext || '');
+                                    const isR2 = url.includes('r2.cloudflarestorage.com') || url.startsWith('/api/media/');
+                                    if (!isImageFile && !isR2) return true;
+                                } catch (e) {
+                                    if (!url.startsWith('/') && !url.startsWith('./')) return true;
+                                }
+                                return false;
+                            })())) ? 'opacity-50 cursor-not-allowed' : ''} ${t.btnPrimary(isDark, accent)}`}
                             style={t.glowStyle(isDark, accent)}>
                             {isEditing ? 'Save Changes' : 'Create Course'}
                         </Button>

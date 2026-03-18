@@ -114,9 +114,9 @@ export default function SchoolRegistrationPage() {
     if (currentStep === 3) {
       setLoading(true);
       try {
-        const exists = await checkIdentifierExists(formData.contact_email);
-        if (exists) {
-          setErrors(prev => ({ ...prev, contact_email: 'This email is already associated with an account' }));
+        const res = await checkIdentifierExists(formData.contact_email);
+        if (res.exists) {
+          setErrors(prev => ({ ...prev, contact_email: `This ${(res.role ?? 'account').replace('_', ' ')} is already registered` }));
           toast.error('The email address provided is already in use');
           return;
         }
@@ -311,7 +311,14 @@ export default function SchoolRegistrationPage() {
     setLoading(true);
     const toastId = toast.loading('Setting up your school portal...');
     try {
-      await registerSchool({ ...formData });
+      const result = await registerSchool({ ...formData });
+
+      if (!result.success) {
+        toast.error(result.error || 'Registration failed. Please try again.', { id: toastId });
+        setLoading(false);
+        return;
+      }
+
       toast.success('School registered successfully!', { id: toastId });
       setShowCheckout(false);
       setPaymentSuccess(true);

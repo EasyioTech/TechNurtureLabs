@@ -15,7 +15,7 @@ import { getPlatformSettings } from '@/components/landing/actions';
 import { useEffect } from 'react';
 
 export default function SchoolLoginPage() {
-  const { signIn, setTransition } = useAuth();
+  const { signIn } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -42,7 +42,6 @@ export default function SchoolLoginPage() {
       const result = await signIn(email, password, 'school_admin');
       if (result.success) {
         toast.success('Signed in successfully', { id: toastId });
-        setTransition(true);
         router.push('/school-admin');
       } else {
         toast.error(result.error || 'Invalid credentials', { id: toastId });

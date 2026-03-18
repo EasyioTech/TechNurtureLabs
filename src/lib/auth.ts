@@ -7,18 +7,17 @@ import { userSessions } from '@/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
 import { serverEnv } from '@/lib/env.server';
 import crypto from 'crypto';
+import { cache } from 'react';
 
 const jwtSecretEnv = serverEnv.JWT_SECRET;
 const isBuild = process.env.NEXT_SKIP_TYPECHECK === '1' || process.env.npm_lifecycle_event === 'build';
 
 if (!jwtSecretEnv || jwtSecretEnv.length < 32) {
-    if (serverEnv.NODE_ENV === 'production' && !isBuild) {
+    if (!isBuild) {
         throw new Error('CRITICAL CONFIG ERROR: JWT_SECRET environment variable is missing or too short. It must be at least 32 characters long. The application cannot start securely.');
-    } else {
-        console.warn('WARNING: Using weak fallback JWT_SECRET for local development or build time. DO NOT use in production.');
     }
 }
-const JWT_SECRET = new TextEncoder().encode(jwtSecretEnv || 'super-secret-key-change-in-production-123456');
+const JWT_SECRET = new TextEncoder().encode(jwtSecretEnv || crypto.randomUUID() + crypto.randomUUID());
 
 // TOKENS CONFIG
 const ACCESS_TOKEN_EXPIRY = '15m'; // Short-lived access
@@ -106,7 +105,7 @@ async function trackActivity(userId: string) {
 /**
  * Verifies session and performs automatic rotation if access token is expired but refresh token is valid.
  */
-export async function verifySession(): Promise<SessionPayload | null> {
+async function verifySessionInternal(): Promise<SessionPayload | null> {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('session')?.value;
     const refreshToken = cookieStore.get('refresh_token')?.value;
@@ -119,20 +118,17 @@ export async function verifySession(): Promise<SessionPayload | null> {
             const { payload } = await jwtVerify(accessToken, JWT_SECRET);
             const sessionData = payload as SessionPayload;
 
-            // Ensure role is present
             if (!sessionData.role && sessionData.userType) {
                 sessionData.role = sessionData.userType;
             }
 
-            // Optional: Check Redis to ensure it hasn't been revoked
+            // Check if session exists in Redis
             const exists = await redis.get(`session:${sessionData.sessionId}`);
             if (exists) {
-                // Background track activity
                 trackActivity(sessionData.userId);
                 return sessionData;
             }
         } catch (error: any) {
-            // If expired, fall through to refresh logic
             if (error.code !== 'ERR_JWT_EXPIRED') return null;
         }
     }
@@ -143,6 +139,23 @@ export async function verifySession(): Promise<SessionPayload | null> {
     try {
         const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
 
+        // --- RACE CONDITION FIX: Rotation Grace Period ---
+        // If this token was JUST rotated by a parallel request, use the grace period data
+        const graceData = await redis.get(`rotation_grace:${refreshTokenHash}`);
+        if (graceData) {
+            const parsed = JSON.parse(graceData);
+            // We still need to set the new cookies for this request's response
+            try {
+                cookieStore.set('session', parsed.newAccessToken, {
+                    httpOnly: true, secure: serverEnv.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 900
+                });
+                cookieStore.set('refresh_token', parsed.newRefreshToken, {
+                    httpOnly: true, secure: serverEnv.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: REFRESH_TOKEN_EXPIRY_SECONDS
+                });
+            } catch (e) { /* Read-only context, skip cookie set */ }
+            return parsed.sessionData;
+        }
+
         // Find active session in DB
         const sessionRow = await db.query.userSessions.findFirst({
             where: and(
@@ -151,13 +164,9 @@ export async function verifySession(): Promise<SessionPayload | null> {
             )
         });
 
-        if (!sessionRow || sessionRow.revoked_at) {
-            // If refresh token is used but not found or revoked, it might be a reuse attack.
-            // In a strict implementation, we'd revoke all sessions for this user.
-            return null;
-        }
+        if (!sessionRow || sessionRow.revoked_at) return null;
 
-        // ROTATE: Generate new refresh token
+        // ROTATE: Generate new tokens
         const newRefreshToken = crypto.randomBytes(32).toString('hex');
         const newRefreshTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
         const sessionId = sessionRow.id;
@@ -169,29 +178,13 @@ export async function verifySession(): Promise<SessionPayload | null> {
             sessionId: sessionId
         };
 
-        // If it's a student/admin, we might need to fetch their true role.
-        // For now, payload in JWT is better but we lost it if token expired.
-        // We can store a minimal payload in Redis or the userSessions table.
-        // Let's check Redis for existing metadata before we proceed.
         const cachedData = await redis.get(`session:${sessionId}`);
         const finalSessionData = cachedData ? JSON.parse(cachedData) : sessionData;
 
-        // Ensure role is present for backward compatibility or if missing in cache
         if (!finalSessionData.role && finalSessionData.userType) {
             finalSessionData.role = finalSessionData.userType;
         }
 
-        await db.update(userSessions)
-            .set({
-                refresh_token_hash: newRefreshTokenHash,
-                last_used_at: new Date(),
-            })
-            .where(eq(userSessions.id, sessionId));
-
-        // Update Redis TTL
-        await redis.expire(`session:${sessionId}`, REFRESH_TOKEN_EXPIRY_SECONDS);
-
-        // Issue new Access Token
         const newAccessToken = await new SignJWT(finalSessionData)
             .setProtectedHeader({ alg: 'HS256' })
             .setIssuedAt()
@@ -202,28 +195,57 @@ export async function verifySession(): Promise<SessionPayload | null> {
         const appUrl = serverEnv.NEXT_PUBLIC_APP_URL || '';
         const isHttp = appUrl.startsWith('http://') || !isProduction;
 
-        cookieStore.set('session', newAccessToken, {
-            httpOnly: true,
-            secure: isProduction && !isHttp,
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 60 * 15,
-        });
+        try {
+            cookieStore.set('session', newAccessToken, {
+                httpOnly: true,
+                secure: isProduction && !isHttp,
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 900,
+            });
 
-        cookieStore.set('refresh_token', newRefreshToken, {
-            httpOnly: true,
-            secure: isProduction && !isHttp,
-            sameSite: 'strict',
-            path: '/',
-            maxAge: REFRESH_TOKEN_EXPIRY_SECONDS,
-        });
+            cookieStore.set('refresh_token', newRefreshToken, {
+                httpOnly: true,
+                secure: isProduction && !isHttp,
+                sameSite: 'strict',
+                path: '/',
+                maxAge: REFRESH_TOKEN_EXPIRY_SECONDS,
+            });
 
-        trackActivity(finalSessionData.userId); // Track activity
+            // Update Database
+            await db.update(userSessions)
+                .set({
+                    refresh_token_hash: newRefreshTokenHash,
+                    last_used_at: new Date(),
+                })
+                .where(eq(userSessions.id, sessionId));
+            
+            await redis.expire(`session:${sessionId}`, REFRESH_TOKEN_EXPIRY_SECONDS);
+
+            // --- GRACE PERIOD: Prevent parallel request failures ---
+            await redis.set(`rotation_grace:${refreshTokenHash}`, JSON.stringify({
+                sessionData: finalSessionData,
+                newAccessToken,
+                newRefreshToken
+            }), 'EX', 30); // 30 second grace period
+
+        } catch (cookieError) {
+            // Read-only context (Layout/Page)
+        }
+
+        trackActivity(finalSessionData.userId); 
         return finalSessionData;
     } catch (error) {
+        console.error("[Auth] verifySession error:", error);
         return null;
     }
 }
+
+/**
+ * Public exported verifySession wrapped in React cache to prevent multiple
+ * database/rotation hits in the same request (unified across Layouts & Actions).
+ */
+export const verifySession = cache(verifySessionInternal);
 
 /**
  * Destroys session in DB, Redis and clears cookies.

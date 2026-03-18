@@ -59,8 +59,13 @@ export function StudentSidebar({
             <div className="p-6">
                 <Link href="/student" className="flex items-center gap-3 select-none">
                     {logoUrl ? (
-                        <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
-                            <img src={logoUrl} alt={displayName} className="w-full h-full object-contain" />
+                        <div className="flex items-center justify-center overflow-hidden flex-shrink-0">
+                            <img
+                                src={logoUrl}
+                                alt={displayName}
+                                className="object-contain"
+                                style={{ height: `${settings?.logo_height || 40}px`, width: 'auto', maxHeight: '48px' }}
+                            />
                         </div>
                     ) : (
                         <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">

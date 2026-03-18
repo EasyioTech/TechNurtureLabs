@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { SchoolThemeProvider, useSchoolTheme, ts } from '../theme-context';
 import { useSchoolData } from '../hooks/use-school-data';
 import { getSchoolProfile } from '../actions';
+import { getPlatformSettings } from '@/components/landing/actions';
 import { SchoolOverviewTab } from './tabs/school-overview-tab';
 import { SchoolStudentsTab } from './tabs/school-students-tab';
 import { SchoolCoursesTab } from './tabs/school-courses-tab';
@@ -41,6 +42,7 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [schoolProfile, setSchoolProfile] = useState<SchoolProfile>(null);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [platformSettings, setPlatformSettings] = useState<any>(null);
     const data = useSchoolData(schoolId);
 
     useEffect(() => {
@@ -49,6 +51,10 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
             if (p) setSchoolProfile(p as any as SchoolProfile);
         });
     }, [schoolId]);
+
+    useEffect(() => {
+        getPlatformSettings().then(setPlatformSettings);
+    }, []);
 
     const schoolName = schoolProfile?.name || adminName || 'My School';
     const location = [schoolProfile?.city, schoolProfile?.state].filter(Boolean).join(', ');
@@ -88,9 +94,14 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
 
                         {/* School Identity */}
                         <div className="flex items-center gap-4 flex-shrink-0 min-w-0">
-                            {schoolProfile?.logo_url ? (
-                                <div className="w-11 h-11 flex items-center justify-center flex-shrink-0">
-                                    <img src={schoolProfile.logo_url} alt={schoolName} className="w-full h-full object-contain" />
+                            {(schoolProfile?.logo_url || platformSettings?.logo_url) ? (
+                                <div className="flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                    <img
+                                        src={schoolProfile?.logo_url || platformSettings?.logo_url}
+                                        alt={schoolName}
+                                        className="object-contain"
+                                        style={{ height: `${platformSettings?.logo_height || 40}px`, width: 'auto', maxHeight: '48px' }}
+                                    />
                                 </div>
                             ) : (
                                 <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-600 shadow-indigo-600/20'
@@ -200,8 +211,8 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                             <div className="w-20 h-20 flex items-center justify-center flex-shrink-0">
-                                {schoolProfile?.logo_url ? (
-                                    <img src={schoolProfile.logo_url} alt={schoolName} className="w-full h-full object-contain" />
+                                {(schoolProfile?.logo_url || platformSettings?.logo_url) ? (
+                                    <img src={schoolProfile?.logo_url || platformSettings?.logo_url} alt={schoolName} className="w-full h-full object-contain" />
                                 ) : (
                                     <div className={`w-full h-full rounded-[28px] flex items-center justify-center shadow-2xl ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20 shadow-indigo-500/5' : 'bg-indigo-50 shadow-indigo-100'}`}>
                                         <GraduationCap size={40} className={isDark ? 'text-indigo-400' : 'text-indigo-600'} />

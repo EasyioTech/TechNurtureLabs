@@ -13,9 +13,19 @@ import { ScrollReveal } from '@/components/landing/ScrollReveal';
 
 import { getPlatformSettings } from '@/components/landing/actions';
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useRouter } from 'next/navigation';
 
 export default function AdminPortalLanding() {
   const [settings, setSettings] = useState<any>(null);
+  const { profile, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && profile?.role === 'super_admin') {
+      router.replace('/admin');
+    }
+  }, [profile, loading, router]);
 
   useEffect(() => {
     getPlatformSettings().then(setSettings);

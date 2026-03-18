@@ -340,21 +340,60 @@ export async function uploadFile(
  * @param storageType  Where the file lives
  */
 export async function deleteFile(filePath: string, storageType: 'r2' | 'local'): Promise<void> {
+    const isVideo = filePath.toLowerCase().match(/\.(mp4|mov|avi|mkv)$/);
+    const hlsPrefix = isVideo ? filePath.replace(/\.[^/.]+$/, "") : null;
+
     if (storageType === 'r2' && isCloudflareConfigured && s3Client) {
         try {
-            const command = new DeleteObjectCommand({
+            // 1. Delete the main file
+            const deleteMain = new DeleteObjectCommand({
                 Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
                 Key: filePath,
             });
-            await s3Client.send(command);
+            await s3Client.send(deleteMain);
+
+            // 2. If it's a video, delete the HLS folder prefix
+            if (hlsPrefix) {
+                const { ListObjectsV2Command, DeleteObjectsCommand } = await import('@aws-sdk/client-s3');
+                
+                // List all objects under the HLS prefix
+                const listCmd = new ListObjectsV2Command({
+                    Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+                    Prefix: hlsPrefix + '/',
+                });
+                const listRes = await s3Client.send(listCmd);
+                
+                if (listRes.Contents && listRes.Contents.length > 0) {
+                    const deleteCmd = new DeleteObjectsCommand({
+                        Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+                        Delete: {
+                            Objects: listRes.Contents.map(obj => ({ Key: obj.Key })),
+                            Quiet: true
+                        }
+                    });
+                    await s3Client.send(deleteCmd);
+                    console.log(`[Storage] Cleaned up ${listRes.Contents.length} HLS fragments for ${filePath}`);
+                }
+            }
         } catch (err) {
             console.error('[Storage] R2 delete failed:', err);
             throw err;
         }
     } else {
         const fullPath = path.join(LOCAL_STORAGE_DIR, filePath);
+        
+        // 1. Delete main file
         if (fs.existsSync(fullPath)) {
             await fs.promises.unlink(fullPath);
+        }
+
+        // 2. Delete HLS folder
+        if (hlsPrefix) {
+            const hlsFolderPath = path.join(LOCAL_STORAGE_DIR, hlsPrefix);
+            if (fs.existsSync(hlsFolderPath) && fs.lstatSync(hlsFolderPath).isDirectory()) {
+                await fs.promises.rm(hlsFolderPath, { recursive: true, force: true });
+                console.log(`[Storage] Cleaned up HLS directory for ${filePath}`);
+            }
         }
     }
 }

@@ -29,13 +29,17 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Email and PIN are required' }, { status: 400 });
         }
 
-        const identifier = email.toLowerCase().trim();
+        const identifier = email.trim();
         const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+        const normalizedIdentifier = isEmail ? identifier.toLowerCase() : identifier.replace(/\D/g, '');
 
         const user = await db.query.students.findFirst({
             where: and(
-                isEmail ? eq(students.email, identifier) : eq(students.phone, identifier),
-                sql`${students.deleted_at} IS NULL`
+                isEmail
+                    ? eq(students.email, normalizedIdentifier)
+                    : sql`${students.phone} = ${identifier} OR ${students.phone} = ${normalizedIdentifier}`,
+                sql`${students.deleted_at} IS NULL`,
+                eq(students.is_active, true)
             )
         });
 

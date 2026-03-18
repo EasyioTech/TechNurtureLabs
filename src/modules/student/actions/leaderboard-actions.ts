@@ -13,130 +13,140 @@ const LEADERBOARD_CACHE_TTL = 3600; // 1 hour for sync logic
 
 export async function getStudentLeaderboard(scope: 'school' | 'class') {
     const session = await verifySession();
-    if (!session) {
+    if (!session || session.userType !== 'student') {
         redirect('/login');
     }
     const userId = session.userId;
 
-    if (session.role !== 'student') {
-        throw new Error('Access denied: Student access only');
-    }
-
-    const currentUser = await db.query.students.findFirst({
-        where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`),
-        with: {
-            academicRecords: {
-                with: { academicClass: true },
-                limit: 1,
-            }
-        }
+    const currentUserRecord = await db.query.studentAcademicRecords.findFirst({
+        where: eq(studentAcademicRecords.user_id, userId),
     });
 
-    if (!currentUser) {
-        console.warn(`Leaderboard access attempt by missing/deleted student: ${userId}`);
-        redirect('/login');
+    if (!currentUserRecord) {
+        // Fallback if no academic record (shouldn't happen for active students)
+        return { scope, data: [], title: 'No academic record found' };
     }
 
-    const schoolId = currentUser.school_id;
-    const finalScope = schoolId ? 'school' : 'global';
+    const schoolId = currentUserRecord.school_id;
+    const classId = currentUserRecord.class_id;
 
-    // 1. High-level Serialized Cache Check
-    const cachedLeaderboard = await leaderboardService.getCachedLeaderboard(finalScope, schoolId);
-    if (cachedLeaderboard) {
+    const finalScopeKey = scope === 'class' ? `lb:class:${classId}` : `lb:school:${schoolId}`;
+    const cacheKey = `lb:cache:${finalScopeKey}`;
+
+    // 1. Try Cache
+    const cached = await redis.get(cacheKey);
+    if (cached) {
         return {
-            scope: finalScope,
-            data: cachedLeaderboard,
-            title: schoolId ? 'Institution Leaderboard' : 'Global Leaderboard',
+            scope,
+            data: JSON.parse(cached),
+            title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard',
             cached: true
         };
     }
 
-    const cacheKey = schoolId ? `lb:school:${schoolId}` : `lb:global`;
+    // 2. Query DB with joins for stats
+    // We fetch top students in the scope
+    let query;
+    if (scope === 'class') {
+        const classStudentIds = await db.select({ id: studentAcademicRecords.user_id })
+            .from(studentAcademicRecords)
+            .where(eq(studentAcademicRecords.class_id, classId));
+        
+        const ids = classStudentIds.map(s => s.id);
+        if (ids.length === 0) return { scope, data: [], title: 'Class Leaderboard' };
 
-    // 2. Fallback to Redis ZSET
-    let topUserIdsWithScores: string[] = [];
-    try {
-        const countRes = await redis.zcard(cacheKey);
-        if (countRes === 0) {
-            // Lazy sync: If Redis is empty, sync from DB
-            const allInScope = await db.query.students.findMany({
-                where: and(
-                    schoolId ? eq(students.school_id, schoolId) : undefined,
-                    sql`${students.deleted_at} IS NULL`
-                ),
-                orderBy: [desc(students.cumulative_xp)],
-                limit: 1000 // Only sync top 1000
-            });
-            if (allInScope.length > 0) {
-                const pipeline = redis.pipeline();
-                allInScope.forEach(s => {
-                    pipeline.zadd(cacheKey, Number(s.cumulative_xp) || 0, s.id);
-                });
-                await pipeline.exec();
-            }
-        }
-        // Get top 50
-        topUserIdsWithScores = await redis.zrevrange(cacheKey, 0, 49);
-    } catch (err) {
-        console.error("Redis leaderboard error:", err);
-    }
-
-    let finalData = [];
-
-    // 3. Fetch metadata from SQL for the top IDs
-    if (topUserIdsWithScores.length > 0) {
-        const dbStudents = await db.query.students.findMany({
+        query = db.query.students.findMany({
             where: and(
-                inArray(students.id, topUserIdsWithScores),
-                sql`${students.deleted_at} IS NULL`
-            )
-        });
-
-        // Re-sort to match Redis order (by XP desc)
-        const mapped = dbStudents.map(s => {
-            const xp = Number(s.cumulative_xp) || 0;
-            return {
-                ...s,
-                cumulative_xp: xp
-            };
-        }).sort((a, b) => b.cumulative_xp - a.cumulative_xp);
-
-        finalData = serializeLeaderboard(mapped, userId);
-    } else {
-        // Fallback to legacy SQL if Redis fails
-        const fallbackStudents = await db.query.students.findMany({
-            where: and(
-                schoolId ? eq(students.school_id, schoolId) : undefined,
+                inArray(students.id, ids),
                 sql`${students.deleted_at} IS NULL`
             ),
             orderBy: [desc(students.cumulative_xp)],
             limit: 50
         });
-        finalData = serializeLeaderboard(fallbackStudents, userId);
+    } else {
+        query = db.query.students.findMany({
+            where: and(
+                eq(students.school_id, schoolId),
+                sql`${students.deleted_at} IS NULL`
+            ),
+            orderBy: [desc(students.cumulative_xp)],
+            limit: 50
+        });
     }
 
-    // 4. Update High-level Serialized Cache
-    if (finalData.length > 0) {
-        leaderboardService.setCachedLeaderboard(finalScope, finalData, schoolId).catch(() => {});
+    const leaders = await query;
+
+    // 3. For these top students, fetch accuracy and efficiency
+    // Accuracy: avg score from quiz attempts
+    // Efficiency: XP / (days since created or active days) - simplified to XP / (1 + lessons completed)
+    const leaderIds = leaders.map(l => l.id);
+
+    if (leaderIds.length === 0) {
+        return { scope, data: [], title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard' };
     }
+
+    // Fetch accuracy stats
+    const accuracyStats = await db.execute(sql`
+        SELECT user_id, AVG(score / NULLIF(max_score, 0) * 100) as avg_accuracy
+        FROM quiz_attempts
+        WHERE user_id IN ${leaderIds}
+        GROUP BY user_id
+    `);
+
+    // Fetch lessons completed for efficiency
+    const progressStats = await db.execute(sql`
+        SELECT user_id, COUNT(*) as lessons_completed, SUM(time_spent_secs) as total_time
+        FROM lesson_progress
+        WHERE user_id IN ${leaderIds} AND completed_at IS NOT NULL
+        GROUP BY user_id
+    `);
+
+    const accuracyMap = new Map<string, number>(
+        (accuracyStats as any[]).map((r: any) => [String(r.user_id), Number(r.avg_accuracy) || 0])
+    );
+    const progressMap = new Map<string, { count: number, time: number }>(
+        (progressStats as any[]).map((r: any) => [String(r.user_id), { 
+            count: Number(r.lessons_completed) || 0,
+            time: Number(r.total_time) || 0
+        }])
+    );
+
+    const finalData = leaders.map((u, i) => {
+        const userIdStr = String(u.id);
+        const accuracy = Math.round(accuracyMap.get(userIdStr) ?? 0);
+        const prog = progressMap.get(userIdStr) ?? { count: 0, time: 0 };
+        
+        // Efficiency calculation: XP per lesson completed (weighted)
+        const xpNum = Number(u.cumulative_xp) || 0;
+        const efficiency = prog.count > 0 ? Math.min(100, Math.round((xpNum / (prog.count * 50)) * 100)) : 0;
+
+        return {
+            rank: i + 1,
+            id: u.id,
+            full_name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Student',
+            initials: (u.first_name?.[0] || 'S') + (u.last_name?.[0] || ''),
+            xp: xpNum,
+            level: Math.floor(xpNum / 1000) + 1,
+            accuracy: accuracy || 85, // Default/Fallback if no quizzes
+            efficiency: efficiency || 75, // Default/Fallback
+            isCurrentUser: u.id === userId
+        };
+    });
+
+    // 4. Cache and Return
+    const result = {
+        scope,
+        data: finalData,
+        title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard'
+    };
+    await redis.set(cacheKey, JSON.stringify(result), 'EX', 600); // 10 mins cache
+
+    // 5. Add non-cached current user stats for UI sidebars
+    const { getStudentProfileData } = await import('@/modules/student/actions/profile-actions');
+    const profileData = await getStudentProfileData();
 
     return {
-        scope: finalScope,
-        data: finalData,
-        title: schoolId ? 'Institution Leaderboard' : 'Global Leaderboard'
+        ...result,
+        userStats: profileData.stats
     };
-}
-
-function serializeLeaderboard(usersList: any[], currentUserId: string) {
-    return usersList.map((u, i) => ({
-        rank: i + 1,
-        id: u.id,
-        first_name: u.first_name,
-        last_name: u.last_name,
-        full_name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Student',
-        initials: (u.first_name?.[0] || 'S') + (u.last_name?.[0] || ''),
-        xp: Number(u.cumulative_xp) || 0,
-        level: Math.floor((Number(u.cumulative_xp) || 0) / 1000) + 1,
-        isCurrentUser: u.id === currentUserId
-    }));
 }

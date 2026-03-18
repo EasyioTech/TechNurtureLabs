@@ -47,5 +47,9 @@ export default async function StudentDashboardPage() {
     platformSettings
   };
 
+  if (!initialData.profile) {
+    redirect('/login');
+  }
+
   return <ClientDashboard initialData={initialData} />;
 }

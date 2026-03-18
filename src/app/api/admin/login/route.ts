@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { superAdmins } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import { rateLimitService } from '@/lib/services/rate-limit';
 import bcrypt from 'bcryptjs';
@@ -32,10 +32,10 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = await db.query.superAdmins.findFirst({
-      where: eq(superAdmins.email, email.toLowerCase())
+      where: and(eq(superAdmins.email, email.toLowerCase()), isNull(superAdmins.deleted_at), eq(superAdmins.is_active, true))
     });
 
-    if (!admin || !admin.is_active) {
+    if (!admin) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }

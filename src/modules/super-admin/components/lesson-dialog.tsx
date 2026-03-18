@@ -47,10 +47,11 @@ export function LessonDialog({
     const [importOpen, setImportOpen] = React.useState(false);
     const [uploadFile, setUploadFile] = React.useState<File | null>(null);
     const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
+    const [validationError, setValidationError] = React.useState<string | null>(null);
 
     const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload({
         onSuccess: (data) => {
-            setEditingLesson({ ...editingLesson, content_url: data.url });
+            setEditingLesson({ ...editingLesson, content_url: data.url, asset_id: data.assetId ?? null });
             toast.success('File uploaded successfully');
             setUploadFile(null);
         },
@@ -78,11 +79,56 @@ export function LessonDialog({
         return undefined;
     }, [editingLesson?.content_type]);
 
-    // Whether a local or R2 file is currently selected (not an external link)
-    const hasUploadedFile = Boolean(
-        editingLesson?.content_url &&
-        (editingLesson.content_url.startsWith('/api/media/') || editingLesson.content_url.includes('.r2.cloudflarestorage.com') || (editingLesson.content_url.startsWith('http') && !editingLesson.content_url.includes('youtube') && !editingLesson.content_url.includes('vimeo')))
-    );
+    const validateUrl = (url: string, type: string) => {
+        if (!url) return null;
+        
+        // Check for common link issues
+        if (url.startsWith('http://') && !url.includes('localhost')) {
+            return 'Insecure link (HTTP). Please use HTTPS if possible.';
+        }
+
+        try {
+            const parsed = new URL(url);
+            const ext = parsed.pathname.split('.').pop()?.toLowerCase();
+            
+            if (type === 'video') {
+                const isVideoFile = ['mp4', 'webm', 'ogg', 'mov'].includes(ext || '');
+                const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+                const isVimeo = url.includes('vimeo.com');
+                const isR2 = url.includes('r2.cloudflarestorage.com') || url.startsWith('/api/media/');
+                
+                if (!isVideoFile && !isYouTube && !isVimeo && !isR2) {
+                    return 'Please provide a valid Video URL (MP4, WebM, YouTube, or Vimeo).';
+                }
+            } else if (type === 'pdf') {
+                const isPdfFile = ['pdf', 'doc', 'docx', 'txt'].includes(ext || '');
+                const isGoogleDoc = url.includes('docs.google.com');
+                if (!isPdfFile && !isGoogleDoc) {
+                    return 'Please provide a valid Document URL (PDF, Word, or Google Docs).';
+                }
+            } else if (type === 'ppt') {
+                const isPptFile = ['ppt', 'pptx', 'key'].includes(ext || '');
+                const isGoogleSlides = url.includes('docs.google.com/presentation');
+                if (!isPptFile && !isGoogleSlides) {
+                    return 'Please provide a valid Presentation URL (PPTX or Google Slides).';
+                }
+            }
+        } catch (e) {
+            // If it's not a URL, check if it's a relative path starting with /
+            if (!url.startsWith('/') && !url.startsWith('./')) {
+                return 'Invalid URL format. Please include http:// or https://';
+            }
+        }
+        return null;
+    };
+
+    React.useEffect(() => {
+        if (editingLesson?.content_url && editingLesson?.content_type) {
+            setValidationError(validateUrl(editingLesson.content_url, editingLesson.content_type));
+        } else {
+            setValidationError(null);
+        }
+    }, [editingLesson?.content_url, editingLesson?.content_type]);
 
     return (
         <>
@@ -188,8 +234,14 @@ export function LessonDialog({
                                                     placeholder="Paste Link URL..."
                                                     value={editingLesson?.content_url && !editingLesson.content_url.startsWith('/api/media/') && !editingLesson.content_url.includes('r2.cloudflarestorage.com') ? editingLesson.content_url : ''}
                                                     onChange={(e) => setEditingLesson({ ...editingLesson, content_url: e.target.value })}
-                                                    className={`rounded-full h-12 pl-11 pr-5 shadow-inner text-sm font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] text-white border-white/5' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                                    className={`rounded-full h-12 pl-11 pr-5 shadow-inner text-sm font-bold border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] text-white border-white/5' : 'bg-slate-50 border-slate-200 text-slate-900'} ${validationError ? 'border-rose-500/50 focus-visible:border-rose-500/50 focus-visible:ring-rose-500/20' : ''}`}
                                                 />
+                                                {validationError && (
+                                                    <div className="flex items-center gap-1.5 px-3 mt-1.5">
+                                                        <div className="w-1 h-1 rounded-full bg-rose-500" />
+                                                        <p className="text-[10px] font-bold text-rose-500 uppercase tracking-tight">{validationError}</p>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
@@ -434,8 +486,8 @@ export function LessonDialog({
                             className={`rounded-full h-11 px-6 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white hover:text-white' : 'hover:bg-slate-200 text-slate-700'}`}>
                             Cancel
                         </Button>
-                        <Button onClick={onSave} disabled={!editingLesson?.title?.trim()}
-                            className={`rounded-full h-11 px-8 font-black text-sm shadow-xl transition-all ${!editingLesson?.title?.trim() ? 'opacity-50 cursor-not-allowed' : ''} ${t.btnPrimary(isDark, accent)}`}
+                        <Button onClick={onSave} disabled={!editingLesson?.title?.trim() || !!validationError}
+                            className={`rounded-full h-11 px-8 font-black text-sm shadow-xl transition-all ${(!editingLesson?.title?.trim() || !!validationError) ? 'opacity-50 cursor-not-allowed' : ''} ${t.btnPrimary(isDark, accent)}`}
                             style={t.glowStyle(isDark, accent)}>
                             {isEditing ? 'Save Changes' : 'Create Lesson'}
                         </Button>
@@ -450,7 +502,7 @@ export function LessonDialog({
                 filterType={libraryFilterType}
                 folder="lesson"
                 currentUrl={editingLesson?.content_url}
-                onSelect={(url) => setEditingLesson({ ...editingLesson, content_url: url })}
+                onSelect={(url, assetId) => setEditingLesson({ ...editingLesson, content_url: url, asset_id: assetId })}
             />
 
             <EntityLibraryPicker

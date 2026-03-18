@@ -32,6 +32,9 @@ interface ClientDashboardProps {
 export function ClientDashboard({ initialData }: ClientDashboardProps) {
   const { profile, stats, school, courses, achievements, activities, challenges, platformSettings } = initialData;
   const [resetTime, setResetTime] = useState('');
+
+  // Safeguard against missing profile
+  if (!profile) return null;
   
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -92,17 +95,17 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
             {/* Active Learning Hero */}
             {lastCourse && (
               <section className="group">
-                <div className="relative overflow-hidden rounded-[2.5rem] sm:rounded-[3.5rem] bg-slate-950 p-7 sm:p-10 lg:p-16 text-white shadow-2xl shadow-indigo-950/20 border border-white/5 transition-all duration-1000">
-                  <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-500/10 rounded-full -mr-48 -mt-48 blur-[120px] pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-[2000ms]" />
+                <div className="relative overflow-hidden rounded-[2.25rem] sm:rounded-[3rem] bg-slate-950 p-6 sm:p-8 lg:p-12 text-white shadow-2xl shadow-indigo-950/20 border border-white/5 transition-all duration-1000">
+                  <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full -mr-40 -mt-40 blur-[100px] pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-[2000ms]" />
                   
-                  <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-12 sm:gap-16">
+                  <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-10 sm:gap-14">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-8 sm:mb-12 lg:hidden">
-                        <Badge className="bg-indigo-600 text-white border-0 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-indigo-600/40">
+                      <div className="flex items-center justify-between mb-6 sm:mb-10 lg:hidden">
+                        <Badge className="bg-indigo-600 text-white border-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-indigo-600/40">
                           {lastCourse.completedLessons === lastCourse.totalLessons ? 'Course Finished' : 'Resume Learning'}
                         </Badge>
                         
-                        <div className="relative w-14 h-14 flex-shrink-0">
+                        <div className="relative w-12 h-12 flex-shrink-0">
                           <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160">
                             <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="20" fill="none" className="text-white/5" />
                             <motion.circle
@@ -117,41 +120,41 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                             />
                           </svg>
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-[10px] font-black">{Math.round((lastCourse.completedLessons / (lastCourse.totalLessons || 1)) * 100)}%</span>
+                            <span className="text-[9px] font-black">{Math.round((lastCourse.completedLessons / (lastCourse.totalLessons || 1)) * 100)}%</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="hidden lg:block mb-10">
-                        <Badge className="bg-indigo-600 text-white border-0 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl shadow-indigo-600/40">
+                      <div className="hidden lg:block mb-8">
+                        <Badge className="bg-indigo-600 text-white border-0 px-5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.3em] shadow-2xl shadow-indigo-600/40">
                              {lastCourse.completedLessons === lastCourse.totalLessons ? 'Course Finished' : 'Resume Learning'}
                         </Badge>
                       </div>
 
-                      <h2 className="text-3xl sm:text-4xl lg:text-6xl font-black uppercase tracking-tighter leading-[0.9] mb-8 sm:mb-10 max-w-2xl">{lastCourse.title}</h2>
+                      <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black uppercase tracking-tighter leading-[0.9] mb-6 sm:mb-8 max-w-2xl">{lastCourse.title}</h2>
                       
-                      <div className="flex flex-wrap items-center gap-4 sm:gap-8 mb-10 sm:mb-12">
-                        <div className="flex items-center gap-3 bg-white/5 lg:bg-transparent px-4 py-2 sm:px-0 sm:py-0 rounded-xl border border-white/5 lg:border-0 text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
-                          <BookOpen size={18} className="text-indigo-400" />
+                      <div className="flex flex-wrap items-center gap-4 sm:gap-6 mb-8 sm:mb-10">
+                        <div className="flex items-center gap-2.5 bg-white/5 lg:bg-transparent px-3 py-1.5 sm:px-0 sm:py-0 rounded-lg border border-white/5 lg:border-0 text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">
+                          <BookOpen size={16} className="text-indigo-400" />
                           <span>{lastCourse.totalLessons} LESSONS</span>
                         </div>
-                        <div className="flex items-center gap-3 bg-white/5 lg:bg-transparent px-4 py-2 sm:px-0 sm:py-0 rounded-xl border border-white/5 lg:border-0 text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
-                          <Clock size={18} className="text-indigo-400" />
+                        <div className="flex items-center gap-2.5 bg-white/5 lg:bg-transparent px-3 py-1.5 sm:px-0 sm:py-0 rounded-lg border border-white/5 lg:border-0 text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">
+                          <Clock size={16} className="text-indigo-400" />
                           <span>{Math.ceil(lastCourse.totalLessons * 0.5)}H TOTAL</span>
                         </div>
                       </div>
 
                       <Link href={`/student/course/${lastCourse.id}`} className="block sm:inline-block">
-                        <Button className="w-full sm:w-auto h-16 sm:h-18 px-10 sm:px-14 rounded-[2rem] sm:rounded-[2.5rem] bg-white text-slate-950 font-black uppercase tracking-[0.2em] text-[11px] hover:bg-white/90 transition-all active:scale-95 shadow-2xl shadow-indigo-900/20 group/btn">
+                        <Button className="w-full sm:w-auto h-14 sm:h-15 px-8 sm:px-12 rounded-2xl bg-white text-slate-950 font-black uppercase tracking-[0.2em] text-[10px] hover:bg-white/90 transition-all active:scale-95 shadow-2xl shadow-indigo-900/20 group/btn">
                           {lastCourse.completedLessons === lastCourse.totalLessons 
                             ? 'Revise Module' 
                             : (lastCourse.completedLessons > 0 ? 'Resume Course' : 'Start Journey')}
-                          <ArrowRight size={20} className="ml-4 group-hover/btn:translate-x-2 transition-transform duration-500" />
+                          <ArrowRight size={18} className="ml-3 group-hover/btn:translate-x-2 transition-transform duration-500" />
                         </Button>
                       </Link>
                     </div>
 
-                    <div className="hidden lg:flex relative w-56 h-56 lg:w-64 lg:h-64 flex-shrink-0">
+                    <div className="hidden lg:flex relative w-44 h-44 lg:w-52 lg:h-52 flex-shrink-0">
                       <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160">
                         <circle cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="12" fill="none" className="text-white/5" />
                         <motion.circle
@@ -166,8 +169,8 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-5xl lg:text-6xl font-black tracking-tighter">{Math.round((lastCourse.completedLessons / (lastCourse.totalLessons || 1)) * 100)}%</span>
-                        <span className="text-[11px] font-black text-slate-500 uppercase tracking-[0.5em] mt-3">Finished</span>
+                        <span className="text-4xl lg:text-5xl font-black tracking-tighter">{Math.round((lastCourse.completedLessons / (lastCourse.totalLessons || 1)) * 100)}%</span>
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] mt-2">Finished</span>
                       </div>
                     </div>
                   </div>
@@ -205,7 +208,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                     <CourseCard key={course.id} course={course} />
                   ))
                 ) : (
-                  <div className="md:col-span-2 py-16 px-10 rounded-[3.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center text-center">
+                  <div className="md:col-span-2 py-16 px-10 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center text-center">
                     <div className="w-16 h-16 rounded-[2rem] bg-slate-50 flex items-center justify-center text-slate-300 mb-6 border border-slate-100">
                       <BookOpen size={32} />
                     </div>
@@ -221,25 +224,25 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
           <div className="xl:col-span-4 space-y-10">
             
             {/* My Progress Dashboard */}
-            <div className="bg-slate-950 rounded-[3.5rem] p-8 lg:p-10 text-white relative overflow-hidden shadow-2xl shadow-indigo-950/40 border border-white/5 group">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-indigo-600/20 transition-all duration-1000" />
+            <div className="bg-slate-950 rounded-[2.5rem] p-7 lg:p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-950/40 border border-white/5 group">
+              <div className="absolute top-0 right-0 w-56 h-56 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none group-hover:bg-indigo-600/20 transition-all duration-1000" />
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-10">
+                <div className="flex items-center justify-between mb-8">
                   <div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-3">Overall Progress</p>
-                    <p className="text-3xl lg:text-4xl font-black tracking-tighter uppercase leading-none">Level {stats.level}</p>
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Overall Progress</p>
+                    <p className="text-2xl lg:text-3xl font-black tracking-tighter uppercase leading-none">Level {stats.level}</p>
                   </div>
-                  <div className="w-16 h-16 rounded-[2rem] bg-white/5 backdrop-blur-xl flex items-center justify-center border border-white/10 shadow-2xl transition-transform group-hover:rotate-6">
-                    <Crown size={32} className="text-indigo-500" />
+                  <div className="w-14 h-14 rounded-2xl bg-white/5 backdrop-blur-xl flex items-center justify-center border border-white/10 shadow-2xl transition-transform group-hover:rotate-6">
+                    <Crown size={28} className="text-indigo-500" />
                   </div>
                 </div>
 
-                <div className="space-y-6 mb-12">
+                <div className="space-y-4 mb-10">
                   <div className="flex items-end justify-between">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Next Level Progress</p>
-                    <p className="text-xs font-black text-indigo-500">{Math.round(levelProgress)}% Complete</p>
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Next Level Progress</p>
+                    <p className="text-[10px] font-black text-indigo-500">{Math.round(levelProgress)}% Complete</p>
                   </div>
-                  <div className="h-5 bg-white/5 rounded-full overflow-hidden p-1.5 flex border border-white/10">
+                  <div className="h-4 bg-white/5 rounded-full overflow-hidden p-1 flex border border-white/10">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${levelProgress}%` }}
@@ -250,15 +253,15 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-5 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Total XP</p>
-                    <p className="text-xl font-black text-white">{stats.xp.toLocaleString()}</p>
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Total XP</p>
+                    <p className="text-lg font-black text-white">{stats.xp.toLocaleString()}</p>
                   </div>
-                  <div className="p-5 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Streak</p>
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Streak</p>
                     <div className="flex items-center gap-2 text-orange-500">
-                      <Flame size={18} fill="currentColor" />
-                      <p className="text-xl font-black text-white">{stats.streak}D</p>
+                      <Flame size={16} fill="currentColor" />
+                      <p className="text-lg font-black text-white">{stats.streak}D</p>
                     </div>
                   </div>
                 </div>
@@ -268,48 +271,60 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
             {/* Quick Progress Links */}
             <div className="grid grid-cols-2 gap-3">
               <Link href="/student/analytics" className="w-full h-full">
-                <Button className="w-full h-20 bg-white text-slate-900 font-black uppercase tracking-widest text-[9px] rounded-[2rem] hover:bg-slate-50 transition-all border border-slate-100 shadow-sm shadow-slate-200/50 flex flex-col items-center justify-center gap-2 group">
-                  <Activity size={20} className="text-sky-500 group-hover:scale-110 transition-transform duration-500" />
+                <Button className="w-full h-16 bg-white text-slate-900 font-black uppercase tracking-widest text-[9px] rounded-2xl hover:bg-slate-50 transition-all border border-slate-100 shadow-sm shadow-slate-200/50 flex flex-col items-center justify-center gap-1.5 group">
+                  <Activity size={18} className="text-sky-500 group-hover:scale-110 transition-transform duration-500" />
                   Analytics
                 </Button>
               </Link>
               <Link href="/student/leaderboard" className="w-full h-full">
-                <Button className="w-full h-20 bg-white text-slate-900 font-black uppercase tracking-widest text-[9px] rounded-[2rem] hover:bg-slate-50 transition-all border border-slate-100 shadow-sm shadow-slate-200/50 flex flex-col items-center justify-center gap-2 group">
-                  <Trophy size={20} className="text-amber-500 group-hover:scale-110 transition-transform duration-500" />
+                <Button className="w-full h-16 bg-white text-slate-900 font-black uppercase tracking-widest text-[9px] rounded-2xl hover:bg-slate-50 transition-all border border-slate-100 shadow-sm shadow-slate-200/50 flex flex-col items-center justify-center gap-1.5 group">
+                  <Trophy size={18} className="text-amber-500 group-hover:scale-110 transition-transform duration-500" />
                   Leaderboard
                 </Button>
               </Link>
             </div>
 
             {/* Daily Goals */}
-            <section className="bg-white rounded-[3.5rem] p-8 border border-slate-100 shadow-md group">
-              <div className="flex items-center justify-between mb-8">
+            <section className="bg-white rounded-3xl p-6 border border-slate-100 shadow-md group">
+              <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900 tracking-tight leading-none uppercase">Daily Challenges</h3>
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2.5 flex items-center gap-2">
+                  <h3 className="text-base font-black text-slate-900 tracking-tight leading-none uppercase">Daily Challenges</h3>
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-2 flex items-center gap-2">
                     <Clock size={10} /> {resetTime} until reset
                   </p>
                 </div>
                 <Link href="/student/challenges">
-                  <Button variant="ghost" className="w-10 h-10 p-0 rounded-2xl bg-slate-50 text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100">
-                    <ChevronRight size={18} />
+                  <Button variant="ghost" className="w-9 h-9 p-0 rounded-xl bg-slate-50 text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100">
+                    <ChevronRight size={16} />
                   </Button>
                 </Link>
               </div>
 
-              <div className="space-y-4">
-                {challenges.slice(0, 3).map((challenge) => (
-                  <ChallengeCard
-                    key={challenge.id}
-                    title={challenge.title}
-                    progress={challenge.current_progress}
-                    total={challenge.target_value}
-                    reward={challenge.xp_reward}
-                    icon={getChallengeIcon(challenge.icon)}
-                    color="bg-slate-900"
-                    unit={challenge.challenge_type === 'learning_time' ? 'm' : ''}
-                  />
-                ))}
+              <div className="space-y-3.5">
+                {challenges.slice(0, 3).map((challenge) => {
+                  const getTheme = (type: string) => {
+                    const map: Record<string, string> = {
+                        'xp_gain': 'amber',
+                        'learning_time': 'sky',
+                        'quiz_complete': 'violet',
+                        'streak': 'emerald',
+                        'lesson_complete': 'emerald'
+                    };
+                    return map[type] || 'indigo';
+                  };
+                  return (
+                    <ChallengeCard
+                      key={challenge.id}
+                      title={challenge.title}
+                      progress={challenge.current_progress}
+                      total={challenge.target_value}
+                      reward={challenge.xp_reward}
+                      icon={getChallengeIcon(challenge.icon)}
+                      color={getTheme(challenge.challenge_type)}
+                      unit={challenge.challenge_type === 'learning_time' ? 'm' : ''}
+                    />
+                  );
+                })}
               </div>
             </section>
 

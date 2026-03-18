@@ -130,6 +130,18 @@ export const students = pgTable('students', {
     longest_streak: integer('longest_streak').notNull().default(0),
     is_active: boolean('is_active').notNull().default(true),
     last_active_at: timestamp('last_active_at', { withTimezone: true }),
+    // ISSUE 26: Persistence for student preferences
+    notification_preferences: jsonb('notification_preferences').notNull().default({
+        mobile_push: true,
+        email_reports: true,
+        new_content: true
+    }),
+    appearance_settings: jsonb('appearance_settings').notNull().default({
+        dark_mode: false
+    }),
+    privacy_settings: jsonb('privacy_settings').notNull().default({
+        public_profile: true
+    }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
@@ -733,6 +745,8 @@ export const auditLogs = pgTable('audit_logs', {
 }, (table) => [
     index('idx_audit_user').on(table.user_id),
     index('idx_audit_created').on(table.created_at),
+    index('idx_audit_user_created').on(table.user_id, table.created_at),
+    index('idx_audit_school_created').on(table.school_id, table.created_at),
 ]);
 
 export const loginAttempts = pgTable('login_attempts', {
@@ -875,6 +889,10 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
     dailyChallenges: many(userDailyChallenges),
     certificates: many(userCertificates),
     lessonSessions: many(lessonSessions),
+    lessonProgress: many(lessonProgress),
+    courseProgress: many(courseProgress),
+    quizAttempts: many(quizAttempts),
+    submissions: many(lessonSubmissions),
 }));
 
 export const schoolAdminsRelations = relations(schoolAdmins, ({ one, many }) => ({
@@ -895,6 +913,9 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
     classMapping: many(courseClassMapping),
     lessons: many(lessons),
     enrollments: many(enrollments),
+    quizzes: many(quizzes),
+    certificates: many(certificates),
+    progress: many(courseProgress),
 }));
 
 export const lessonsRelations = relations(lessons, ({ one, many }) => ({
@@ -954,12 +975,14 @@ export const paymentPlansRelations = relations(paymentPlans, ({ many }) => ({
 export const schoolSubscriptionsRelations = relations(schoolSubscriptions, ({ one, many }) => ({
     school: one(schools, { fields: [schoolSubscriptions.school_id], references: [schools.id] }),
     plan: one(paymentPlans, { fields: [schoolSubscriptions.plan_id], references: [paymentPlans.id] }),
+    promoCode: one(promoCodes, { fields: [schoolSubscriptions.promo_code_id], references: [promoCodes.id] }),
     transactions: many(paymentTransactions),
 }));
 
 export const paymentTransactionsRelations = relations(paymentTransactions, ({ one }) => ({
     school: one(schools, { fields: [paymentTransactions.school_id], references: [schools.id] }),
     subscription: one(schoolSubscriptions, { fields: [paymentTransactions.subscription_id], references: [schoolSubscriptions.id] }),
+    promoCode: one(promoCodes, { fields: [paymentTransactions.promo_code_id], references: [promoCodes.id] }),
 }));
 
 export const studentAcademicRecordsRelations = relations(studentAcademicRecords, ({ one }) => ({
@@ -1033,3 +1056,45 @@ export const lessonSessionsRelations = relations(lessonSessions, ({ one }) => ({
     student: one(students, { fields: [lessonSessions.user_id], references: [students.id] }),
     lesson: one(lessons, { fields: [lessonSessions.lesson_id], references: [lessons.id] }),
 }));
+
+export const xpEventsRelations = relations(xpEvents, ({ one }) => ({
+    student: one(students, { fields: [xpEvents.user_id], references: [students.id] }),
+    school: one(schools, { fields: [xpEvents.school_id], references: [schools.id] }),
+}));
+
+export const certificatesRelations = relations(certificates, ({ one, many }) => ({
+    course: one(courses, { fields: [certificates.course_id], references: [courses.id] }),
+    userCertificates: many(userCertificates),
+}));
+
+export const userCertificatesRelations = relations(userCertificates, ({ one }) => ({
+    student: one(students, { fields: [userCertificates.user_id], references: [students.id] }),
+    certificate: one(certificates, { fields: [userCertificates.certificate_id], references: [certificates.id] }),
+    enrollment: one(enrollments, { fields: [userCertificates.enrollment_id], references: [enrollments.id] }),
+}));
+
+export const promoCodesRelations = relations(promoCodes, ({ many }) => ({
+    subscriptions: many(schoolSubscriptions),
+    transactions: many(paymentTransactions),
+}));
+
+export const classesRelations = relations(classes, ({ many }) => ({
+    studentAcademicRecords: many(studentAcademicRecords),
+    schoolMappings: many(schoolClassMapping),
+    courseMappings: many(courseClassMapping),
+}));
+
+export const platformMetricsDailyRelations = relations(platformMetricsDaily, () => ({}));
+export const schoolMetricsDailyRelations = relations(schoolMetricsDaily, ({ one }) => ({
+    school: one(schools, { fields: [schoolMetricsDaily.school_id], references: [schools.id] }),
+}));
+export const courseMetricsDailyRelations = relations(courseMetricsDaily, ({ one }) => ({
+    course: one(courses, { fields: [courseMetricsDaily.course_id], references: [courses.id] }),
+}));
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+    school: one(schools, { fields: [auditLogs.school_id], references: [schools.id] }),
+}));
+export const loginAttemptsRelations = relations(loginAttempts, () => ({}));
+export const passwordResetTokensRelations = relations(passwordResetTokens, () => ({}));
+export const emailVerificationTokensRelations = relations(emailVerificationTokens, () => ({}));
+

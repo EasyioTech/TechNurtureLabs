@@ -23,6 +23,7 @@ export type Lesson = {
     description: string | null;
     content_type: string;
     content_url: string;
+    asset_id?: string | null;
     sequence_order: number;
     sequence_index?: number;
     duration_minutes: number;

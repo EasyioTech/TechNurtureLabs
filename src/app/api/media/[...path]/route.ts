@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
+import { verifySession } from '@/lib/auth';
 
 const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'local_storage');
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
     try {
+        const session = await verifySession();
+        if (!session) {
+            return new NextResponse('Unauthorized', { status: 401 });
+        }
+
         // Next.js 15 requires unwrapping async params
         const { path: filePathParams } = await params;
 
@@ -96,7 +102,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             headers: {
                 'Content-Type': mimeType,
                 'Content-Length': stats.size.toString(),
-                'Cache-Control': 'public, max-age=31536000, immutable',
+                'Cache-Control': 'private, max-age=3600',
             },
         });
     } catch (error) {

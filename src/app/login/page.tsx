@@ -15,7 +15,7 @@ import { getPlatformSettings } from '@/components/landing/actions';
 import { AnimatePresence } from 'framer-motion';
 
 export default function StudentLoginPage() {
-  const { signIn, setTransition } = useAuth();
+  const { signIn } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -50,13 +50,21 @@ export default function StudentLoginPage() {
     setEmailCheckLoading(true);
     try {
       const { checkIdentifierExists } = await import('@/modules/auth/register-actions');
-      const exists = await checkIdentifierExists(email);
-      if (exists) {
+      const result = await checkIdentifierExists(email, 'student');
+      
+      if (result.exists) {
         setStep(2);
         setErrors({});
       } else {
-        setErrors({ email: 'We couldn\'t find an account with this info' });
-        toast.error('Identity not found');
+        // Double check if it's an admin trying to login here
+        const adminCheck = await checkIdentifierExists(email);
+        if (adminCheck.exists && (adminCheck.role === 'school_admin' || adminCheck.role === 'super_admin')) {
+          setErrors({ email: 'This is a student dashboard. Admins please use the school portal.' });
+          toast.error('Admin account detected');
+        } else {
+          setErrors({ email: 'We couldn\'t find a student account with this info' });
+          toast.error('Account not found');
+        }
       }
     } catch (err) {
       toast.error('Verification failed. Try again.');
@@ -79,7 +87,6 @@ export default function StudentLoginPage() {
       const result = await signIn(email, password, 'student');
       if (result.success) {
         toast.success('Access granted!', { id: toastId });
-        setTransition(true);
         router.push('/student');
       } else {
         toast.error(result.error || 'Invalid PIN provided', { id: toastId });

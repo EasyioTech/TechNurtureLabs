@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { students, schoolAdmins, superAdmins, schools, paymentPlans, studentAcademicRecords, academicSessions, schoolClassMapping, classes } from '@/db/schema';
-import { eq, and, or, sql } from 'drizzle-orm';
+import { eq, and, or, sql, isNull } from 'drizzle-orm';
 import { asc } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { assignPlanToSchool } from '@/modules/super-admin/actions';
@@ -40,6 +40,10 @@ export async function fetchApprovedSchools() {
     });
 
     const classMappings = await db.query.schoolClassMapping.findMany({
+        where: and(
+            eq(schoolClassMapping.is_active, true),
+            isNull(schoolClassMapping.deleted_at)
+        ),
         with: {
             academicClass: true
         } as any
@@ -96,19 +100,19 @@ export async function registerStudent(formData: any) {
         const [firstName, ...lastNameParts] = formData.full_name.trim().split(/\s+/);
         const lastName = lastNameParts.join(' ');
         const email = isEmail ? formData.email.toLowerCase().trim() : '';
-        const phone = isEmail ? '' : formData.email.trim();
+        const phone = isEmail ? '' : formData.email.replace(/\D/g, ''); // Extract only digits for phone normalization
 
         const result = await db.transaction(async (tx) => {
-            // Check for existing student with this email (Platform-wide, non-deleted)
+            // Check for existing student with this email/phone (Platform-wide, non-deleted)
             const existingGlobally = await tx.query.students.findFirst({
                 where: and(
-                    isEmail ? eq(students.email, email) : eq(students.phone, phone),
+                    isEmail ? eq(students.email, email) : or(eq(students.phone, phone), eq(students.phone, formData.email.trim())),
                     sql`deleted_at IS NULL`
                 )
             });
 
             if (existingGlobally) {
-                return { success: false, error: `A user with this ${isEmail ? 'email' : 'phone number'} already exists on the platform.` };
+                return { success: false, error: `This ${isEmail ? 'email' : 'phone number'} is already registered on the platform.` };
             }
 
             const hashedPassword = await bcrypt.hash(formData.password, 10);
@@ -177,11 +181,33 @@ export async function registerSchool(formData: any) {
         const email = formData.contact_email.toLowerCase().trim();
         const slug = formData.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
+        // Check cross-platform uniqueness of admin email BEFORE starting the transaction
+        // (avoids partial inserts if the email already exists as a student or super_admin)
+        const [existingStudent, existingAdmin, existingSuperAdmin] = await Promise.all([
+            db.query.students.findFirst({ where: and(eq(students.email, email), sql`deleted_at IS NULL`), columns: { id: true } }),
+            db.query.schoolAdmins.findFirst({ where: and(eq(schoolAdmins.email, email), sql`deleted_at IS NULL`), columns: { id: true } }),
+            db.query.superAdmins.findFirst({ where: and(eq(superAdmins.email, email), sql`deleted_at IS NULL`), columns: { id: true } }),
+        ]);
+
+        if (existingStudent || existingAdmin || existingSuperAdmin) {
+            return { success: false, error: 'This email address is already registered on the platform.' };
+        }
+
+        // Make slug unique: if the base slug is taken, append a short random suffix
+        let finalSlug = slug;
+        const existingSchool = await db.query.schools.findFirst({
+            where: and(eq(schools.slug, finalSlug), sql`deleted_at IS NULL`),
+            columns: { id: true }
+        });
+        if (existingSchool) {
+            finalSlug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+        }
+
         const result = await db.transaction(async (tx) => {
             // 1. Create School
             const [newSchool] = await tx.insert(schools).values({
                 name: formData.name,
-                slug: slug,
+                slug: finalSlug,
                 email: email,
                 phone: formData.contact_phone,
                 address: formData.address,
@@ -205,28 +231,18 @@ export async function registerSchool(formData: any) {
                 end_date: endDate.toISOString().split('T')[0]
             } as any);
 
-            // 3. Check for existing school admin with this email (Platform-wide)
-            const checkUser = await tx.query.schoolAdmins.findFirst({
-                where: and(
-                    eq(schoolAdmins.email, email),
-                    sql`deleted_at IS NULL`
-                )
-            });
-
-            if (checkUser) {
-                throw new Error('A school admin with this email already exists on the platform.');
-            }
-
             const hashedPassword = await bcrypt.hash(formData.password, 10);
             const [firstName, ...lastNameParts] = (formData.principal_name || 'Admin').split(/\s+/);
             const lastName = lastNameParts.join(' ');
 
+            // 3. Create School Admin — include phone so contact details are complete
             await tx.insert(schoolAdmins).values({
                 email: email,
                 school_id: newSchool.id,
                 password_hash: hashedPassword,
                 first_name: firstName,
                 last_name: lastName || '',
+                phone: formData.contact_phone || null,
                 is_active: true,
             } as any);
 
@@ -264,22 +280,62 @@ export async function registerSchool(formData: any) {
     }
 }
 
-export async function checkIdentifierExists(value: string) {
+export async function checkIdentifierExists(value: string, role?: 'student' | 'school_admin' | 'super_admin') {
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
     const identifier = value.toLowerCase().trim();
 
     if (isEmail) {
-        const student = await db.query.students.findFirst({
-            where: and(eq(students.email, identifier), sql`deleted_at IS NULL`)
-        });
-        const admin = await db.query.schoolAdmins.findFirst({
-            where: and(eq(schoolAdmins.email, identifier), sql`deleted_at IS NULL`)
-        });
-        return !!student || !!admin;
+        if (role === 'student' || !role) {
+            const student = await db.query.students.findFirst({
+                where: and(eq(students.email, identifier), sql`deleted_at IS NULL`)
+            });
+            if (student) return { exists: true, role: 'student' };
+        }
+        
+        if (role === 'school_admin' || !role) {
+            const admin = await db.query.schoolAdmins.findFirst({
+                where: and(eq(schoolAdmins.email, identifier), sql`deleted_at IS NULL`)
+            });
+            if (admin) return { exists: true, role: 'school_admin' };
+        }
+
+        if (role === 'super_admin' || !role) {
+            const superAdmin = await db.query.superAdmins.findFirst({
+                where: and(eq(superAdmins.email, identifier), sql`deleted_at IS NULL`)
+            });
+            if (superAdmin) return { exists: true, role: 'super_admin' };
+        }
+        
+        return { exists: false };
     } else {
+        // Normalize phone: remove all non-digits for comparison
+        const normalizedPhone = value.replace(/\D/g, '');
+        
         const student = await db.query.students.findFirst({
-            where: and(eq(students.phone, identifier), sql`deleted_at IS NULL`)
+            where: and(
+                or(
+                    eq(students.phone, identifier),
+                    eq(students.phone, normalizedPhone)
+                ), 
+                sql`deleted_at IS NULL`
+            )
         });
-        return !!student;
+        
+        if (student) return { exists: true, role: 'student' };
+
+        // Also check school admins for phone if needed
+        const admin = await db.query.schoolAdmins.findFirst({
+            where: and(
+                or(
+                    eq(schoolAdmins.phone, identifier),
+                    eq(schoolAdmins.phone, normalizedPhone)
+                ),
+                sql`deleted_at IS NULL`
+            )
+        });
+        if (admin) return { exists: true, role: 'school_admin' };
+
+        return { exists: false };
     }
 }
+

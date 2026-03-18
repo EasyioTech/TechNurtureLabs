@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import path from 'path';
 import { db } from '@/lib/db';
 import { mediaAssets } from '@/db/schema';
 import { verifySession } from '@/lib/auth';
@@ -24,9 +25,16 @@ export async function POST(req: NextRequest) {
 
         const assetType = getAssetType(mimeType);
         const isProcessableVideo = assetType === 'video' && storageType === 'r2';
+        const isPptx =
+            mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+            mimeType === 'application/vnd.ms-powerpoint';
+
+        // file_name = the UUID-based storage key (basename of filePath)
+        // original_name = the human-readable filename the user uploaded
+        const uuidFileName = path.basename(filePath);
 
         const [asset] = await db.insert(mediaAssets).values({
-            file_name: fileName,
+            file_name: uuidFileName,
             original_name: fileName,
             file_path: filePath,
             mime_type: mimeType,
@@ -35,10 +43,10 @@ export async function POST(req: NextRequest) {
             asset_type: assetType,
             uploaded_by: session.userId,
             folder: folder,
-            processing_status: isProcessableVideo ? 'pending' : 'completed',
+            processing_status: (isProcessableVideo || isPptx) ? 'processing' : 'completed',
         } as any).returning();
 
-        // Trigger Transcoding Queue for direct uploads too
+        // Trigger video transcoding queue
         if (isProcessableVideo) {
             try {
                 const { queueService } = await import('@/lib/services/queue-service');
@@ -51,6 +59,34 @@ export async function POST(req: NextRequest) {
             } catch (qError) {
                 console.error('[Register] Failed to enqueue transcoding task:', qError);
             }
+        }
+
+        // Trigger PPTX → slide images conversion in the background
+        if (isPptx) {
+            setImmediate(async () => {
+                try {
+                    const { processPptxToSlides } = await import('@/lib/pptx-processor');
+                    const convResult = await processPptxToSlides(
+                        asset.id,
+                        filePath,
+                        storageType
+                    );
+                    const { eq } = await import('drizzle-orm');
+                    if (convResult.success) {
+                        await db.update(mediaAssets)
+                            .set({ processing_status: 'completed' })
+                            .where(eq(mediaAssets.id, asset.id));
+                        console.log(`[Register] PPTX slides ready: ${asset.id} (${convResult.slideCount} slides)`);
+                    } else {
+                        await db.update(mediaAssets)
+                            .set({ processing_status: 'failed', error_message: convResult.error })
+                            .where(eq(mediaAssets.id, asset.id));
+                        console.error('[Register] PPTX conversion failed:', convResult.error);
+                    }
+                } catch (err: any) {
+                    console.error('[Register] PPTX conversion threw:', err?.message);
+                }
+            });
         }
 
         return NextResponse.json({

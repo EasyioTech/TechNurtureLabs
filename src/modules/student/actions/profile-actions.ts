@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { students, achievements, userAchievements, lessonProgress, quizAttempts, studentAcademicRecords, xpEvents } from '@/db/schema';
+import { students, schools, achievements, userAchievements, lessonProgress, quizAttempts, studentAcademicRecords, xpEvents } from '@/db/schema';
 import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -14,7 +14,7 @@ export async function getStudentProfileData() {
     }
 
     const profile = await db.query.students.findFirst({
-        where: and(eq(students.id, session.userId), sql`${students.deleted_at} IS NULL`),
+        where: and(eq(students.id, session.userId), sql`${students.deleted_at} IS NULL`, eq(students.is_active, true)),
         with: {
             academicRecords: {
                 where: eq(studentAcademicRecords.user_id, session.userId),
@@ -84,17 +84,29 @@ export async function getStudentProfileData() {
     const passedAttempts = Number(quizStats[0]?.passed) || 0;
     const avgScore = Math.round(Number(quizStats[0]?.avgScore) || 0);
 
+    const lessonsCompleted = Number(lessonsData[0]?.count) || 0;
+    const xpNum = Number(profile?.cumulative_xp) || 0;
+    const efficiency = lessonsCompleted > 0 ? Math.min(100, Math.round((xpNum / (lessonsCompleted * 50)) * 100)) : 0;
+
     const stats = {
-        xp: Number(profile?.cumulative_xp) || 0,
+        xp: xpNum,
         streak: profile?.current_streak || 0,
-        level: Math.floor((Number(profile?.cumulative_xp) || 0) / 1000) + 1,
-        lessonsCompleted: Number(lessonsData[0]?.count) || 0,
+        level: Math.floor(xpNum / 1000) + 1,
+        lessonsCompleted: lessonsCompleted,
         learningTimeMinutes: Math.floor((Number(lessonsData[0]?.total_time) || 0) / 60),
         quizzesPassed: passedAttempts,
         accuracy: avgScore, // Using average score as 'Score'
+        efficiency: efficiency || 75, // Default fallback
         rank: rank,
         rankPercentage: rankPercentage
     };
+
+    const school = profile?.school_id
+        ? await db.query.schools.findFirst({
+            where: eq(schools.id, profile.school_id),
+            columns: { id: true, name: true, logo_url: true }
+          })
+        : null;
 
     return {
         profile: profile ? {
@@ -112,7 +124,8 @@ export async function getStudentProfileData() {
         stats,
         achievements: formattedAchievements,
         rank,
-        rankPercentage
+        rankPercentage,
+        school: school ?? null,
     };
 }
 
