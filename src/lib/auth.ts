@@ -1,4 +1,4 @@
-import 'server-only';
+// import 'server-only';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { redis } from './redis';

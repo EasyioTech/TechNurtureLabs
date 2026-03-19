@@ -16,7 +16,7 @@
  */
 
 import crypto from 'crypto';
-import 'server-only';
+// import 'server-only';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_BYTES = 12;   // 96-bit IV recommended for GCM
