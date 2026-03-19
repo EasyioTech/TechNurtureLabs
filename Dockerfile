@@ -20,7 +20,7 @@ COPY . .
 # These are NOT real credentials — real values are injected at runtime via docker-compose
 ENV DATABASE_URL="postgresql://placeholder:5432/db"
 ENV REDIS_URL="redis://placeholder:6379"
-ENV JWT_SECRET="build-time-placeholder"
+ENV JWT_SECRET="build-time-placeholder-min-32-chars-long-security-key"
 ENV CLOUDFLARE_ACCOUNT_ID="build-placeholder"
 ENV CLOUDFLARE_ACCESS_KEY_ID="build-placeholder"
 ENV CLOUDFLARE_SECRET_ACCESS_KEY="build-placeholder"
@@ -32,6 +32,7 @@ ARG NEXT_PUBLIC_RAZORPAY_KEY_ID=""
 ENV NEXT_PUBLIC_RAZORPAY_KEY_ID=$NEXT_PUBLIC_RAZORPAY_KEY_ID
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_SKIP_TYPECHECK=1
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 
 RUN npm run build
 
