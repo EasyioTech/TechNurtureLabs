@@ -50,11 +50,11 @@ const nextConfig: NextConfig = {
     // In production HSTS is enforced; skip in dev to avoid breaking http://localhost.
     const csp = [
       "default-src 'self'",
-      "script-src 'self'",
-      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
       "media-src 'self' blob: https:",
-      "font-src 'self' data:",
+      "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' https:",
       "worker-src 'self' blob:",
       "frame-ancestors 'none'",
