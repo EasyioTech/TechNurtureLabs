@@ -82,6 +82,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
 # Create local_storage directory for fallback uploads
 RUN mkdir -p /app/local_storage && chown nextjs:nodejs /app/local_storage
 
+# Create tmp workspace directory for worker tasks
+RUN mkdir -p /app/tmp && chown nextjs:nodejs /app/tmp
+
 USER nextjs
 
 EXPOSE 3000
