@@ -28,19 +28,19 @@ export default async function StudentLayout({
 
     const sidebar = (
         <StudentSidebar
-            school={data?.school}
+            school={data?.school ?? undefined}
             stats={data?.stats}
             courses={data?.courses}
             settings={settings}
-            profile={data?.profile}
+            profile={data?.profile as any ?? undefined}
         />
     );
 
     return (
-        <StudentLayoutShell 
+        <StudentLayoutShell
             sidebar={sidebar}
-            profile={data?.profile}
-            school={data?.school}
+            profile={data?.profile as any ?? undefined}
+            school={data?.school ?? undefined}
             stats={data?.stats}
             settings={settings}
         >

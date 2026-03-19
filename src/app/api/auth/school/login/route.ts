@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { schoolAdmins } from '@/db/schema';
-import { eq, and, sql, isNull } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { rateLimitService } from '@/lib/services/rate-limit';
+import { z } from 'zod';
+
+const loginSchema = z.object({
+    email: z.string().email('Invalid email').max(256),
+    password: z.string().min(1, 'Password is required').max(128),
+});
+
+// Constant-time dummy — prevents timing attacks when the user doesn't exist
+const DUMMY_HASH = '$2b$10$invalidhashusedtomaintainresponsetimingXXXXXXXXXXXXXXXXX';
 
 export async function POST(request: NextRequest) {
     try {
-        const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '127.0.0.1';
+        const ip = request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip') || '127.0.0.1';
         const { allowed, reset } = await rateLimitService.check({
             key: `login-school:${ip}`,
             limit: 10,
@@ -22,11 +31,11 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { email, password } = await request.json();
-
-        if (!email || !password) {
-            return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+        const body = loginSchema.safeParse(await request.json());
+        if (!body.success) {
+            return NextResponse.json({ error: body.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 });
         }
+        const { email, password } = body.data;
 
         const user = await db.query.schoolAdmins.findFirst({
             where: and(
@@ -36,13 +45,10 @@ export async function POST(request: NextRequest) {
             )
         });
 
-        if (!user) {
-            return NextResponse.json({ error: 'Invalid credentials or school admin not found' }, { status: 401 });
-        }
+        // Always run bcrypt even when user is not found to prevent timing-based user enumeration.
+        const isValidPassword = await bcrypt.compare(password, user?.password_hash ?? DUMMY_HASH);
 
-        const isValidPassword = await bcrypt.compare(password, user.password_hash);
-
-        if (!isValidPassword) {
+        if (!user || !isValidPassword) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 

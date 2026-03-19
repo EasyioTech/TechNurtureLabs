@@ -4,13 +4,23 @@ import { students, schoolAdmins, superAdmins } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import { verify } from 'otplib';
+import bcrypt from 'bcryptjs';
+import { rateLimitService } from '@/lib/services/rate-limit';
+import { decryptSecret } from '@/lib/crypto';
 
 export async function POST(request: NextRequest) {
     try {
+        // Rate-limit 2FA attempts per userId to prevent brute-force of TOTP codes.
+        // (6-digit TOTP has only 1,000,000 combinations.)
         const { userId, token } = await request.json();
 
         if (!userId || !token) {
             return NextResponse.json({ error: 'User ID and token are required' }, { status: 400 });
+        }
+
+        const { allowed } = await rateLimitService.checkUserLimit(userId, '2fa-verify', 10, 300);
+        if (!allowed) {
+            return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
         }
 
         let user: any = await db.query.students.findFirst({ where: eq(students.id, userId) });
@@ -32,27 +42,31 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: '2FA not enabled for this user' }, { status: 403 });
         }
 
-        const result = await verify({
-            token,
-            secret: user.two_factor_secret
-        });
+        // Decrypt stored secret before passing to TOTP verifier
+        const plainSecret = decryptSecret(user.two_factor_secret);
+
+        const result = await verify({ token, secret: plainSecret });
 
         if (!result.valid) {
-            // Check backup codes
-            const backupCodes = user.two_factor_backup_codes as string[];
-            const backupCodeIndex = backupCodes.indexOf(token);
+            // Backup codes are stored as bcrypt hashes — use compare, NOT indexOf.
+            // The old indexOf() check was broken because it compared plaintext to hashes.
+            const storedHashes = (user.two_factor_backup_codes as string[]) ?? [];
+            let matchedIndex = -1;
 
-            if (backupCodeIndex !== -1) {
-                // Remove used backup code
-                const newBackupCodes = [...backupCodes];
-                newBackupCodes.splice(backupCodeIndex, 1);
+            for (let i = 0; i < storedHashes.length; i++) {
+                const isMatch = await bcrypt.compare(token.trim().toUpperCase(), storedHashes[i]);
+                if (isMatch) { matchedIndex = i; break; }
+            }
 
-                await db.update(table)
-                    .set({ two_factor_backup_codes: newBackupCodes })
-                    .where(eq(table.id, user.id));
-            } else {
+            if (matchedIndex === -1) {
                 return NextResponse.json({ error: 'Invalid verification code' }, { status: 401 });
             }
+
+            // Invalidate the used backup code (single-use)
+            const remaining = storedHashes.filter((_, i) => i !== matchedIndex);
+            await db.update(table)
+                .set({ two_factor_backup_codes: remaining })
+                .where(eq(table.id, user.id));
         }
 
         await createSession({ userId: user.id, userType: role as any });

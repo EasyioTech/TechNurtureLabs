@@ -3,15 +3,73 @@ import { uploadFile, getAssetType } from '@/lib/storage';
 import { db } from '@/lib/db';
 import { mediaAssets } from '@/db/schema';
 import { verifySession } from '@/lib/auth';
+import { rateLimitService } from '@/lib/services/rate-limit';
 import path from 'path';
+
+// 50 MB in bytes — hard cap for a single upload request body
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB (matches storage.ts)
+
+// Allowed MIME types for admin uploads
+const ALLOWED_MIME_TYPES = new Set([
+    'video/mp4', 'video/webm', 'video/quicktime',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.ms-powerpoint',
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+    'audio/mpeg', 'audio/ogg', 'audio/wav',
+]);
 
 export async function POST(request: NextRequest) {
     try {
+        // ─── STEP 1: AUTH FIRST — before touching the body ──────────────────────
+        let uploadedBy: string;
+        const session = await verifySession();
+        const allowedRoles = ['super_admin', 'school_admin', 'admin'];
+
+        if (!session || !session.userId || (
+            !allowedRoles.includes(session.role as string) &&
+            !allowedRoles.includes(session.userType as string)
+        )) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        uploadedBy = session.userId;
+
+        // ─── STEP 1b: RATE LIMIT — 20 uploads per 5 minutes per user ────────────
+        const { allowed: uploadAllowed, reset: uploadReset } = await rateLimitService.checkUserLimit(
+            uploadedBy, 'upload', 20, 300
+        );
+        if (!uploadAllowed) {
+            return NextResponse.json(
+                { error: 'Too many uploads. Please wait before uploading again.' },
+                { status: 429, headers: { 'Retry-After': uploadReset.toString() } }
+            );
+        }
+
+        // ─── STEP 2: CONTENT-LENGTH PRE-CHECK ───────────────────────────────────
+        const contentLength = request.headers.get('content-length');
+        if (contentLength && parseInt(contentLength, 10) > MAX_FILE_SIZE_BYTES) {
+            return NextResponse.json({ error: 'File too large' }, { status: 413 });
+        }
+
+        // ─── STEP 3: PARSE FORM DATA ─────────────────────────────────────────────
         const formData = await request.formData();
         const file = formData.get('file') as File;
 
         if (!file) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+        }
+
+        // ─── STEP 4: FILE SIZE CHECK (actual) ───────────────────────────────────
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            return NextResponse.json({ error: 'File too large (max 2 GB)' }, { status: 413 });
+        }
+
+        // ─── STEP 5: MIME TYPE ALLOWLIST ─────────────────────────────────────────
+        if (!ALLOWED_MIME_TYPES.has(file.type)) {
+            return NextResponse.json(
+                { error: `File type '${file.type}' is not allowed` },
+                { status: 415 }
+            );
         }
 
         const contextType = formData.get('contextType') as 'course' | 'lesson' | null;
@@ -20,38 +78,19 @@ export async function POST(request: NextRequest) {
         const targetFolder = formData.get('folder') as string | null;
         const context = (contextType && contextId) ? { type: contextType as 'course' | 'lesson', id: contextId } : undefined;
 
-        // Optimization: Determine logical folder grouping for the library
         const folderHint = targetFolder || (context ? context.type : 'library');
 
         const buffer = Buffer.from(await file.arrayBuffer());
         const result = await uploadFile(
-            buffer, 
-            file.name, 
-            file.type, 
-            context, 
+            buffer,
+            file.name,
+            file.type,
+            context,
             storagePreference || undefined,
             folderHint
         );
 
-        // Derive the bare filename from the path (e.g. "videos/uuid.mp4" → "uuid.mp4")
         const fileName = path.basename(result.path);
-
-        // Enforce authentication for administrative roles
-        let uploadedBy: string | null = null;
-        try {
-            const session = await verifySession();
-            const allowedRoles = ['super_admin', 'school_admin', 'admin'];
-
-            if (!session || !session.userId || (
-                !allowedRoles.includes(session.role as string) &&
-                !allowedRoles.includes(session.userType as string)
-            )) {
-                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-            }
-            uploadedBy = session.userId;
-        } catch {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
 
         const assetType = getAssetType(result.mimeType);
         const isProcessableVideo = assetType === 'video' && result.storageType === 'r2';
@@ -89,32 +128,23 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Trigger PPTX → slide images conversion in the background
+        // Trigger PPTX → slide images conversion via the durable Redis queue.
+        // Previously used setImmediate() which was lost on any server restart.
+        // The queue-service worker picks this up and updates processing_status on completion.
         if (isPptx) {
-            setImmediate(async () => {
-                try {
-                    const { processPptxToSlides } = await import('@/lib/pptx-processor');
-                    const convResult = await processPptxToSlides(
-                        asset.id,
-                        result.path,
-                        result.storageType
-                    );
-                    const { eq } = await import('drizzle-orm');
-                    if (convResult.success) {
-                        await db.update(mediaAssets)
-                            .set({ processing_status: 'completed' })
-                            .where(eq(mediaAssets.id, asset.id));
-                        console.log(`[Upload] PPTX slides ready: ${asset.id} (${convResult.slideCount} slides)`);
-                    } else {
-                        await db.update(mediaAssets)
-                            .set({ processing_status: 'failed', error_message: convResult.error })
-                            .where(eq(mediaAssets.id, asset.id));
-                        console.error('[Upload] PPTX conversion failed:', convResult.error);
-                    }
-                } catch (err: any) {
-                    console.error('[Upload] PPTX conversion threw:', err?.message);
-                }
-            });
+            try {
+                const { queueService } = await import('@/lib/services/queue-service');
+                await queueService.enqueuePptx({
+                    assetId: asset.id,
+                    filePath: result.path,
+                    storageType: result.storageType as 'r2' | 'local',
+                    folder: folderHint || 'library',
+                    timestamp: Date.now(),
+                });
+            } catch (qError) {
+                console.error('[Upload] Failed to enqueue PPTX conversion task:', qError);
+                // Not fatal — asset stays in 'processing' and can be re-queued via admin
+            }
         }
 
         return NextResponse.json({

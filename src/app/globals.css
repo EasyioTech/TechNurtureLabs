@@ -119,10 +119,45 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
   }
 
   body {
     @apply bg-background text-foreground;
+    /* Prevent horizontal scroll caused by any overflowing child */
+    overflow-x: hidden;
+  }
+
+  /* ── Mobile-safe media constraints ─────────────────────────────────────
+     Ensures images, videos, iframes and embeds never exceed their container.
+     Applies globally so any new component is automatically safe on mobile. */
+  img,
+  video,
+  iframe,
+  embed,
+  object,
+  canvas,
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Tables can overflow on small screens — make them scroll horizontally
+     instead of breaking the page layout */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  /* Pre/code blocks wrap instead of breaking layout */
+  pre {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 }
 

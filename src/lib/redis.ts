@@ -17,7 +17,28 @@ export const redis =
     globalForRedis.redis ||
     (isBuild
         ? new Redis(redisUrl, { lazyConnect: true })
-        : new Redis(redisUrl)
+        : new Redis(redisUrl, {
+            // Exponential backoff: 200ms, 400ms, 800ms … up to 3s, then give up.
+            // Returning null stops ioredis from retrying — callers get an error they can catch.
+            retryStrategy: (times: number) => {
+                if (times > 8) {
+                    console.error(`[Redis] Connection failed after ${times} retries — giving up`);
+                    return null;
+                }
+                return Math.min(times * 200, 3000);
+            },
+            // Reconnect automatically on transient socket resets or read-only replica errors
+            reconnectOnError: (err: Error) => {
+                return err.message.includes('READONLY') || err.message.includes('ECONNRESET');
+            },
+            // Don't queue commands while disconnected — fail immediately so callers
+            // can catch and fall back to the database instead of waiting indefinitely.
+            enableOfflineQueue: false,
+            // Fast timeout: surface failures quickly so fallback logic kicks in
+            connectTimeout: 5000,
+            // Limit per-command retries so a single call doesn't block for seconds
+            maxRetriesPerRequest: 2,
+        })
     );
 
 if (serverEnv.NODE_ENV !== 'production') globalForRedis.redis = redis;

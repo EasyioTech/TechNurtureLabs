@@ -34,7 +34,8 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     const cacheKey = `lb:cache:${finalScopeKey}`;
 
     // 1. Try Cache
-    const cached = await redis.get(cacheKey);
+    let cached: string | null = null;
+    try { cached = await redis.get(cacheKey); } catch (_) { /* Redis unavailable — will query DB */ }
     if (cached) {
         return {
             scope,
@@ -139,7 +140,7 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
         data: finalData,
         title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard'
     };
-    await redis.set(cacheKey, JSON.stringify(result), 'EX', 600); // 10 mins cache
+    try { await redis.set(cacheKey, JSON.stringify(result), 'EX', 600); } catch (_) { /* non-critical */ }
 
     // 5. Add non-cached current user stats for UI sidebars
     const { getStudentProfileData } = await import('@/modules/student/actions/profile-actions');

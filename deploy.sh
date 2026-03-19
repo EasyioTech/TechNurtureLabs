@@ -23,8 +23,8 @@ echo "Running database setup and migrations..."
 docker compose --profile setup up migration --abort-on-container-exit
 
 # Step 4: Build and start the App
-echo "Building and starting the Application..."
-docker compose up -d --build app
+echo "Building and starting the Application & Workers..."
+docker compose up -d --build app video-worker event-worker
 
 # Step 4: Health Check (Wait for the app to respond)
 echo "Waiting for app healthcheck to pass..."

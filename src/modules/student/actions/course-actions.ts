@@ -17,7 +17,9 @@ import { redis } from '@/lib/redis';
  * Invalidate student dashboard cache
  */
 export const invalidateStudentDashboardCache = async (userId: string) => {
-    await redis.del(`cache:student:${userId}:dashboard`);
+    try {
+        await redis.del(`cache:student:${userId}:dashboard`);
+    } catch (_) { /* non-critical — cache will expire naturally */ }
 };
 
 /**

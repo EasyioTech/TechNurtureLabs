@@ -16,7 +16,7 @@ try {
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://technurture.io';
 const cloudflareDomain = process.env.CLOUDFLARE_PUBLIC_DOMAIN || '';
 
-const remotePatterns: NextConfig['images']['remotePatterns'] = [];
+const remotePatterns: NonNullable<NonNullable<NextConfig['images']>['remotePatterns']> = [];
 
 // Always allow the app's own origin for self-hosted images
 try {
@@ -37,13 +37,31 @@ const nextConfig: NextConfig = {
     remotePatterns,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
     ignoreDuringBuilds: true,
   },
   output: 'standalone',
   async headers() {
+    const isDev = process.env.NODE_ENV !== 'production';
+    // CSP: restrictive but practical — covers Vidstack (blob:), PDF.js worker,
+    // and R2/CDN media. Keep 'unsafe-inline' only for styles (Tailwind injects them).
+    // In production HSTS is enforced; skip in dev to avoid breaking http://localhost.
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "media-src 'self' blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https:",
+      "worker-src 'self' blob:",
+      "frame-ancestors 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+    ].join('; ');
+
     return [
       {
         source: '/:path*',
@@ -52,6 +70,9 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'Content-Security-Policy', value: csp },
+          // HSTS: 1 year, include subdomains. Only send in production (http://localhost breaks otherwise).
+          ...(!isDev ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }] : []),
         ],
       },
     ];

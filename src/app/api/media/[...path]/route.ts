@@ -60,15 +60,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         };
         const mimeType = MIME_MAP[ext] ?? 'application/octet-stream';
 
-        // 🚀 Range Support for seeking in large videos
+        // Range Support for seeking in large videos
         const range = request.headers.get('range');
         if (range) {
-            const parts = range.replace(/bytes=/, "").split("-");
+            const parts = range.replace(/bytes=/, '').split('-');
             const start = parseInt(parts[0], 10);
             const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
-            const chunksize = (end - start) + 1;
-            
-            const fileStream = fs.createReadStream(filePath, { start, end });
+
+            // Validate parsed values before passing to createReadStream.
+            // Invalid ranges (NaN, out-of-bounds, inverted) return 416 per RFC 7233.
+            if (
+                isNaN(start) || isNaN(end) ||
+                start < 0 || end < start || start >= stats.size
+            ) {
+                return new NextResponse(null, {
+                    status: 416,
+                    headers: { 'Content-Range': `bytes */${stats.size}` },
+                });
+            }
+
+            const safeEnd = Math.min(end, stats.size - 1);
+            const chunksize = safeEnd - start + 1;
+
+            const fileStream = fs.createReadStream(filePath, { start, end: safeEnd });
             const stream = new ReadableStream({
                 start(controller) {
                     fileStream.on('data', (chunk) => controller.enqueue(chunk));
@@ -80,7 +94,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return new NextResponse(stream, {
                 status: 206,
                 headers: {
-                    'Content-Range': `bytes ${start}-${end}/${stats.size}`,
+                    'Content-Range': `bytes ${start}-${safeEnd}/${stats.size}`,
                     'Accept-Ranges': 'bytes',
                     'Content-Length': chunksize.toString(),
                     'Content-Type': mimeType,

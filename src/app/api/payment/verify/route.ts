@@ -1,16 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { serverEnv } from '@/lib/env.server';
+import { z } from 'zod';
+
+const verifySchema = z.object({
+    razorpay_order_id: z.string().min(1, 'Order ID is required'),
+    razorpay_payment_id: z.string().min(1, 'Payment ID is required'),
+    razorpay_signature: z.string().min(1, 'Signature is required'),
+});
 
 export async function POST(req: NextRequest) {
     try {
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = await req.json();
+        const body = verifySchema.safeParse(await req.json());
+        if (!body.success) {
+            return NextResponse.json({ success: false, error: body.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 });
+        }
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body.data;
 
         const secret = serverEnv.RAZORPAY_KEY_SECRET;
-        const body = `${razorpay_order_id}|${razorpay_payment_id}`;
+        const hmacPayload = `${razorpay_order_id}|${razorpay_payment_id}`;
         const expectedSignature = crypto
             .createHmac('sha256', secret)
-            .update(body)
+            .update(hmacPayload)
             .digest('hex');
 
         if (expectedSignature !== razorpay_signature) {

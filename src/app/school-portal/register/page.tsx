@@ -314,7 +314,7 @@ export default function SchoolRegistrationPage() {
       const result = await registerSchool({ ...formData });
 
       if (!result.success) {
-        toast.error(result.error || 'Registration failed. Please try again.', { id: toastId });
+        toast.error(('error' in result ? (result as any).error : null) || 'Registration failed. Please try again.', { id: toastId });
         setLoading(false);
         return;
       }

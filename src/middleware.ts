@@ -3,73 +3,103 @@ import type { NextRequest } from 'next/server';
 
 /**
  * TECH NURTURE - Edge Middleware
- * 
- * 1. Global Dynamic CORS: Detects Origin and injects Access-Control-* headers 
- *    dynamically. This allows both localhost:3000 and any school subdomains 
- *    to interact with the API with full credential support.
- * 
- * 2. OPTIONS Preflight: Handles CORS handshake for browsers automatically.
- * 
- * 3. Domain Rewriting: Maps school.domain.com and admin.domain.com to internal 
- *    portal routes.
+ *
+ * 1. CORS with strict allowlist — never reflects arbitrary origins.
+ *    Credentials require an explicitly trusted origin.
+ *
+ * 2. OPTIONS preflight handling for all API routes.
+ *
+ * 3. Multi-tenant subdomain routing with catch-all rewrite so that
+ *    deep links on school.domain.com and admin.domain.com work correctly.
  */
+
+// ─── CORS ALLOWLIST ──────────────────────────────────────────────────────────
+// Build the set at startup from env + known subdomains.
+// NEXT_PUBLIC_APP_URL covers localhost:3000 in dev and the prod domain.
+function buildAllowedOrigins(): Set<string> {
+  const origins = new Set<string>();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl) {
+    origins.add(appUrl.replace(/\/$/, '')); // strip trailing slash
+    // Derive school/admin subdomains from the same base domain
+    try {
+      const { protocol, hostname } = new URL(appUrl);
+      const parts = hostname.split('.');
+      // e.g. technurture.io → school.technurture.io, admin.technurture.io
+      if (parts.length >= 2) {
+        const baseDomain = parts.slice(-2).join('.');
+        origins.add(`${protocol}//school.${baseDomain}`);
+        origins.add(`${protocol}//admin.${baseDomain}`);
+      }
+    } catch { /* malformed URL — skip */ }
+  }
+  // Always allow localhost variants for development
+  origins.add('http://localhost:3000');
+  origins.add('http://localhost:3001');
+  return origins;
+}
+
+const ALLOWED_ORIGINS = buildAllowedOrigins();
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Methods': 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
+  'Access-Control-Allow-Headers':
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Range',
+  'Access-Control-Max-Age': '86400',
+};
+
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  return ALLOWED_ORIGINS.has(origin.replace(/\/$/, ''));
+}
+
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.headers.get('host') || '';
   const origin = request.headers.get('origin');
   const isApi = url.pathname.startsWith('/api');
+  const originAllowed = isAllowedOrigin(origin);
 
-  // 🛡️ 1. Handle Global OPTIONS preflight for API
+  // ─── 1. OPTIONS PREFLIGHT ─────────────────────────────────────────────────
   if (isApi && request.method === 'OPTIONS') {
-    return new NextResponse(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': origin || '*',
-        'Access-Control-Allow-Methods': 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
-        'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Range',
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Max-Age': '86400',
-      },
-    });
+    const responseHeaders: Record<string, string> = { ...CORS_HEADERS };
+    if (originAllowed && origin) {
+      responseHeaders['Access-Control-Allow-Origin'] = origin;
+      responseHeaders['Access-Control-Allow-Credentials'] = 'true';
+    }
+    // If origin not in allowlist, return 204 without ACAO — browser blocks it.
+    return new NextResponse(null, { status: 204, headers: responseHeaders });
   }
 
-  // 🏫 2. Multi-tenant Subdomain Routing
+  // ─── 2. MULTI-TENANT SUBDOMAIN ROUTING ───────────────────────────────────
   const subdomain = hostname.split('.')[0];
   let response: NextResponse | undefined;
 
   if (url.pathname === '/school') {
     response = NextResponse.redirect(new URL('/school-portal/login', request.url));
   } else if (subdomain === 'school' || hostname.startsWith('school.')) {
-    if (url.pathname === '/') {
-      url.pathname = '/school-portal';
-      response = NextResponse.rewrite(url);
-    } else if (url.pathname === '/login') {
-      url.pathname = '/school-portal/login';
-      response = NextResponse.rewrite(url);
-    } else if (url.pathname === '/register') {
-      url.pathname = '/school-portal/register';
+    // Catch-all: prepend /school-portal so all deep links work
+    if (!url.pathname.startsWith('/school-portal')) {
+      url.pathname = `/school-portal${url.pathname === '/' ? '' : url.pathname}`;
       response = NextResponse.rewrite(url);
     }
   } else if (subdomain === 'admin' || hostname.startsWith('admin.')) {
-    if (url.pathname === '/') {
-      url.pathname = '/admin-portal';
-      response = NextResponse.rewrite(url);
-    } else if (url.pathname === '/login') {
-      url.pathname = '/admin-portal/login';
+    if (!url.pathname.startsWith('/admin-portal')) {
+      url.pathname = `/admin-portal${url.pathname === '/' ? '' : url.pathname}`;
       response = NextResponse.rewrite(url);
     }
   }
 
-  // 🚀 3. Finalize Response and inject Dynamic CORS
+  // ─── 3. INJECT CORS HEADERS ON API RESPONSES ─────────────────────────────
   if (!response) {
     response = NextResponse.next();
   }
 
-  if (isApi && origin) {
+  if (isApi && originAllowed && origin) {
     response.headers.set('Access-Control-Allow-Origin', origin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
-    response.headers.set('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    response.headers.set('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Range');
+    response.headers.set('Access-Control-Allow-Methods', CORS_HEADERS['Access-Control-Allow-Methods']);
+    response.headers.set('Access-Control-Allow-Headers', CORS_HEADERS['Access-Control-Allow-Headers']);
   }
 
   return response;
@@ -77,7 +107,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Apply to all except static assets
-    '/((?!_next/static|_next/image|favicon.ico|.*\\..*|school-portal|admin-portal).*)',
+    // Skip Next.js internals and static files
+    '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 };

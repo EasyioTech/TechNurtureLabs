@@ -144,13 +144,18 @@ export async function handleStudentEngagement(userId: string) {
 
 export async function incrementProgressCounter(userId: string, metric: 'lessons' | 'quizzes' | 'perfect_quizzes') {
     const key = `user:${userId}:stats`;
-    await redis.hincrby(key, metric, 1);
-    await redis.expire(key, STATS_CACHE_TTL);
+    try {
+        await redis.hincrby(key, metric, 1);
+        await redis.expire(key, STATS_CACHE_TTL);
+    } catch (e) {
+        console.warn('[Gamification] Redis unavailable for counter increment — skipping cache:', (e as Error).message);
+    }
 }
 
 export async function getProgressCounter(userId: string, metric: 'lessons' | 'quizzes' | 'perfect_quizzes'): Promise<number> {
     const key = `user:${userId}:stats`;
-    const val = await redis.hget(key, metric);
+    let val: string | null = null;
+    try { val = await redis.hget(key, metric); } catch (_) {}
 
     if (val !== null) return parseInt(val, 10);
 
@@ -189,14 +194,22 @@ export async function getProgressCounter(userId: string, metric: 'lessons' | 'qu
 }
 
 export async function isAchievementCheckNeeded(userId: string): Promise<boolean> {
-    const dirty = await redis.get(`user:${userId}:achievements_dirty`);
-    return dirty === '1';
+    try {
+        const dirty = await redis.get(`user:${userId}:achievements_dirty`);
+        return dirty === '1';
+    } catch (_) {
+        return false; // Redis down — skip achievement check, not critical
+    }
 }
 
 export async function markAchievementCheckNeeded(userId: string) {
-    await redis.setex(`user:${userId}:achievements_dirty`, 3600, '1');
+    try {
+        await redis.setex(`user:${userId}:achievements_dirty`, 3600, '1');
+    } catch (_) { /* non-critical — will re-check on next XP award */ }
 }
 
 export async function clearAchievementDirtyBit(userId: string) {
-    await redis.del(`user:${userId}:achievements_dirty`);
+    try {
+        await redis.del(`user:${userId}:achievements_dirty`);
+    } catch (_) { /* non-critical */ }
 }

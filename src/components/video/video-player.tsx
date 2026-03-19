@@ -43,27 +43,50 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
     setIsReady(true);
   };
 
-  // Simple progress tracking
+  // Progress tracking: only syncs while playing, retries once on failure,
+  // and flushes immediately when the tab is hidden (mobile app-switch, browser minimize).
   useEffect(() => {
     if (isCompleted || !isReady) return;
 
-    const interval = setInterval(() => {
-      if (!player.current || player.current.paused) return;
+    // Retry queue: holds at most one pending retry to avoid piling up requests
+    // on a slow/intermittent mobile connection.
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
+    function syncProgress() {
+      if (!player.current || player.current.paused) return;
       const currentTime = player.current.currentTime;
       const duration = player.current.duration;
-      
-      if (duration > 0) {
-        const pct = Math.floor((currentTime / duration) * 100);
-        // Local state update for UI
-        setVerifiedProgress(prev => Math.max(prev, pct));
-        
-        // Background sync
-        saveVideoProgress(lessonId, currentTime, pct).catch(() => {});
-      }
-    }, 10000); // Sync every 10 seconds
+      if (duration <= 0) return;
 
-    return () => clearInterval(interval);
+      const pct = Math.floor((currentTime / duration) * 100);
+      setVerifiedProgress(prev => Math.max(prev, pct));
+
+      saveVideoProgress(lessonId, currentTime, pct).catch(() => {
+        // Retry once after 3 seconds — avoids silent data loss on brief network blips
+        if (retryTimer) clearTimeout(retryTimer);
+        retryTimer = setTimeout(() => {
+          saveVideoProgress(lessonId, currentTime, pct).catch(() => {
+            // Second failure silently dropped — next interval will pick up fresh position
+          });
+        }, 3000);
+      });
+    }
+
+    // Interval: every 10 seconds, but only runs body if video is playing
+    const interval = setInterval(syncProgress, 10000);
+
+    // Flush immediately on tab/app hide — critical for mobile where the OS can
+    // kill the tab without triggering unload events
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') syncProgress();
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [lessonId, isCompleted, isReady]);
 
   const handleComplete = async () => {

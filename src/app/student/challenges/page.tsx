@@ -15,7 +15,7 @@ export default async function ChallengesPage() {
     const data = await getStudentProfileAndStats();
 
     const initialData = {
-        dailyChallenges: data.dailyChallenges || [],
+        dailyChallenges: (data as any).dailyChallenges || [],
         stats: data.stats
     };
 

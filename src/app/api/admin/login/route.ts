@@ -5,10 +5,16 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import { rateLimitService } from '@/lib/services/rate-limit';
 import bcrypt from 'bcryptjs';
+import { z } from 'zod';
+
+const loginSchema = z.object({
+    email: z.string().email('Invalid email').max(256),
+    password: z.string().min(1, 'Password is required').max(128),
+});
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '127.0.0.1';
+    const ip = request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip') || '127.0.0.1';
     const { allowed, reset } = await rateLimitService.check({
         key: `admin-login:${ip}`,
         limit: 5,
@@ -22,14 +28,14 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const { email, password } = await request.json();
-
-    if (!email || !password) {
+    const body = loginSchema.safeParse(await request.json());
+    if (!body.success) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: body.error.issues[0]?.message ?? 'Invalid request' },
         { status: 400 }
       );
     }
+    const { email, password } = body.data;
 
     const admin = await db.query.superAdmins.findFirst({
       where: and(eq(superAdmins.email, email.toLowerCase()), isNull(superAdmins.deleted_at), eq(superAdmins.is_active, true))

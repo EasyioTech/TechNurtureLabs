@@ -6,6 +6,10 @@ const serverSchema = z.object({
     REDIS_URL: z.string().url().optional().default('redis://localhost:6379'),
     JWT_SECRET: z.string().min(32, { message: "JWT_SECRET must be at least 32 characters long" }),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    // AES-256-GCM key for encrypting TOTP secrets at rest.
+    // Must be exactly 32 bytes when decoded from hex (= 64 hex chars).
+    // Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+    APP_ENCRYPTION_KEY: z.string().min(64).optional().default(''),
     CLOUDFLARE_ACCOUNT_ID: z.string().optional().default(''),
     CLOUDFLARE_ACCESS_KEY_ID: z.string().optional().default(''),
     CLOUDFLARE_SECRET_ACCESS_KEY: z.string().optional().default(''),

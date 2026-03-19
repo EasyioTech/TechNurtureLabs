@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { platformSettings, students, schoolAdmins, superAdmins } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { encryptSecret, decryptSecret } from '@/lib/crypto';
 
 async function findUserById(userId: string) {
     let user: any = await db.query.students.findFirst({ where: eq(students.id, userId) });
@@ -76,7 +77,7 @@ export async function enable2FA(secret: string, token: string) {
 
     await db.update(table)
         .set({
-            two_factor_secret: secret,
+            two_factor_secret: encryptSecret(secret), // encrypt before storing
             two_factor_enabled: true,
             two_factor_backup_codes: hashedCodes,
         })
@@ -97,9 +98,10 @@ export async function disable2FA(token: string) {
         throw new Error('2FA not enabled');
     }
 
+    const plainSecret = decryptSecret(user.two_factor_secret);
     const result = await verify({
         token,
-        secret: user.two_factor_secret,
+        secret: plainSecret,
     });
 
     if (!result.valid) {

@@ -41,7 +41,7 @@ export default async function StudentDashboardPage() {
     stats: statsData.stats,
     school: statsData.school,
     courses: coursesData.courses as any[],
-    achievements: achievements as any[],
+    achievements: ((achievements as any)?.achievements ?? achievements) as any[],
     activities: activities as any[],
     challenges: challenges as any[],
     platformSettings
@@ -51,5 +51,5 @@ export default async function StudentDashboardPage() {
     redirect('/login');
   }
 
-  return <ClientDashboard initialData={initialData} />;
+  return <ClientDashboard initialData={{ ...initialData, profile: initialData.profile! } as any} />;
 }

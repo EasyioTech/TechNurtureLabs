@@ -67,7 +67,11 @@ export const eventService = {
      */
     getActivityStream: async (schoolId?: string): Promise<any[]> => {
         const streamKey = schoolId ? `stream:school:${schoolId}` : 'stream:global';
-        const raw = await redis.lrange(streamKey, 0, 20);
-        return raw.map(r => JSON.parse(r));
+        try {
+            const raw = await redis.lrange(streamKey, 0, 20);
+            return raw.map(r => JSON.parse(r));
+        } catch (_) {
+            return []; // Redis unavailable — return empty stream
+        }
     }
 };
