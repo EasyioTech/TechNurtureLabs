@@ -44,29 +44,29 @@ export function LeaderboardClient({ initialData }: LeaderboardClientProps) {
     return (
         <div className="min-h-screen bg-slate-50/10 pb-20 animate-in fade-in duration-700">
             {/* Competitive Header */}
-            <div className="relative bg-slate-950 overflow-hidden py-16 md:py-20 lg:py-24 px-6 lg:px-12 border-b border-white/5">
+            <div className="relative bg-slate-950 overflow-hidden py-10 md:py-14 lg:py-16 px-6 lg:px-12 border-b border-white/5">
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                 
                 <div className="max-w-[1440px] mx-auto relative z-10">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
                         <div className="lg:col-span-7">
                             <motion.div 
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 mb-8 shadow-2xl"
+                                className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 mb-6"
                             >
-                                <Trophy size={16} fill="currentColor" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.4em]">
+                                <Trophy size={14} fill="currentColor" />
+                                <span className="text-[8px] font-black uppercase tracking-[0.3em]">
                                     {scope === 'class' ? 'Classroom' : 'Institution'} Rankings
                                 </span>
                             </motion.div>
-
-                            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white uppercase tracking-tighter leading-[0.85] mb-10">
+ 
+                            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-8">
                                 Student <br />
                                 <span className="text-indigo-500">Leaderboard</span>
                             </h1>
-
-                            <div className="flex items-center gap-3 bg-white/5 p-1.5 rounded-2xl max-w-[280px] backdrop-blur-xl border border-white/10 shadow-2xl">
+ 
+                            <div className="flex items-center gap-2 bg-white/5 p-1 rounded-2xl max-w-[240px] backdrop-blur-xl border border-white/10 shadow-xl">
                                 <ScopeButton 
                                     active={scope === 'school'} 
                                     onClick={() => setScope('school')} 
@@ -81,19 +81,18 @@ export function LeaderboardClient({ initialData }: LeaderboardClientProps) {
                                 />
                             </div>
                         </div>
-
+ 
                         <div className="lg:col-span-5 flex justify-end">
-                            <div className="w-full max-w-md p-10 md:p-12 rounded-[2rem] md:rounded-[3rem] bg-indigo-600 text-white shadow-2xl shadow-indigo-950/40 relative overflow-hidden group">
+                            <div className="w-full max-w-sm p-8 md:p-10 rounded-[2rem] bg-indigo-600 text-white shadow-xl shadow-indigo-950/40 relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.2)_0%,_transparent_60%)] pointer-events-none" />
                                 <div className="relative z-10 flex flex-col items-center text-center">
-                                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-[2.25rem] bg-white text-indigo-600 flex items-center justify-center mb-6 md:mb-8 shadow-2xl group-hover:scale-110 transition-transform duration-500">
-                                        <Activity size={32} className="hidden md:block" />
-                                        <Activity size={24} className="md:hidden" />
+                                    <div className="w-14 h-14 md:w-16 md:h-16 rounded-[1.5rem] bg-white text-indigo-600 flex items-center justify-center mb-6 shadow-xl group-hover:scale-110 transition-transform duration-500">
+                                        <Activity size={24} />
                                     </div>
-                                    <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter mb-2 md:mb-4 text-white">Your Rank</h3>
-                                    <p className="text-[9px] md:text-[10px] font-black text-indigo-100 uppercase tracking-[0.3em] mb-8 md:mb-10 max-w-[200px] mx-auto opacity-70">You are currently ranked #{userStats.rank} in your school.</p>
-                                    <div className="w-full h-px bg-white/10 mb-8 md:mb-10" />
-                                    <p className="text-5xl md:text-6xl font-black tracking-tighter">TOP {userStats.rankPercentage}%</p>
+                                    <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter mb-2 text-white">Your Rank</h3>
+                                    <p className="text-[9px] font-black text-indigo-100 uppercase tracking-[0.2em] mb-6 max-w-[180px] mx-auto opacity-70 leading-relaxed">Currently ranked #{userStats.rank || '-'} in overall {scope}.</p>
+                                    <div className="w-20 h-0.5 bg-white/10 mb-6 mx-auto" />
+                                    <p className="text-4xl md:text-5xl font-black tracking-tighter">TOP {userStats.rankPercentage || 0}%</p>
                                 </div>
                             </div>
                         </div>
@@ -102,45 +101,45 @@ export function LeaderboardClient({ initialData }: LeaderboardClientProps) {
             </div>
 
             {/* Leaderboard Table */}
-            <main className="max-w-[1440px] mx-auto px-6 lg:px-12 -mt-8 md:-mt-12 relative z-20">
-                <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-8 md:p-10 lg:p-12 border border-slate-100 shadow-2xl shadow-slate-200/40 min-h-[500px] relative overflow-hidden">
+            <main className="max-w-[1440px] mx-auto px-6 lg:px-12 -mt-6 md:-mt-10 relative z-20">
+                <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl shadow-slate-200/40 min-h-[500px] relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 opacity-[0.03] text-slate-950 pointer-events-none">
                         <Trophy size={200} />
                     </div>
-
-                    <div className="flex items-center justify-between mb-10 pb-6 border-b border-slate-50">
-                        <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none">
+ 
+                    <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
+                        <h3 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tighter leading-none">
                             {data?.title || 'Leaderboard Rankings'}
                         </h3>
                         {loading && (
                             <motion.div 
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                className="flex items-center gap-3 text-[9px] font-black text-indigo-600 uppercase tracking-widest"
+                                className="flex items-center gap-3 text-[8px] font-black text-indigo-600 uppercase tracking-widest"
                             >
                                 <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse" />
                                 Updating Rankings...
                             </motion.div>
                         )}
                     </div>
-
+ 
                     <AnimatePresence mode="wait">
                         <motion.div 
                             key={scope + data.data.length}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            className="space-y-4 lg:space-y-6"
+                            className="space-y-3 md:space-y-4"
                         >
                             {data.data.length > 0 ? data.data.map((user: any) => (
                                 <LeaderboardRow key={user.id} user={user} />
                             )) : (
-                                <div className="py-32 flex flex-col items-center justify-center text-center">
-                                    <div className="w-20 h-20 rounded-[2.5rem] bg-slate-50 flex items-center justify-center text-slate-200 mb-6 border border-slate-100 shadow-inner">
-                                        <Trophy size={40} />
+                                <div className="py-24 flex flex-col items-center justify-center text-center">
+                                    <div className="w-16 h-16 rounded-3xl bg-slate-50 flex items-center justify-center text-slate-200 mb-6 border border-slate-100 shadow-inner">
+                                        <Trophy size={32} />
                                     </div>
-                                    <h4 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-3">No Rankings Yet</h4>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Start your learning journey to appear on the leaderboard.</p>
+                                    <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">No Rankings Yet</h4>
+                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Start your learning journey to appear on the leaderboard.</p>
                                 </div>
                             )}
                         </motion.div>
@@ -162,48 +161,48 @@ function ScopeButton({ active, onClick, label, icon: Icon }: any) {
     );
 }
 
-function LeaderboardRow({ user }: { user: any }) {
+ function LeaderboardRow({ user }: { user: any }) {
     const isTop3 = user.rank <= 3;
     const isCurrentUser = user.isCurrentUser;
-
+ 
     return (
-        <div className={`p-4 md:p-6 rounded-[1.75rem] md:rounded-[2.25rem] border transition-all flex flex-col md:flex-row items-center gap-6 md:gap-8 ${isCurrentUser ? 'bg-indigo-600 text-white border-indigo-500 shadow-2xl shadow-indigo-100' : 'bg-white border-slate-50 hover:border-indigo-100 hover:shadow-xl hover:shadow-slate-50/50'}`}>
-            <div className="w-full md:w-14 flex justify-between md:justify-center items-center">
+        <div className={`p-4 md:p-5 rounded-2xl md:rounded-[1.75rem] border transition-all flex flex-col md:flex-row items-center gap-4 md:gap-7 ${isCurrentUser ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-100' : 'bg-white border-slate-50 hover:border-indigo-100 hover:shadow-lg hover:shadow-slate-50/50'}`}>
+            <div className="w-full md:w-10 flex justify-between md:justify-center items-center">
                 {isTop3 ? (
-                    <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center text-white shadow-lg ${user.rank === 1 ? 'bg-amber-400 shadow-amber-200' : user.rank === 2 ? 'bg-slate-300 shadow-slate-200' : 'bg-orange-400 shadow-orange-200'}`}>
-                        <Trophy size={20} />
+                    <div className={`w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center text-white shadow-md ${user.rank === 1 ? 'bg-amber-400 shadow-amber-200' : user.rank === 2 ? 'bg-slate-300 shadow-slate-200' : 'bg-orange-400 shadow-orange-200'}`}>
+                        <Trophy size={16} />
                     </div>
                 ) : (
-                    <span className={`text-xl lg:text-2xl font-black ${isCurrentUser ? 'text-white/40' : 'text-slate-200'}`}>#{user.rank}</span>
+                    <span className={`text-lg lg:text-xl font-black ${isCurrentUser ? 'text-white/40' : 'text-slate-200'}`}>#{user.rank}</span>
                 )}
                 <div className="md:hidden flex items-center gap-2">
                      <Star size={12} className={isCurrentUser ? 'text-white' : 'text-amber-400'} fill="currentColor" />
-                     <span className="text-lg font-black">{user.xp.toLocaleString()}</span>
+                     <span className="text-base font-black">{user.xp.toLocaleString()}</span>
                 </div>
             </div>
-
+ 
             <div className="flex-1 flex items-center gap-4 w-full">
-                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center text-base md:text-lg font-black shadow-inner flex-shrink-0 ${isCurrentUser ? 'bg-white text-indigo-600' : 'bg-slate-900 text-white'}`}>
+                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-sm md:text-base font-black shadow-inner flex-shrink-0 ${isCurrentUser ? 'bg-white text-indigo-600' : 'bg-slate-900 text-white'}`}>
                     {user.initials}
                 </div>
                 <div className="min-w-0">
-                    <h4 className="text-base md:text-lg font-black uppercase tracking-tighter leading-none mb-1.5 truncate">
+                    <h4 className="text-sm md:text-base font-black uppercase tracking-tighter leading-none mb-1 truncate">
                         {user.full_name}
-                        {isCurrentUser && <span className="ml-2 text-[7px] font-black bg-white text-indigo-600 px-2 py-0.5 rounded-full uppercase tracking-widest align-middle">You</span>}
+                        {isCurrentUser && <span className="ml-2 text-[6px] font-black bg-white text-indigo-600 px-1.5 py-0.5 rounded-full uppercase tracking-widest align-middle">You</span>}
                     </h4>
-                    <p className={`text-[9px] font-black uppercase tracking-widest truncate ${isCurrentUser ? 'text-white/60' : 'text-slate-400'}`}>Level {user.level} Dedicated Student</p>
+                    <p className={`text-[8px] font-black uppercase tracking-widest truncate ${isCurrentUser ? 'text-white/60' : 'text-slate-400'}`}>Level {user.level}</p>
                 </div>
             </div>
-
-            <div className="w-full md:w-auto flex items-center justify-between md:justify-end gap-6 lg:gap-10 pr-0 md:pr-2 py-3.5 md:py-0 border-t md:border-t-0 border-white/10 md:border-transparent">
-                <div className="flex items-center gap-6 lg:gap-10">
+ 
+            <div className="w-full md:w-auto flex items-center justify-between md:justify-end gap-6 lg:gap-8 pr-0 md:pr-2 py-3 md:py-0 border-t md:border-t-0 border-white/10 md:border-transparent">
+                <div className="flex items-center gap-6 lg:gap-8">
                     <StatItem label="Accuracy" value={`${user.accuracy}%`} icon={Target} isCurrentUser={isCurrentUser} color="text-emerald-500" />
                     <StatItem label="Efficiency" value={`${user.efficiency}%`} icon={Zap} isCurrentUser={isCurrentUser} color="text-sky-500" />
                 </div>
                 
-                <div className="hidden md:flex items-center gap-2.5 ml-4">
-                    <Star size={18} className={isCurrentUser ? 'text-white' : 'text-amber-400'} fill="currentColor" />
-                    <span className="text-xl lg:text-2xl font-black tracking-tighter shrink-0">{user.xp.toLocaleString()}</span>
+                <div className="hidden md:flex items-center gap-2 ml-4">
+                    <Star size={16} className={isCurrentUser ? 'text-white' : 'text-amber-400'} fill="currentColor" />
+                    <span className="text-lg lg:text-xl font-black tracking-tighter shrink-0">{user.xp.toLocaleString()}</span>
                 </div>
             </div>
         </div>

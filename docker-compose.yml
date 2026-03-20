@@ -29,6 +29,8 @@ services:
       - CLOUDFLARE_BUCKET_NAME=${CLOUDFLARE_BUCKET_NAME:-}
       - CLOUDFLARE_PUBLIC_DOMAIN=${CLOUDFLARE_PUBLIC_DOMAIN:-}
       - CLOUDFLARE_WORKER_URL=${CLOUDFLARE_WORKER_URL:-}
+      # Cloudflare Stream — for video hosting
+      - CLOUDFLARE_STREAM_API_TOKEN=${CLOUDFLARE_STREAM_API_TOKEN:-}
       # Razorpay
       - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID:-}
       - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET:-}
@@ -53,33 +55,7 @@ services:
       # Local fallback storage — used when R2 is not configured or fails
       - storage_data:/app/local_storage
 
-  # ----------------------------
-  # Video Transcode & Processing Worker
-  # ----------------------------
-  video-worker:
-    image: technurturelabs-app:latest
-    container_name: LMS_video_worker
-    restart: always
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:admin@db:5432/orchids}
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET}
-      - APP_ENCRYPTION_KEY=${APP_ENCRYPTION_KEY}
-      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID:-}
-      - CLOUDFLARE_ACCESS_KEY_ID=${CLOUDFLARE_ACCESS_KEY_ID:-}
-      - CLOUDFLARE_SECRET_ACCESS_KEY=${CLOUDFLARE_SECRET_ACCESS_KEY:-}
-      - CLOUDFLARE_BUCKET_NAME=${CLOUDFLARE_BUCKET_NAME:-}
-      - CLOUDFLARE_PUBLIC_DOMAIN=${CLOUDFLARE_PUBLIC_DOMAIN:-}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    volumes:
-      - storage_data:/app/local_storage
-    # Run using the globally installed tsx
-    command: npx tsx scripts/video-worker.ts
+
 
   # ----------------------------
   # Event Processing Worker (Achievements, Streaks, Challenges)

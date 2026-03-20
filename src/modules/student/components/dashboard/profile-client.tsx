@@ -134,20 +134,20 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
   return (
     <div className="min-h-screen bg-slate-50/10 pb-20 animate-in fade-in duration-700">
       {/* Strategic Profile Header */}
-      <div className="relative bg-slate-950 overflow-hidden border-b border-white/5 py-12 md:py-20 lg:py-24">
+      <div className="relative bg-slate-950 overflow-hidden border-b border-white/5 py-10 md:py-16 lg:py-20">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.15)_0%,_transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_rgba(79,70,229,0.1)_0%,_transparent_50%)]" />
         
         <div className="max-w-[1440px] mx-auto px-6 lg:px-12 relative z-10">
-          <div className="flex flex-col md:flex-row items-center md:items-end gap-10 lg:gap-14">
+          <div className="flex flex-col md:flex-row items-center md:items-end gap-8 lg:gap-12">
             <motion.div 
                initial={{ scale: 0.9, opacity: 0 }}
                animate={{ scale: 1, opacity: 1 }}
                className="relative group shrink-0"
             >
-              <div className={`w-28 h-28 md:w-36 md:h-36 lg:w-44 lg:h-44 rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] ${avatarBg} border-2 md:border-4 border-white/20 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] flex items-center justify-center transition-all duration-700 group-hover:rotate-1`}>
-                <AvatarIconComponent size={40} className="text-white drop-shadow-2xl md:hidden" />
-                <AvatarIconComponent size={64} className="text-white drop-shadow-2xl hidden md:block" />
+              <div className={`w-28 h-28 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded-2xl md:rounded-[2.25rem] lg:rounded-[2.5rem] ${avatarBg} border-2 md:border-4 border-white/20 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] flex items-center justify-center transition-all duration-700 group-hover:rotate-1`}>
+                <AvatarIconComponent size={36} className="text-white drop-shadow-2xl md:hidden" />
+                <AvatarIconComponent size={56} className="text-white drop-shadow-2xl hidden md:block" />
               </div>
               <button
                 onClick={() => setEditingAvatar(true)}
@@ -167,18 +167,18 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
                    Rank #{rank.current} / Top {rank.percentage}%
                  </Badge>
               </div>
-              <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter leading-none mb-4 md:mb-5">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white uppercase tracking-tighter leading-none mb-3 md:mb-4">
                 {profile?.full_name}
               </h1>
-              <div className="flex items-center gap-3 justify-center md:justify-start opacity-50">
+              <div className="flex items-center gap-2.5 justify-center md:justify-start opacity-50">
                  <div className="w-5 h-1 bg-indigo-500 rounded-full" />
                  <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.4em]">{profile?.email}</p>
               </div>
             </div>
 
-            <div className="hidden lg:flex items-center gap-8 pb-4">
+            <div className="hidden lg:flex items-center gap-6 pb-2">
                <HeaderStat label="Total Points" value={profile?.total_xp.toLocaleString()} icon={Star} color="text-amber-400" />
-               <div className="w-px h-10 bg-white/5" />
+               <div className="w-px h-8 bg-white/5" />
                <HeaderStat label="Best Streak" value={`${profile?.longest_streak} Days`} icon={Flame} color="text-orange-500" />
             </div>
           </div>
@@ -186,26 +186,26 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
       </div>
 
       <main className="max-w-[1440px] mx-auto px-6 lg:px-12 -mt-6 md:-mt-8 relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 lg:gap-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 lg:gap-10">
           {/* Internal Manifest */}
-          <div className="lg:col-span-8 space-y-8 md:space-y-12">
-            <section className="bg-white rounded-[2rem] md:rounded-[3rem] p-8 md:p-10 lg:p-12 border border-slate-100 shadow-2xl shadow-slate-200/40 relative overflow-hidden">
+          <div className="lg:col-span-8 space-y-6 md:space-y-8">
+            <section className="bg-white rounded-[1.75rem] md:rounded-[2.5rem] p-7 md:p-8 lg:p-10 border border-slate-100 shadow-2xl shadow-slate-200/40 relative overflow-hidden">
                <div className="absolute top-0 right-0 p-8 opacity-[0.03] text-slate-950 pointer-events-none">
                   <Activity size={160} />
                </div>
 
-               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-8 md:mb-10 pb-6 border-b border-slate-50">
+               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-6 md:mb-8 pb-5 border-b border-slate-50">
                    <div>
-                        <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">Student Identity</h3>
+                        <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter mb-1.5">Student Identity</h3>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] md:tracking-[0.4em]">Personal Learning Record</p>
                    </div>
-                   <div className="flex items-center gap-3">
-                        <Button variant="ghost" onClick={() => setEditingProfile(true)} className="h-10 md:h-12 px-4 md:px-5 rounded-xl md:rounded-2xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 hover:text-indigo-600 transition-all">
+                   <div className="flex items-center gap-2.5">
+                        <Button variant="ghost" onClick={() => setEditingProfile(true)} className="h-9 md:h-11 px-4 md:px-5 rounded-xl md:rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 hover:text-indigo-600 transition-all">
                            Settings
                         </Button>
                         {!editingBio && (
-                           <Button onClick={() => setEditingBio(true)} className="h-10 md:h-12 px-6 md:px-7 bg-slate-950 text-white rounded-xl md:rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl">
-                              <Edit3 size={14} className="mr-2.5" /> Edit Profile
+                           <Button onClick={() => setEditingBio(true)} className="h-9 md:h-11 px-6 md:px-7 bg-slate-950 text-white rounded-xl md:rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl">
+                              <Edit3 size={13} className="mr-2" /> Edit Profile
                            </Button>
                         )}
                    </div>
@@ -233,16 +233,16 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
                )}
             </section>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
                <TacticalStat label="Lessons Completed" value={profile?.total_lessons_completed} icon={BookOpen} color="text-indigo-600" bg="bg-indigo-50" />
                <TacticalStat label="Quizzes Passed" value={profile?.total_quizzes_completed} icon={Target} color="text-emerald-600" bg="bg-emerald-50" />
                <TacticalStat label="Learning Time" value={`${profile?.total_learning_time_minutes}m`} icon={Clock} color="text-sky-600" bg="bg-sky-50" />
             </div>
 
-            <section className="bg-slate-950 rounded-[2rem] md:rounded-[3rem] p-8 md:p-10 lg:p-12 text-white border border-white/5 shadow-2xl shadow-indigo-950/20 relative overflow-hidden group">
+            <section className="bg-slate-950 rounded-[1.75rem] md:rounded-[2.5rem] p-7 md:p-8 lg:p-10 text-white border border-white/5 shadow-2xl shadow-indigo-950/20 relative overflow-hidden group">
                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-8 md:mb-10 lg:mb-12">
+                  <div className="flex items-center justify-between mb-6 md:mb-8 lg:mb-10">
                      <div>
                         <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter mb-1.5">Level Progress</h3>
                         <p className="text-[9px] md:text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Current Level: Level {profile?.level}</p>
@@ -252,18 +252,18 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
                            <Trophy size={11} />
                            <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest">Global Standings</span>
                          </div>
-                         <p className="text-2xl md:text-3xl font-black tracking-tighter">TOP {rank.percentage}%</p>
+                         <p className="text-xl md:text-2xl font-black tracking-tighter">TOP {rank.percentage}%</p>
                      </div>
                   </div>
-                  <div className="h-3 md:h-4 bg-white/5 rounded-full p-1 border border-white/5 mb-4 md:mb-6 shadow-inner overflow-hidden">
+                  <div className="h-2.5 md:h-3 bg-white/5 rounded-full p-0.5 border border-white/5 mb-4 md:mb-6 shadow-inner overflow-hidden">
                      <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${progressPercent}%` }}
-                        className="h-full bg-indigo-600 rounded-full shadow-[0_0_20px_rgba(79,70,229,0.5)]" 
+                        className="h-full bg-indigo-600 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.5)]" 
                         transition={{ duration: 2, ease: "easeOut" }}
                      />
                   </div>
-                  <div className="flex justify-between items-center text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] md:tracking-[0.3em]">
+                  <div className="flex justify-between items-center text-[7px] md:text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] md:tracking-[0.3em]">
                      <span>Progress Synced</span>
                      <span className="text-white">{Math.round(progressPercent)}% Towards Level {profile?.level + 1}</span>
                   </div>
@@ -272,14 +272,14 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
           </div>
 
           {/* Exterior Support */}
-          <div className="lg:col-span-4 space-y-8 md:space-y-12">
-            <section className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 shadow-xl shadow-slate-200/20 group">
-               <h3 className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] md:tracking-[0.4em] mb-8 md:mb-10 text-center underline decoration-indigo-200 underline-offset-8 decoration-2">Earned Badges</h3>
-               <div className="space-y-4 md:space-y-5">
+          <div className="lg:col-span-4 space-y-6 md:space-y-8">
+            <section className="bg-white border border-slate-100 rounded-[1.75rem] md:rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-slate-200/20 group">
+               <h3 className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] md:tracking-[0.4em] mb-6 md:mb-8 text-center underline decoration-indigo-200 underline-offset-8 decoration-2">Earned Badges</h3>
+               <div className="space-y-3.5 md:space-y-4">
                   {achievements.slice(0, 5).map((ach) => (
-                    <div key={ach.id} className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${ach.unlocked ? 'bg-slate-50 border-slate-100 group-hover:border-indigo-100' : 'bg-white border-transparent opacity-20 grayscale scale-95'}`}>
-                      <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center ${ach.unlocked ? 'bg-white text-indigo-600 shadow-sm' : 'bg-slate-50 text-slate-300'}`}>
-                        <Award size={18} />
+                    <div key={ach.id} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${ach.unlocked ? 'bg-slate-50 border-slate-100 group-hover:border-indigo-100' : 'bg-white border-transparent opacity-20 grayscale scale-95'}`}>
+                      <div className={`w-9 h-9 md:w-10 md:h-10 rounded-lg flex items-center justify-center ${ach.unlocked ? 'bg-white text-indigo-600 shadow-sm' : 'bg-slate-50 text-slate-300'}`}>
+                        <Award size={16} />
                       </div>
                       <div className="min-w-0">
                         <p className="text-[10px] md:text-[11px] font-black text-slate-900 uppercase tracking-tighter leading-none mb-1 truncate">{ach.name}</p>
@@ -287,24 +287,24 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
                       </div>
                     </div>
                   ))}
-                  <Link href="/student/achievements" className="block mt-6 md:mt-8">
-                    <Button variant="ghost" className="w-full h-12 md:h-14 rounded-xl md:rounded-2xl border-2 border-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-900 hover:bg-slate-950 hover:text-white transition-all flex items-center justify-center gap-2.5">
+                  <Link href="/student/achievements" className="block mt-6">
+                    <Button variant="ghost" className="w-full h-11 md:h-12 rounded-xl border-2 border-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-900 hover:bg-slate-950 hover:text-white transition-all flex items-center justify-center gap-2">
                        View All Badges <ArrowRight size={14} />
                     </Button>
                   </Link>
                </div>
             </section>
 
-            <section className="bg-indigo-600 rounded-[2rem] md:rounded-[3rem] p-8 md:p-10 lg:p-12 text-white shadow-2xl relative overflow-hidden group">
+            <section className="bg-indigo-600 rounded-[1.75rem] md:rounded-[2.5rem] p-7 md:p-8 lg:p-10 text-white shadow-2xl relative overflow-hidden group">
                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
                <div className="flex flex-col items-center text-center relative z-10">
-                 <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl md:rounded-[2.25rem] bg-white text-indigo-600 flex items-center justify-center mb-6 md:mb-8 shadow-2xl group-hover:scale-110 transition-all duration-500">
-                    <Flame size={28} className="md:hidden" fill="currentColor" />
-                    <Flame size={36} className="hidden md:block" fill="currentColor" />
+                 <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-white text-indigo-600 flex items-center justify-center mb-5 md:mb-6 shadow-2xl group-hover:scale-110 transition-all duration-500">
+                    <Flame size={24} className="md:hidden" fill="currentColor" />
+                    <Flame size={32} className="hidden md:block" fill="currentColor" />
                  </div>
-                 <h4 className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] text-white/50 mb-3">Current Streak</h4>
-                 <p className="text-4xl md:text-5xl font-black tracking-tighter mb-4">{profile?.current_streak} <span className="text-lg opacity-60">DAYS</span></p>
-                 <div className="w-8 h-1 bg-white/20 rounded-full mb-4" />
+                 <h4 className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] text-white/50 mb-2">Current Streak</h4>
+                 <p className="text-3xl md:text-4xl font-black tracking-tighter mb-3">{profile?.current_streak} <span className="text-lg opacity-60">DAYS</span></p>
+                 <div className="w-8 h-1 bg-white/20 rounded-full mb-3" />
                  <p className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] opacity-60 leading-relaxed max-w-[180px]">Keep learning every day to maintain your streak!</p>
                </div>
             </section>
@@ -466,14 +466,14 @@ function HeaderStat({ label, value, icon: Icon, color }: any) {
 
 function TacticalStat({ icon: Icon, label, value, color, bg }: any) {
   return (
-    <div className="bg-white border border-slate-100 rounded-[1.75rem] md:rounded-[2.25rem] p-6 md:p-8 transition-all hover:border-indigo-100 hover:shadow-xl hover:shadow-slate-100/50 group hover:-translate-y-1.5 duration-500">
-      <div className={`w-11 h-11 md:w-12 md:h-12 rounded-xl ${bg} ${color} flex items-center justify-center mb-5 md:mb-6 group-hover:scale-110 transition-all duration-500 shadow-sm shrink-0`}>
-        <Icon size={20} className="md:hidden" />
-        <Icon size={24} className="hidden md:block" strokeWidth={2.5} />
+    <div className="bg-white border border-slate-100 rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-7 transition-all hover:border-indigo-100 hover:shadow-xl hover:shadow-slate-100/50 group hover:-translate-y-1.5 duration-500">
+      <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl ${bg} ${color} flex items-center justify-center mb-4 md:mb-5 group-hover:scale-110 transition-all duration-500 shadow-sm shrink-0`}>
+        <Icon size={18} className="md:hidden" />
+        <Icon size={22} className="hidden md:block" strokeWidth={2.5} />
       </div>
       <div>
-        <p className="text-2xl md:text-3xl font-black text-slate-900 leading-none mb-2 tracking-tighter shrink-0">{value}</p>
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{label}</p>
+        <p className="text-xl md:text-2xl font-black text-slate-900 leading-none mb-1.5 tracking-tighter shrink-0">{value}</p>
+        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">{label}</p>
       </div>
     </div>
   );

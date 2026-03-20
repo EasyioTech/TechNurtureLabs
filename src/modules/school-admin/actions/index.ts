@@ -116,7 +116,14 @@ export async function updateSchoolProfile(schoolId: string, data: any) {
         updated_at: new Date(),
     } as any).where(eq(schools.id, schoolId));
 
+    // Clear both Redis cache and Next.js Data Cache
     await invalidateSchoolCache(schoolId);
+    
+    // Proactive revalidation to ensure students and admins see fresh data
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/school-admin', 'layout');
+    revalidatePath('/student', 'layout');
+    
     return { success: true };
 }
 

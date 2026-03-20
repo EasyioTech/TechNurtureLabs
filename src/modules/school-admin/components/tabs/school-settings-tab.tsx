@@ -124,9 +124,9 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
                         <div>
                             <div className="flex items-center gap-2 mb-2">
                                 <User size={16} className="text-indigo-500" />
-                                <h4 className={`text-[15px] font-black tracking-tight ${ts.textPrimary(isDark)}`}>Personal Information</h4>
+                                <h4 className={`text-[15px] font-black tracking-tight ${ts.textPrimary(isDark)}`}>Administrative Role</h4>
                             </div>
-                            <p className={`text-[13px] font-medium leading-relaxed ${ts.textSecondary(isDark)}`}>Update your name and profile settings as a school authority.</p>
+                            <p className={`text-[13px] font-medium leading-relaxed ${ts.textSecondary(isDark)}`}>Update your name and profile settings as an authorized administrator.</p>
                         </div>
                         <Button
                             onClick={() => setIsAdminProfileModalOpen(true)}
@@ -201,10 +201,10 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
                         <Settings size={24} />
                     </div>
-                    <h2 className={`text-3xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>School Configuration</h2>
+                    <h2 className={`text-3xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>Institution Settings</h2>
                 </div>
                 <p className={`text-[13px] font-bold max-w-xl ${ts.textSecondary(isDark)}`}>
-                    Manage your institution's digital footprint, security policies, and student lifecycle management from one centralized hub.
+                    Manage your institution's digital footprint, security policies, and administrative lifecycle from one centralized hub.
                 </p>
             </div>
 

@@ -88,43 +88,38 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
         <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0c0f1a] dark' : 'bg-slate-50'}`}>
 
             {/* ─── Header ─── */}
-            <header className={`sticky top-0 z-50 ${ts.headerBg(isDark)}`}>
+            <header className={`sticky top-0 z-50 border-b backdrop-blur-xl ${isDark ? 'bg-[#0c0f1a]/80 border-white/5' : 'bg-white/80 border-slate-200'}`}>
                 <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
-                    <div className="flex items-center h-18 py-3 gap-6">
-
-                        {/* School Identity */}
-                        <div className="flex items-center gap-4 flex-shrink-0 min-w-0">
-                            {(schoolProfile?.logo_url || platformSettings?.logo_url) ? (
-                                <div className="flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                    <img
-                                        src={schoolProfile?.logo_url || platformSettings?.logo_url}
-                                        alt={schoolName}
-                                        className="object-contain"
-                                        style={{ height: `${platformSettings?.logo_height || 40}px`, width: 'auto', maxHeight: '48px' }}
-                                        onError={(e) => {
-                                            (e.currentTarget as HTMLImageElement).style.display = 'none';
-                                            (e.currentTarget.parentElement?.nextElementSibling as HTMLElement)?.classList.remove('hidden');
-                                        }}
-                                    />
+                    <div className="flex items-center justify-between h-16 sm:h-24">
+                        <div className="flex items-center gap-4 sm:gap-8">
+                            {/* School Identity */}
+                            <div className="flex items-center gap-4 flex-shrink-0 min-w-0">
+                                {(schoolProfile?.logo_url || platformSettings?.logo_url) ? (
+                                    <div className="flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                        <img
+                                            src={schoolProfile?.logo_url || platformSettings?.logo_url}
+                                            alt={schoolName}
+                                            className="object-contain"
+                                            style={{ height: `${platformSettings?.logo_height || 40}px`, width: 'auto', maxHeight: '48px' }}
+                                            onError={(e) => {
+                                                (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                                (e.currentTarget.parentElement?.nextElementSibling as HTMLElement)?.classList.remove('hidden');
+                                            }}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-600 shadow-indigo-600/20'}`}>
+                                        <GraduationCap size={22} className={isDark ? 'text-indigo-400' : 'text-white'} strokeWidth={2.5} />
+                                    </div>
+                                )}
+                                <div className="min-w-0 hidden sm:block">
+                                    <p className={`text-[15px] font-black tracking-tight leading-none truncate ${ts.textPrimary(isDark)}`}>
+                                        {schoolName}
+                                    </p>
+                                    <p className={`text-[10px] mt-1 font-bold tracking-wider uppercase opacity-60 ${ts.textSecondary(isDark)}`}>
+                                        Dashboard
+                                    </p>
                                 </div>
-                            ) : null}
-                            {(!(schoolProfile?.logo_url || platformSettings?.logo_url)) ? (
-                                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-600 shadow-indigo-600/20'
-                                    }`}>
-                                    <GraduationCap size={22} className={isDark ? 'text-indigo-400' : 'text-white'} strokeWidth={2.5} />
-                                </div>
-                            ) : (
-                                <div className={`hidden w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-600 shadow-indigo-600/20'}`}>
-                                    <GraduationCap size={22} className={isDark ? 'text-indigo-400' : 'text-white'} strokeWidth={2.5} />
-                                </div>
-                            )}
-                            <div className="min-w-0 hidden sm:block">
-                                <p className={`text-[15px] font-black tracking-tight leading-none truncate ${ts.textPrimary(isDark)}`}>
-                                    {schoolName}
-                                </p>
-                                <p className={`text-[10px] mt-1 font-bold tracking-wider uppercase opacity-60 ${ts.textSecondary(isDark)}`}>
-                                    Dashboard
-                                </p>
                             </div>
                         </div>
 
@@ -162,7 +157,7 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                             <div className="hidden md:flex items-center gap-3">
                                 <div className="text-right">
                                     <p className={`text-[12px] font-black leading-tight ${ts.textPrimary(isDark)}`}>{adminName || 'Admin'}</p>
-                                    <p className={`text-[10px] font-bold ${ts.textMuted(isDark)}`}>School Authority</p>
+                                    <p className={`text-[10px] font-bold ${ts.textMuted(isDark)}`}>Institution Administrator</p>
                                 </div>
                                 {onSignOut && (
                                     <button onClick={onSignOut} title="Sign out"
@@ -210,16 +205,16 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                 </div>
             </header>
 
-            {/* ─── School Identity Banner ─── */}
+            {/* ── Institution Identity Banner ── */}
             <div className={`relative overflow-hidden border-b ${isDark ? 'bg-[#0f1219] border-white/[0.05]' : 'bg-white border-slate-200/60'}`}>
                 {/* Decorative background elements */}
                 <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-indigo-500/5 to-transparent pointer-events-none" />
                 <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-500/5 blur-3xl rounded-full pointer-events-none" />
-
-                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-10 sm:py-14 relative z-10">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                            <div className="w-20 h-20 flex items-center justify-center flex-shrink-0">
+                
+                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10 lg:py-14 relative z-10">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8">
+                        <div className="flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-4 sm:gap-6">
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center flex-shrink-0">
                                 {(schoolProfile?.logo_url || platformSettings?.logo_url) ? (
                                     <div className="relative w-full h-full">
                                         <img 
@@ -231,57 +226,51 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                                                 (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove('hidden');
                                             }}
                                         />
-                                        <div className="hidden w-full h-full rounded-[28px] flex items-center justify-center shadow-2xl bg-indigo-50 dark:bg-indigo-500/10 border dark:border-indigo-500/20 shadow-indigo-100 dark:shadow-indigo-500/5">
-                                            <GraduationCap size={40} className="text-indigo-600 dark:text-indigo-400" />
+                                        <div className="hidden w-full h-full rounded-2xl flex items-center justify-center shadow-2xl bg-indigo-50 dark:bg-indigo-500/10 border dark:border-indigo-500/20 shadow-indigo-100 dark:shadow-indigo-500/5">
+                                            <GraduationCap size={32} className="text-indigo-600 dark:text-indigo-400" />
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className={`w-full h-full rounded-[28px] flex items-center justify-center shadow-2xl ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20 shadow-indigo-500/5' : 'bg-indigo-50 shadow-indigo-100'}`}>
-                                        <GraduationCap size={40} className={isDark ? 'text-indigo-400' : 'text-indigo-600'} />
+                                    <div className={`w-full h-full rounded-2xl flex items-center justify-center shadow-2xl ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20 shadow-indigo-500/5' : 'bg-indigo-50 shadow-indigo-100'}`}>
+                                        <GraduationCap size={32} className={isDark ? 'text-indigo-400' : 'text-indigo-600'} />
                                     </div>
                                 )}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-3 mb-2">
-                                    <h1 className={`text-3xl sm:text-4xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>
+                                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 mb-2">
+                                    <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>
                                         {schoolName}
                                     </h1>
                                     {schoolProfile?.is_active && (
-                                        <Badge className={`px-2.5 py-0.5 rounded-full border-0 text-[10px] font-black tracking-wider ${ts.live(isDark)}`}>
+                                        <Badge className={`px-2.5 py-0.5 rounded-full border-0 text-[9px] font-black tracking-wider ${ts.live(isDark)}`}>
                                             <Sparkles size={10} className="mr-1" /> ACTIVE
                                         </Badge>
                                     )}
                                 </div>
-                                <div className={`flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] font-medium ${ts.textSecondary(isDark)}`}>
+                                <div className={`flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1 text-[12px] font-medium ${ts.textSecondary(isDark)}`}>
                                     {location && (
-                                        <span className="flex items-center gap-2">
-                                            <MapPin size={14} className="text-indigo-500" />
+                                        <span className="flex items-center gap-1.5">
+                                            <MapPin size={12} className="text-indigo-500" />
                                             {location}
                                         </span>
                                     )}
                                     {schoolProfile?.email && (
-                                        <span className="flex items-center gap-2">
-                                            <Mail size={14} className="text-indigo-500" />
-                                            {schoolProfile.email}
-                                        </span>
-                                    )}
-                                    {schoolProfile?.phone && (
-                                        <span className="flex items-center gap-2">
-                                            <Phone size={14} className="text-indigo-500" />
-                                            {schoolProfile.phone}
+                                        <span className="flex items-center gap-1.5">
+                                            <Mail size={12} className="text-indigo-500" />
+                                            <span className="hidden xs:inline">{schoolProfile.email}</span>
                                         </span>
                                     )}
                                 </div>
                             </div>
                         </div>
-
-                        <div className="flex flex-col sm:flex-row items-center gap-4">
-                            <Badge className={`px-4 py-2 rounded-2xl border-0 text-[11px] font-black tracking-wide ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
-                                REG: {schoolProfile?.slug?.toUpperCase() || 'N/A'}
+                        
+                        <div className="flex flex-row items-center justify-center sm:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0">
+                            <Badge className={`px-3 py-1.5 rounded-xl border-0 text-[10px] font-black tracking-wide ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
+                                ID: {schoolProfile?.slug?.toUpperCase() || 'N/A'}
                             </Badge>
                             <Button
                                 onClick={() => setIsProfileModalOpen(true)}
-                                className={`rounded-2xl h-12 px-6 font-black text-[13px] ${ts.btnPrimary(isDark)}`}>
+                                className={`rounded-xl h-10 px-5 font-black text-[12px] ${ts.btnPrimary(isDark)}`}>
                                 Edit Profile
                             </Button>
                         </div>

@@ -93,7 +93,6 @@ export async function POST(request: NextRequest) {
         const fileName = path.basename(result.path);
 
         const assetType = getAssetType(result.mimeType);
-        const isProcessableVideo = assetType === 'video' && result.storageType === 'r2';
         const isPptx =
             result.mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
             result.mimeType === 'application/vnd.ms-powerpoint';
@@ -109,43 +108,13 @@ export async function POST(request: NextRequest) {
             asset_type: assetType,
             uploaded_by: uploadedBy || undefined,
             folder: folderHint,
-            // PPTX and video both go through background processing
-            processing_status: (isProcessableVideo || isPptx) ? 'processing' : 'completed',
+            // Videos are handled via Cloudflare Stream, no server-side processing needed
+            processing_status: 'completed',
         } as any).returning();
 
-        // Trigger video transcoding queue
-        if (isProcessableVideo) {
-            try {
-                const { queueService } = await import('@/lib/services/queue-service');
-                await queueService.enqueueVideo({
-                    assetId: asset.id,
-                    filePath: result.path,
-                    folder: folderHint || 'library',
-                    timestamp: Date.now()
-                });
-            } catch (qError) {
-                console.error('[Upload] Failed to enqueue transcoding task:', qError);
-            }
-        }
 
-        // Trigger PPTX → slide images conversion via the durable Redis queue.
-        // Previously used setImmediate() which was lost on any server restart.
-        // The queue-service worker picks this up and updates processing_status on completion.
-        if (isPptx) {
-            try {
-                const { queueService } = await import('@/lib/services/queue-service');
-                await queueService.enqueuePptx({
-                    assetId: asset.id,
-                    filePath: result.path,
-                    storageType: result.storageType as 'r2' | 'local',
-                    folder: folderHint || 'library',
-                    timestamp: Date.now(),
-                });
-            } catch (qError) {
-                console.error('[Upload] Failed to enqueue PPTX conversion task:', qError);
-                // Not fatal — asset stays in 'processing' and can be re-queued via admin
-            }
-        }
+
+
 
         return NextResponse.json({
             url: result.url,

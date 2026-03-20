@@ -38,7 +38,7 @@ export function CourseCard({ course }: { course: Course }) {
         <Link href={`/student/course/${course.id}`} className="block h-full group">
             <motion.div 
                 whileHover={{ y: -4 }}
-                className={`bg-white border border-slate-100 rounded-[3rem] overflow-hidden transition-all duration-500 h-full flex flex-col ${theme.shadow} hover:shadow-xl`}
+                className={`bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden transition-all duration-500 h-full flex flex-col ${theme.shadow} hover:shadow-xl`}
             >
                 {/* Course Thumbnail */}
                 <div className="relative h-48 overflow-hidden bg-slate-100">
@@ -52,27 +52,27 @@ export function CourseCard({ course }: { course: Course }) {
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
                     
                     <div className="absolute top-4 left-4">
-                        <div className="px-4 py-1.5 bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl text-[9px] font-black text-white uppercase tracking-[0.2em] shadow-2xl">
+                        <div className="px-4 py-1.5 bg-white/20 backdrop-blur-xl border border-white/30 rounded-full text-[9px] font-black text-white uppercase tracking-[0.2em] shadow-2xl">
                             {course.totalLessons} Lessons
                         </div>
                     </div>
 
                     <div className="absolute bottom-4 right-4">
-                        <div className={`w-10 h-10 rounded-2xl bg-white flex items-center justify-center ${theme.text} shadow-2xl group-hover:scale-110 transition-transform duration-500`}>
-                            <Play size={18} fill="currentColor" />
+                        <div className={`w-9 h-9 rounded-full bg-white flex items-center justify-center ${theme.text} shadow-2xl group-hover:scale-110 transition-transform duration-500`}>
+                            <Play size={16} fill="currentColor" />
                         </div>
                     </div>
                 </div>
 
                 {/* Course Info */}
-                <div className="p-7 flex-1 flex flex-col">
-                    <div className="flex items-start justify-between mb-3">
-                        <h4 className={`font-black text-xl text-slate-950 tracking-tighter leading-[0.9] uppercase transition-colors duration-500`}>
+                <div className="p-6 flex-1 flex flex-col">
+                    <div className="flex items-start justify-between mb-2">
+                        <h4 className={`font-black text-lg text-slate-950 tracking-tighter leading-[0.95] uppercase transition-colors duration-500`}>
                             {course.title}
                         </h4>
                     </div>
 
-                    <p className="text-xs text-slate-500/80 font-bold uppercase tracking-wider line-clamp-2 leading-relaxed mb-6 opacity-80">
+                    <p className="text-[10px] text-slate-500/80 font-bold uppercase tracking-wider line-clamp-2 leading-relaxed mb-5 opacity-80">
                         {course.description || 'A comprehensive learning path designed for academic excellence.'}
                     </p>
 
@@ -94,21 +94,21 @@ export function CourseCard({ course }: { course: Course }) {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-5 border-t border-slate-100">
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                             <div className="flex items-center gap-4">
                                 <div className="flex flex-col">
-                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Finished</span>
-                                    <span className="text-[10px] font-black text-slate-900">{course.completedLessons} / {course.totalLessons}</span>
+                                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Finished</span>
+                                    <span className="text-[9px] font-black text-slate-900">{course.completedLessons} / {course.totalLessons}</span>
                                 </div>
-                                <div className="w-px h-6 bg-slate-100" />
+                                <div className="w-px h-5 bg-slate-100" />
                                 <div className="flex flex-col">
-                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Level</span>
-                                    <span className="text-[10px] font-black text-indigo-600">Standard</span>
+                                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Level</span>
+                                    <span className="text-[9px] font-black text-indigo-600">Standard</span>
                                 </div>
                             </div>
 
-                            <div className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.4em] ${theme.text} group-hover:translate-x-1 transition-transform duration-500`}>
-                                View Course <ChevronRight size={14} />
+                            <div className={`flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.3em] ${theme.text} group-hover:translate-x-1 transition-transform duration-500`}>
+                                View <ChevronRight size={12} />
                             </div>
                         </div>
                     </div>

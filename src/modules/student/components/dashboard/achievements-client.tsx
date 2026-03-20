@@ -43,7 +43,7 @@ export function AchievementsClient({ initialData }: AchievementsClientProps) {
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="w-14 h-14 md:w-20 md:h-20 rounded-2xl md:rounded-[2.25rem] bg-indigo-600 flex items-center justify-center text-white mb-6 md:mb-8 shadow-2xl shadow-indigo-600/40"
+                        className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-indigo-600 flex items-center justify-center text-white mb-6 md:mb-8 shadow-2xl shadow-indigo-600/40"
                     >
                         <Trophy size={28} className="md:hidden" />
                         <Trophy size={40} className="hidden md:block" />
@@ -107,7 +107,7 @@ export function AchievementsClient({ initialData }: AchievementsClientProps) {
                             {nextGoal ? (
                                 <div className="relative z-10">
                                     <div className="flex items-center gap-4 md:gap-5 mb-8 md:mb-10">
-                                        <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-amber-400 shadow-inner group-hover:scale-110 transition-transform duration-500">
+                                        <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-amber-400 shadow-inner group-hover:scale-110 transition-transform duration-500">
                                             <Award size={28} className="md:hidden" strokeWidth={1.5} />
                                             <Award size={32} className="hidden md:block" strokeWidth={1.5} />
                                         </div>
@@ -172,7 +172,7 @@ export function AchievementsClient({ initialData }: AchievementsClientProps) {
 function StatusCard({ label, value, icon: Icon }: any) {
     return (
         <div className="p-4 md:p-6 lg:p-8 rounded-xl md:rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-center group hover:bg-white/10 transition-colors">
-            <div className="w-8 h-8 md:w-11 md:h-11 rounded-xl md:rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-3 md:mb-5 group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 md:w-11 md:h-11 rounded-full bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-3 md:mb-5 group-hover:scale-110 transition-transform">
                 <Icon size={16} className="md:hidden" />
                 <Icon size={22} className="hidden md:block" />
             </div>
@@ -186,7 +186,7 @@ function MasteryStat({ label, value, icon: Icon, color }: any) {
     return (
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-3.5">
-                <div className={`w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center ${color} shadow-sm`}>
+                <div className={`w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center ${color} shadow-sm`}>
                     <Icon size={16} fill="currentColor" />
                 </div>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{label}</span>

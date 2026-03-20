@@ -43,51 +43,10 @@ export async function POST(req: NextRequest) {
             asset_type: assetType,
             uploaded_by: session.userId,
             folder: folder,
-            processing_status: (isProcessableVideo || isPptx) ? 'processing' : 'completed',
+            processing_status: 'completed',
         } as any).returning();
 
-        // Trigger video transcoding queue
-        if (isProcessableVideo) {
-            try {
-                const { queueService } = await import('@/lib/services/queue-service');
-                await queueService.enqueueVideo({
-                    assetId: asset.id,
-                    filePath: filePath,
-                    folder: folder,
-                    timestamp: Date.now()
-                });
-            } catch (qError) {
-                console.error('[Register] Failed to enqueue transcoding task:', qError);
-            }
-        }
 
-        // Trigger PPTX → slide images conversion in the background
-        if (isPptx) {
-            setImmediate(async () => {
-                try {
-                    const { processPptxToSlides } = await import('@/lib/pptx-processor');
-                    const convResult = await processPptxToSlides(
-                        asset.id,
-                        filePath,
-                        storageType
-                    );
-                    const { eq } = await import('drizzle-orm');
-                    if (convResult.success) {
-                        await db.update(mediaAssets)
-                            .set({ processing_status: 'completed' })
-                            .where(eq(mediaAssets.id, asset.id));
-                        console.log(`[Register] PPTX slides ready: ${asset.id} (${convResult.slideCount} slides)`);
-                    } else {
-                        await db.update(mediaAssets)
-                            .set({ processing_status: 'failed', error_message: convResult.error })
-                            .where(eq(mediaAssets.id, asset.id));
-                        console.error('[Register] PPTX conversion failed:', convResult.error);
-                    }
-                } catch (err: any) {
-                    console.error('[Register] PPTX conversion threw:', err?.message);
-                }
-            });
-        }
 
         return NextResponse.json({
             success: true,

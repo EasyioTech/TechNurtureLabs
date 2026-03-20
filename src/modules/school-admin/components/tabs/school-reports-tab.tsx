@@ -55,7 +55,7 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                 {/* Header */}
                 <div className={`px-8 py-8 border-b ${ts.border(isDark)} flex flex-col lg:flex-row items-start lg:items-center gap-6 bg-slate-500/[0.01]`}>
                     <div className="flex-1">
-                        <h3 className={`font-black text-2xl tracking-tight mb-1 ${ts.textPrimary(isDark)}`}>Performance Analytics</h3>
+                        <h3 className={`font-black text-2xl tracking-tight mb-1 ${ts.textPrimary(isDark)}`}>Course Insights</h3>
                         <p className={`text-[13px] font-bold ${ts.textMuted(isDark)}`}>Detailed metrics across {courseMetrics.length} active courses</p>
                     </div>
                     <Button
@@ -72,11 +72,13 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                     <table className="w-full">
                         <thead>
                             <tr className={`border-b ${ts.border(isDark)} bg-slate-500/[0.02]`}>
-                                {['Course Title', 'Status', 'Engagement', 'Success Rate', 'Avg. XP', 'Time Spent', ''].map((h, i) => (
-                                    <th key={h} className={`px-8 py-5 text-[10px] font-black uppercase tracking-widest ${i === 0 ? 'text-left' : 'text-right'} ${ts.textMuted(isDark)}`}>
-                                        {h}
-                                    </th>
-                                ))}
+                                <th className={`px-4 sm:px-8 py-5 text-[10px] font-black uppercase tracking-widest text-left ${ts.textMuted(isDark)}`}>Course</th>
+                                <th className={`hidden sm:table-cell px-8 py-5 text-[10px] font-black uppercase tracking-widest text-right ${ts.textMuted(isDark)}`}>Status</th>
+                                <th className={`px-4 sm:px-8 py-5 text-[10px] font-black uppercase tracking-widest text-right ${ts.textMuted(isDark)}`}>Activity</th>
+                                <th className={`px-4 sm:px-8 py-5 text-[10px] font-black uppercase tracking-widest text-right ${ts.textMuted(isDark)}`}>Growth</th>
+                                <th className={`hidden md:table-cell px-8 py-5 text-[10px] font-black uppercase tracking-widest text-right ${ts.textMuted(isDark)}`}>XP</th>
+                                <th className={`hidden lg:table-cell px-8 py-5 text-[10px] font-black uppercase tracking-widest text-right ${ts.textMuted(isDark)}`}>Time</th>
+                                <th className="px-4 sm:px-8 py-5"></th>
                             </tr>
                         </thead>
                         <tbody className={ts.divider(isDark)}>
@@ -88,38 +90,38 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                                     className={`group transition-all ${ts.cardHover(isDark)}`}>
 
                                     {/* Title */}
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-indigo-500 font-black ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-50'}`}>
-                                                <BarChart3 size={18} />
+                                    <td className="px-4 sm:px-8 py-6">
+                                        <div className="flex items-center gap-3 sm:gap-4">
+                                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center text-indigo-500 font-black ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-50'}`}>
+                                                <BarChart3 size={16} />
                                             </div>
-                                            <p className={`font-black text-[14px] tracking-tight group-hover:text-indigo-500 transition-colors ${ts.textPrimary(isDark)}`}>{c.title}</p>
+                                            <p className={`font-black text-[13px] sm:text-[14px] tracking-tight group-hover:text-indigo-500 transition-colors truncate max-w-[120px] sm:max-w-none ${ts.textPrimary(isDark)}`}>{c.title}</p>
                                         </div>
                                     </td>
 
                                     {/* Status */}
-                                    <td className="px-8 py-6 text-right">
+                                    <td className="hidden sm:table-cell px-8 py-6 text-right">
                                         <Badge className={`px-3 py-1 rounded-full border-0 text-[10px] font-black ${c.is_published ? ts.live(isDark) : ts.draft(isDark)}`}>
                                             {c.is_published ? 'ACTIVE' : 'DRAFT'}
                                         </Badge>
                                     </td>
 
-                                    {/* Engagement */}
-                                    <td className="px-8 py-6 text-right">
+                                    {/* Activity */}
+                                    <td className="px-4 sm:px-8 py-6 text-right">
                                         <div className="inline-flex flex-col items-end">
-                                            <p className={`text-[14px] font-black ${ts.textPrimary(isDark)}`}>{c.enrolled_count.toLocaleString()}</p>
-                                            <p className={`text-[10px] font-bold ${ts.textMuted(isDark)}`}>Enrolled Learners</p>
+                                            <p className={`text-[13px] sm:text-[14px] font-black ${ts.textPrimary(isDark)}`}>{c.enrolled_count.toLocaleString()}</p>
+                                            <p className={`text-[9px] sm:text-[10px] font-bold ${ts.textMuted(isDark)}`}>Students</p>
                                         </div>
                                     </td>
 
                                     {/* Completion / Success */}
-                                    <td className="px-8 py-6 text-right">
-                                        <div className="flex flex-col items-end gap-1.5">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-[14px] font-black ${ts.textPrimary(isDark)}`}>{c.completion_rate}%</span>
-                                                <Target size={12} className="text-emerald-500" />
+                                    <td className="px-4 sm:px-8 py-6 text-right">
+                                        <div className="flex flex-col items-end gap-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className={`text-[13px] sm:text-[14px] font-black ${ts.textPrimary(isDark)}`}>{c.completion_rate}%</span>
+                                                <Target size={10} className="text-emerald-500" />
                                             </div>
-                                            <div className={`w-24 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
+                                            <div className={`hidden xs:block w-16 sm:w-24 h-1 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
                                                 <motion.div initial={{ width: 0 }} animate={{ width: `${c.completion_rate}%` }}
                                                     className="h-full bg-indigo-500" />
                                             </div>
@@ -127,14 +129,14 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                                     </td>
 
                                     {/* XP */}
-                                    <td className="px-8 py-6 text-right">
+                                    <td className="hidden md:table-cell px-8 py-6 text-right">
                                         <Badge className={`px-3 py-1 rounded-full border-0 text-[10px] font-black ${isDark ? 'bg-amber-400/10 text-amber-500' : 'bg-amber-50 text-amber-600'}`}>
                                             <Zap size={10} className="mr-1" fill="currentColor" /> {c.avg_xp} XP
                                         </Badge>
                                     </td>
 
                                     {/* Time Spent */}
-                                    <td className="px-8 py-6 text-right">
+                                    <td className="hidden lg:table-cell px-8 py-6 text-right">
                                         <div className="inline-flex flex-col items-end">
                                             <div className="flex items-center gap-1.5">
                                                 <p className={`text-[14px] font-black ${ts.textPrimary(isDark)}`}>{c.total_time_mins}</p>
@@ -145,13 +147,13 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                                     </td>
 
                                     {/* Icon / Action */}
-                                    <td className="px-8 py-6 text-right">
+                                    <td className="px-4 sm:px-8 py-6 text-right">
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => router.push(`/school-admin/course/${c.id}`)}
-                                            className={`w-9 h-9 rounded-xl border ${isDark ? 'border-white/10 text-slate-400 hover:bg-white/5 hover:text-indigo-400' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                                            <ExternalLink size={18} />
+                                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl border ${isDark ? 'border-white/10 text-slate-400 hover:bg-white/5 hover:text-indigo-400' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                                            <ExternalLink size={16} />
                                         </Button>
                                     </td>
                                 </motion.tr>

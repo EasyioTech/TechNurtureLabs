@@ -114,7 +114,7 @@ function LessonNode({ lesson, onComplete }: { lesson: Lesson; onComplete: () => 
       className="relative flex flex-col items-center"
     >
       <div className={`
-        w-20 h-20 rounded-3xl flex items-center justify-center shadow-lg cursor-pointer
+        w-20 h-20 rounded-full flex items-center justify-center shadow-lg cursor-pointer
         transition-all duration-500 border-b-4 active:border-b-0 active:translate-y-1
         ${isCompleted ? 'bg-emerald-500 border-emerald-700 text-white' :
           isLocked ? 'bg-zinc-200 border-zinc-300 text-zinc-400 cursor-not-allowed' :
@@ -140,7 +140,7 @@ function LessonNode({ lesson, onComplete }: { lesson: Lesson; onComplete: () => 
         <motion.div
           animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="absolute inset-0 rounded-3xl bg-primary/20 -z-10"
+          className="absolute inset-0 rounded-full bg-primary/20 -z-10"
         />
       )}
     </motion.div>

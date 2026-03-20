@@ -5,10 +5,10 @@ import Link from 'next/link';
 import {
     Target, Flame, Star, Trophy, Timer,
     ChevronRight, Zap, Award as AwardIcon, CheckCircle2,
-    BookOpen as BookIcon, Clock, Activity, ArrowRight
+    BookOpen as BookIcon, Clock, Activity, ArrowRight, Wand2, ShieldAlert
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { ChallengeCard } from '@/modules/student/components/challenge-card';
+import { ChallengeItem } from '@/modules/student/components/challenge-item';
 import { Button } from '@/components/ui/button';
 
 interface ChallengesClientProps {
@@ -59,13 +59,13 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
                                 animate={{ opacity: 1, x: 0 }}
                                 className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 mb-8 shadow-2xl"
                             >
-                                <Target size={16} fill="currentColor" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.4em]">Learning Goals</span>
+                                <ShieldAlert size={16} fill="currentColor" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.4em]">Mission Protocols</span>
                             </motion.div>
 
                             <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white uppercase tracking-tighter leading-[0.85] mb-8 lg:mb-10">
-                                Daily <br />
-                                <span className="text-indigo-500">Challenges</span>
+                                Mission <br />
+                                <span className="text-indigo-500">Protocols</span>
                             </h1>
 
                             <div className="flex flex-wrap items-center gap-6 md:gap-10 mt-10 lg:mt-12">
@@ -109,18 +109,18 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
                             
                             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10 pb-6 border-b border-slate-50">
                                 <div>
-                                    <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">Active Challenges</h3>
+                                    <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">Primary Objectives</h3>
                                     <div className="flex items-center gap-3 text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">
-                                        <Timer size={14} /> Resets in {24 - new Date().getHours()}H
+                                        <Wand2 size={14} className="animate-pulse" /> Resets in {24 - new Date().getHours()}H
                                     </div>
                                 </div>
                                 <div className="text-[10px] md:text-[11px] font-black text-slate-300 uppercase tracking-[0.4em]">ID: CHALLENGE_SRV_2024</div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
+                            <div className="flex flex-col gap-6 lg:gap-8">
                                 {dailyChallenges.length > 0 ? dailyChallenges.map((challenge: any) => (
                                     <div key={challenge.id} className="group">
-                                        <ChallengeCard
+                                        <ChallengeItem
                                             title={challenge.title}
                                             progress={challenge.current_progress}
                                             total={challenge.target_value}
@@ -128,6 +128,7 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
                                             icon={getChallengeIcon(challenge.icon)}
                                             color={getChallengeColor(challenge.challenge_type)}
                                             unit={challenge.challenge_type === 'learning_time' ? 'm' : ''}
+                                            description={challenge.description}
                                         />
                                     </div>
                                 )) : (

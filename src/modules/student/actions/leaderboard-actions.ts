@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { students, studentAcademicRecords } from '@/db/schema';
-import { eq, and, desc, inArray, sql, isNotNull } from 'drizzle-orm';
+import { eq, and, desc, inArray, sql, isNotNull, isNull } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { redis } from '@/lib/redis';
@@ -18,17 +18,24 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     }
     const userId = session.userId;
 
+    const profile = await db.query.students.findFirst({
+        where: eq(students.id, userId),
+        columns: { school_id: true }
+    });
+
     const currentUserRecord = await db.query.studentAcademicRecords.findFirst({
         where: eq(studentAcademicRecords.user_id, userId),
     });
 
-    if (!currentUserRecord) {
-        // Fallback if no academic record (shouldn't happen for active students)
-        return { scope, data: [], title: 'No academic record found' };
-    }
+    const schoolId = profile?.school_id || currentUserRecord?.school_id;
+    const classId = currentUserRecord?.class_id;
 
-    const schoolId = currentUserRecord.school_id;
-    const classId = currentUserRecord.class_id;
+    if (!schoolId && scope === 'school') {
+        return { scope, data: [], title: 'School Leaderboard' };
+    }
+    if (!classId && scope === 'class') {
+        return { scope, data: [], title: 'Class Leaderboard' };
+    }
 
     const finalScopeKey = scope === 'class' ? `lb:class:${classId}` : `lb:school:${schoolId}`;
     const cacheKey = `lb:cache:${finalScopeKey}`;
@@ -51,7 +58,7 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     if (scope === 'class') {
         const classStudentIds = await db.select({ id: studentAcademicRecords.user_id })
             .from(studentAcademicRecords)
-            .where(eq(studentAcademicRecords.class_id, classId));
+            .where(eq(studentAcademicRecords.class_id, classId as string));
         
         const ids = classStudentIds.map(s => s.id);
         if (ids.length === 0) return { scope, data: [], title: 'Class Leaderboard' };
@@ -59,7 +66,7 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
         query = db.query.students.findMany({
             where: and(
                 inArray(students.id, ids),
-                sql`${students.deleted_at} IS NULL`
+                isNull(students.deleted_at)
             ),
             orderBy: [desc(students.cumulative_xp)],
             limit: 50
@@ -67,8 +74,8 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     } else {
         query = db.query.students.findMany({
             where: and(
-                eq(students.school_id, schoolId),
-                sql`${students.deleted_at} IS NULL`
+                eq(students.school_id, schoolId as string),
+                isNull(students.deleted_at)
             ),
             orderBy: [desc(students.cumulative_xp)],
             limit: 50
@@ -90,7 +97,7 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     const accuracyStats = await db.execute(sql`
         SELECT user_id, AVG(score / NULLIF(max_score, 0) * 100) as avg_accuracy
         FROM quiz_attempts
-        WHERE user_id IN ${leaderIds}
+        WHERE user_id = ANY(${leaderIds}) 
         GROUP BY user_id
     `);
 
@@ -98,7 +105,7 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     const progressStats = await db.execute(sql`
         SELECT user_id, COUNT(*) as lessons_completed, SUM(time_spent_secs) as total_time
         FROM lesson_progress
-        WHERE user_id IN ${leaderIds} AND completed_at IS NOT NULL
+        WHERE user_id = ANY(${leaderIds}) AND completed_at IS NOT NULL
         GROUP BY user_id
     `);
 

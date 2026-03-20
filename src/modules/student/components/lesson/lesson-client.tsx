@@ -162,12 +162,12 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                 <div className="flex items-center justify-between p-6 sm:p-8 border-b border-slate-100">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                      <Layers size={20} />
+                      <BookOpen size={20} />
                     </div>
                     <div>
-                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Module Index</h3>
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Course Roadmap</h3>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        {courseData?.lessons?.length || 0} Modules • {courseData?.course?.title}
+                        {courseData?.lessons?.length || 0} Lessons • {courseData?.course?.title}
                       </p>
                     </div>
                   </div>
@@ -183,8 +183,8 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                   {isDocumentLesson && (
                     <div className="mb-10">
                       <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Document Progress</h3>
-                        <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded-md">{docMax} / {docTotal}</span>
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Current Reading</h3>
+                        <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded-md">Page {docPage} of {docTotal}</span>
                       </div>
                       <div className="grid grid-cols-5 gap-2">
                         {Array.from({ length: docTotal || 0 }, (_, i) => i + 1).map(p => {
@@ -234,8 +234,8 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                             <Trophy size={18} />
                         </div>
                         <div>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Potential Reward</p>
-                            <p className="text-sm font-black text-slate-900">+{lesson.xp_reward} Mastery Points</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Lesson Reward</p>
+                            <p className="text-sm font-black text-slate-900">+{lesson.xp_reward} Points</p>
                         </div>
                     </div>
                 </div>

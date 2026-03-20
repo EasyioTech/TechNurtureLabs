@@ -28,14 +28,14 @@ export function ChallengeCard({ title, progress, total, reward, icon: Icon, unit
     return (
         <motion.div 
             whileHover={{ y: -5 }}
-            className={`relative group h-full bg-white rounded-[2.5rem] p-8 border border-slate-100 transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] ${isComplete ? 'ring-2 ring-emerald-500/20 border-emerald-100' : ''}`}
+            className={`relative group h-full bg-white rounded-[2rem] p-6 border border-slate-100 transition-all duration-500 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] ${isComplete ? 'ring-2 ring-emerald-500/20 border-emerald-100' : ''}`}
         >
             {/* Background Accent Gradient */}
             <div className={`absolute top-0 right-0 w-32 h-32 ${theme.bg} rounded-full blur-3xl -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none`} />
 
-            <div className="flex items-start justify-between mb-8">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${theme.bg} ${theme.text} shadow-inner group-hover:scale-110 transition-transform duration-500`}>
-                    <Icon size={28} strokeWidth={2.5} />
+            <div className="flex items-start justify-between mb-6">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${theme.bg} ${theme.text} shadow-inner group-hover:scale-110 transition-transform duration-500`}>
+                    <Icon size={24} strokeWidth={2.5} />
                 </div>
                 
                 <div className={`flex flex-col items-end`}>
@@ -51,15 +51,15 @@ export function ChallengeCard({ title, progress, total, reward, icon: Icon, unit
                 </div>
             </div>
 
-            <div className="mb-8">
-                <h4 className="text-lg font-black text-slate-900 tracking-tighter leading-[1.1] uppercase mb-3">
+            <div className="mb-6">
+                <h4 className="text-base font-black text-slate-900 tracking-tighter leading-[1.1] uppercase mb-2">
                     {title}
                 </h4>
                 <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-slate-900 tracking-tighter">{progress}</span>
-                    <span className="text-sm font-black text-slate-300 uppercase tracking-widest">{unit}</span>
-                    <span className="mx-2 text-slate-200 font-light">/</span>
-                    <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">{total}{unit}</span>
+                    <span className="text-xl font-black text-slate-900 tracking-tighter">{progress}</span>
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{unit}</span>
+                    <span className="mx-1.5 text-slate-200 font-light">/</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{total}{unit}</span>
                 </div>
             </div>
 
@@ -69,7 +69,7 @@ export function ChallengeCard({ title, progress, total, reward, icon: Icon, unit
                     <span className={isComplete ? 'text-emerald-500' : 'text-slate-900'}>{Math.round(percentage)}%</span>
                 </div>
                 
-                <div className="h-4 bg-slate-50 rounded-full p-1 border border-slate-100 overflow-hidden relative">
+                <div className="h-3 bg-slate-50 rounded-full p-0.5 border border-slate-100 overflow-hidden relative">
                     <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${percentage}%` }}
@@ -84,9 +84,9 @@ export function ChallengeCard({ title, progress, total, reward, icon: Icon, unit
 
             {/* Hover Footer Action */}
             {!isComplete && (
-                <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between opacity-50 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Objective in progress</span>
-                    <Award size={14} className="text-slate-300 group-hover:text-indigo-400 transition-colors" />
+                <div className="mt-6 pt-5 border-t border-slate-50 flex items-center justify-between opacity-50 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Objective in progress</span>
+                    <Award size={12} className="text-slate-300 group-hover:text-indigo-400 transition-colors" />
                 </div>
             )}
         </motion.div>

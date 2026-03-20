@@ -53,19 +53,21 @@ export async function getStudentProfileData() {
         ? eq(students.school_id, profile.school_id)
         : sql`${students.school_id} IS NULL`;
 
-    const studentsWithMoreXp = await db.select().from(students).where(
-        and(
-            gt(students.cumulative_xp, Number(profile?.cumulative_xp) || 0),
-            schoolFilter
-        )
-    );
+    const studentsWithMoreXpResult = await db.select({ count: sql<number>`count(*)` })
+        .from(students)
+        .where(
+            and(
+                gt(students.cumulative_xp, Number(profile?.cumulative_xp) || 0),
+                schoolFilter
+            )
+        );
 
     const totalSchoolStudentsResult = await db.select({ count: sql<number>`count(*)` })
         .from(students)
         .where(schoolFilter);
 
     const totalSchoolStudents = Number(totalSchoolStudentsResult[0]?.count) || 1;
-    const rank = studentsWithMoreXp.length + 1;
+    const rank = (Number(studentsWithMoreXpResult[0]?.count) || 0) + 1;
     const rankPercentage = Math.min(100, Math.max(1, Math.round((rank / totalSchoolStudents) * 100)));
 
     const lessonsData = await db.select({

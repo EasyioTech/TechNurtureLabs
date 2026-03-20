@@ -105,11 +105,12 @@ export function SchoolStudentsTab({
                     <table className="w-full">
                         <thead>
                             <tr className={`border-b ${ts.border(isDark)} bg-slate-500/[0.02]`}>
-                                {['Student', 'Class', 'XP / Level', 'Activity', 'Status', 'Actions'].map((h, i) => (
-                                    <th key={h} className={`px-8 py-5 text-[10px] font-black uppercase tracking-widest ${i === 0 ? 'text-left' : 'text-right'} ${ts.textMuted(isDark)}`}>
-                                        {h}
-                                    </th>
-                                ))}
+                                <th className={`px-4 sm:px-8 py-5 text-[10px] font-black uppercase tracking-widest text-left ${ts.textMuted(isDark)}`}>Student</th>
+                                <th className={`hidden sm:table-cell px-8 py-5 text-[10px] font-black uppercase tracking-widest text-right ${ts.textMuted(isDark)}`}>Class</th>
+                                <th className={`px-4 sm:px-8 py-5 text-[10px] font-black uppercase tracking-widest text-right ${ts.textMuted(isDark)}`}>Growth</th>
+                                <th className={`hidden md:table-cell px-8 py-5 text-[10px] font-black uppercase tracking-widest text-right ${ts.textMuted(isDark)}`}>Activity</th>
+                                <th className={`hidden sm:table-cell px-8 py-5 text-[10px] font-black uppercase tracking-widest text-right ${ts.textMuted(isDark)}`}>Status</th>
+                                <th className={`px-4 sm:px-8 py-5 text-[10px] font-black uppercase tracking-widest text-right ${ts.textMuted(isDark)}`}></th>
                             </tr>
                         </thead>
                         <tbody className={`${ts.divider(isDark)} ${studentsLoading ? 'opacity-50' : ''}`}>
@@ -121,39 +122,39 @@ export function SchoolStudentsTab({
                                     className={`group transition-all ${ts.cardHover(isDark)}`}>
                                     
                                     {/* Student Info */}
-                                    <td className="px-8 py-5">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-[14px] font-black flex-shrink-0 transition-transform group-hover:scale-105 shadow-lg ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                                    <td className="px-4 sm:px-8 py-5">
+                                        <div className="flex items-center gap-3 sm:gap-4">
+                                            <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center text-[12px] sm:text-[14px] font-black flex-shrink-0 transition-transform group-hover:scale-105 shadow-md sm:shadow-lg ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
                                                 }`}>
                                                 {s.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                             </div>
                                             <div className="min-w-0">
-                                                <p className={`font-black text-[14px] tracking-tight truncate ${ts.textPrimary(isDark)}`}>{s.full_name}</p>
-                                                <p className={`text-[11px] font-bold truncate ${ts.textMuted(isDark)}`}>{s.email}</p>
+                                                <p className={`font-black text-[13px] sm:text-[14px] tracking-tight truncate ${ts.textPrimary(isDark)}`}>{s.full_name}</p>
+                                                <p className={`text-[10px] sm:text-[11px] font-bold truncate ${ts.textMuted(isDark)}`}>{s.email}</p>
                                             </div>
                                         </div>
                                     </td>
 
                                     {/* Class */}
-                                    <td className="px-8 py-5 text-right">
+                                    <td className="hidden sm:table-cell px-8 py-5 text-right">
                                         <Badge className={`px-3 py-1 rounded-full border-0 text-[10px] font-black ${ts.accentSoft(isDark)}`}>
                                             {s.class_name || 'NOT ASSIGNED'}
                                         </Badge>
                                     </td>
 
                                     {/* Progress */}
-                                    <td className="px-8 py-5 text-right">
+                                    <td className="px-4 sm:px-8 py-5 text-right">
                                         <div className="inline-flex flex-col items-end">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className={`text-[15px] font-black ${ts.textPrimary(isDark)}`}>{(s.total_xp || 0).toLocaleString()}</span>
-                                                <Zap size={12} className="text-amber-500" fill="currentColor" />
+                                            <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                                                <span className={`text-[13px] sm:text-[15px] font-black ${ts.textPrimary(isDark)}`}>{(s.total_xp || 0).toLocaleString()}</span>
+                                                <Zap size={10} className="text-amber-500" fill="currentColor" />
                                             </div>
-                                            <p className={`text-[10px] font-black tracking-widest uppercase ${ts.textMuted(isDark)}`}>LEVEL {s.level || 1}</p>
+                                            <p className={`text-[9px] sm:text-[10px] font-black tracking-widest uppercase ${ts.textMuted(isDark)}`}>L{s.level || 1}</p>
                                         </div>
                                     </td>
 
                                     {/* Metrics */}
-                                    <td className="px-8 py-5 text-right">
+                                    <td className="hidden md:table-cell px-8 py-5 text-right">
                                         <div className="inline-flex flex-col items-end">
                                             <p className={`text-[13px] font-black ${ts.textPrimary(isDark)}`}>{s.lessons_completed || 0} Lessons</p>
                                             <p className="text-[11px] font-bold text-orange-500 flex items-center gap-1">
@@ -163,26 +164,28 @@ export function SchoolStudentsTab({
                                     </td>
 
                                     {/* Status */}
-                                    <td className="px-8 py-5 text-right">
+                                    <td className="hidden sm:table-cell px-8 py-5 text-right">
                                         <Badge className={`px-3 py-1 rounded-full border-0 text-[10px] font-black ${s.is_active ? ts.live(isDark) : ts.danger(isDark)}`}>
-                                            {s.is_active ? 'ACTIVE' : 'DEACTIVATED'}
+                                            {s.is_active ? 'ACTIVE' : 'INACTIVE'}
                                         </Badge>
                                     </td>
 
                                     {/* Actions */}
-                                    <td className="px-8 py-5 text-right">
-                                        <div className="flex items-center justify-end gap-3">
-                                            <Switch
-                                                checked={s.is_active}
-                                                onCheckedChange={val => onToggleStudent(s.id, val)}
-                                                className="data-[state=checked]:bg-indigo-500 scale-90"
-                                            />
+                                    <td className="px-4 sm:px-8 py-5 text-right">
+                                        <div className="flex items-center justify-end gap-2 sm:gap-3">
+                                            <div className="hidden xs:block">
+                                                <Switch
+                                                    checked={s.is_active}
+                                                    onCheckedChange={val => onToggleStudent(s.id, val)}
+                                                    className="data-[state=checked]:bg-indigo-500 scale-75 sm:scale-90"
+                                                />
+                                            </div>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => router.push(`/school-admin/student/${s.id}`)}
-                                                className={`w-9 h-9 rounded-xl border ${isDark ? 'border-white/10 text-slate-400 hover:bg-white/5 hover:text-indigo-400' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                                                <ExternalLink size={18} />
+                                                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl border ${isDark ? 'border-white/10 text-slate-400 hover:bg-white/5 hover:text-indigo-400' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                                                <ExternalLink size={16} />
                                             </Button>
                                         </div>
                                     </td>

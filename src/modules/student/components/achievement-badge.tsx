@@ -48,7 +48,7 @@ export function AchievementBadge({ title, description, unlocked, locked, categor
     return (
         <div className={`group flex flex-col items-center transition-all duration-500 ${locked ? 'opacity-40 grayscale' : 'hover:scale-110 active:scale-95'}`}>
             <div className={`
-                relative w-16 h-16 xs:w-20 xs:h-20 md:w-24 md:h-24 rounded-2xl md:rounded-[2rem] flex items-center justify-center border transition-all duration-500 shadow-sm
+                relative w-16 h-16 xs:w-20 xs:h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center border transition-all duration-500 shadow-sm
                 ${colorClasses}
             `}>
                 {unlocked && (

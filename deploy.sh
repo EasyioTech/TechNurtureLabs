@@ -4,7 +4,7 @@
 # ============================================================
 
 # Step 1: Pull the latest code (uncomment if using Git)
-# git pull origin main
+git pull origin main
 
 # Step 2: Stop existing containers and prune old builds to save space
 echo "Shutting down existing containers..."
@@ -24,7 +24,7 @@ docker compose --profile setup up migration --abort-on-container-exit
 
 # Step 4: Build and start the App
 echo "Building and starting the Application & Workers..."
-docker compose up -d --build app video-worker event-worker
+docker compose up -d --build app event-worker
 
 # Step 4: Health Check (Wait for the app to respond)
 echo "Waiting for app healthcheck to pass..."

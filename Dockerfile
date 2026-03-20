@@ -50,18 +50,15 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# wget: health-check scripts
-# libreoffice-impress: converts PPTX → PNG slides at upload time (impress_png_Export)
-# fonts-liberation:    ensures text in slides renders correctly
-# --no-install-recommends keeps the layer as small as possible
+# Install minimal OS dependencies if necessary (wget is used in healthcheck)
 RUN apt-get update && apt-get install -y \
     wget \
-    ffmpeg \
-    libreoffice-impress \
-    fonts-liberation \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
+
 RUN npm install -g tsx
+
+# Add nextjs group and user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 

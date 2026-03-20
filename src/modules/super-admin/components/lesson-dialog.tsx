@@ -265,6 +265,61 @@ export function LessonDialog({
                                                         toast.error('File too large. Maximum size is 2GB.');
                                                         return;
                                                     }
+
+                                                    // Route video files through Cloudflare Stream
+                                                    if (file.type.startsWith('video/')) {
+                                                        setUploadFile(file);
+                                                        try {
+                                                            // 1. Get a direct upload URL from our API
+                                                            const res = await fetch('/api/media/stream-upload', {
+                                                                method: 'POST',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({ fileName: file.name }),
+                                                            });
+                                                            if (!res.ok) {
+                                                                const err = await res.json().catch(() => ({ error: 'Stream upload unavailable' }));
+                                                                // Fallback to regular upload if Stream is not configured
+                                                                if (res.status === 503) {
+                                                                    toast.info('Cloudflare Stream not configured — using standard upload.');
+                                                                    const additionalData: Record<string, string> = {
+                                                                        purpose: 'library',
+                                                                        storagePreference: storagePref,
+                                                                        folder: 'lesson'
+                                                                    };
+                                                                    await upload(file, additionalData);
+                                                                    return;
+                                                                }
+                                                                throw new Error(err.error || 'Failed to create stream upload');
+                                                            }
+
+                                                            const { uploadUrl, uid } = await res.json();
+
+                                                            // 2. Upload directly to Cloudflare
+                                                            toast.info('Uploading video to Cloudflare Stream...');
+                                                            const formData = new FormData();
+                                                            formData.append('file', file);
+                                                            const cfRes = await fetch(uploadUrl, {
+                                                                method: 'POST',
+                                                                body: formData,
+                                                            });
+                                                            if (!cfRes.ok) throw new Error('Failed to upload to Cloudflare Stream');
+
+                                                            // 3. Store the stream UID as the content URL
+                                                            setEditingLesson({
+                                                                ...editingLesson,
+                                                                content_url: `cf-stream://${uid}`,
+                                                                asset_id: null,
+                                                            });
+                                                            toast.success('Video uploaded to Cloudflare Stream!');
+                                                            setUploadFile(null);
+                                                        } catch (err: any) {
+                                                            toast.error(err?.message || 'Video upload failed');
+                                                            setUploadFile(null);
+                                                        }
+                                                        return;
+                                                    }
+
+                                                    // Non-video files: use standard upload
                                                     setUploadFile(file);
                                                     const additionalData: Record<string, string> = {
                                                         purpose: 'library',
