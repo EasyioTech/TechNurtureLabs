@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { useSchoolTheme, ts } from '../theme-context';
 import { toast } from 'sonner';
 import { updateSchoolProfile } from '../actions';
-import { ImageUpload } from '@/modules/shared/components/image-upload';
 
 interface SchoolProfileModalProps {
     schoolId: string;
@@ -21,10 +20,21 @@ interface SchoolProfileModalProps {
 export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdate }: SchoolProfileModalProps) {
     const { isDark } = useSchoolTheme();
     const [loading, setLoading] = useState(false);
+    const [formErrors, setFormErrors] = useState<Record<string, string[]>>({});
     const [formData, setFormData] = useState({
         name: '', email: '', phone: '', address: '',
-        city: '', state: '', pincode: '', logo_url: '', website: '',
+        city: '', state: '', pincode: '', country: '', udise_code: '', logo_url: '', website: '',
     });
+
+    const handleInputChange = (field: string, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        // Clear error when user types
+        if (formErrors[field]) {
+            const newErrors = { ...formErrors };
+            delete newErrors[field];
+            setFormErrors(newErrors);
+        }
+    };
 
     useEffect(() => {
         if (profile) {
@@ -36,6 +46,8 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                 city: profile.city || '',
                 state: profile.state || '',
                 pincode: profile.pincode || '',
+                country: profile.country || '',
+                udise_code: profile.udise_code || '',
                 logo_url: profile.logo_url || '',
                 website: profile.website || '',
             });
@@ -45,8 +57,9 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setFormErrors({});
+
         try {
-            // Find only changed fields to avoid unnecessary updates
             const changedFields: any = {};
             Object.keys(formData).forEach(key => {
                 const val = (formData as any)[key];
@@ -57,18 +70,41 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
             });
 
             if (Object.keys(changedFields).length > 0) {
-                await updateSchoolProfile(schoolId, changedFields);
-                toast.success('Institution profile updated successfully');
-                onUpdate();
+                const res = await updateSchoolProfile(schoolId, changedFields);
+                
+                if (res.success) {
+                    toast.success('Institution profile updated successfully');
+                    onUpdate();
+                    onClose();
+                } else if (res.details) {
+                    setFormErrors(res.details);
+                    toast.error('Please check the highlighted fields');
+                } else {
+                    toast.error(res.error || 'Failed to update profile');
+                }
             } else {
                 toast.info('No changes detected');
+                onClose();
             }
-            onClose();
         } catch (err) {
-            toast.error('Failed to update profile');
+            toast.error('Connection error: Failed to update profile');
         } finally {
             setLoading(false);
         }
+    };
+
+    const ErrorMessage = ({ field }: { field: string }) => {
+        if (!formErrors[field]) return null;
+        return (
+            <motion.p 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-[10px] font-bold text-rose-500 mt-1.5 ml-1 flex items-center gap-1.5"
+            >
+                <Sparkles size={10} className="animate-pulse" />
+                {formErrors[field][0]}
+            </motion.p>
+        );
     };
 
     if (!isOpen) return null;
@@ -117,12 +153,17 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                     <input
                                         type="text"
                                         required
+                                        name="name"
                                         value={formData.name}
-                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
-                                            }`}
+                                        onChange={e => handleInputChange('name', e.target.value)}
+                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${
+                                            formErrors.name 
+                                                ? 'border-rose-500/50 bg-rose-500/5 focus:ring-rose-500/10' 
+                                                : isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                        }`}
                                     />
                                 </div>
+                                <ErrorMessage field="name" />
                             </div>
 
                             {/* Email */}
@@ -133,12 +174,38 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                     <input
                                         type="email"
                                         required
+                                        name="email"
                                         value={formData.email}
-                                        onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
-                                            }`}
+                                        onChange={e => handleInputChange('email', e.target.value)}
+                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${
+                                            formErrors.email 
+                                                ? 'border-rose-500/50 bg-rose-500/5 focus:ring-rose-500/10' 
+                                                : isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                        }`}
                                     />
                                 </div>
+                                <ErrorMessage field="email" />
+                            </div>
+
+                            {/* UDISE Code */}
+                            <div className="space-y-2">
+                                <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${ts.textMuted(isDark)}`}>UDISE Code</label>
+                                <div className="relative group">
+                                    <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" size={16} />
+                                    <input
+                                        type="text"
+                                        name="udise_code"
+                                        placeholder="11-digit UDISE Code"
+                                        value={formData.udise_code}
+                                        onChange={e => handleInputChange('udise_code', e.target.value)}
+                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${
+                                            formErrors.udise_code 
+                                                ? 'border-rose-500/50 bg-rose-500/5 focus:ring-rose-500/10' 
+                                                : isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                        }`}
+                                    />
+                                </div>
+                                <ErrorMessage field="udise_code" />
                             </div>
 
                             {/* Phone */}
@@ -148,23 +215,44 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                     <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" size={16} />
                                     <input
                                         type="text"
+                                        name="phone"
+                                        placeholder="10-digit mobile number"
                                         value={formData.phone}
-                                        onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
-                                            }`}
+                                        onChange={e => handleInputChange('phone', e.target.value)}
+                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${
+                                            formErrors.phone 
+                                                ? 'border-rose-500/50 bg-rose-500/5 focus:ring-rose-500/10' 
+                                                : isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                        }`}
                                     />
                                 </div>
+                                <ErrorMessage field="phone" />
                             </div>
 
-                            {/* Logo URL */}
-                            <div className="md:col-span-2">
-                                <ImageUpload
-                                    label="Institution Logo"
-                                    description="This logo will be displayed on the student dashboard, certificates, and reports. High-quality PNG or SVG with transparent background is recommended."
-                                    value={formData.logo_url}
-                                    onChange={url => setFormData({ ...formData, logo_url: url })}
-                                    isDark={isDark}
-                                />
+                            {/* Logo URL - Read Only for School Admins */}
+                            <div className="md:col-span-2 space-y-3">
+                                <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${ts.textMuted(isDark)}`}>Institution Logo</label>
+                                <div className={`p-6 rounded-3xl border-2 border-dashed flex items-center gap-6 ${isDark ? 'border-white/10 bg-white/5' : 'border-slate-100 bg-slate-50/50'}`}>
+                                    {formData.logo_url ? (
+                                        <div className="w-20 h-20 rounded-2xl bg-white p-2 flex items-center justify-center shadow-sm overflow-hidden border border-slate-100">
+                                            <img src={formData.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
+                                        </div>
+                                    ) : (
+                                        <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-300">
+                                            <Building2 size={32} />
+                                        </div>
+                                    )}
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                            <p className={`text-xs font-black uppercase tracking-wider ${ts.textPrimary(isDark)}`}>Read-Only Mode</p>
+                                        </div>
+                                        <p className={`text-[10px] font-bold leading-relaxed ${ts.textMuted(isDark)}`}>
+                                            School logos are managed strictly by the Super Administrator. 
+                                            Contact support if you need to update your branding.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Website */}
@@ -174,13 +262,18 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                     <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" size={16} />
                                     <input
                                         type="text"
+                                        name="website"
                                         value={formData.website}
                                         placeholder="www.your-school.com"
-                                        onChange={e => setFormData({ ...formData, website: e.target.value })}
-                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
-                                            }`}
+                                        onChange={e => handleInputChange('website', e.target.value)}
+                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${
+                                            formErrors.website 
+                                                ? 'border-rose-500/50 bg-rose-500/5 focus:ring-rose-500/10' 
+                                                : isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                        }`}
                                     />
                                 </div>
+                                <ErrorMessage field="website" />
                             </div>
 
                             {/* Full Address */}
@@ -190,12 +283,17 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" size={16} />
                                     <input
                                         type="text"
+                                        name="address"
                                         value={formData.address}
-                                        onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
-                                            }`}
+                                        onChange={e => handleInputChange('address', e.target.value)}
+                                        className={`w-full h-12 pl-12 pr-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${
+                                            formErrors.address 
+                                                ? 'border-rose-500/50 bg-rose-500/5 focus:ring-rose-500/10' 
+                                                : isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                        }`}
                                     />
                                 </div>
+                                <ErrorMessage field="address" />
                             </div>
 
                             {/* City */}
@@ -203,11 +301,16 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                 <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${ts.textMuted(isDark)}`}>City</label>
                                 <input
                                     type="text"
+                                    name="city"
                                     value={formData.city}
-                                    onChange={e => setFormData({ ...formData, city: e.target.value })}
-                                    className={`w-full h-12 px-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
-                                        }`}
+                                    onChange={e => handleInputChange('city', e.target.value)}
+                                    className={`w-full h-12 px-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${
+                                        formErrors.city 
+                                            ? 'border-rose-500/50 bg-rose-500/5 focus:ring-rose-500/10' 
+                                            : isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                    }`}
                                 />
+                                <ErrorMessage field="city" />
                             </div>
 
                             {/* State */}
@@ -215,11 +318,50 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                 <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${ts.textMuted(isDark)}`}>State</label>
                                 <input
                                     type="text"
+                                    name="state"
                                     value={formData.state}
-                                    onChange={e => setFormData({ ...formData, state: e.target.value })}
-                                    className={`w-full h-12 px-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
-                                        }`}
+                                    onChange={e => handleInputChange('state', e.target.value)}
+                                    className={`w-full h-12 px-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${
+                                        formErrors.state 
+                                            ? 'border-rose-500/50 bg-rose-500/5 focus:ring-rose-500/10' 
+                                            : isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                    }`}
                                 />
+                                <ErrorMessage field="state" />
+                            </div>
+
+                            {/* Pincode & Country */}
+                            <div className="space-y-2">
+                                <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${ts.textMuted(isDark)}`}>Pincode / Zip</label>
+                                <input
+                                    type="text"
+                                    name="pincode"
+                                    placeholder="6-digit Pincode"
+                                    value={formData.pincode}
+                                    onChange={e => handleInputChange('pincode', e.target.value)}
+                                    className={`w-full h-12 px-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${
+                                        formErrors.pincode 
+                                            ? 'border-rose-500/50 bg-rose-500/5 focus:ring-rose-500/10' 
+                                            : isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                    }`}
+                                />
+                                <ErrorMessage field="pincode" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${ts.textMuted(isDark)}`}>Country</label>
+                                <input
+                                    type="text"
+                                    name="country"
+                                    value={formData.country}
+                                    onChange={e => handleInputChange('country', e.target.value)}
+                                    className={`w-full h-12 px-4 rounded-2xl border bg-transparent text-sm font-bold outline-none transition-all placeholder:text-slate-500 focus:ring-4 focus:ring-indigo-500/10 ${ts.textPrimary(isDark)} ${
+                                        formErrors.country 
+                                            ? 'border-rose-500/50 bg-rose-500/5 focus:ring-rose-500/10' 
+                                            : isDark ? 'border-white/10 bg-white/5 focus:bg-white/[0.08] focus:border-indigo-500/50' : 'border-slate-200 focus:bg-white focus:border-indigo-500'
+                                    }`}
+                                />
+                                <ErrorMessage field="country" />
                             </div>
                         </div>
 

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { ImageIcon } from 'lucide-react';
 import { MediaLibraryPicker } from '@/modules/super-admin/components/media-library-picker';
+import { useAuth } from '@/components/providers/auth-provider';
 
 interface ImageUploadProps {
     value: string;
@@ -16,7 +17,18 @@ interface ImageUploadProps {
 }
 
 export function ImageUpload({ value, onChange, label, description, isDark = false, aspect = 'video', compact = false, folder }: ImageUploadProps) {
+    const { profile } = useAuth();
     const [isPickerOpen, setIsPickerOpen] = useState(false);
+    
+    // Only super-admins can use the media library through this component
+    const isSuperAdmin = profile?.role === 'super_admin';
+
+    const handleClick = () => {
+        if (!isSuperAdmin) {
+            return; // Interaction disabled for non-admins
+        }
+        setIsPickerOpen(true);
+    };
 
     return (
         <div className="space-y-4 w-full">
@@ -27,8 +39,9 @@ export function ImageUpload({ value, onChange, label, description, isDark = fals
             )}
 
             <div
-                onClick={() => setIsPickerOpen(true)}
-                className={`relative ${aspect === 'video' ? 'aspect-video' : 'aspect-square'} rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden
+                onClick={handleClick}
+                className={`relative ${aspect === 'video' ? 'aspect-video' : 'aspect-square'} rounded-3xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden
+                    ${isSuperAdmin ? 'cursor-pointer' : 'cursor-default opacity-90'}
                     ${value
                         ? 'border-transparent bg-transparent'
                         : isDark
@@ -53,8 +66,12 @@ export function ImageUpload({ value, onChange, label, description, isDark = fals
                         </div>
                         {!compact && (
                             <>
-                                <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Click to upload or select logo</p>
-                                <p className={`text-[10px] mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>PNG, JPG, SVG up to 5MB</p>
+                                <p className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    {isSuperAdmin ? 'Click to manage library' : 'Admin Restricted'}
+                                </p>
+                                <p className={`text-[10px] mt-1 font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                    {isSuperAdmin ? 'PNG, JPG, SVG up to 5MB' : 'Managed by Super Admin'}
+                                </p>
                             </>
                         )}
                     </>

@@ -61,6 +61,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 
+        if (!user.is_verified) {
+            return NextResponse.json({ error: 'Your account is pending verification by your school admin.' }, { status: 403 });
+        }
+
         await createSession({ userId: user.id, userType: 'student' });
         
         // Handle streak and login challenges

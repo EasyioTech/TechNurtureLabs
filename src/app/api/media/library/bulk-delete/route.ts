@@ -8,7 +8,7 @@ import { verifySession } from '@/lib/auth';
 export async function POST(request: NextRequest) {
     try {
         const session = await verifySession();
-        const allowedRoles = ['super_admin', 'school_admin', 'admin'];
+        const allowedRoles = ['super_admin'];
         if (!session || (!allowedRoles.includes(session.role as string) && !allowedRoles.includes(session.userType as string))) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
@@ -21,11 +21,6 @@ export async function POST(request: NextRequest) {
         // Fetch assets to delete
         const assets = await db.select().from(mediaAssets).where(inArray(mediaAssets.id, ids));
 
-        // Authorization check: school admins can only delete their own
-        if (session.role === 'school_admin' || session.userType === 'school_admin') {
-            const forbidden = assets.some(a => a.uploaded_by !== session.userId);
-            if (forbidden) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
 
         // Parallel Delete from Storage
         const storageDeletes = assets.map(asset => 

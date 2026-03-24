@@ -129,6 +129,7 @@ export const students = pgTable('students', {
     current_streak: integer('current_streak').notNull().default(0),
     longest_streak: integer('longest_streak').notNull().default(0),
     is_active: boolean('is_active').notNull().default(true),
+    is_verified: boolean('is_verified').notNull().default(false),
     last_active_at: timestamp('last_active_at', { withTimezone: true }),
     // ISSUE 26: Persistence for student preferences
     notification_preferences: jsonb('notification_preferences').notNull().default({

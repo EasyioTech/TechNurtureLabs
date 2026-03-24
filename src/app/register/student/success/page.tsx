@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, LogIn, Mail, Sparkles, Zap, Trophy } from 'lucide-react';
+import { CheckCircle2, LogIn, Sparkles, Zap, Trophy, ShieldCheck } from 'lucide-react';
 import { getPlatformSettings } from '@/components/landing/actions';
 import { useEffect, useState } from 'react';
 
@@ -49,19 +49,19 @@ export default function StudentRegistrationSuccess() {
           <CheckCircle2 className="text-emerald-400" size={48} />
         </motion.div>
 
-        <h1 className="text-3xl font-black mb-3">Welcome Aboard!</h1>
+        <h1 className="text-3xl font-black mb-3">Registration Successful!</h1>
         <p className="text-white/50 mb-8 max-w-sm mx-auto">
-          Your account has been created successfully. Get ready to start your learning adventure!
+          Your account has been created. Next, your school administrator needs to verify your enrollment.
         </p>
 
         <div className="bg-white/5 rounded-2xl p-6 mb-6 border border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-              <Mail size={20} className="text-blue-400" />
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center">
+              <ShieldCheck size={24} className="text-amber-400" />
             </div>
             <div className="text-left">
-              <p className="font-bold">Verify Your Email</p>
-              <p className="text-xs text-white/50">Check your inbox for a verification link</p>
+              <p className="font-bold text-lg">Awaiting Verification</p>
+              <p className="text-sm text-white/50 leading-tight">Your school will review your request shortly. Once approved, you can log in.</p>
             </div>
           </div>
         </div>
@@ -91,7 +91,7 @@ export default function StudentRegistrationSuccess() {
         </Link>
 
         <p className="text-sm text-white/40 mt-6">
-          After verifying your email, sign in to start learning
+          After school verification, sign in to start learning
         </p>
       </motion.div>
     </div>

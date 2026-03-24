@@ -9,6 +9,7 @@ export type SchoolStats = {
     totalLessonsCompleted: number;
     totalQuizzesTaken: number;
     avgCompletionRate: number;
+    pendingStudents: number;
     planName: string | null;
     subscriptionStatus: string | null;
     planExpiry: string | null;

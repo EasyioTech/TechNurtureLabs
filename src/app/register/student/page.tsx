@@ -136,9 +136,19 @@ export default function StudentRegistrationPage() {
       const result = await registerStudent(formData);
 
       if (result.success) {
-        const isExisting = 'isExisting' in result ? result.isExisting : false;
-        toast.success(isExisting ? 'Welcome back! You are now logged in.' : 'Registration complete! You are now logged in.', { id: toastId });
-        router.push('/student');
+        const isExisting = 'isExisting' in result ? (result as any).isExisting : false;
+        const isNew = 'isNew' in result ? (result as any).isNew : false;
+        
+        if (isExisting) {
+            toast.success('Welcome back! You are now logged in.', { id: toastId });
+            router.push('/student');
+        } else if (isNew) {
+            toast.success('Registration complete! Awaiting school verification.', { id: toastId });
+            router.push('/register/student/success');
+        } else {
+            toast.success('Registration complete! You are now logged in.', { id: toastId });
+            router.push('/student');
+        }
       } else {
         toast.error(result.error || 'Registration failed. Please verify your details.', { id: toastId });
       }

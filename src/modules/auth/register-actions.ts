@@ -119,6 +119,10 @@ export async function registerStudent(formData: any) {
                     return { success: false, error: `This ${isEmail ? 'email' : 'phone number'} is already registered. Please enter the correct PIN.` };
                 }
                 
+                if (!existingGlobally.is_verified) {
+                    return { success: false, error: 'Your account is pending verification by your school admin. Please wait for approval.' };
+                }
+
                 // If PIN matches, log them in
                 await createSession({ userId: existingGlobally.id, userType: 'student' });
                 await handleStudentEngagement(existingGlobally.id);
@@ -138,6 +142,7 @@ export async function registerStudent(formData: any) {
                 cumulative_xp: 0,
                 current_streak: 0,
                 is_active: true,
+                is_verified: false,
             } as any).returning();
 
             // Academic Mapping
@@ -170,11 +175,10 @@ export async function registerStudent(formData: any) {
                 class_id: formData.class_id || formData.grade,
             } as any).onConflictDoNothing();
 
-            // Auto-login after successful registration
-            await createSession({ userId: newStudent.id, userType: 'student' });
-            await handleStudentEngagement(newStudent.id);
+            // IMPORTANT: No auto-login for new students until verified
+            // Removing auto-session creation lines
 
-            return { success: true, user: newStudent };
+            return { success: true, user: newStudent, isNew: true };
         });
 
         if (result.success) {

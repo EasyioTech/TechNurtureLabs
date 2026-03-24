@@ -11,18 +11,20 @@ import { SchoolStudentsTab } from './tabs/school-students-tab';
 import { SchoolCoursesTab } from './tabs/school-courses-tab';
 import { SchoolReportsTab } from './tabs/school-reports-tab';
 import { SchoolSettingsTab } from './tabs/school-settings-tab';
+import { SchoolVerificationTab } from './tabs/school-verification-tab';
 import { SchoolProfileModal } from './school-profile-modal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
     LayoutDashboard, Users, BookOpen, BarChart2,
     Sun, Moon, LogOut, Building2, RefreshCw,
-    MapPin, Phone, Mail, Menu, X, GraduationCap, Sparkles, Settings
+    MapPin, Phone, Mail, Menu, X, GraduationCap, Sparkles, Settings, ShieldCheck
 } from 'lucide-react';
 
 const NAV = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'students', label: 'Students', icon: Users },
+    { id: 'verification', label: 'Verification', icon: ShieldCheck },
     { id: 'courses', label: 'Courses', icon: BookOpen },
     { id: 'reports', label: 'Reports', icon: BarChart2 },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -130,12 +132,17 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                                 return (
                                     <button key={item.id}
                                         onClick={() => setActivePage(item.id)}
-                                        className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-[13px] font-black transition-all duration-300 ${isActive
+                                        className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-[13px] font-black transition-all duration-300 relative ${isActive
                                             ? ts.navActive(isDark)
                                             : ts.navInactive(isDark)
                                             }`}>
                                         <item.icon size={16} strokeWidth={isActive ? 3 : 2} />
                                         {item.label}
+                                        {item.id === 'verification' && data.stats.pendingStudents > 0 && (
+                                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white dark:border-[#0c0f1a] animate-bounce">
+                                                {data.stats.pendingStudents}
+                                            </span>
+                                        )}
                                     </button>
                                 );
                             })}
@@ -309,6 +316,13 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                                 setStudentSearch={data.setStudentSearch}
                                 onToggleStudent={data.toggleStudent}
                                 studentsLoading={data.studentsLoading}
+                            />
+                        )}
+                        {activePage === 'verification' && (
+                            <SchoolVerificationTab 
+                                pendingStudents={data.pendingStudents}
+                                onVerify={data.verifyStudent}
+                                loading={data.pendingLoading}
                             />
                         )}
                         {activePage === 'courses' && <SchoolCoursesTab courseMetrics={data.courseMetrics} schoolClasses={data.classesData} />}

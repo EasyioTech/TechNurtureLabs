@@ -68,34 +68,38 @@ export function SchoolStudentsTab({
                 className={`rounded-[32px] border overflow-hidden ${ts.card(isDark)}`}>
 
                 {/* Header */}
-                <div className={`px-8 py-8 border-b ${ts.border(isDark)} flex flex-col lg:flex-row items-start lg:items-center gap-6`}>
+                <div className={`px-10 py-10 border-b ${ts.border(isDark)} flex flex-col xl:flex-row items-start xl:items-center gap-8`}>
                     <div className="flex-1">
-                        <h3 className={`font-black text-2xl tracking-tight mb-1 ${ts.textPrimary(isDark)}`}>Student Directory</h3>
-                        <p className={`text-[13px] font-bold ${ts.textMuted(isDark)}`}>
-                            {studentsLoading ? 'Refreshing...' : `Managing ${totalStudentsCount} enrolled learners`}
+                        <div className="flex items-center gap-3 mb-2">
+                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-500/5' : 'bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm'}`}>
+                                <Users size={20} strokeWidth={2.5} />
+                            </div>
+                            <h3 className={`font-black text-2xl tracking-tight leading-none ${ts.textPrimary(isDark)}`}>Student Directory</h3>
+                        </div>
+                        <p className={`text-[13px] font-bold ${ts.textMuted(isDark)} ml-1.5`}>
+                            {studentsLoading ? 'Refreshing database...' : `Managing ${totalStudentsCount.toLocaleString()} enrolled learners across all classes`}
                         </p>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-                        <div className={`flex items-center rounded-2xl px-5 py-3 gap-3 border w-full sm:w-80 transition-all focus-within:ring-4 focus-within:ring-indigo-500/10 ${isDark ? 'bg-white/[0.03] border-white/5 focus-within:bg-white/[0.05]' : 'bg-slate-50 border-slate-200 focus-within:bg-white focus-within:border-indigo-200'
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
+                        <div className={`flex items-center rounded-2xl px-6 py-3.5 gap-4 border w-full sm:w-96 transition-all focus-within:ring-4 focus-within:ring-indigo-500/10 ${isDark ? 'bg-white/[0.03] border-white/5 focus-within:bg-white/[0.05]' : 'bg-slate-50 border-slate-200 focus-within:bg-white focus-within:border-indigo-200'
                             }`}>
-                            <Search size={16} className="text-indigo-500" />
-                            <input type="text" placeholder="Search by name, email..."
+                            <Search size={18} className="text-indigo-500" strokeWidth={2.5} />
+                            <input type="text" placeholder="Search by name, email or ID..."
                                 value={studentSearch} onChange={e => { setStudentSearch(e.target.value); setStudentsPage(0); }}
-                                className={`bg-transparent text-[13px] font-bold outline-none flex-1 placeholder:text-slate-400 dark:placeholder:text-slate-600 ${ts.textPrimary(isDark)}`} />
+                                className={`bg-transparent text-[14px] font-black outline-none flex-1 placeholder:text-slate-400 dark:placeholder:text-slate-600 ${ts.textPrimary(isDark)} whitespace-nowrap overflow-hidden text-ellipsis`} />
                             {studentSearch && (
-                                <button onClick={() => setStudentSearch('')} className={`p-1 rounded-md hover:bg-slate-200 dark:hover:bg-white/10 transition-colors`}>
-                                    <X size={12} className={ts.textMuted(isDark)} />
+                                <button onClick={() => setStudentSearch('')} className={`p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-white/10 transition-colors`}>
+                                    <X size={14} className={ts.textMuted(isDark)} />
                                 </button>
                             )}
                         </div>
 
                         <Button
                             onClick={handleExport}
-                            variant="ghost"
-                            className={`rounded-2xl h-12 px-6 font-black text-[13px] border ${isDark ? 'bg-white/5 text-slate-100 border-white/10 hover:bg-white/10' : 'bg-transparent text-slate-800 border-slate-200 hover:bg-slate-50'}`}>
-                            <FileDown size={16} className="mr-2" />
-                            Export Roster
+                            className={`rounded-2xl h-[52px] px-8 font-black text-[13px] tracking-tight transition-all duration-300 w-full sm:w-auto ${isDark ? 'bg-white/5 text-slate-100 border border-white/10 hover:bg-white/10' : 'bg-white text-slate-800 border-2 border-slate-100 hover:border-slate-200 shadow-sm'}`}>
+                            <FileDown size={18} className="mr-2" />
+                            EXPORT DATA
                         </Button>
                     </div>
                 </div>
@@ -122,70 +126,70 @@ export function SchoolStudentsTab({
                                     className={`group transition-all ${ts.cardHover(isDark)}`}>
                                     
                                     {/* Student Info */}
-                                    <td className="px-4 sm:px-8 py-5">
-                                        <div className="flex items-center gap-3 sm:gap-4">
-                                            <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center text-[12px] sm:text-[14px] font-black flex-shrink-0 transition-transform group-hover:scale-105 shadow-md sm:shadow-lg ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                                    <td className="px-4 sm:px-8 py-6">
+                                        <div className="flex items-center gap-4 group/item">
+                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[15px] font-black flex-shrink-0 transition-transform group-hover/item:scale-105 shadow-xl ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-black/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-indigo-100/30'
                                                 }`}>
                                                 {s.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                             </div>
                                             <div className="min-w-0">
-                                                <p className={`font-black text-[13px] sm:text-[14px] tracking-tight truncate ${ts.textPrimary(isDark)}`}>{s.full_name}</p>
-                                                <p className={`text-[10px] sm:text-[11px] font-bold truncate ${ts.textMuted(isDark)}`}>{s.email}</p>
+                                                <p className={`font-black text-[15px] tracking-tight truncate leading-none mb-1.5 ${ts.textPrimary(isDark)}`}>{s.full_name}</p>
+                                                <p className={`text-[11px] font-bold truncate opacity-50 ${ts.textPrimary(isDark)}`}>{s.email}</p>
                                             </div>
                                         </div>
                                     </td>
 
                                     {/* Class */}
-                                    <td className="hidden sm:table-cell px-8 py-5 text-right">
-                                        <Badge className={`px-3 py-1 rounded-full border-0 text-[10px] font-black ${ts.accentSoft(isDark)}`}>
-                                            {s.class_name || 'NOT ASSIGNED'}
+                                    <td className="hidden sm:table-cell px-8 py-6 text-right">
+                                        <Badge className={`px-4 py-1.5 rounded-lg border-0 text-[10px] font-black tracking-widest uppercase ${ts.accentSoft(isDark)}`}>
+                                            {s.class_name || 'PENDING'}
                                         </Badge>
                                     </td>
 
                                     {/* Progress */}
-                                    <td className="px-4 sm:px-8 py-5 text-right">
+                                    <td className="px-4 sm:px-8 py-6 text-right">
                                         <div className="inline-flex flex-col items-end">
-                                            <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
-                                                <span className={`text-[13px] sm:text-[15px] font-black ${ts.textPrimary(isDark)}`}>{(s.total_xp || 0).toLocaleString()}</span>
-                                                <Zap size={10} className="text-amber-500" fill="currentColor" />
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`text-[16px] font-black tracking-tight ${ts.textPrimary(isDark)}`}>{(s.total_xp || 0).toLocaleString()}</span>
+                                                <Zap size={14} className="text-amber-500" fill="currentColor" strokeWidth={2.5} />
                                             </div>
-                                            <p className={`text-[9px] sm:text-[10px] font-black tracking-widest uppercase ${ts.textMuted(isDark)}`}>L{s.level || 1}</p>
+                                            <p className={`text-[10px] font-black tracking-[0.2em] uppercase opacity-40 ${ts.textPrimary(isDark)}`}>LVL {s.level || 1}</p>
                                         </div>
                                     </td>
 
                                     {/* Metrics */}
-                                    <td className="hidden md:table-cell px-8 py-5 text-right">
-                                        <div className="inline-flex flex-col items-end">
-                                            <p className={`text-[13px] font-black ${ts.textPrimary(isDark)}`}>{s.lessons_completed || 0} Lessons</p>
-                                            <p className="text-[11px] font-bold text-orange-500 flex items-center gap-1">
-                                                <Flame size={12} /> {s.current_streak || 0}d streak
-                                            </p>
+                                    <td className="hidden md:table-cell px-8 py-6 text-right">
+                                        <div className="inline-flex flex-col items-end gap-1.5">
+                                            <p className={`text-[13px] font-black leading-none ${ts.textPrimary(isDark)}`}>{s.lessons_completed || 0} Lessons</p>
+                                            <Badge variant="outline" className="text-[10px] font-bold text-orange-500 flex items-center gap-1 bg-orange-500/5 border-orange-500/20 py-0 h-5">
+                                                <Flame size={12} fill="currentColor" /> {s.current_streak || 0}d streak
+                                            </Badge>
                                         </div>
                                     </td>
 
                                     {/* Status */}
-                                    <td className="hidden sm:table-cell px-8 py-5 text-right">
-                                        <Badge className={`px-3 py-1 rounded-full border-0 text-[10px] font-black ${s.is_active ? ts.live(isDark) : ts.danger(isDark)}`}>
-                                            {s.is_active ? 'ACTIVE' : 'INACTIVE'}
+                                    <td className="hidden sm:table-cell px-8 py-6 text-right">
+                                        <Badge className={`px-4 py-1 rounded-md border-0 text-[10px] font-black tracking-widest ${s.is_active ? ts.live(isDark) : ts.danger(isDark)}`}>
+                                            {s.is_active ? 'ACTIVE' : 'LOCKED'}
                                         </Badge>
                                     </td>
 
                                     {/* Actions */}
-                                    <td className="px-4 sm:px-8 py-5 text-right">
-                                        <div className="flex items-center justify-end gap-2 sm:gap-3">
+                                    <td className="px-4 sm:px-8 py-6 text-right">
+                                        <div className="flex items-center justify-end gap-4">
                                             <div className="hidden xs:block">
                                                 <Switch
                                                     checked={s.is_active}
                                                     onCheckedChange={val => onToggleStudent(s.id, val)}
-                                                    className="data-[state=checked]:bg-indigo-500 scale-75 sm:scale-90"
+                                                    className="data-[state=checked]:bg-indigo-500 scale-90"
                                                 />
                                             </div>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => router.push(`/school-admin/student/${s.id}`)}
-                                                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl border ${isDark ? 'border-white/10 text-slate-400 hover:bg-white/5 hover:text-indigo-400' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                                                <ExternalLink size={16} />
+                                                className={`w-11 h-11 rounded-xl border transition-all ${isDark ? 'bg-white/5 border-white/5 text-slate-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-500' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-indigo-600'}`}>
+                                                <ChevronRight size={18} strokeWidth={2.5} />
                                             </Button>
                                         </div>
                                     </td>

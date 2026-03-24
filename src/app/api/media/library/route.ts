@@ -7,13 +7,8 @@ import { verifySession } from '@/lib/auth';
 export async function GET(request: NextRequest) {
     try {
         const session = await verifySession();
-        const allowedRoles = ['super_admin', 'school_admin', 'admin'];
-        const isAuthorized = session && (
-            allowedRoles.includes(session.role as string) ||
-            allowedRoles.includes(session.userType as string)
-        );
-
-        if (!isAuthorized) {
+        const allowedRoles = ['super_admin'];
+        if (!session || (!allowedRoles.includes(session.role as string) && !allowedRoles.includes(session.userType as string))) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

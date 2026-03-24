@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { superAdmins, schoolAdmins, students, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts, auditLogs, userSessions, invoices } from '@/db/schema';
+import { superAdmins, schoolAdmins, students, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts, auditLogs, userSessions, invoices, paymentTransactions } from '@/db/schema';
 import { eq, asc, desc, inArray, and, sql, or, count, isNull, isNotNull, gt, avg, sum } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { verifySession } from '@/lib/auth';
@@ -84,47 +84,76 @@ export async function getSchoolProfile(schoolId: string) {
         website: school.website,
         is_active: school.is_active,
         slug: school.slug,
+        udise_code: school.udise_code,
     };
 }
 
+const urlSchema = z.string().optional().nullable().transform((val) => {
+    if (!val || val === '') return val;
+    if (val && !/^https?:\/\//i.test(val)) {
+        return `https://${val}`;
+    }
+    return val;
+}).refine(val => {
+    if (!val || val === '') return true;
+    try { 
+        const url = new URL(val); 
+        return url.protocol === "http:" || url.protocol === "https:";
+    } catch(_) { return false; }
+}, { message: "Invalid URL (e.g. tech-nurture.com)" });
+
+const alphaOnly = z.string().regex(/^[a-zA-Z\s]+$/, "Numeric digits or special characters are not allowed").min(2, "Minimum 2 characters required").optional().nullable();
+
 const updateSchoolSchema = z.object({
-    name: z.string().optional(),
-    email: z.string().email().optional(),
-    phone: z.string().optional().nullable(),
-    address: z.string().optional().nullable(),
-    city: z.string().optional().nullable(),
-    state: z.string().optional().nullable(),
-    country: z.string().optional(),
-    pincode: z.string().optional().nullable(),
-    logo_url: z.string().url().optional().nullable().or(z.literal('')),
-    website: z.string().url().optional().nullable().or(z.literal('')),
+    name: z.string().min(3, "Institution name must be at least 3 characters").optional(),
+    email: z.string().email("Invalid official email address").optional(),
+    phone: z.string().regex(/^\d{10}$/, "Provide a valid 10-digit contact number").optional().nullable(),
+    address: z.string().min(10, "Provide a complete address (min 10 chars)").optional().nullable(),
+    city: alphaOnly,
+    state: alphaOnly,
+    country: alphaOnly,
+    pincode: z.string().regex(/^\d{6}$/, "Indian Pincode must be exactly 6 digits").optional().nullable(),
+    logo_url: urlSchema.optional(),
+    website: urlSchema.optional(),
     data_processing_consent: z.boolean().optional(),
     minor_data_guardian_consent: z.boolean().optional(),
-    // Strictly whitelisted fields: fields like is_active or role are dropped.
+    udise_code: z.string().regex(/^\d{11}$/, "UDISE Code must be exactly 11 digits").optional().nullable(),
 });
 
 export async function updateSchoolProfile(schoolId: string, data: any) {
-    await verifySchoolAdminContext(schoolId);
+    try {
+        await verifySchoolAdminContext(schoolId);
 
-    const parseResult = updateSchoolSchema.safeParse(data);
-    if (!parseResult.success) {
-        throw new Error('Validation failed: Invalid input fields.');
+        const parseResult = updateSchoolSchema.safeParse(data);
+        if (!parseResult.success) {
+            return {
+                success: false,
+                error: 'Validation failed',
+                details: parseResult.error.flatten().fieldErrors
+            };
+        }
+
+        await db.update(schools).set({
+            ...parseResult.data,
+            updated_at: new Date(),
+        } as any).where(eq(schools.id, schoolId));
+
+        // Clear both Redis cache and Next.js Data Cache
+        await invalidateSchoolCache(schoolId);
+        
+        // Proactive revalidation to ensure students and admins see fresh data
+        const { revalidatePath } = await import('next/cache');
+        revalidatePath('/school-admin', 'layout');
+        revalidatePath('/student', 'layout');
+        
+        return { success: true };
+    } catch (err: any) {
+        console.error('[Update School Profile Error]:', err);
+        return { 
+            success: false, 
+            error: err.message || 'Operation failed' 
+        };
     }
-
-    await db.update(schools).set({
-        ...parseResult.data,
-        updated_at: new Date(),
-    } as any).where(eq(schools.id, schoolId));
-
-    // Clear both Redis cache and Next.js Data Cache
-    await invalidateSchoolCache(schoolId);
-    
-    // Proactive revalidation to ensure students and admins see fresh data
-    const { revalidatePath } = await import('next/cache');
-    revalidatePath('/school-admin', 'layout');
-    revalidatePath('/student', 'layout');
-    
-    return { success: true };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,6 +219,7 @@ export async function getSchoolStudentsPaginated(schoolId: string, page: number 
     const whereClause = and(
         eq(students.school_id, schoolId),
         isNull(students.deleted_at),
+        eq(students.is_verified, true),
         search ? or(
             sql`${students.first_name} ILIKE ${'%' + search + '%'}`,
             sql`${students.last_name} ILIKE ${'%' + search + '%'}`,
@@ -226,6 +256,83 @@ export async function getSchoolStudentsPaginated(schoolId: string, page: number 
     };
 }
 
+export async function getPendingStudents(schoolId: string) {
+    await verifySchoolAdminContext(schoolId);
+    
+    const studentsData = await db.query.students.findMany({
+        where: and(
+            eq(students.school_id, schoolId),
+            isNull(students.deleted_at),
+            eq(students.is_verified, false)
+        ),
+        orderBy: [desc(students.created_at)],
+        with: {
+            academicRecords: {
+                with: { academicClass: true },
+                limit: 1
+            }
+        }
+    });
+
+    return studentsData.map(s => ({
+        ...s,
+        full_name: `${s.first_name} ${s.last_name}`,
+        class_name: (s.academicRecords?.[0] as any)?.academicClass?.name || 'N/A'
+    }));
+}
+
+export async function verifyStudentAction(userId: string, isVerified: boolean) {
+    const session = await verifySession();
+    if (!session) {
+        redirect('/school-portal/login');
+    }
+    await verifyStudentContext(userId);
+    
+    const student = await db.query.students.findFirst({ where: eq(students.id, userId) });
+    if (!student) throw new Error('Student not found');
+
+    if (isVerified) {
+        const [updated] = await db.update(students)
+            .set({ is_verified: true, updated_at: new Date() })
+            .where(eq(students.id, userId))
+            .returning();
+
+        // Audit Log
+        await db.insert(auditLogs).values({
+            user_id: session.userId,
+            user_type: session.userType,
+            action: 'update',
+            entity_type: 'student',
+            entity_id: userId,
+            old_values: { is_verified: false },
+            new_values: { is_verified: true },
+            metadata: { field: 'is_verified' }
+        } as any);
+    } else {
+        // Rejection - Soft delete the student
+        await db.update(students)
+            .set({ 
+                deleted_at: new Date(), 
+                is_active: false,
+                updated_at: new Date() 
+            })
+            .where(eq(students.id, userId));
+
+        // Audit Log
+        await db.insert(auditLogs).values({
+            user_id: session.userId,
+            user_type: session.userType,
+            action: 'delete',
+            entity_type: 'student',
+            entity_id: userId,
+            metadata: { reason: 'verification_rejected' }
+        } as any);
+    }
+
+    invalidateSchoolCache(student.school_id);
+    return { success: true };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SCHOOL STATS (aggregated)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -236,13 +343,14 @@ export async function getSchoolStats(schoolId: string) {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     // Optimized SQL aggregations
-    const [basicStats, activeCount, lessonsCompleted, quizCount, avgProgress, xpStats] = await Promise.all([
-        db.select({ count: count() }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at))),
-        db.select({ count: count() }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at), gt(students.last_active_at, sevenDaysAgo))),
+    const [basicStats, activeCount, lessonsCompleted, quizCount, avgProgress, xpStats, pendingCount] = await Promise.all([
+        db.select({ count: count() }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at), eq(students.is_verified, true))),
+        db.select({ count: count() }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at), eq(students.is_verified, true), gt(students.last_active_at, sevenDaysAgo))),
         db.select({ count: count() }).from(lessonProgress).innerJoin(students, eq(lessonProgress.user_id, students.id)).where(and(eq(students.school_id, schoolId), isNotNull(lessonProgress.completed_at))),
         db.select({ count: count() }).from(quizAttempts).innerJoin(students, eq(quizAttempts.user_id, students.id)).where(eq(students.school_id, schoolId)),
         db.select({ avg_pct: avg(courseProgress.progress_pct) }).from(courseProgress).innerJoin(students, eq(courseProgress.user_id, students.id)).where(eq(students.school_id, schoolId)),
-        db.select({ total: sum(students.cumulative_xp), avg: avg(students.cumulative_xp) }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at)))
+        db.select({ total: sum(students.cumulative_xp), avg: avg(students.cumulative_xp) }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at), eq(students.is_verified, true))),
+        db.select({ count: count() }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at), eq(students.is_verified, false)))
     ]);
 
     // Subscription info
@@ -260,6 +368,7 @@ export async function getSchoolStats(schoolId: string) {
         totalLessonsCompleted: Number(lessonsCompleted[0]?.count || 0),
         totalQuizzesTaken: Number(quizCount[0]?.count || 0),
         avgCompletionRate: Math.round(Number(avgProgress[0]?.avg_pct || 0)),
+        pendingStudents: Number(pendingCount[0]?.count || 0),
         planName: (sub as any)?.plan?.name || 'Community',
         subscriptionStatus: sub?.status || 'active',
         planExpiry: sub?.current_period_end?.toISOString() || null,
@@ -837,4 +946,97 @@ export async function getAvailablePlans() {
         where: eq(paymentPlans.is_active, true),
         orderBy: [asc(paymentPlans.price)]
     });
+}
+
+export async function upgradeSchoolPlan(schoolId: string, planId: string) {
+    try {
+        await verifySchoolAdminContext(schoolId);
+
+        const plan = await db.query.paymentPlans.findFirst({
+            where: and(eq(paymentPlans.id, planId), eq(paymentPlans.is_active, true))
+        });
+
+        if (!plan) return { success: false, error: 'Invalid or inactive plan selected' };
+
+        const school = await db.query.schools.findFirst({
+            where: eq(schools.id, schoolId)
+        });
+
+        if (!school) return { success: false, error: 'School not found' };
+
+        const now = new Date();
+        const nextYear = new Date(now);
+        nextYear.setFullYear(now.getFullYear() + 1);
+
+        const subId = await db.transaction(async (tx) => {
+            // 1. Create/Update subscription
+            const subs = await tx.select().from(schoolSubscriptions).where(eq(schoolSubscriptions.school_id, schoolId));
+            let sId: string;
+
+            if (subs.length > 0) {
+                sId = subs[0].id;
+                await tx.update(schoolSubscriptions).set({
+                    plan_id: planId,
+                    status: 'active',
+                    current_period_start: now,
+                    current_period_end: nextYear,
+                    auto_renew: true,
+                    updated_at: now
+                } as any).where(eq(schoolSubscriptions.id, sId));
+            } else {
+                const newSub = await tx.insert(schoolSubscriptions).values({
+                    school_id: schoolId,
+                    plan_id: planId,
+                    status: 'active',
+                    current_period_start: now,
+                    current_period_end: nextYear,
+                    auto_renew: true,
+                    created_at: now,
+                    updated_at: now
+                } as any).returning();
+                sId = newSub[0].id;
+            }
+
+            // 2. Create Transaction record
+            const trans = await tx.insert(paymentTransactions).values({
+                school_id: schoolId,
+                subscription_id: sId,
+                amount: plan.price,
+                currency: plan.currency,
+                status: 'captured',
+                created_at: now,
+                updated_at: now
+            } as any).returning();
+
+            // 3. Generate Invoice
+            const invoiceNum = `INV-${Date.now().toString().slice(-8)}`;
+            await tx.insert(invoices).values({
+                school_id: schoolId,
+                subscription_id: sId,
+                transaction_id: trans[0].id,
+                invoice_number: invoiceNum,
+                status: 'paid',
+                subtotal: plan.price,
+                total: plan.price,
+                currency: plan.currency,
+                issued_at: now,
+                paid_at: now,
+                billing_name: school.name,
+                billing_address: `${school.city || ''}, ${school.state || ''}, ${school.country || 'IN'} - ${school.pincode || ''}`,
+                created_at: now,
+                updated_at: now
+            } as any);
+
+            return sId;
+        });
+
+        const { revalidatePath } = await import('next/cache');
+        revalidatePath('/school-admin', 'layout');
+        await invalidateSchoolCache(schoolId);
+        
+        return { success: true };
+    } catch (err: any) {
+        console.error('[Upgrade Plan Error]:', err);
+        return { success: false, error: err.message || 'Operation failed' };
+    }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { s3Client, isCloudflareConfigured } from '@/lib/storage';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import path from 'path';
+import fs from 'fs';
 import { serverEnv } from '@/lib/env.server';
 import { verifySession } from '@/lib/auth';
 
@@ -44,7 +45,6 @@ export async function GET(
             return new NextResponse('File not found', { status: 404 });
         }
 
-        // MIME type lookup
         const ext = path.extname(key).toLowerCase();
         const MIME_MAP: Record<string, string> = {
             '.mp4': 'video/mp4',
@@ -61,6 +61,7 @@ export async function GET(
             '.gif': 'image/gif',
             '.webp': 'image/webp',
             '.svg': 'image/svg+xml',
+            '.ico': 'image/x-icon',
         };
         const mimeType = response.ContentType || MIME_MAP[ext] || 'application/octet-stream';
 
@@ -73,7 +74,6 @@ export async function GET(
         if (response.AcceptRanges) headers.set('Accept-Ranges', response.AcceptRanges);
         headers.set('Cache-Control', 'private, max-age=3600');
 
-        // Return 206 only when R2 actually returned a Content-Range (confirmed partial content)
         const isPartial = range && !!response.ContentRange;
 
         return new Response(stream as any, {
@@ -82,6 +82,27 @@ export async function GET(
         });
     } catch (error: any) {
         if (error.name === 'NoSuchKey') {
+            const ext = request.nextUrl.pathname.split('.').pop()?.toLowerCase();
+            // Handle missing favicons gracefully - serve standard favicon from public folder
+            if (ext === 'ico') {
+                try {
+                    const fallbackPath = path.join(process.cwd(), 'public', 'favicon.ico');
+                    if (fs.existsSync(fallbackPath)) {
+                        const fileBuffer = fs.readFileSync(fallbackPath);
+                        return new Response(fileBuffer, { 
+                            headers: { 'Content-Type': 'image/x-icon', 'Cache-Control': 'public, max-age=3600' } 
+                        });
+                    }
+                } catch (e) { /* Fall through to 404 */ }
+            }
+            
+            // For other missing images, return a tiny transparent pixel to avoid layout breakages and noise
+            if (['png', 'jpg', 'jpeg', 'svg', 'webp'].includes(ext || '')) {
+                return new Response(
+                    Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'),
+                    { headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'public, max-age=60' } }
+                );
+            }
             return new NextResponse('File not found', { status: 404 });
         }
         console.error('[R2 Proxy] Serving error:', error);

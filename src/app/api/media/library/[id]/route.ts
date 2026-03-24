@@ -11,7 +11,7 @@ export async function DELETE(
 ) {
     try {
         const session = await verifySession();
-        const allowedRoles = ['super_admin', 'school_admin', 'admin'];
+        const allowedRoles = ['super_admin'];
         const isAuthorized = session && (
             allowedRoles.includes(session.role as string) ||
             allowedRoles.includes(session.userType as string)
@@ -32,10 +32,6 @@ export async function DELETE(
             return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
         }
 
-        // School admins can only delete assets they uploaded; super admins can delete any
-        if (session!.role === 'school_admin' && asset.uploaded_by !== session!.userId) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
 
         // Delete storage (R2 or local) — best effort; always delete DB record
         try {

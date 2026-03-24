@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { SchoolStats, SchoolLeaderboardEntry, SchoolCourseMetric } from '../../types';
@@ -105,6 +105,11 @@ function SectionHeader({ title, sub, icon: Icon }: { title: string; sub?: string
 export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: OverviewTabProps) {
     const { isDark } = useSchoolTheme();
     const router = useRouter();
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const activityData = stats.totalStudents > 0 ? [
         { day: 'Mon', active: stats.activeStudents > 0 ? Math.floor(stats.activeStudents * 0.4) : 12, total: stats.totalStudents },
@@ -137,21 +142,18 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
         completion: c.completion_rate,
     }));
 
-    const PIE_COLORS = isDark ? ['#818cf8', '#334155'] : ['#4f46e5', '#e2e8f0'];
-    const gridColor = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)';
-    const tickColor = isDark ? '#475569' : '#94a3b8';
+    const PIE_COLORS = isDark ? ['#6366f1', '#4f46e5', '#312e81', '#1e1b4b'] : ['#6366f1', '#4f46e5', '#818cf8', '#c7d2fe'];
+    const gridColor = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)';
+    const tickColor = isDark ? '#64748b' : '#94a3b8';
     const tooltipStyle = {
-        background: isDark ? '#1e2536' : '#fff',
-        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
-        borderRadius: 12,
-        fontSize: 11,
-        fontWeight: 700,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        background: isDark ? '#161921' : '#fff',
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}`,
+        borderRadius: 16,
+        fontSize: 12,
+        fontWeight: 800,
+        boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+        padding: '12px 16px',
     };
-
-    const cardClass = isDark
-        ? 'bg-[#111827] border border-white/[0.07] shadow-md shadow-black/20 rounded-2xl'
-        : 'bg-white border border-slate-200 shadow-sm rounded-2xl';
 
     return (
         <div className="space-y-8">
@@ -175,25 +177,31 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
             {/* ── Subscription Banner ── */}
             {stats.planName && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                    className={`rounded-3xl p-6 flex items-center gap-6 border ${isDark
-                        ? 'bg-gradient-to-r from-indigo-500/10 to-transparent border-white/5'
-                        : 'bg-gradient-to-r from-indigo-50 to-white border-slate-200'
+                    className={`rounded-[32px] p-6 flex items-center gap-6 border transition-all ${isDark
+                        ? 'bg-gradient-to-br from-[#161b26] to-[#0f1115] border-white/[0.03] shadow-xl shadow-black/10'
+                        : 'bg-white border-slate-200/60 shadow-sm'
                         }`}>
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-indigo-400/10 text-indigo-400' : 'bg-indigo-100 text-indigo-700'
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
                         }`}>
-                        <CreditCard size={24} strokeWidth={2.5} />
+                        <CreditCard size={24} strokeWidth={2} />
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
-                            <span className={`text-[15px] font-black ${ts.textPrimary(isDark)}`}>{stats.planName} Plan</span>
-                            <Badge className={`text-[9px] font-black border-0 px-2.5 py-0.5 rounded-full ${ts.live(isDark)}`}>
-                                {stats.subscriptionStatus?.toUpperCase()}
+                            <span className={`text-[16px] font-black tracking-tight ${ts.textPrimary(isDark)}`}>{stats.planName} Plan</span>
+                            <Badge className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-md border-0 ${ts.live(isDark)}`}>
+                                {stats.subscriptionStatus === 'active' ? '● ONLINE' : stats.subscriptionStatus?.toUpperCase()}
                             </Badge>
                         </div>
-                        <p className={`text-[12px] font-bold ${ts.textSecondary(isDark)}`}>
-                            Renews on {stats.planExpiry ? new Date(stats.planExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                        <p className={`text-[12px] font-bold tracking-tight ${ts.textSecondary(isDark)} opacity-60`}>
+                            Next billing cycle on <span className="text-indigo-500 font-black">{stats.planExpiry ? new Date(stats.planExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}</span>
                         </p>
                     </div>
+                    <button 
+                        onClick={() => router.push('/school-admin/settings?tab=subscription')}
+                        className={`hidden sm:flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-black transition-all ${isDark ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/10' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-600/10'}`}
+                    >
+                        MANAGE PLAN
+                    </button>
                 </motion.div>
             )}
 
@@ -204,29 +212,31 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                     className={`p-8 ${ts.card(isDark)} rounded-[32px]`}>
                     <SectionHeader title="Learning Activity" sub="Student login and interaction frequency" icon={Activity} />
                     <div className="h-[260px] w-full">
-                        <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
-                            <AreaChart data={activityData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
-                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="6 6" stroke={gridColor} vertical={false} />
-                                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: tickColor, fontWeight: 700 }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: tickColor, fontWeight: 700 }} />
-                                <Tooltip
-                                    contentStyle={{
-                                        borderRadius: '16px',
-                                        backgroundColor: isDark ? '#1a1f2e' : '#fff',
-                                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#f1f5f9'}`,
-                                        boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
-                                    }}
-                                    itemStyle={{ fontSize: '12px', fontWeight: 800, color: '#6366f1' }}
-                                />
-                                <Area type="monotone" dataKey="active" stroke="#6366f1" strokeWidth={4} fill="url(#chartGrad)" dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: isDark ? '#111827' : '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        {isMounted && (
+                            <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
+                                <AreaChart data={activityData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
+                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="6 6" stroke={gridColor} vertical={false} />
+                                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: tickColor, fontWeight: 700 }} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: tickColor, fontWeight: 700 }} />
+                                    <Tooltip
+                                        contentStyle={{
+                                            borderRadius: '16px',
+                                            backgroundColor: isDark ? '#1a1f2e' : '#fff',
+                                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#f1f5f9'}`,
+                                            boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+                                        }}
+                                        itemStyle={{ fontSize: '12px', fontWeight: 800, color: '#6366f1' }}
+                                    />
+                                    <Area type="monotone" dataKey="active" stroke="#6366f1" strokeWidth={4} fill="url(#chartGrad)" dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: isDark ? '#111827' : '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
                 </motion.div>
 
@@ -236,16 +246,18 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                     <SectionHeader title="Student Engagement" sub="Active vs Inactive students overview" icon={BarChart3} />
                     <div className="flex-1 flex flex-col sm:flex-row items-center gap-8">
                         <div className="w-full sm:w-1/2 h-[200px]">
-                            <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
-                                <PieChart>
-                                    <Pie data={studentActivityData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={8} strokeWidth={0}>
-                                        {studentActivityData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i] || '#94a3b8'} />)}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 20px rgba(0,0,0,0.1)' }}
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            {isMounted && (
+                                <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
+                                    <PieChart>
+                                        <Pie data={studentActivityData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={8} strokeWidth={0}>
+                                            {studentActivityData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i] || '#94a3b8'} />)}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 20px rgba(0,0,0,0.1)' }}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            )}
                         </div>
                         <div className="w-full sm:w-1/2 space-y-4">
                             {studentActivityData.map((item, i) => (

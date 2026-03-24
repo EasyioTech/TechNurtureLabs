@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { 
     Settings, Bell, Shield, Eye, Globe, Moon, Sun,
     ChevronRight, CheckCircle2, Lock, User, CreditCard,
-    Loader2, Search, LogOut, ArrowRight, Activity
+    Search, LogOut, ArrowRight, Activity, School, Mail, Phone, ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -18,20 +18,20 @@ import {
 } from '@/modules/student/actions/settings-actions';
 import { deleteStudentAccountAction } from '@/modules/student/actions';
 
-type TabType = 'general' | 'notifications' | 'security' | 'appearance' | 'billing';
+type TabType = 'general' | 'notifications' | 'security' | 'appearance' | 'billing' | 'institution';
 
 interface SettingsClientProps {
   initialData: {
     profile: any;
     stats: any;
+    school?: any;
   }
 }
 
 export function SettingsClient({ initialData }: SettingsClientProps) {
     const { signOut } = useAuth();
     const [activeTab, setActiveTab] = useState<TabType>('general');
-    const { profile: userProfile, stats } = initialData;
-    const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+    const { profile: userProfile, stats, school } = initialData;
     const [searchQuery, setSearchQuery] = useState('');
     
     const [notifications, setNotifications] = useState(true);
@@ -199,6 +199,46 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                         </div>
                     </SettingsSection>
                 );
+            case 'institution':
+                return (
+                    <SettingsSection 
+                        title="Institution Profile" 
+                        description="Details about your educational institution and assigned class."
+                    >
+                        <div className="space-y-8">
+                            <div className="p-8 md:p-10 bg-indigo-50/50 rounded-[2rem] md:rounded-[2.5rem] border border-indigo-100 flex flex-col items-center text-center">
+                                <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2rem] md:rounded-[3rem] bg-white border border-indigo-100 flex items-center justify-center mb-6 shadow-xl overflow-hidden">
+                                   {school?.logo_url ? (
+                                       <img src={school.logo_url} alt={school.name} className="w-full h-full object-contain p-4" />
+                                   ) : (
+                                       <School size={48} className="text-indigo-600" />
+                                   )}
+                                </div>
+                                <h4 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter mb-3 leading-none">{school?.name || 'Institution Name'}</h4>
+                                <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-white border border-indigo-100 text-indigo-600 mb-8 shadow-sm">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">{userProfile?.className || 'Assigned Class'}</span>
+                                </div>
+
+                                <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <InstitutionMetric icon={Mail} label="Support" value="help@school.edu" />
+                                    <InstitutionMetric icon={Phone} label="Office" value="+1 (555) 000-0000" />
+                                    <InstitutionMetric icon={Globe} label="Portal" value="school.edu/lms" />
+                                </div>
+                            </div>
+
+                            <div className="p-6 md:p-8 rounded-[1.75rem] md:rounded-[2.25rem] border-2 border-dashed border-slate-100 flex items-center justify-between gap-6">
+                                <div className="flex-1">
+                                    <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Administrative Action</p>
+                                    <p className="text-xs font-bold text-slate-600 leading-relaxed uppercase tracking-tight">Need to change your class or update enrollment details?</p>
+                                </div>
+                                <Button variant="outline" className="shrink-0 h-11 px-6 rounded-xl border-2 border-slate-100 font-black uppercase tracking-widest text-[9px] flex items-center gap-2">
+                                    Contact Admin <ExternalLink size={14} />
+                                </Button>
+                            </div>
+                        </div>
+                    </SettingsSection>
+                );
         }
     };
 
@@ -209,15 +249,14 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-50/50 rounded-full blur-[150px] pointer-events-none translate-x-1/3 -translate-y-1/3" />
                 
                 <div className="max-w-[1440px] mx-auto relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-10 lg:gap-16">
-                    <div>
-                         <motion.div 
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-slate-100 border border-slate-200 text-slate-500 mb-8 shadow-sm"
-                        >
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                    >
+                         <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-slate-100 border border-slate-200 text-slate-500 mb-8 shadow-sm">
                             <Settings size={16} fill="currentColor" />
                             <span className="text-[9px] font-black uppercase tracking-[0.4em]">App Settings</span>
-                          </motion.div>
+                          </div>
 
                         <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-slate-900 uppercase tracking-tighter leading-[0.85] mb-6 md:mb-10">
                             Account <br />
@@ -227,7 +266,7 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                         <p className="max-w-lg text-slate-500 font-bold text-xs md:text-sm uppercase tracking-[0.15em] md:tracking-[0.2em] leading-relaxed">
                             Customize your app experience and manage your privacy settings.
                         </p>
-                    </div>
+                    </motion.div>
 
                     <div className="flex items-center gap-4 md:gap-5">
                          <div className="relative group hidden xl:block">
@@ -258,6 +297,7 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                     <div className="lg:col-span-3 space-y-3.5">
                         <NavButton active={activeTab === 'general'} icon={User} label="Profile Info" onClick={() => setActiveTab('general')} />
                         <NavButton active={activeTab === 'notifications'} icon={Bell} label="Notifications" onClick={() => setActiveTab('notifications')} />
+                        <NavButton active={activeTab === 'institution'} icon={School} label="My School" onClick={() => setActiveTab('institution')} />
                         <NavButton active={activeTab === 'security'} icon={Shield} label="Privacy & Security" onClick={() => setActiveTab('security')} />
                         <NavButton active={activeTab === 'appearance'} icon={Eye} label="Appearance" onClick={() => setActiveTab('appearance')} />
                         <NavButton active={activeTab === 'billing'} icon={CreditCard} label="Billing" onClick={() => setActiveTab('billing')} />
@@ -278,7 +318,7 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                         </AnimatePresence>
 
                         {/* Tactical Action Bar */}
-                        {activeTab !== 'billing' && activeTab !== 'general' && (
+                        {activeTab !== 'billing' && activeTab !== 'general' && activeTab !== 'institution' && (
                             <div className="flex items-center justify-end gap-8 pt-12 border-t border-slate-100">
                                 <AnimatePresence>
                                     {saved && (
@@ -311,6 +351,17 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
             </main>
         </div>
     );
+}
+
+function InstitutionMetric({ icon: Icon, label, value }: any) {
+    return (
+        <div className="bg-white p-5 rounded-2xl border border-indigo-50 text-left group hover:border-indigo-200 transition-colors">
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <Icon size={12} className="text-indigo-500" /> {label}
+            </p>
+            <p className="text-[11px] font-black text-slate-900 truncate tracking-tight">{value}</p>
+        </div>
+    )
 }
 
 function NavButton({ active, icon: Icon, label, onClick }: any) {
@@ -399,5 +450,17 @@ function TacticalStat({ icon: Icon, label, value, color, bg }: any) {
         <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{label}</p>
       </div>
     </div>
+  );
+}
+
+function Loader2({ className, size }: { className?: string; size?: number }) {
+  return (
+    <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        className={className}
+    >
+        <Activity size={size} />
+    </motion.div>
   );
 }

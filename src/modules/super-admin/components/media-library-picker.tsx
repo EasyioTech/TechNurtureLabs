@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { useUpload } from '@/hooks/use-upload';
 import { UploadProgress } from '@/components/shared/upload-progress';
 import { uploadStore } from '@/lib/upload-store';
+import { useAuth } from '@/components/providers/auth-provider';
 
 type AssetType = 'all' | 'video' | 'image' | 'document';
 
@@ -74,6 +75,12 @@ const FOLDERS = [
 export function MediaLibraryPicker({
     open, onOpenChange, onSelect, filterType, currentUrl, folder
 }: MediaLibraryPickerProps) {
+    const { profile } = useAuth();
+    const isSuperAdmin = profile?.role === 'super_admin';
+
+    // Strictly restrict rendering to Super Admins
+    if (!isSuperAdmin) return null;
+
     const { isDark, accent } = useAdminTheme();
     const [assets, setAssets] = React.useState<MediaAsset[]>([]);
     const [loading, setLoading] = React.useState(false);

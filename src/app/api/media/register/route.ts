@@ -12,7 +12,7 @@ import { getAssetType } from '@/lib/storage';
 export async function POST(req: NextRequest) {
     try {
         const session = await verifySession();
-        if (!session || (session.role !== 'super_admin' && session.role !== 'school_admin' && session.userType !== 'super_admin')) {
+        if (!session || (session.role !== 'super_admin' && session.userType !== 'super_admin')) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
 

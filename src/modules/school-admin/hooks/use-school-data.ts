@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import {
     getSchoolStats, getSchoolStudentsPaginated, getSchoolCourseAnalytics,
-    getSchoolLeaderboard, toggleStudentStatus, getGlobalClasses, fetchSchoolClasses
+    getSchoolLeaderboard, toggleStudentStatus, getGlobalClasses, fetchSchoolClasses,
+    getPendingStudents, verifyStudentAction
 } from '../actions';
 import { SchoolStats, SchoolStudentMetric, SchoolCourseMetric, SchoolLeaderboardEntry } from '../types';
 
@@ -11,15 +12,16 @@ export const SCHOOL_STUDENT_PAGE_SIZE = 10;
 export function useSchoolData(schoolId: string) {
     const [loading, setLoading] = useState(true);
     const [studentsLoading, setStudentsLoading] = useState(false);
+    const [pendingLoading, setPendingLoading] = useState(false);
     
     const [stats, setStats] = useState<SchoolStats>({
         totalStudents: 0, activeStudents: 0, avgXp: 0, totalXp: 0,
         enrolledCourses: 0, totalLessonsCompleted: 0, totalQuizzesTaken: 0,
-        avgCompletionRate: 0, planName: null, subscriptionStatus: null, planExpiry: null,
+        avgCompletionRate: 0, pendingStudents: 0, planName: null, subscriptionStatus: null, planExpiry: null,
     });
     
-    const [students, setStudents] = useState<SchoolStudentMetric[]>([]);
     const [pagedStudents, setPagedStudents] = useState<SchoolStudentMetric[]>([]);
+    const [pendingStudents, setPendingStudents] = useState<SchoolStudentMetric[]>([]);
     const [totalStudentPages, setTotalStudentPages] = useState(0);
     const [totalStudentsCount, setTotalStudentsCount] = useState(0);
     
@@ -78,8 +80,22 @@ export function useSchoolData(schoolId: string) {
         }
     }, [schoolId, studentsPage, studentSearch]);
 
+    const loadPending = useCallback(async () => {
+        if (!schoolId) return;
+        setPendingLoading(true);
+        try {
+            const data = await getPendingStudents(schoolId);
+            setPendingStudents(data as any);
+        } catch (err) {
+            console.error('Pending students fetch error:', err);
+        } finally {
+            setPendingLoading(false);
+        }
+    }, [schoolId]);
+
     useEffect(() => { loadCoreData(); }, [loadCoreData]);
     useEffect(() => { loadStudents(); }, [loadStudents]);
+    useEffect(() => { loadPending(); }, [loadPending]);
 
     async function toggleStudent(userId: string, isActive: boolean) {
         try {
@@ -89,9 +105,28 @@ export function useSchoolData(schoolId: string) {
         } catch { toast.error('Failed to update student status'); }
     }
 
+    async function verifyStudent(userId: string, isVerified: boolean) {
+        try {
+            await verifyStudentAction(userId, isVerified);
+            if (isVerified) {
+                toast.success('Student verified successfully');
+                // Move from pending to paged if we're on the first page and it matches search
+                // But simpler to just refresh all
+                loadPending();
+                loadStudents();
+                loadCoreData();
+            } else {
+                toast.success('Student verification rejected');
+                loadPending();
+                loadCoreData();
+            }
+        } catch { toast.error('Failed to verify student'); }
+    }
+
     return {
         loading, 
         studentsLoading,
+        pendingLoading,
         stats, 
         courseMetrics, 
         leaderboard,
@@ -102,9 +137,11 @@ export function useSchoolData(schoolId: string) {
         studentSearch, 
         setStudentSearch,
         pagedStudents, 
+        pendingStudents,
         totalStudentPages,
         totalStudentsCount,
         toggleStudent, 
-        refreshData: () => { loadCoreData(); loadStudents(); },
+        verifyStudent,
+        refreshData: () => { loadCoreData(); loadStudents(); loadPending(); },
     };
 }

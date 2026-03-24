@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSchoolTheme, ts } from '../../theme-context';
 import { SchoolStats } from '../../types';
@@ -34,6 +34,11 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
     const [isAdminProfileModalOpen, setIsAdminProfileModalOpen] = useState(false);
     const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
     const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const sections = [
         {
@@ -213,12 +218,11 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
                     <motion.div
                         key={idx}
                         initial={{ opacity: 0, y: 15 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: idx * 0.1, duration: 0.4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.05, duration: 0.4 }}
                     >
                         <div className="flex items-center gap-3 mb-6">
-                            <h3 className={`text-[11px] font-black uppercase tracking-[0.2em] ${ts.textMuted(isDark)}`}>{section.title}</h3>
+                            <h3 className={`text-[10px] font-black uppercase tracking-[0.25em] ${ts.textMuted(isDark)}`}>{section.title}</h3>
                             <div className={`flex-1 h-px ${ts.divider(isDark)}`} />
                         </div>
                         {section.content}
@@ -255,11 +259,13 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
                 onUpdate={refreshProfile}
             />
 
+            {/* Upgrade & Billing Modals */}
             <UpgradePlanModal
                 schoolId={schoolId}
                 currentPlanName={stats.planName}
                 isOpen={isUpgradeModalOpen}
                 onClose={() => setIsUpgradeModalOpen(false)}
+                onUpdate={onRefresh}
             />
 
             <BillingHistoryModal
@@ -268,12 +274,12 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
                 onClose={() => setIsBillingModalOpen(false)}
             />
 
-            <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                className="mt-20 flex flex-col sm:flex-row items-center justify-between gap-6 p-8 rounded-[32px] border dashed border-slate-200 dark:border-white/10"
-            >
+            {isMounted && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="mt-20 flex flex-col sm:flex-row items-center justify-between gap-6 p-8 rounded-[32px] border dashed border-slate-200 dark:border-white/10"
+                >
                 <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                         <CheckCircle2 size={20} />
@@ -287,6 +293,7 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
                     <HelpCircle size={18} /> Support Center
                 </Button>
             </motion.div>
+            )}
         </div>
     );
 }
