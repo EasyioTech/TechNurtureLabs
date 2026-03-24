@@ -1,19 +1,18 @@
 'use client';
 
-import React, { useEffect, useState, use } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { fetchSchoolAdminCourseData } from '@/modules/school-admin/actions';
-import { useSchoolTheme, ts, SchoolThemeProvider } from '@/modules/school-admin/theme-context';
 import {
     ArrowLeft, BookOpen, Users, Clock, Star, Trophy, Flame,
     Play, FileText, Video, ListChecks, Sparkles, BarChart3,
     Target, Award, ChevronRight, Activity, Calendar, ShieldCheck, Zap
 } from 'lucide-react';
+import { useAuth } from '@/components/providers/auth-provider';
+import { fetchSchoolAdminCourseData } from '@/modules/school-admin/actions';
+import { useSchoolTheme, ts, SchoolThemeProvider } from '@/modules/school-admin/theme-context';
 
 type Course = {
     id: string;
