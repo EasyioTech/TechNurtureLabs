@@ -128,7 +128,7 @@ export function SchoolStudentsTab({
                                     {/* Student Info */}
                                     <td className="px-4 sm:px-8 py-6">
                                         <div className="flex items-center gap-4 group/item">
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[15px] font-black flex-shrink-0 transition-transform group-hover/item:scale-105 shadow-xl ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-black/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-indigo-100/30'
+                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-[15px] font-black flex-shrink-0 transition-transform group-hover/item:scale-105 shadow-xl ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-black/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-indigo-100/30'
                                                 }`}>
                                                 {s.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                             </div>

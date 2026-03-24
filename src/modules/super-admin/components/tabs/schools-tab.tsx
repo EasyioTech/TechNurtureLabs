@@ -120,7 +120,7 @@ export function SchoolsTab({
                                         <img src={school.logo_url} alt={school.name} className="w-full h-full object-contain" />
                                     </div>
                                 ) : (
-                                    <div className={`w-full h-full rounded-2xl flex items-center justify-center text-[14px] font-black
+                                    <div className={`w-full h-full rounded-full flex items-center justify-center text-[14px] font-black
                                         ${t.initialCircle(isDark, accent)}`}>
                                         {school.name.charAt(0).toUpperCase()}
                                     </div>

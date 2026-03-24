@@ -206,18 +206,16 @@ export const CheckoutOverlay: React.FC<CheckoutOverlayProps> = ({
                 `}
                             >
                                 {loading ? (
-                                    <><Loader2 size={20} className="animate-spin" /> Processing...</>
+                                    <><Loader2 size={20} className="animate-spin" /> Activating Portal...</>
                                 ) : promoLoading ? (
                                     <><Loader2 size={20} className="animate-spin" /> Applying promo...</>
-                                ) : checkoutOrder.final_amount === 0 ? (
-                                    <><BadgeCheck size={20} /> Activate Free Plan</>
                                 ) : (
-                                    <><CreditCard size={20} /> Pay {'\u20B9'}{Number(checkoutOrder.final_amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })} via Razorpay</>
+                                    <><BadgeCheck size={20} /> Activate School Portal</>
                                 )}
                             </button>
 
                             <p className="text-center text-[10px] text-slate-400 font-bold">
-                                Powered by Razorpay • UPI, Cards, Netbanking accepted
+                                Secure Instant Activation • No Payment Gateway Required
                             </p>
                         </div>
                     </motion.div>

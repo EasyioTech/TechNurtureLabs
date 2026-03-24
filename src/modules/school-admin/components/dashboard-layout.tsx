@@ -108,11 +108,11 @@ export function SchoolDashboardLayout({ children, schoolId, schoolName: initialS
         <div className={`min-h-screen flex ${ts.pageBg(isDark)} ${isDark ? 'text-slate-200' : 'text-slate-900'} antialiased selection:bg-indigo-500/10`}>
             
             {/* ─── Sidebar (Desktop) ─── */}
-            <aside className={`fixed left-0 top-0 h-full border-r transition-all duration-500 z-50 group/sidebar ${isDark ? 'bg-[#0f1115] border-white/[0.03]' : 'bg-white border-slate-200/60'} ${isSidebarOpen ? 'w-[280px]' : 'w-[88px] invisible md:visible'}`}>
+            <aside className={`fixed left-0 top-0 h-full border-r transition-all duration-500 z-50 group/sidebar flex flex-col ${isDark ? 'bg-[#0f1115] border-white/[0.03]' : 'bg-white border-slate-200/60'} ${isSidebarOpen ? 'w-[280px]' : 'w-[88px] invisible md:visible'}`}>
                 {/* Sidebar Header */}
                 <div className={`h-20 flex items-center mb-4 transition-all duration-500 ${isSidebarOpen ? 'px-6' : 'px-0 justify-center'}`}>
                     <Link href="/school-admin" className="flex items-center gap-3 group">
-                        <div className={`w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20 group-hover:scale-110 transition-transform duration-300 overflow-hidden flex-shrink-0`}>
+                        <div className={`w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20 group-hover:scale-110 transition-transform duration-300 overflow-hidden flex-shrink-0`}>
                             {platformSettings?.logo_url 
                                 ? <img src={platformSettings.logo_url} className="w-full h-full object-cover" alt="Logo" />
                                 : <GraduationCap size={22} strokeWidth={2.5} />
@@ -132,10 +132,10 @@ export function SchoolDashboardLayout({ children, schoolId, schoolName: initialS
                     {NAV_ITEMS.map(item => <NavLink key={item.id} item={item} />)}
                 </nav>
 
-                {/* Sidebar Footer (User Profile) */}
-                <div className={`p-4 mt-auto border-t transition-all duration-500 ${ts.border(isDark)}`}>
+                {/* Sidebar Footer (User Profile & Sign Out) */}
+                <div className={`p-4 mt-auto border-t transition-all duration-500 ${ts.border(isDark)} bg-slate-50/50 dark:bg-white/[0.01]`}>
                     <div className={`relative flex items-center transition-all duration-500 rounded-2xl ${isSidebarOpen ? 'gap-3 p-3' : 'justify-center py-4 w-12 mx-auto'} ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50'}`}>
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-[11px] font-black shadow-lg shadow-indigo-500/10 flex-shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-[11px] font-black shadow-lg shadow-indigo-500/10 flex-shrink-0">
                             {profile?.first_name?.[0]?.toUpperCase()}{profile?.last_name?.[0]?.toUpperCase()}
                         </div>
                         {isSidebarOpen && (
@@ -183,7 +183,7 @@ export function SchoolDashboardLayout({ children, schoolId, schoolName: initialS
                         >
                             <div className={`h-20 flex items-center justify-between px-6 border-b ${ts.border(isDark)}`}>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
+                                    <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
                                         <GraduationCap size={22} strokeWidth={2.5} />
                                     </div>
                                     <div className="flex flex-col">
@@ -201,7 +201,7 @@ export function SchoolDashboardLayout({ children, schoolId, schoolName: initialS
                             
                             <div className={`absolute bottom-0 left-0 right-0 p-6 border-t ${ts.border(isDark)} ${isDark ? 'bg-[#0f1115]' : 'bg-white'}`}>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-[12px] font-black shadow-lg shadow-indigo-500/10">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-[12px] font-black shadow-lg shadow-indigo-500/10">
                                         {profile?.first_name?.[0]?.toUpperCase()}{profile?.last_name?.[0]?.toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -277,7 +277,7 @@ export function SchoolDashboardLayout({ children, schoolId, schoolName: initialS
                                 </div>
                                 <button 
                                     onClick={() => setIsProfileModalOpen(true)}
-                                    className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-[12px] font-black shadow-lg shadow-indigo-500/20 hover:scale-105 transition-transform"
+                                    className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-[12px] font-black shadow-lg shadow-indigo-500/20 hover:scale-105 transition-transform"
                                 >
                                     {profile?.first_name?.[0]?.toUpperCase()}{profile?.last_name?.[0]?.toUpperCase()}
                                 </button>

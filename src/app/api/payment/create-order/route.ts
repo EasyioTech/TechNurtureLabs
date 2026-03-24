@@ -9,7 +9,11 @@ import { z } from 'zod';
 
 const createOrderSchema = z.object({
     plan_id: z.string().uuid('Invalid plan ID'),
-    promo_code_id: z.string().uuid('Invalid promo code ID').optional().nullable(),
+    promo_code_id: z.string()
+        .optional()
+        .nullable()
+        .transform(val => (val === '' ? null : val))
+        .pipe(z.string().uuid('Invalid promo code ID').nullable()),
 });
 
 const isBuild = process.env.NEXT_SKIP_TYPECHECK === '1' || process.env.npm_lifecycle_event === 'build';

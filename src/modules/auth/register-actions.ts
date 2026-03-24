@@ -101,8 +101,8 @@ export async function registerStudent(formData: any) {
 
         const [firstName, ...lastNameParts] = formData.full_name.trim().split(/\s+/);
         const lastName = lastNameParts.join(' ');
-        const email = isEmail ? formData.email.toLowerCase().trim() : null;
-        const phone = isEmail ? null : formData.email.replace(/\D/g, ''); // Extract only digits for phone normalization
+        const email = isEmail ? (formData.email.toLowerCase().trim() || null) : null;
+        const phone = isEmail ? null : (formData.email.replace(/\D/g, '') || null); 
 
         const result = await db.transaction(async (tx) => {
             // Check for existing student with this email/phone (Platform-wide, non-deleted)

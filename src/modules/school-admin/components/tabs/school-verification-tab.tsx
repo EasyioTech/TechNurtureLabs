@@ -65,7 +65,7 @@ export function SchoolVerificationTab({ pendingStudents, onVerify, loading = fal
                                      <div className="flex flex-col h-full">
                                          <div className="flex items-start justify-between mb-8">
                                              <div className="flex items-center gap-5">
-                                                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-black shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 ${isDark ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-indigo-600 text-white shadow-indigo-600/20'}`}>
+                                                 <div className={`w-14 h-14 rounded-full flex items-center justify-center text-lg font-black shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 ${isDark ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-indigo-600 text-white shadow-indigo-600/20'}`}>
                                                      {student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                                  </div>
                                                  <div>

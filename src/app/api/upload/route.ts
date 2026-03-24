@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
         const [asset] = await db.insert(mediaAssets).values({
             file_name: fileName,
             original_name: file.name,
+            file_url: result.url,
             file_path: result.path,
             mime_type: result.mimeType,
             file_size: result.fileSize,
