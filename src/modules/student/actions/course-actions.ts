@@ -51,18 +51,19 @@ export async function ensureEnrollment(userId: string, courseId: string) {
     
     if (!user?.school_id) return null;
 
-    // Block enrollment if the school's subscription is not in good standing
-    if (role === 'student') {
-        const subscription = await db.query.schoolSubscriptions.findFirst({
-            where: eq(schoolSubscriptions.school_id, user.school_id),
-            columns: { status: true },
-            orderBy: (sub, { desc }) => [desc(sub.created_at)],
-        });
-        const blockedStatuses = ['cancelled', 'expired'];
-        if (!subscription || blockedStatuses.includes(subscription.status)) {
-            return null;
-        }
-    }
+    // TODO: Re-enable subscription gating once Razorpay integration is live.
+    // Bypassed for testing — all schools are treated as having a valid subscription.
+    // if (role === 'student') {
+    //     const subscription = await db.query.schoolSubscriptions.findFirst({
+    //         where: eq(schoolSubscriptions.school_id, user.school_id),
+    //         columns: { status: true },
+    //         orderBy: (sub, { desc }) => [desc(sub.created_at)],
+    //     });
+    //     const blockedStatuses = ['cancelled', 'expired'];
+    //     if (!subscription || blockedStatuses.includes(subscription.status)) {
+    //         return null;
+    //     }
+    // }
 
     const currentSession = await db.query.academicSessions.findFirst({
         where: and(eq(academicSessions.school_id, user.school_id), eq(academicSessions.is_current, true))

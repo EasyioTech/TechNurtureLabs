@@ -1,119 +1,134 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Play, ChevronRight, BookOpen, Clock, Star, Zap, Activity } from 'lucide-react';
+import { Play, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 
 interface Course {
-    id: string;
-    title: string;
-    description: string;
-    thumbnail: string;
-    totalLessons: number;
-    completedLessons: number;
+  id: string;
+  title: string;
+  description: string;
+  thumbnail: string;
+  totalLessons: number;
+  completedLessons: number;
 }
 
+const COLOR_THEMES = [
+  { accent: 'bg-indigo-600', text: 'text-indigo-600', bar: 'bg-indigo-600', glow: 'shadow-indigo-500/20', hoverBorder: 'hover:border-indigo-200', badge: 'bg-indigo-50 text-indigo-600' },
+  { accent: 'bg-emerald-600', text: 'text-emerald-600', bar: 'bg-emerald-600', glow: 'shadow-emerald-500/20', hoverBorder: 'hover:border-emerald-200', badge: 'bg-emerald-50 text-emerald-600' },
+  { accent: 'bg-rose-600', text: 'text-rose-600', bar: 'bg-rose-600', glow: 'shadow-rose-500/20', hoverBorder: 'hover:border-rose-200', badge: 'bg-rose-50 text-rose-600' },
+  { accent: 'bg-amber-600', text: 'text-amber-600', bar: 'bg-amber-600', glow: 'shadow-amber-500/20', hoverBorder: 'hover:border-amber-200', badge: 'bg-amber-50 text-amber-600' },
+  { accent: 'bg-sky-600', text: 'text-sky-600', bar: 'bg-sky-600', glow: 'shadow-sky-500/20', hoverBorder: 'hover:border-sky-200', badge: 'bg-sky-50 text-sky-600' },
+  { accent: 'bg-violet-600', text: 'text-violet-600', bar: 'bg-violet-600', glow: 'shadow-violet-500/20', hoverBorder: 'hover:border-violet-200', badge: 'bg-violet-50 text-violet-600' },
+];
+
 export function CourseCard({ course }: { course: Course }) {
-    const progress = course.totalLessons > 0
-        ? (course.completedLessons / course.totalLessons) * 100
-        : 0;
+  const progress = course.totalLessons > 0
+    ? (course.completedLessons / course.totalLessons) * 100
+    : 0;
+  const isComplete = progress === 100 && course.totalLessons > 0;
 
-    // Tactical Color Spectrum Matrix
-    const colors = [
-        { accent: 'bg-indigo-600', text: 'text-indigo-600', border: 'hover:border-indigo-200', shadow: 'hover:shadow-indigo-500/10', glow: 'shadow-indigo-500/20' },
-        { accent: 'bg-emerald-600', text: 'text-emerald-600', border: 'hover:border-emerald-200', shadow: 'hover:shadow-emerald-500/10', glow: 'shadow-emerald-500/20' },
-        { accent: 'bg-rose-600', text: 'text-rose-600', border: 'hover:border-rose-200', shadow: 'hover:shadow-rose-500/10', glow: 'shadow-rose-500/20' },
-        { accent: 'bg-amber-600', text: 'text-amber-600', border: 'hover:border-amber-200', shadow: 'hover:shadow-amber-500/10', glow: 'shadow-amber-500/20' },
-        { accent: 'bg-sky-600', text: 'text-sky-600', border: 'hover:border-sky-200', shadow: 'hover:shadow-sky-500/10', glow: 'shadow-sky-500/20' },
-        { accent: 'bg-violet-600', text: 'text-violet-600', border: 'hover:border-violet-200', shadow: 'hover:shadow-violet-500/10', glow: 'shadow-violet-500/20' },
-    ];
-    
-    const hash = course.title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const theme = colors[hash % colors.length];
+  const hash = course.title.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const theme = COLOR_THEMES[hash % COLOR_THEMES.length];
 
-    return (
-        <Link href={`/student/course/${course.id}`} className="block h-full group">
-            <motion.div 
-                whileHover={{ y: -4 }}
-                className={`bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden transition-all duration-500 h-full flex flex-col ${theme.shadow} hover:shadow-xl`}
-            >
-                {/* Course Thumbnail */}
-                <div className="relative h-48 overflow-hidden bg-slate-100">
-                    <img
-                        src={course.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600'}
-                        alt={course.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-all duration-[1500ms] ease-out"
-                    />
-                    
-                    {/* Tactical Overlays */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-                    
-                    <div className="absolute top-4 left-4">
-                        <div className="px-4 py-1.5 bg-white/20 backdrop-blur-xl border border-white/30 rounded-full text-[9px] font-black text-white uppercase tracking-[0.2em] shadow-2xl">
-                            {course.totalLessons} Lessons
-                        </div>
-                    </div>
+  return (
+    <Link href={`/student/course/${course.id}`} className="block h-full group">
+      <motion.div
+        whileHover={{ y: -3 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+        className={`bg-white border border-slate-100 rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col transition-all duration-300 hover:shadow-xl ${theme.glow} ${theme.hoverBorder} active:scale-[0.98]`}
+      >
+        {/* ── Thumbnail ── */}
+        <div className="relative h-44 sm:h-48 overflow-hidden bg-slate-100 flex-shrink-0">
+          <img
+            src={course.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600'}
+            alt={course.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
 
-                    <div className="absolute bottom-4 right-4">
-                        <div className={`w-9 h-9 rounded-full bg-white flex items-center justify-center ${theme.text} shadow-2xl group-hover:scale-110 transition-transform duration-500`}>
-                            <Play size={16} fill="currentColor" />
-                        </div>
-                    </div>
-                </div>
+          {/* Lesson count badge */}
+          <div className="absolute top-3 left-3">
+            <span className="px-3 py-1 bg-white/20 backdrop-blur-md border border-white/25 rounded-full text-[9px] font-black text-white uppercase tracking-wider">
+              {course.totalLessons} Lessons
+            </span>
+          </div>
 
-                {/* Course Info */}
-                <div className="p-6 flex-1 flex flex-col">
-                    <div className="flex items-start justify-between mb-2">
-                        <h4 className={`font-black text-lg text-slate-950 tracking-tighter leading-[0.95] uppercase transition-colors duration-500`}>
-                            {course.title}
-                        </h4>
-                    </div>
+          {/* Completion badge */}
+          {isComplete && (
+            <div className="absolute top-3 right-3">
+              <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg">
+                <CheckCircle2 size={16} className="text-white" />
+              </div>
+            </div>
+          )}
 
-                    <p className="text-[10px] text-slate-500/80 font-bold uppercase tracking-wider line-clamp-2 leading-relaxed mb-5 opacity-80">
-                        {course.description || 'A comprehensive learning path designed for academic excellence.'}
-                    </p>
+          {/* Play button */}
+          {!isComplete && (
+            <div className="absolute bottom-3 right-3">
+              <div className={`w-9 h-9 rounded-full bg-white flex items-center justify-center ${theme.text} shadow-xl group-hover:scale-110 transition-transform duration-300`}>
+                <Play size={15} fill="currentColor" />
+              </div>
+            </div>
+          )}
 
-                    <div className="mt-auto space-y-6">
-                        {/* Learning Progress */}
-                        <div>
-                            <div className="flex items-end justify-between mb-3">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Course Progress</span>
-                                <span className={`text-xs font-black ${theme.text}`}>{Math.round(progress)}% Complete</span>
-                            </div>
+          {/* Progress bar at bottom of thumbnail */}
+          {progress > 0 && (
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
+              <div
+                className={`h-full ${theme.bar} transition-all duration-700`}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          )}
+        </div>
 
-                            <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/50 shadow-inner">
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${progress}%` }}
-                                    className={`h-full ${theme.accent} rounded-full ${theme.glow} shadow-lg shadow-indigo-500/20`}
-                                    transition={{ duration: 1.5, ease: "circOut" }}
-                                />
-                            </div>
-                        </div>
+        {/* ── Card body ── */}
+        <div className="p-4 sm:p-5 flex-1 flex flex-col">
+          <h4 className="font-black text-base sm:text-lg text-slate-900 tracking-tight leading-snug uppercase mb-1.5 line-clamp-2">
+            {course.title}
+          </h4>
 
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                            <div className="flex items-center gap-4">
-                                <div className="flex flex-col">
-                                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Finished</span>
-                                    <span className="text-[9px] font-black text-slate-900">{course.completedLessons} / {course.totalLessons}</span>
-                                </div>
-                                <div className="w-px h-5 bg-slate-100" />
-                                <div className="flex flex-col">
-                                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Level</span>
-                                    <span className="text-[9px] font-black text-indigo-600">Standard</span>
-                                </div>
-                            </div>
+          <p className="text-[11px] sm:text-xs text-slate-400 font-medium line-clamp-2 leading-relaxed mb-4 flex-1">
+            {course.description || 'A comprehensive learning path designed for academic excellence.'}
+          </p>
 
-                            <div className={`flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.3em] ${theme.text} group-hover:translate-x-1 transition-transform duration-500`}>
-                                View <ChevronRight size={12} />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
-        </Link>
-    );
+          {/* Progress section */}
+          <div className="mt-auto space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Progress</span>
+                <span className={`text-[10px] font-black ${theme.text}`}>{Math.round(progress)}%</span>
+              </div>
+              <div className="h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  className={`h-full ${theme.bar} rounded-full`}
+                  transition={{ duration: 1.2, ease: 'circOut' }}
+                />
+              </div>
+            </div>
+
+            {/* Footer row */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-black text-slate-500">
+                  {course.completedLessons}
+                  <span className="text-slate-300 mx-1">/</span>
+                  {course.totalLessons}
+                  <span className="text-slate-400 ml-1 font-medium text-[9px]">done</span>
+                </span>
+              </div>
+              <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${theme.text} group-hover:gap-2 transition-all`}>
+                {isComplete ? 'Review' : progress > 0 ? 'Resume' : 'Start'}
+                <ChevronRight size={13} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </Link>
+  );
 }

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Play, CheckCircle2, Lock, FileText, MonitorPlay, HelpCircle, Star, ChevronRight } from 'lucide-react';
+import { Play, CheckCircle2, Lock, FileText, MonitorPlay, HelpCircle, Star, ChevronRight, ImageIcon } from 'lucide-react';
 import { Lesson } from '@/modules/student/types';
 
 const ICON_MAP = {
@@ -11,7 +11,8 @@ const ICON_MAP = {
   quiz: HelpCircle,
   ppt: MonitorPlay,
   pdf: FileText,
-  assignment: Star
+  assignment: Star,
+  image: ImageIcon
 };
 
 const LABEL_MAP = {
@@ -19,7 +20,8 @@ const LABEL_MAP = {
   ppt: 'Slideshow',
   pdf: 'Reading Material',
   quiz: 'Practice Quiz',
-  assignment: 'Assignment'
+  assignment: 'Assignment',
+  image: 'Image'
 };
 
 export function LessonRow({ lesson, index }: { lesson: Lesson; index: number }) {

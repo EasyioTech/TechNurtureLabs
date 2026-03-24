@@ -3,8 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { ArrowLeft, Star, Menu, X, Shield } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowLeft, Star } from 'lucide-react';
 
 interface LessonHeaderProps {
   courseId: string;
@@ -24,45 +23,58 @@ export function LessonHeader({
   onToggleSyllabus,
 }: LessonHeaderProps) {
   return (
-    <header className="sticky top-0 z-[120] bg-white/90 backdrop-blur-3xl border-b border-slate-100 shadow-sm h-20 sm:h-24 flex items-center justify-between px-4 sm:px-8 lg:px-16 transition-all duration-300">
-      <div className="flex items-center gap-3 sm:gap-8 min-w-0">
-        <Link href={`/student/course/${courseId}`}>
-          <button className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl border bg-white border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 flex items-center justify-center transition-all active:scale-95 group shadow-sm">
-            <ArrowLeft size={24} strokeWidth={3} className="w-5 h-5 sm:w-6 sm:h-6 group-hover:-translate-x-1 transition-transform" />
+    <header className="sticky top-0 z-[120] bg-white/95 backdrop-blur-2xl border-b border-slate-100 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 lg:px-12 gap-2 shadow-sm">
+      {/* Left: back + title */}
+      <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
+        <Link href={`/student/course/${courseId}`} className="flex-shrink-0">
+          <button className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl border border-slate-100 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-200 flex items-center justify-center transition-all active:scale-90 shadow-sm">
+            <ArrowLeft size={18} strokeWidth={2.5} />
           </button>
         </Link>
-        <div className="min-w-0 pr-4">
-          <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.3em] sm:tracking-[0.5em] mb-0.5 sm:mb-1.5 whitespace-nowrap opacity-60 text-indigo-600 truncate">
+
+        <div className="min-w-0 flex-1">
+          <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-indigo-500 truncate leading-none mb-0.5">
             {courseTitle}
           </p>
-          <h1 className="text-sm sm:text-lg lg:text-xl font-black uppercase tracking-tight truncate max-w-[140px] sm:max-w-xl leading-none text-slate-950">
+          <h1 className="text-[13px] sm:text-sm lg:text-base font-black uppercase tracking-tight truncate leading-none text-slate-900 max-w-[220px] xs:max-w-xs sm:max-w-sm md:max-w-lg lg:max-w-2xl">
             {lessonTitle}
           </h1>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-6">
-        <div className="hidden xs:flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 sm:py-3 rounded-xl sm:rounded-2xl border bg-amber-50 border-amber-100 text-amber-600 text-[10px] sm:text-xs font-bold uppercase tracking-widest leading-none shadow-sm">
-          <Star size={16} fill="currentColor" className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-pulse" />
-          <span className="opacity-80 hidden sm:inline">Reward:</span> +{xpReward} XP
+      {/* Right: XP + menu */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {/* XP always visible */}
+        <div className="flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-sm">
+          <Star size={12} fill="currentColor" className="sm:w-3.5 sm:h-3.5 animate-pulse" />
+          <span>+{xpReward}</span>
+          <span className="hidden sm:inline text-amber-500/70">XP</span>
         </div>
-        
-        <div className="w-px h-8 sm:h-10 bg-slate-100 hidden sm:block" />
 
         <button
           onClick={onToggleSyllabus}
           className={cn(
-             "w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl border flex items-center justify-center transition-all active:scale-95 group shadow-lg",
-             isSyllabusOpen 
-                ? "bg-indigo-600 border-indigo-500 text-white shadow-indigo-200" 
-                : "bg-white border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-200"
+            "w-9 h-9 sm:w-10 sm:h-10 rounded-xl border flex items-center justify-center transition-all active:scale-90",
+            isSyllabusOpen
+              ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-200"
+              : "bg-white border-slate-100 text-slate-500 hover:text-indigo-600 hover:border-indigo-200"
           )}
         >
-          {isSyllabusOpen ? (
-            <X size={24} strokeWidth={2.5} className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-90 transition-transform" />
-          ) : (
-            <Menu size={24} strokeWidth={2.5} className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform" />
-          )}
+          {/* Hamburger → X morph */}
+          <div className="relative w-4 h-4 flex flex-col justify-center gap-[4px]">
+            <span className={cn(
+              "block h-[2px] rounded-full bg-current transition-all duration-300 origin-center",
+              isSyllabusOpen ? "rotate-45 translate-y-[3px]" : ""
+            )} />
+            <span className={cn(
+              "block h-[2px] rounded-full bg-current transition-all duration-300",
+              isSyllabusOpen ? "opacity-0 scale-x-0" : ""
+            )} />
+            <span className={cn(
+              "block h-[2px] rounded-full bg-current transition-all duration-300 origin-center",
+              isSyllabusOpen ? "-rotate-45 -translate-y-[3px]" : ""
+            )} />
+          </div>
         </button>
       </div>
     </header>

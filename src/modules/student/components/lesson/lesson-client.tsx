@@ -5,10 +5,11 @@ import { LessonHeader } from '@/modules/student/components/lesson/lesson-header'
 import { LessonContent } from '@/modules/student/components/lesson/lesson-content';
 import { LessonOverview } from '@/modules/student/components/lesson/lesson-overview';
 import { LessonSyllabus } from '@/modules/student/components/lesson/lesson-syllabus';
-import { QuizEngine } from '@/modules/student/components/quiz/quiz-engine';
 import { updateTimeSpent, getCourseDetailsData, completeLessonAndReward } from '@/modules/student/actions';
-import { AlertCircle, BookOpen, Layers, HelpCircle, Activity, Trophy, Sparkles, PartyPopper, ArrowRight, Star, X, CheckCircle2 as CheckIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import {
+  BookOpen, Trophy, Star, X, CheckCircle2 as CheckIcon,
+  ArrowRight, ChevronRight, Home, PlayCircle
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -29,24 +30,22 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
   const router = useRouter();
   const [lessonComplete, setLessonComplete] = useState(initialComplete);
   const [courseData, setCourseData] = useState(initialCourseData);
-  const [sidebarTab, setSidebarTab] = useState<'index' | 'brief' | 'files'>('index');
   const [isSyllabusOpen, setIsSyllabusOpen] = useState(false);
   const [docPage, setDocPage] = useState(1);
   const [docTotal, setDocTotal] = useState(0);
   const [docMax, setDocMax] = useState(lessonComplete ? 9999 : 1);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const isDocumentLesson = lesson.content_type === 'pdf' || lesson.content_type === 'ppt';
 
-  // If already complete, ensure all pages are unlocked on load
   useEffect(() => {
     if (lessonComplete && docTotal > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDocMax(docTotal);
     }
   }, [lessonComplete, docTotal]);
 
-  // Time tracking protocol
+  // Time tracking
   useEffect(() => {
     const interval = setInterval(() => {
       if (!lessonComplete && lesson.id) {
@@ -57,53 +56,51 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
   }, [lessonComplete, lesson.id]);
 
   const handleComplete = async (isVideo?: boolean, quizPercentage?: number, isPerfect?: boolean) => {
-    // If already complete and not a quiz, just show celebration if needed
     if (lessonComplete && !quizPercentage) {
-        setShowCelebration(true);
-        return;
+      setShowCelebration(true);
+      return;
     }
-    
     try {
-      if (isVideo === true) {
-        setLessonComplete(true);
-        setShowCelebration(true);
-        router.refresh();
-        if (lesson.course_id) {
-            const updatedCourse = await getCourseDetailsData(lesson.course_id, true);
-            setCourseData(updatedCourse);
-        }
-        return;
-      }
+      setIsSaving(true);
+      setShowCelebration(true); // show modal immediately for fast feedback
 
+      // Save completion to DB (video path was previously doing this inside the player)
       const res = await completeLessonAndReward(lesson.id, quizPercentage, isPerfect);
-      if (res?.success) {
+
+      if (res?.success || res?.alreadyCompleted) {
         setLessonComplete(true);
-        setShowCelebration(true);
         router.refresh();
         if (lesson.course_id) {
-            const updatedCourse = await getCourseDetailsData(lesson.course_id, true);
-            setCourseData(updatedCourse);
+          const updatedCourse = await getCourseDetailsData(lesson.course_id, true);
+          setCourseData(updatedCourse);
         }
-        toast.success("Progress Synchronized");
+      } else if (!isVideo) {
+        // For non-video content show error; for video, completion is best-effort
+        toast.error(res?.error || 'Failed to save progress');
+        setShowCelebration(false);
+      } else {
+        // Video: still mark complete locally so UX is unblocked
+        setLessonComplete(true);
       }
     } catch (err) {
       console.error('Failed to sync completion:', err);
-      toast.error("Failed to save progress");
+      if (!isVideo) {
+        toast.error('Failed to save progress');
+        setShowCelebration(false);
+      } else {
+        setLessonComplete(true); // unblock navigation even on error
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handlePageSelect = (p: number) => {
     if (p > docTotal || p < 1) return;
-    
-    // Only allow moving to unlocked pages or the very next page to be unlocked
     if (p > docMax + 1) return;
-
     setDocPage(p);
-    if (p > docMax) {
-      setDocMax(p);
-    }
-    // Scroll content to top
-    const contentNode = document.querySelector('.min-w-0.flex-1');
+    if (p > docMax) setDocMax(p);
+    const contentNode = document.querySelector('.lesson-scroll-container');
     if (contentNode) contentNode.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -116,78 +113,91 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
     return courseData?.lessons?.[currentLessonIndex + 1];
   }, [courseData, currentLessonIndex]);
 
-  const isLastLesson = currentLessonIndex === (courseData?.lessons?.length ?? 0) - 1;
+  const totalLessons = courseData?.lessons?.length ?? 0;
+  const isLastLesson = currentLessonIndex === totalLessons - 1;
   const isCourseJustFinished = isLastLesson && lessonComplete;
 
-  const sidebarTabs = [
-    { id: 'index', label: isDocumentLesson ? 'Chapters' : 'Index', icon: Layers },
-    { id: 'brief', label: 'Details', icon: BookOpen },
-    { id: 'files', label: 'Resources', icon: HelpCircle }
-  ];
+  // Course progress %
+  const completedCount = courseData?.lessons?.filter((l: any) => l.status === 'completed').length ?? 0;
+  const courseProgress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-white text-slate-950 selection:bg-indigo-100 selection:text-indigo-900 flex flex-col font-outfit">
+    <div className="min-h-screen bg-black lg:bg-white text-slate-950 flex flex-col">
       <LessonHeader
         courseId={lesson.course_id}
-        courseTitle={courseData?.course?.title || 'Course Content'}
+        courseTitle={courseData?.course?.title || 'Course'}
         lessonTitle={lesson.title}
         xpReward={lesson.xp_reward}
         isSyllabusOpen={isSyllabusOpen}
         onToggleSyllabus={() => setIsSyllabusOpen(!isSyllabusOpen)}
       />
 
-      <div className="flex flex-1 relative overflow-hidden h-[calc(100vh-80px)] sm:h-[calc(100vh-96px)]">
-        {/* Unified Syllabus Sidebar (Overlay on mobile, sidebar on large) */}
+      {/* Main layout */}
+      <div className="flex flex-1 relative overflow-hidden" style={{ height: 'calc(100vh - 56px)' }}>
+
+        {/* ─── Syllabus sidebar (slide from right) ─── */}
         <AnimatePresence>
           {isSyllabusOpen && (
             <>
-              {/* Backrop Overlay */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsSyllabusOpen(false)}
-                className="fixed inset-0 z-[100] bg-slate-950/20 backdrop-blur-sm lg:hidden"
+                className="fixed inset-0 z-[100] bg-slate-950/30 backdrop-blur-sm"
               />
-              
-              {/* Sidebar Content */}
-              <motion.aside 
+              <motion.aside
                 initial={{ x: '100%' }}
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed right-0 top-0 bottom-0 z-[110] w-[85vw] sm:w-[400px] bg-white border-l border-slate-100 flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.05)]"
+                transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+                className="fixed right-0 top-0 bottom-0 z-[110] w-[88vw] sm:w-[380px] bg-white border-l border-slate-100 flex flex-col shadow-[-30px_0_60px_rgba(0,0,0,0.08)]"
               >
-                {/* Fixed Header in Sidebar */}
-                <div className="flex items-center justify-between p-6 sm:p-8 border-b border-slate-100">
+                {/* Sidebar header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                      <BookOpen size={20} />
+                    <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                      <BookOpen size={18} />
                     </div>
                     <div>
-                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Course Roadmap</h3>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        {courseData?.lessons?.length || 0} Lessons • {courseData?.course?.title}
+                      <p className="text-[9px] font-black uppercase tracking-[0.35em] text-slate-900">Course Roadmap</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                        {totalLessons} Lessons · {courseProgress}% done
                       </p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setIsSyllabusOpen(false)}
-                    className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 flex items-center justify-center transition-all"
+                    className="w-9 h-9 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 flex items-center justify-center transition-all"
                   >
-                    <X size={20} />
+                    <X size={18} />
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto no-scrollbar p-6 sm:p-8">
-                  {isDocumentLesson && (
-                    <div className="mb-10">
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Current Reading</h3>
-                        <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded-md">Page {docPage} of {docTotal}</span>
+                {/* Sidebar body */}
+                <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-5">
+                  {/* Progress bar */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Your Progress</span>
+                      <span className="text-[9px] font-black text-indigo-600">{courseProgress}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-600 rounded-full transition-all duration-1000"
+                        style={{ width: `${courseProgress}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {isDocumentLesson && docTotal > 0 && (
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.35em]">Pages</p>
+                        <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{docPage}/{docTotal}</span>
                       </div>
-                      <div className="grid grid-cols-5 gap-2">
-                        {Array.from({ length: docTotal || 0 }, (_, i) => i + 1).map(p => {
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {Array.from({ length: docTotal }, (_, i) => i + 1).map(p => {
                           const isUnlocked = p <= docMax;
                           const isCurrent = p === docPage;
                           return (
@@ -199,10 +209,12 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                               }}
                               disabled={!isUnlocked}
                               className={cn(
-                                "aspect-square rounded-xl flex items-center justify-center text-[10px] font-black border transition-all",
-                                isCurrent ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100" :
-                                isUnlocked ? "bg-white text-slate-900 border-slate-100 hover:border-indigo-200" :
-                                "bg-slate-50 text-slate-200 border-transparent opacity-40 cursor-not-allowed"
+                                'aspect-square rounded-lg flex items-center justify-center text-[9px] font-black border transition-all',
+                                isCurrent
+                                  ? 'bg-indigo-600 text-white border-indigo-600'
+                                  : isUnlocked
+                                    ? 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300'
+                                    : 'bg-slate-50 text-slate-300 border-transparent opacity-50 cursor-not-allowed'
                               )}
                             >
                               {p}
@@ -210,41 +222,40 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                           );
                         })}
                       </div>
-                      <div className="h-px bg-slate-100 my-10" />
+                      <div className="h-px bg-slate-100 my-5" />
                     </div>
                   )}
 
-                  <div className="space-y-6">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Course Roadmap</h3>
-                    <LessonSyllabus 
-                        lessons={courseData?.lessons || []} 
-                        currentLessonId={lesson.id} 
-                        isSidebar={true} 
-                        onLessonSelect={() => {
-                            if (window.innerWidth < 1024) setIsSyllabusOpen(false);
-                        }}
-                    />
-                  </div>
+                  <LessonSyllabus
+                    lessons={courseData?.lessons || []}
+                    currentLessonId={lesson.id}
+                    isSidebar={true}
+                    onLessonSelect={() => {
+                      if (window.innerWidth < 1024) setIsSyllabusOpen(false);
+                    }}
+                  />
                 </div>
 
-                {/* Sidebar Footer */}
-                <div className="p-6 sm:p-8 bg-slate-50 border-t border-slate-100">
-                    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100">
-                            <Trophy size={18} />
-                        </div>
-                        <div>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Lesson Reward</p>
-                            <p className="text-sm font-black text-slate-900">+{lesson.xp_reward} Points</p>
-                        </div>
+                {/* Sidebar footer: XP reward */}
+                <div className="px-5 py-4 bg-slate-50 border-t border-slate-100">
+                  <div className="bg-white rounded-2xl px-4 py-3 border border-slate-100 shadow-sm flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
+                      <Trophy size={16} />
                     </div>
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Lesson Reward</p>
+                      <p className="text-sm font-black text-slate-900">+{lesson.xp_reward} XP</p>
+                    </div>
+                  </div>
                 </div>
               </motion.aside>
             </>
           )}
         </AnimatePresence>
 
-        <div className="flex-1 flex flex-col min-w-0 bg-slate-50/10 overflow-y-auto no-scrollbar relative">
+        {/* ─── Main content ─── */}
+        <div className="lesson-scroll-container flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar">
+          {/* Content (video / pdf / quiz) */}
           <LessonContent
             lesson={lesson}
             isFocusMode={false}
@@ -256,91 +267,154 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
             onPageChange={(p: number) => handlePageSelect(p)}
           />
 
-          {/* Hide distractions during active quiz */}
+          {/* Overview section (hide during active quiz) */}
           {!(lesson.content_type === 'quiz' && !lessonComplete) && (
-            <div className="px-6 lg:px-12 py-10 lg:py-20 max-w-[1100px] mx-auto w-full">
-              <LessonOverview 
-                  lesson={lesson} 
-                  lessonComplete={lessonComplete}
+            <div className="bg-white border-t border-slate-100 px-4 sm:px-8 lg:px-12 py-8 sm:py-12 lg:py-16 max-w-[1100px] mx-auto w-full">
+              <LessonOverview
+                lesson={lesson}
+                lessonComplete={lessonComplete}
+                nextLesson={nextLesson}
               />
             </div>
           )}
 
-          <AnimatePresence>
-            {showCelebration && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/10 backdrop-blur-sm"
-              >
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="max-w-[400px] w-full bg-white/95 backdrop-blur-xl border border-slate-200 p-8 sm:p-10 rounded-3xl shadow-2xl text-center"
-                >
-                  <div className="space-y-8">
-                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
-                        <CheckIcon size={32} className="text-slate-900" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
-                          {isCourseJustFinished ? 'Course Complete' : 'Lesson Complete'}
-                      </h2>
-                      <p className="text-xs text-slate-500 font-medium">
-                          {isCourseJustFinished 
-                            ? 'You have finished all modules in this course.'
-                            : 'Your progress has been recorded successfully.'}
-                      </p>
-                    </div>
-
-                    <div className="bg-slate-50 rounded-2xl p-5 flex items-center justify-between border border-slate-100">
-                        <div className="text-left">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rewards</p>
-                            <p className="text-lg font-bold text-slate-900">+{lesson.xp_reward} XP</p>
-                        </div>
-                        <Star className="text-amber-400 fill-amber-400" size={24} />
-                    </div>
-
-                    <div className="space-y-3">
-                        {nextLesson ? (
-                            <Link 
-                                href={`/student/lesson/${nextLesson.id}`}
-                                onClick={() => setShowCelebration(false)}
-                                className="w-full h-14 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 hover:bg-slate-800 transition-all active:scale-95"
-                            >
-                                Next Lesson <ArrowRight size={18} />
-                            </Link>
-                        ) : (
-                            <Link 
-                                href="/student"
-                                className="w-full h-14 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 hover:bg-slate-800 transition-all active:scale-95"
-                            >
-                                Dashboard <CheckIcon size={18} />
-                            </Link>
-                        )}
-                        <button 
-                            onClick={() => setShowCelebration(false)}
-                            className="w-full h-10 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"
-                        >
-                            Review Lesson
-                        </button>
-                    </div>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-
-
-          </AnimatePresence>
-
+          {/* Bottom padding so sticky bar doesn't overlap content on mobile */}
+          <div className="h-24 sm:h-0 lg:h-0" />
         </div>
       </div>
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
-        .font-outfit { font-family: 'Outfit', sans-serif; }
-      `}</style>
+
+      {/* ─── Mobile sticky bottom bar ─── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[90] bg-white/95 backdrop-blur-xl border-t border-slate-100 px-4 py-3 flex items-center gap-3 shadow-[0_-8px_32px_rgba(0,0,0,0.08)]">
+        {/* Progress + lesson info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate">
+              {courseData?.course?.title}
+            </span>
+            <span className="text-[9px] font-black text-indigo-600 flex-shrink-0 ml-2">{courseProgress}%</span>
+          </div>
+          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-indigo-600 rounded-full transition-all duration-700"
+              style={{ width: `${courseProgress}%` }}
+            />
+          </div>
+        </div>
+
+        {/* CTA */}
+        {lessonComplete ? (
+          nextLesson ? (
+            <Link href={`/student/lesson/${nextLesson.id}`} className="flex-shrink-0">
+              <button className="h-11 px-5 bg-indigo-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 active:scale-95 shadow-lg shadow-indigo-200 whitespace-nowrap">
+                Next <ChevronRight size={14} />
+              </button>
+            </Link>
+          ) : (
+            <Link href="/student" className="flex-shrink-0">
+              <button className="h-11 px-5 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 active:scale-95 whitespace-nowrap">
+                <Home size={14} /> Home
+              </button>
+            </Link>
+          )
+        ) : (
+          <div className="flex-shrink-0 h-11 px-4 bg-slate-100 rounded-xl flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
+            <PlayCircle size={14} /> Watching
+          </div>
+        )}
+      </div>
+
+      {/* ─── Completion celebration overlay ─── */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center sm:p-4 bg-slate-900/20 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 60 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 60 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 260 }}
+              className="w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
+            >
+              {/* Coloured top strip */}
+              <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-pink-500" />
+
+              <div className="p-6 sm:p-8 space-y-6">
+                {/* Icon — spinner while saving, check when done */}
+                <div className="flex items-center justify-center">
+                  <div className={cn(
+                    "w-16 h-16 rounded-2xl flex items-center justify-center transition-colors",
+                    isSaving ? "bg-slate-100" : "bg-indigo-50"
+                  )}>
+                    {isSaving ? (
+                      <div className="w-8 h-8 border-[3px] border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
+                    ) : (
+                      <CheckIcon size={32} className="text-indigo-600" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Text */}
+                <div className="text-center space-y-1">
+                  <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                    {isSaving ? 'Saving Progress…' : isCourseJustFinished ? 'Course Complete!' : 'Lesson Complete!'}
+                  </h2>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {isSaving
+                      ? 'Locking in your progress, just a moment.'
+                      : isCourseJustFinished
+                        ? 'You finished all lessons in this course.'
+                        : 'Progress saved. Keep the momentum going!'}
+                  </p>
+                </div>
+
+                {/* XP badge */}
+                <div className="flex items-center justify-between bg-amber-50 rounded-2xl px-5 py-4 border border-amber-100">
+                  <div>
+                    <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-0.5">XP Earned</p>
+                    <p className="text-2xl font-black text-slate-900">+{lesson.xp_reward}</p>
+                  </div>
+                  <Star className="text-amber-400 fill-amber-400" size={28} />
+                </div>
+
+                {/* Buttons — disabled/hidden while saving */}
+                <div className="space-y-2.5">
+                  {isSaving ? (
+                    /* Skeleton button while save is in-flight */
+                    <div className="w-full py-4 bg-slate-100 rounded-2xl animate-pulse" />
+                  ) : nextLesson ? (
+                    <Link
+                      href={`/student/lesson/${nextLesson.id}`}
+                      onClick={() => setShowCelebration(false)}
+                      className="w-full bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all active:scale-95 py-4"
+                    >
+                      Next Lesson <ArrowRight size={16} />
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/student"
+                      className="w-full bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all active:scale-95 py-4"
+                    >
+                      Back to Dashboard <CheckIcon size={16} />
+                    </Link>
+                  )}
+                  {!isSaving && (
+                    <button
+                      onClick={() => setShowCelebration(false)}
+                      className="w-full py-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-700 transition-colors"
+                    >
+                      Review This Lesson
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
