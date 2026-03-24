@@ -12,7 +12,7 @@ import { useSchoolTheme, ts, SchoolThemeProvider } from '@/modules/school-admin/
 import {
     ArrowLeft, BookOpen, Users, Clock, Star, Trophy, Flame,
     Play, FileText, Video, ListChecks, Sparkles, BarChart3,
-    Target, Award, ChevronRight, Activity, Calendar, ShieldCheck
+    Target, Award, ChevronRight, Activity, Calendar, ShieldCheck, Zap
 } from 'lucide-react';
 
 type Course = {
