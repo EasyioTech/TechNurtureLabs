@@ -2,7 +2,7 @@
 
 import React from 'react';
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle,
+    Dialog, DialogContent, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,10 +12,9 @@ import { Switch } from '@/components/ui/switch';
 import { Lesson } from '../types';
 import { useAdminTheme, t } from '../theme-context';
 import {
-    BookOpen, Play, FileText, MonitorPlay, HelpCircle, ExternalLink,
-    Zap, Clock, X, Upload, Link2, Library, FileDown, Trophy, Loader2,
-    Cloud, HardDrive, Image as ImageIcon, Eye, Star, CheckCircle2,
-    FileImage, Film, Layers
+    BookOpen, Play, FileText, MonitorPlay, HelpCircle,
+    Zap, Clock, X, Upload, Link2, Library, FileDown, Loader2,
+    Cloud, HardDrive, Image as ImageIcon, Film, Layers, Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -35,110 +34,200 @@ interface LessonDialogProps {
     onSave: () => void;
 }
 
-const CONTENT_TYPES = [
-    { id: 'video',      label: 'Video',       icon: Film,        desc: 'MP4, YouTube, Vimeo',     color: 'text-rose-500',   bg: 'bg-rose-50',    border: 'border-rose-200' },
-    { id: 'pdf',        label: 'Document',    icon: FileText,    desc: 'PDF, Word, Text',          color: 'text-sky-500',    bg: 'bg-sky-50',     border: 'border-sky-200' },
-    { id: 'image',      label: 'Image',       icon: ImageIcon,   desc: 'JPG, PNG, WebP, GIF',      color: 'text-emerald-500',bg: 'bg-emerald-50', border: 'border-emerald-200' },
-    { id: 'ppt',        label: 'Slides',      icon: MonitorPlay, desc: 'PPT, PPTX, Keynote',       color: 'text-amber-500',  bg: 'bg-amber-50',   border: 'border-amber-200' },
-    { id: 'assignment', label: 'Mission',     icon: Trophy,      desc: 'Document submission',      color: 'text-violet-500', bg: 'bg-violet-50',  border: 'border-violet-200' },
-    { id: 'quiz',       label: 'Quiz',        icon: HelpCircle,  desc: 'Interactive assessment',   color: 'text-indigo-500', bg: 'bg-indigo-50',  border: 'border-indigo-200' },
+export type ContentItem = { id: string; type: 'video' | 'pdf' | 'ppt' | 'image'; url: string; urls?: string[]; };
+
+const BLOCK_TYPES = [
+    { id: 'video' as const, label: 'Video',    icon: Film,        color: 'text-rose-500',    accept: 'video/*',          desc: 'MP4, YouTube, stream' },
+    { id: 'pdf'   as const, label: 'Document', icon: FileText,    color: 'text-sky-500',     accept: '.pdf,.doc,.docx',  desc: 'PDF or Word file' },
+    { id: 'image' as const, label: 'Images',   icon: ImageIcon,   color: 'text-emerald-500', accept: 'image/*',          desc: 'Photo or carousel' },
+    { id: 'ppt'   as const, label: 'Slides',   icon: MonitorPlay, color: 'text-amber-500',   accept: '.ppt,.pptx,.key',  desc: 'PowerPoint or Keynote' },
 ];
 
-export function LessonDialog({
-    open, onOpenChange, editingLesson, setEditingLesson, onSave
-}: LessonDialogProps) {
+// Per-type accent colors for block identity
+const TYPE_ACCENT: Record<string, { border: string; lightBg: string; darkBg: string }> = {
+    video: { border: '#f43f5e', lightBg: '#fff1f2', darkBg: 'rgba(244,63,94,0.07)' },
+    pdf:   { border: '#0ea5e9', lightBg: '#f0f9ff', darkBg: 'rgba(14,165,233,0.07)' },
+    image: { border: '#10b981', lightBg: '#ecfdf5', darkBg: 'rgba(16,185,129,0.07)' },
+    ppt:   { border: '#f59e0b', lightBg: '#fffbeb', darkBg: 'rgba(245,158,11,0.07)' },
+};
+
+const LESSON_MODES = [
+    { id: 'content' as const, label: 'Content', icon: Layers,     desc: 'Video, docs & images' },
+    { id: 'quiz' as const,    label: 'Quiz',    icon: HelpCircle, desc: 'Interactive test' },
+];
+
+function genId() { return Math.random().toString(36).slice(2, 9); }
+
+// ── URL type-match validation ──────────────────────────────────────────────
+// Returns a warning string if the URL doesn't match the expected content type,
+// or null if it looks correct (or is an uploaded/blank URL).
+function validateBlockUrl(type: ContentItem['type'], url: string): string | null {
+    if (!url) return null;
+    // Uploaded files are always fine — they passed the accept filter at upload time
+    if (
+        url.startsWith('/api/') ||
+        url.startsWith('cf-stream://') ||
+        url.includes('r2.cloudflarestorage') ||
+        url.includes('cloudflare') ||
+        url.includes('amazonaws') ||
+        url.includes('blob.core.windows')
+    ) return null;
+
+    if (type === 'video') {
+        const ok = /youtube\.com|youtu\.be|vimeo\.com|dailymotion|\.mp4|\.mov|\.avi|\.mkv|\.webm|\.m4v/i.test(url);
+        if (!ok) return 'URL doesn\'t look like a video — expected YouTube/Vimeo link or .mp4/.mov file';
+    }
+    if (type === 'pdf') {
+        const ok = /\.pdf($|\?)|\.doc($|\?)|\.docx($|\?)/i.test(url);
+        if (!ok) return 'URL doesn\'t look like a document — expected .pdf or .docx link';
+    }
+    if (type === 'image') {
+        const ok = /\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)($|\?)/i.test(url);
+        if (!ok) return 'URL doesn\'t look like an image — expected .jpg, .png, .webp, etc.';
+    }
+    if (type === 'ppt') {
+        const ok = /\.(ppt|pptx|key|pdf)($|\?)/i.test(url);
+        if (!ok) return 'URL doesn\'t look like a presentation — expected .pptx, .key, or .pdf link';
+    }
+    return null;
+}
+
+// Derive lesson mode from content_type
+function getLessonMode(contentType?: string): 'content' | 'quiz' {
+    if (contentType === 'quiz') return 'quiz';
+    return 'content';
+}
+
+// Get all image URLs from a block (first + additional)
+function getImageUrls(item: ContentItem): string[] {
+    if (item.urls && item.urls.length > 0) return item.urls;
+    return item.url ? [item.url] : [''];
+}
+
+// Parse content_items JSON from lesson
+function parseContentItems(lesson: Partial<Lesson> | null): ContentItem[] {
+    if (!lesson) return [];
+    const raw = (lesson as any).content_items;
+    if (raw) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch {}
+    }
+    // Fall back: wrap single content_url as one block
+    const mode = getLessonMode(lesson.content_type);
+    if (mode === 'content' && lesson.content_url) {
+        return [{ id: 'legacy', type: (lesson.content_type as ContentItem['type']) || 'video', url: lesson.content_url }];
+    }
+    return [];
+}
+
+export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLesson, onSave }: LessonDialogProps) {
     const { isDark, accent } = useAdminTheme();
     const isEditing = !!editingLesson?.id;
     const router = useRouter();
-    const [libraryOpen, setLibraryOpen] = React.useState(false);
-    const [importOpen, setImportOpen] = React.useState(false);
-    const [uploadFile, setUploadFile] = React.useState<File | null>(null);
-    const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
-    const [validationError, setValidationError] = React.useState<string | null>(null);
-    const [isDraggingOver, setIsDraggingOver] = React.useState(false);
 
-    const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload({
-        onSuccess: (data) => {
-            setEditingLesson({ ...editingLesson, content_url: data.url, asset_id: data.assetId ?? null });
-            toast.success('File uploaded successfully');
-            setUploadFile(null);
-        },
-        onError: (err) => {
-            toast.error(err || 'Failed to upload file');
-        }
-    });
+    // ── Derived state ─────────────────────────────────────────────
+    const lessonMode = getLessonMode(editingLesson?.content_type);
+
+    // contentItems is derived from editingLesson — no separate state needed
+    const contentItems = React.useMemo(
+        () => parseContentItems(editingLesson),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [(editingLesson as any)?.content_items, editingLesson?.content_url, editingLesson?.content_type]
+    );
+
+    // ── Upload state ──────────────────────────────────────────────
+    const [showBlockPicker, setShowBlockPicker] = React.useState(false);
+    const [activeUploadItemId, setActiveUploadItemId] = React.useState<string | null>(null);
+    const [uploadFile, setUploadFile] = React.useState<File | null>(null);
+    const [libraryOpen, setLibraryOpen] = React.useState(false);
+    const [libraryTargetId, setLibraryTargetId] = React.useState<string | null>(null);
+    const [importOpen, setImportOpen] = React.useState(false);
+    const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
+
+    // No onSuccess/onError callbacks — we await upload() directly to avoid stale closures
+    const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload();
 
     React.useEffect(() => {
-        if (isUploading && open) {
-            uploadStore.updateTask(uploadId, { isLocalVisible: true });
-        } else {
-            uploadStore.updateTask(uploadId, { isLocalVisible: false });
-        }
+        uploadStore.updateTask(uploadId, { isLocalVisible: isUploading && open });
         return () => { uploadStore.updateTask(uploadId, { isLocalVisible: false }); };
     }, [uploadId, isUploading, open]);
 
-    const libraryFilterType = React.useMemo(() => {
-        if (editingLesson?.content_type === 'video') return 'video' as const;
-        if (editingLesson?.content_type === 'pdf' || editingLesson?.content_type === 'ppt') return 'document' as const;
-        if (editingLesson?.content_type === 'image') return 'image' as const;
-        return undefined;
-    }, [editingLesson?.content_type]);
-
-    const validateUrl = (url: string, type: string) => {
-        if (!url) return null;
-        if (url.startsWith('http://') && !url.includes('localhost'))
-            return 'Insecure link (HTTP). Use HTTPS.';
-        try {
-            const parsed = new URL(url);
-            const ext = parsed.pathname.split('.').pop()?.toLowerCase();
-            if (type === 'video') {
-                const ok = ['mp4', 'webm', 'ogg', 'mov'].includes(ext || '')
-                    || url.includes('youtube.com') || url.includes('youtu.be')
-                    || url.includes('vimeo.com')
-                    || url.includes('r2.cloudflarestorage.com')
-                    || url.startsWith('/api/media/');
-                if (!ok) return 'Provide a valid Video URL (MP4, YouTube, Vimeo).';
-            } else if (type === 'pdf') {
-                const ok = ['pdf', 'doc', 'docx', 'txt'].includes(ext || '') || url.includes('docs.google.com');
-                if (!ok) return 'Provide a valid Document URL (PDF, Word, Google Docs).';
-            } else if (type === 'ppt') {
-                const ok = ['ppt', 'pptx', 'key'].includes(ext || '') || url.includes('docs.google.com/presentation');
-                if (!ok) return 'Provide a valid Slides URL (PPTX, Google Slides).';
-            } else if (type === 'image') {
-                const ok = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'].includes(ext || '')
-                    || url.includes('r2.cloudflarestorage.com') || url.startsWith('/api/media/');
-                if (!ok) return 'Provide a valid Image URL (JPG, PNG, WebP, GIF).';
-            }
-        } catch {
-            if (!url.startsWith('/') && !url.startsWith('./'))
-                return 'Invalid URL. Include http:// or https://';
-        }
-        return null;
-    };
-
+    // Reset picker when dialog closes or lesson switches
     React.useEffect(() => {
-        if (editingLesson?.content_url && editingLesson?.content_type) {
-            setValidationError(validateUrl(editingLesson.content_url, editingLesson.content_type));
-        } else {
-            setValidationError(null);
-        }
-    }, [editingLesson?.content_url, editingLesson?.content_type]);
+        if (!open) setShowBlockPicker(false);
+    }, [open]);
 
-    const acceptMap: Record<string, string> = {
-        video: 'video/*',
-        pdf: '.pdf,.doc,.docx,.txt',
-        ppt: '.ppt,.pptx,.key',
-        image: 'image/*',
+    // ── Helpers: write content_items back into editingLesson ──────
+    const syncItems = React.useCallback((items: ContentItem[]) => {
+        // Pick DB-safe content_type from first item ('image' not in enum → use 'pdf')
+        const firstType = items[0]?.type || 'video';
+        const dbType: any = firstType === 'image' ? 'pdf' : firstType;
+        setEditingLesson({
+            ...editingLesson,
+            content_type: dbType,
+            content_url: items[0]?.url || '',
+            content_items: items.length > 0 ? JSON.stringify(items) : null,
+            content_watched: false, // reset watched if items change
+        } as any);
+    }, [editingLesson, setEditingLesson]);
+
+    const addBlock = (type: ContentItem['type']) => {
+        syncItems([...contentItems, { id: genId(), type, url: '' }]);
     };
 
-    const handleFileChosen = async (file: File) => {
-        if (!file) return;
-        const maxSize = 2048 * 1024 * 1024;
-        if (file.size > maxSize) { toast.error('File too large. Max 2 GB.'); return; }
+    const removeBlock = (id: string) => {
+        syncItems(contentItems.filter(i => i.id !== id));
+    };
 
-        if (file.type.startsWith('video/')) {
-            setUploadFile(file);
-            try {
+    const moveBlock = (id: string, dir: 'up' | 'down') => {
+        const idx = contentItems.findIndex(i => i.id === id);
+        if (dir === 'up' && idx === 0) return;
+        if (dir === 'down' && idx === contentItems.length - 1) return;
+        const next = [...contentItems];
+        const swap = dir === 'up' ? idx - 1 : idx + 1;
+        [next[idx], next[swap]] = [next[swap], next[idx]];
+        syncItems(next);
+    };
+
+    const applyBlockUpdate = (id: string, key: 'type' | 'url', value: string) => {
+        const next = contentItems.map(i => i.id === id ? { ...i, [key]: value } : i);
+        syncItems(next as ContentItem[]);
+    };
+
+    const applyImageUrls = (id: string, newUrls: string[]) => {
+        const next = contentItems.map(i =>
+            i.id === id ? { ...i, url: newUrls[0] || '', urls: newUrls } : i
+        );
+        syncItems(next as ContentItem[]);
+    };
+
+    // ── Switch lesson mode ────────────────────────────────────────
+    const switchMode = (mode: 'content' | 'quiz') => {
+        if (mode === 'quiz') {
+            setEditingLesson({ ...editingLesson, content_type: 'quiz', content_url: '', content_items: null } as any);
+        } else {
+            // Switch to content mode: preserve existing items
+            const preserved = contentItems.length > 0 ? contentItems : [];
+            setEditingLesson({
+                ...editingLesson,
+                content_type: 'video',
+                content_url: preserved[0]?.url || '',
+                content_items: preserved.length > 0 ? JSON.stringify(preserved) : null,
+            } as any);
+        }
+    };
+
+    // ── File upload for a specific block ──────────────────────────
+    const handleFileUpload = async (file: File, itemId: string) => {
+        if (!file) return;
+        if (file.size > 2048 * 1024 * 1024) { toast.error('Max 2 GB'); return; }
+        setActiveUploadItemId(itemId);
+        setUploadFile(file);
+
+        try {
+            if (file.type.startsWith('video/')) {
                 const res = await fetch('/api/media/stream-upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -146,647 +235,692 @@ export function LessonDialog({
                 });
                 if (!res.ok) {
                     if (res.status === 503) {
-                        toast.info('Cloudflare Stream not configured — using standard upload.');
-                        await upload(file, { purpose: 'library', storagePreference: storagePref, folder: 'lesson' });
-                        return;
+                        toast.info('Using standard upload (Cloudflare Stream not configured)');
+                    } else {
+                        throw new Error('Stream upload unavailable');
                     }
-                    const err = await res.json().catch(() => ({ error: 'Stream upload unavailable' }));
-                    throw new Error(err.error || 'Failed to create stream upload');
+                } else {
+                    const { uploadUrl, uid } = await res.json();
+                    toast.info('Uploading to Cloudflare Stream…');
+                    const fd = new FormData(); fd.append('file', file);
+                    const cfRes = await fetch(uploadUrl, { method: 'POST', body: fd });
+                    if (!cfRes.ok) throw new Error('Cloudflare upload failed');
+                    applyBlockUpdate(itemId, 'url', `cf-stream://${uid}`);
+                    toast.success('Video uploaded to Cloudflare Stream!');
+                    return;
                 }
-                const { uploadUrl, uid } = await res.json();
-                toast.info('Uploading to Cloudflare Stream…');
-                const formData = new FormData();
-                formData.append('file', file);
-                const cfRes = await fetch(uploadUrl, { method: 'POST', body: formData });
-                if (!cfRes.ok) throw new Error('Failed to upload to Cloudflare Stream');
-                setEditingLesson({ ...editingLesson, content_url: `cf-stream://${uid}`, asset_id: null });
-                toast.success('Video uploaded to Cloudflare Stream!');
-                setUploadFile(null);
-            } catch (err: any) {
-                toast.error(err?.message || 'Video upload failed');
-                setUploadFile(null);
             }
+            // Standard upload (non-video or CF Stream fallback)
+            const result: any = await upload(file, { purpose: 'library', storagePreference: storagePref, folder: 'lesson' });
+            if (result?.url) applyBlockUpdate(itemId, 'url', result.url);
+            toast.success('File uploaded');
+        } catch (err: any) {
+            toast.error(err?.message || 'Upload failed');
+        } finally {
+            setActiveUploadItemId(null);
+            setUploadFile(null);
+        }
+    };
+
+    // ── Pre-save validation ───────────────────────────────────────
+    const handleSave = () => {
+        if (!editingLesson?.title?.trim()) {
+            toast.error('Lesson title is required');
             return;
         }
-
-        setUploadFile(file);
-        const additionalData: Record<string, string> = {
-            purpose: 'library', storagePreference: storagePref, folder: 'lesson'
-        };
-        if (editingLesson?.id) {
-            additionalData.contextType = 'lesson';
-            additionalData.contextId = editingLesson.id;
+        if (lessonMode === 'content' && contentItems.length > 0) {
+            // Block saving if any content block has no URL at all
+            const emptyBlocks = contentItems.filter(item => {
+                if (item.type === 'image') {
+                    return getImageUrls(item).every(u => !u.trim());
+                }
+                return !item.url.trim();
+            });
+            if (emptyBlocks.length > 0) {
+                const labels = emptyBlocks.map(b => BLOCK_TYPES.find(bt => bt.id === b.type)?.label || b.type).join(', ');
+                toast.error(`Missing content URL in: ${labels}. Please add a URL or upload a file, or remove the empty block.`);
+                return;
+            }
+            // Warn (but don't block) if URLs look mismatched
+            const mismatchBlocks = contentItems.filter(item => {
+                if (item.type === 'image') return false; // multi-image validated individually
+                return !!validateBlockUrl(item.type, item.url);
+            });
+            if (mismatchBlocks.length > 0) {
+                const labels = mismatchBlocks.map(b => BLOCK_TYPES.find(bt => bt.id === b.type)?.label || b.type).join(', ');
+                toast.warning(`Content type mismatch in: ${labels}. Double-check the URLs, then save again.`, {
+                    action: { label: 'Save anyway', onClick: onSave },
+                });
+                return;
+            }
         }
-        try { await upload(file, additionalData); } catch (error) { console.error('Upload error:', error); }
+        onSave();
     };
 
-    const selectedType = CONTENT_TYPES.find(c => c.id === editingLesson?.content_type);
-    const hasContent = !!editingLesson?.content_url;
-    const isQuiz = editingLesson?.content_type === 'quiz';
-    const isAssignment = editingLesson?.content_type === 'assignment';
-
-    // ─────────────────────────────────────────────────────────────
-    // Live Preview helpers
-    // ─────────────────────────────────────────────────────────────
-    const PreviewContentArea = () => {
-        const url = editingLesson?.content_url;
-        const type = editingLesson?.content_type;
-
-        if (!url && !type) {
-            return (
-                <div className="flex flex-col items-center justify-center h-full text-center p-8 gap-3">
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-                        <Eye size={28} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
-                    </div>
-                    <p className={`text-xs font-black uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>
-                        Preview will appear here
-                    </p>
-                </div>
-            );
-        }
-
-        if (type === 'video') {
-            const isCf = url?.startsWith('cf-stream://');
-            return (
-                <div className="w-full aspect-video bg-slate-950 flex items-center justify-center relative overflow-hidden rounded-xl">
-                    <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-950" />
-                    <div className="relative z-10 flex flex-col items-center gap-3">
-                        <div className="w-14 h-14 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center backdrop-blur-sm">
-                            <Play size={22} className="text-white ml-1" fill="white" />
-                        </div>
-                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">
-                            {isCf ? 'Cloudflare Stream' : 'Video Lesson'}
-                        </span>
-                    </div>
-                    {url && !url.startsWith('cf-stream://') && (
-                        <div className="absolute bottom-3 left-3 right-3">
-                            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-                                <div className="h-full bg-white/40 rounded-full w-1/3" />
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        if (type === 'image' && url) {
-            return (
-                <div className="w-full aspect-video bg-slate-100 rounded-xl overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt="Preview" className="w-full h-full object-contain" />
-                </div>
-            );
-        }
-
-        if (type === 'pdf') {
-            return (
-                <div className="w-full aspect-video bg-sky-50 rounded-xl flex flex-col items-center justify-center gap-3 border border-sky-100">
-                    <div className="w-12 h-14 bg-sky-600 rounded-lg flex items-center justify-center shadow-lg">
-                        <FileText size={20} className="text-white" />
-                    </div>
-                    <p className="text-xs font-black text-sky-600 uppercase tracking-widest">PDF Document</p>
-                    {url && <p className="text-[9px] text-sky-400 font-bold truncate max-w-[200px]">{url.split('/').pop()}</p>}
-                </div>
-            );
-        }
-
-        if (type === 'ppt') {
-            return (
-                <div className="w-full aspect-video bg-amber-50 rounded-xl flex flex-col items-center justify-center gap-3 border border-amber-100">
-                    <div className="w-12 h-14 bg-amber-500 rounded-lg flex items-center justify-center shadow-lg">
-                        <Layers size={20} className="text-white" />
-                    </div>
-                    <p className="text-xs font-black text-amber-600 uppercase tracking-widest">Presentation</p>
-                </div>
-            );
-        }
-
-        if (type === 'quiz') {
-            return (
-                <div className="w-full aspect-video bg-indigo-50 rounded-xl flex flex-col items-center justify-center gap-3 border border-indigo-100">
-                    <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                        <HelpCircle size={26} className="text-white" />
-                    </div>
-                    <p className="text-xs font-black text-indigo-600 uppercase tracking-widest">Interactive Quiz</p>
-                </div>
-            );
-        }
-
-        if (type === 'assignment') {
-            return (
-                <div className="w-full aspect-video bg-violet-50 rounded-xl flex flex-col items-center justify-center gap-3 border border-violet-100">
-                    <div className="w-14 h-14 bg-violet-600 rounded-2xl flex items-center justify-center shadow-lg">
-                        <Trophy size={26} className="text-white" />
-                    </div>
-                    <p className="text-xs font-black text-violet-600 uppercase tracking-widest">Assignment</p>
-                </div>
-            );
-        }
-
-        return (
-            <div className="w-full aspect-video bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
-                <FileImage size={32} className="text-slate-300" />
-            </div>
-        );
+    // ── Library filter type per block ─────────────────────────────
+    const getLibraryFilter = (type: string): 'video' | 'document' | 'image' | undefined => {
+        if (type === 'video') return 'video';
+        if (type === 'image') return 'image';
+        if (type === 'pdf' || type === 'ppt') return 'document';
+        return undefined;
     };
 
+    // ── Render ────────────────────────────────────────────────────
     return (
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className={cn(
-                    "w-[95vw] max-w-[580px] xl:max-w-[960px] rounded-2xl sm:rounded-3xl border-0 shadow-2xl p-0 overflow-hidden",
+                    'w-[95vw] max-w-[580px] rounded-2xl sm:rounded-3xl border-0 shadow-2xl p-0 overflow-hidden',
                     isDark ? 'bg-[#0f1219]' : 'bg-white'
                 )}>
-
-                    {/* ── Header ──────────────────────────────────────── */}
-                    <div className={`px-5 sm:px-7 py-4 sm:py-5 border-b flex items-center gap-3 ${t.border(isDark)}`}>
+                    {/* ── Header ───────────────────────────────── */}
+                    <div className={`px-6 py-4 border-b flex items-center gap-3 ${t.border(isDark)}`}>
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${accent.bg} text-slate-900 flex-shrink-0`}>
                             <BookOpen size={17} />
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <h2 className={`text-base sm:text-lg font-[900] tracking-tight leading-none ${t.textPrimary(isDark)}`}>
+                        <div className="flex-1 min-w-0 text-left">
+                            <DialogTitle className={`text-base font-[900] tracking-tight leading-none ${t.textPrimary(isDark)}`}>
                                 {isEditing ? 'Update Lesson' : 'Create Lesson'}
-                            </h2>
-                            <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${t.textMuted(isDark)}`}>
+                            </DialogTitle>
+                            <DialogDescription className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${t.textMuted(isDark)}`}>
                                 {isEditing ? 'Edit lesson details & content' : 'Add a new lesson to this course'}
-                            </p>
+                            </DialogDescription>
                         </div>
                         <button
                             onClick={() => onOpenChange(false)}
-                            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'text-slate-500 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${isDark ? 'text-slate-500 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
                         >
                             <X size={16} />
                         </button>
                     </div>
 
-                    {/* ── Body: two-column only at xl (1280px+) ───────── */}
-                    <div className="flex flex-col xl:flex-row" style={{ maxHeight: 'calc(90vh - 130px)', overflow: 'hidden' }}>
+                    {/* ── Body ─────────────────────────────────── */}
+                    <div
+                        className="overflow-y-auto px-6 py-5 space-y-5"
+                        style={{ maxHeight: 'calc(90vh - 130px)' }}
+                    >
+                        {/* Title */}
+                        <div className="space-y-1.5">
+                            <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Lesson Title *</Label>
+                            <Input
+                                placeholder="e.g. Introduction to Photosynthesis"
+                                value={editingLesson?.title || ''}
+                                onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })}
+                                className={`rounded-xl h-11 px-4 text-sm font-semibold border-2 transition-all ${isDark ? 'bg-white/[0.06] text-white border-white/8 focus-visible:border-white/20' : 'bg-slate-50 border-slate-200 text-slate-900 focus-visible:border-slate-400'}`}
+                            />
+                        </div>
 
-                        {/* ── LEFT: Form ─────────────────────────────── */}
-                        <div className={`flex-1 min-w-0 overflow-y-auto px-5 sm:px-7 py-5 sm:py-6 space-y-5 ${isDark ? 'bg-[#0f1219]' : 'bg-white'}`}>
-
-                            {/* Title */}
-                            <div className="space-y-1.5">
-                                <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Lesson Title *</Label>
-                                <Input
-                                    placeholder="e.g. Introduction to Photosynthesis"
-                                    value={editingLesson?.title || ''}
-                                    onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })}
-                                    className={`rounded-xl h-11 px-4 text-sm font-semibold border-2 transition-all ${isDark ? 'bg-white/[0.06] text-white border-white/8 focus-visible:border-white/20' : 'bg-slate-50 border-slate-200 text-slate-900 focus-visible:border-slate-400'}`}
-                                />
+                        {/* Lesson Type selector */}
+                        <div className="space-y-2">
+                            <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Lesson Type</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {LESSON_MODES.map((mode) => {
+                                    const active = lessonMode === mode.id;
+                                    return (
+                                        <button
+                                            key={mode.id}
+                                            onClick={() => switchMode(mode.id)}
+                                            className={cn(
+                                                'flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border-2 text-center transition-all cursor-pointer',
+                                                active
+                                                    ? isDark
+                                                        ? `${accent.softDark.split(' ')[0]} border-${accent.name}-400/60`
+                                                        : 'bg-indigo-50 border-indigo-300'
+                                                    : isDark
+                                                        ? 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]'
+                                                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                                            )}
+                                        >
+                                            <mode.icon
+                                                size={16}
+                                                className={active
+                                                    ? isDark ? accent.text : 'text-indigo-600'
+                                                    : isDark ? 'text-slate-500' : 'text-slate-400'}
+                                            />
+                                            <span className={cn(
+                                                'text-xs font-black leading-none',
+                                                active ? isDark ? accent.text : 'text-indigo-700' : t.textPrimary(isDark)
+                                            )}>{mode.label}</span>
+                                            <span className={`text-[9px] font-medium leading-none ${t.textMuted(isDark)}`}>{mode.desc}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
+                        </div>
 
-                            {/* Content Type */}
-                            <div className="space-y-2">
-                                <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Content Type</Label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {CONTENT_TYPES.map((type) => {
-                                        const isSelected = editingLesson?.content_type === type.id;
+                        {/* ── CONTENT MODE: multi-block builder ── */}
+                        {lessonMode === 'content' && (
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>
+                                        Content Blocks
+                                    </Label>
+                                    <span className={`text-[9px] font-semibold ${t.textMuted(isDark)}`}>
+                                        Shown to students in sequence
+                                    </span>
+                                </div>
+
+                                {/* Empty state */}
+                                {contentItems.length === 0 && (
+                                    <div className={cn(
+                                        'py-10 rounded-2xl border-2 border-dashed flex flex-col items-center gap-2',
+                                        isDark ? 'border-white/8 bg-white/[0.01]' : 'border-slate-200 bg-slate-50'
+                                    )}>
+                                        <Layers size={26} className={isDark ? 'text-slate-700' : 'text-slate-300'} />
+                                        <p className={`text-xs font-bold ${t.textMuted(isDark)}`}>No content blocks yet</p>
+                                        <p className={`text-[10px] ${t.textMuted(isDark)}`}>Click below to add video, docs, or images</p>
+                                    </div>
+                                )}
+
+                                {/* Block list */}
+                                <div className="space-y-2">
+                                    {contentItems.map((item, idx) => {
+                                        const bt = BLOCK_TYPES.find(b => b.id === item.type) || BLOCK_TYPES[0];
+                                        const isUploadingThis = isUploading && activeUploadItemId === item.id;
+                                        const isUploaded = item.url.startsWith('/api/') || item.url.includes('r2.cloudflare') || item.url.startsWith('cf-stream://');
+                                        const displayUrl = isUploaded
+                                            ? item.url.startsWith('cf-stream://')
+                                                ? `☁ Stream: ${item.url.replace('cf-stream://', '').slice(0, 16)}…`
+                                                : '✓ Uploaded'
+                                            : item.url;
+
+                                        const typeAccent = TYPE_ACCENT[item.type] || TYPE_ACCENT.video;
                                         return (
-                                            <button
-                                                key={type.id}
-                                                onClick={() => setEditingLesson({ ...editingLesson, content_type: type.id })}
-                                                className={cn(
-                                                    "flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer border-2 transition-all text-left",
-                                                    isSelected
-                                                        ? isDark
-                                                            ? `${accent.softDark.split(' ')[0]} border-${accent.name}-400/60 shadow-lg`
-                                                            : `${type.bg} ${type.border} shadow-sm`
-                                                        : isDark
-                                                            ? 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]'
-                                                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
-                                                )}
+                                            <div
+                                                key={item.id}
+                                                className={cn('rounded-2xl overflow-hidden', !isDark && 'shadow-sm')}
+                                                style={{
+                                                    border: `2px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                                                    borderLeftWidth: '4px',
+                                                    borderLeftColor: typeAccent.border,
+                                                }}
                                             >
-                                                <div className={cn(
-                                                    'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
-                                                    isSelected
-                                                        ? isDark ? `${accent.bg} text-slate-900` : `${type.bg} ${type.color}`
-                                                        : isDark ? 'bg-white/10 text-slate-400' : 'bg-white text-slate-400 border border-slate-200'
-                                                )}>
-                                                    <type.icon size={15} />
+                                                {/* Block header: clear type identity + compact type switcher */}
+                                                <div
+                                                    className="flex items-center gap-2.5 px-3 py-2.5 border-b"
+                                                    style={{
+                                                        backgroundColor: isDark ? typeAccent.darkBg : typeAccent.lightBg,
+                                                        borderBottomColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                                                    }}
+                                                >
+                                                    {/* Step number */}
+                                                    <span className={`text-[9px] font-black w-4 flex-shrink-0 ${isDark ? 'text-white/20' : 'text-slate-300'}`}>
+                                                        {idx + 1}
+                                                    </span>
+
+                                                    {/* Active type label */}
+                                                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                                        <bt.icon size={13} className={bt.color} />
+                                                        <span className={`text-[11px] font-black uppercase tracking-wide ${bt.color}`}>{bt.label}</span>
+                                                    </div>
+
+                                                    {/* Delete block */}
+                                                    <button
+                                                        onClick={() => removeBlock(item.id)}
+                                                        className={cn(
+                                                            'w-7 h-7 rounded-lg flex items-center justify-center transition-colors flex-shrink-0',
+                                                            isDark
+                                                                ? 'hover:bg-rose-500/20 text-slate-600 hover:text-rose-400'
+                                                                : 'hover:bg-rose-50 text-slate-300 hover:text-rose-500'
+                                                        )}
+                                                    >
+                                                        <X size={13} />
+                                                    </button>
                                                 </div>
-                                                <div className="min-w-0">
-                                                    <p className={cn('text-xs font-black tracking-tight leading-none truncate', isSelected ? (isDark ? accent.text : type.color) : t.textPrimary(isDark))}>
-                                                        {type.label}
-                                                    </p>
-                                                    <p className={cn('text-[9px] font-medium mt-0.5 leading-none truncate', t.textMuted(isDark))}>{type.desc}</p>
+
+                                                {/* URL / upload row */}
+                                                <div className="flex flex-col gap-2 p-3">
+                                                    {item.type === 'image' ? (
+                                                        /* ── Multi-image carousel builder ── */
+                                                        <div className="flex flex-col gap-2">
+                                                            {getImageUrls(item).map((imgUrl, imgIdx) => {
+                                                                const isUploadingSlot = isUploading && activeUploadItemId === `${item.id}:${imgIdx}`;
+                                                                const isUploadedSlot = imgUrl.startsWith('/api/') || imgUrl.includes('r2.cloudflare');
+                                                                return (
+                                                                    <div key={imgIdx} className="flex items-center gap-1.5">
+                                                                        <div className="flex-1 relative">
+                                                                            <Link2 size={11} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+                                                                            <Input
+                                                                                placeholder={`Image ${imgIdx + 1} URL…`}
+                                                                                value={isUploadedSlot ? '✓ Uploaded' : imgUrl}
+                                                                                readOnly={isUploadedSlot}
+                                                                                onChange={(e) => {
+                                                                                    const next = [...getImageUrls(item)];
+                                                                                    next[imgIdx] = e.target.value;
+                                                                                    applyImageUrls(item.id, next);
+                                                                                }}
+                                                                                className={cn(
+                                                                                    'h-9 rounded-xl pl-8 pr-3 text-xs font-medium border-2',
+                                                                                    isUploadedSlot && (isDark ? 'text-emerald-400' : 'text-emerald-600'),
+                                                                                    isDark
+                                                                                        ? 'bg-white/[0.04] text-white border-white/8 focus-visible:border-white/20'
+                                                                                        : 'bg-slate-50 border-slate-200 focus-visible:border-slate-400'
+                                                                                )}
+                                                                            />
+                                                                        </div>
+                                                                        {/* Upload */}
+                                                                        <label className={cn(
+                                                                            'h-9 px-2 rounded-xl border-2 flex items-center gap-1 font-black text-[10px] uppercase tracking-wide cursor-pointer flex-shrink-0 transition-all select-none',
+                                                                            isDark
+                                                                                ? 'border-white/10 text-slate-500 hover:border-white/20 hover:text-white'
+                                                                                : 'border-slate-200 text-slate-400 hover:border-slate-400 hover:text-slate-700'
+                                                                        )}>
+                                                                            <input
+                                                                                type="file"
+                                                                                className="hidden"
+                                                                                accept="image/*"
+                                                                                onChange={async (e) => {
+                                                                                    const f = e.target.files?.[0];
+                                                                                    if (f) {
+                                                                                        setActiveUploadItemId(`${item.id}:${imgIdx}`);
+                                                                                        setUploadFile(f);
+                                                                                        try {
+                                                                                            const result: any = await upload(f, { purpose: 'library', storagePreference: storagePref, folder: 'lesson' });
+                                                                                            if (result?.url) {
+                                                                                                const next = [...getImageUrls(item)];
+                                                                                                next[imgIdx] = result.url;
+                                                                                                applyImageUrls(item.id, next);
+                                                                                            }
+                                                                                            toast.success('Image uploaded');
+                                                                                        } catch { toast.error('Upload failed'); }
+                                                                                        finally { setActiveUploadItemId(null); setUploadFile(null); }
+                                                                                    }
+                                                                                }}
+                                                                            />
+                                                                            {isUploadingSlot
+                                                                                ? <><Loader2 size={10} className="animate-spin" /> {progress}%</>
+                                                                                : <><Upload size={10} /> Upload</>
+                                                                            }
+                                                                        </label>
+                                                                        {/* Library */}
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => { setLibraryTargetId(`${item.id}:${imgIdx}`); setLibraryOpen(true); }}
+                                                                            className={cn(
+                                                                                'h-9 px-2 rounded-xl border-2 flex items-center gap-1 font-black text-[10px] uppercase tracking-wide flex-shrink-0 transition-all',
+                                                                                isDark
+                                                                                    ? 'border-white/10 text-slate-500 hover:border-white/20 hover:text-white'
+                                                                                    : 'border-slate-200 text-slate-400 hover:border-slate-400 hover:text-slate-700'
+                                                                            )}
+                                                                        >
+                                                                            <Library size={10} /> Lib
+                                                                        </button>
+                                                                        {getImageUrls(item).length > 1 && (
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    const next = getImageUrls(item).filter((_, i) => i !== imgIdx);
+                                                                                    applyImageUrls(item.id, next);
+                                                                                }}
+                                                                                className={cn(
+                                                                                    'h-9 w-9 rounded-xl border-2 flex items-center justify-center flex-shrink-0 transition-all',
+                                                                                    isDark
+                                                                                        ? 'border-white/10 text-slate-600 hover:border-rose-500/30 hover:text-rose-400'
+                                                                                        : 'border-slate-200 text-slate-300 hover:border-rose-200 hover:text-rose-500'
+                                                                                )}
+                                                                            >
+                                                                                <X size={12} />
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            <button
+                                                                onClick={() => applyImageUrls(item.id, [...getImageUrls(item), ''])}
+                                                                className={cn(
+                                                                    'h-8 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wide transition-all',
+                                                                    isDark
+                                                                        ? 'border-white/10 text-slate-600 hover:border-white/20 hover:text-slate-300'
+                                                                        : 'border-slate-200 text-slate-400 hover:border-emerald-300 hover:text-emerald-600'
+                                                                )}
+                                                            >
+                                                                <Plus size={11} /> Add Another Image
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        /* ── Single URL + upload (video, pdf, ppt) ── */
+                                                        <div className="flex flex-col gap-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex-1 relative">
+                                                                <Link2 size={11} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+                                                                <Input
+                                                                    placeholder={`Paste ${bt.label.toLowerCase()} URL…`}
+                                                                    value={displayUrl}
+                                                                    readOnly={isUploaded}
+                                                                    onChange={(e) => applyBlockUpdate(item.id, 'url', e.target.value)}
+                                                                    className={cn(
+                                                                        'h-9 rounded-xl pl-8 pr-3 text-xs font-medium border-2',
+                                                                        isUploaded && (isDark ? 'text-emerald-400' : 'text-emerald-600'),
+                                                                        !isUploaded && validateBlockUrl(item.type, item.url) && 'border-amber-400',
+                                                                        isDark
+                                                                            ? 'bg-white/[0.04] text-white border-white/8 focus-visible:border-white/20'
+                                                                            : 'bg-slate-50 border-slate-200 focus-visible:border-slate-400'
+                                                                    )}
+                                                                />
+                                                            </div>
+                                                            <label className={cn(
+                                                                'h-9 px-3 rounded-xl border-2 flex items-center gap-1.5 font-black text-[10px] uppercase tracking-wide cursor-pointer flex-shrink-0 transition-all select-none',
+                                                                isUploadingThis
+                                                                    ? isDark ? 'border-white/20 text-white' : 'border-slate-300 text-slate-600'
+                                                                    : isDark
+                                                                        ? 'border-white/10 text-slate-500 hover:border-white/20 hover:text-white'
+                                                                        : 'border-slate-200 text-slate-400 hover:border-slate-400 hover:text-slate-700'
+                                                            )}>
+                                                                <input
+                                                                    type="file"
+                                                                    className="hidden"
+                                                                    accept={bt.accept}
+                                                                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, item.id); }}
+                                                                />
+                                                                {isUploadingThis
+                                                                    ? <><Loader2 size={11} className="animate-spin" /> {progress}%</>
+                                                                    : <><Upload size={11} /> Upload</>
+                                                                }
+                                                            </label>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => { setLibraryTargetId(item.id); setLibraryOpen(true); }}
+                                                                className={cn(
+                                                                    'h-9 px-3 rounded-xl border-2 flex items-center gap-1.5 font-black text-[10px] uppercase tracking-wide flex-shrink-0 transition-all',
+                                                                    isDark
+                                                                        ? 'border-white/10 text-slate-500 hover:border-white/20 hover:text-white'
+                                                                        : 'border-slate-200 text-slate-400 hover:border-slate-400 hover:text-slate-700'
+                                                                )}
+                                                            >
+                                                                <Library size={11} /> Lib
+                                                            </button>
+                                                        </div>
+                                                        {/* Inline type-mismatch warning */}
+                                                        {!isUploaded && item.url && validateBlockUrl(item.type, item.url) && (
+                                                            <p className="text-[10px] font-bold text-amber-600 flex items-center gap-1 pl-1">
+                                                                <span>⚠</span> {validateBlockUrl(item.type, item.url)}
+                                                            </p>
+                                                        )}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </button>
+
+                                                {/* Upload progress */}
+                                                {isUploadingThis && uploadFile && (
+                                                    <div className="px-3 pb-3">
+                                                        <UploadProgress
+                                                            progress={progress}
+                                                            fileName={uploadFile.name}
+                                                            isUploading={isUploading}
+                                                            error={uploadError}
+                                                            onCancel={abort}
+                                                            onReset={resetUpload}
+                                                            isDark={isDark}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
                                         );
                                     })}
                                 </div>
-                            </div>
 
-                            {/* Description */}
-                            <div className="space-y-1.5">
-                                <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Description</Label>
-                                <Textarea
-                                    placeholder="What will students learn in this lesson?"
-                                    value={editingLesson?.description || ''}
-                                    onChange={(e) => setEditingLesson({ ...editingLesson, description: e.target.value })}
-                                    className={`rounded-xl min-h-[90px] p-3 text-sm font-medium border-2 transition-all resize-none ${isDark ? 'bg-white/[0.06] text-white border-white/8 focus-visible:border-white/20' : 'bg-slate-50 border-slate-200 text-slate-900 focus-visible:border-slate-400'}`}
-                                />
-                            </div>
-
-                            {/* ── Content section (not for quiz/assignment) ── */}
-                            {!isQuiz && !isAssignment && (
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Lesson Content</Label>
-                                        {hasContent && (
-                                            <button
-                                                type="button"
-                                                onClick={() => window.open(editingLesson!.content_url!, '_blank')}
-                                                className={`text-[10px] font-bold flex items-center gap-1 hover:underline ${isDark ? accent.text : 'text-slate-500'}`}
-                                            >
-                                                Open <ExternalLink size={10} />
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {/* ─ Drag-drop upload zone ─ */}
-                                    <div
-                                        onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true); }}
-                                        onDragLeave={() => setIsDraggingOver(false)}
-                                        onDrop={async (e) => {
-                                            e.preventDefault();
-                                            setIsDraggingOver(false);
-                                            const file = e.dataTransfer.files?.[0];
-                                            if (file) await handleFileChosen(file);
-                                        }}
+                                {/* Add block — type picker */}
+                                {!showBlockPicker ? (
+                                    <button
+                                        onClick={() => setShowBlockPicker(true)}
                                         className={cn(
-                                            'relative rounded-2xl border-2 border-dashed transition-all p-5 text-center cursor-pointer',
-                                            isDraggingOver
-                                                ? isDark ? `border-${accent.name}-400/60 bg-${accent.name}-400/10` : `border-indigo-400 bg-indigo-50`
-                                                : isDark ? 'border-white/8 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]' : 'border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-slate-50'
+                                            'w-full h-10 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wide transition-all',
+                                            isDark
+                                                ? 'border-white/10 text-slate-600 hover:border-white/20 hover:text-slate-300 hover:bg-white/[0.02]'
+                                                : 'border-slate-200 text-slate-400 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50'
                                         )}
-                                        onClick={() => document.getElementById('lesson-file-upload-dialog')?.click()}
                                     >
-                                        <input
-                                            type="file"
-                                            id="lesson-file-upload-dialog"
-                                            className="hidden"
-                                            accept={editingLesson?.content_type ? (acceptMap[editingLesson.content_type] || '*') : '*'}
-                                            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileChosen(f); }}
-                                        />
-                                        {isUploading ? (
-                                            <div className="flex flex-col items-center gap-2 py-2">
-                                                <Loader2 size={24} className={`animate-spin ${isDark ? accent.text : 'text-indigo-500'}`} />
-                                                <p className={`text-xs font-bold ${t.textMuted(isDark)}`}>Uploading…</p>
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center gap-2 py-1">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-white border border-slate-200'} shadow-sm`}>
-                                                    {selectedType ? <selectedType.icon size={18} className={isDark ? accent.text : selectedType.color} /> : <Upload size={18} className="text-slate-400" />}
-                                                </div>
-                                                <div>
-                                                    <p className={`text-xs font-black ${t.textPrimary(isDark)}`}>
-                                                        Drop file here or <span className={isDark ? accent.text : 'text-indigo-600'}>browse</span>
-                                                    </p>
-                                                    <p className={`text-[9px] font-medium mt-0.5 ${t.textMuted(isDark)}`}>
-                                                        {selectedType ? selectedType.desc : 'Select content type first'} · Max 2 GB
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Upload progress */}
-                                    {uploadFile && (
-                                        <UploadProgress
-                                            progress={progress}
-                                            fileName={uploadFile.name}
-                                            isUploading={isUploading}
-                                            error={uploadError}
-                                            onCancel={abort}
-                                            onReset={resetUpload}
-                                            isDark={isDark}
-                                        />
-                                    )}
-
-                                    {/* Quick link row + Library + Storage */}
-                                    <div className="flex flex-col sm:flex-row gap-2">
-                                        {/* URL input */}
-                                        <div className="flex-1 relative group">
-                                            <Link2 size={14} className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                                            <Input
-                                                placeholder="Or paste URL…"
-                                                value={editingLesson?.content_url && !editingLesson.content_url.startsWith('/api/media/') && !editingLesson.content_url.includes('r2.cloudflarestorage.com') ? editingLesson.content_url : ''}
-                                                onChange={(e) => setEditingLesson({ ...editingLesson, content_url: e.target.value })}
+                                        <Plus size={14} /> Add Content Block
+                                    </button>
+                                ) : (
+                                    <div className={cn(
+                                        'rounded-2xl border-2 p-3 space-y-2.5',
+                                        isDark ? 'border-white/8 bg-white/[0.02]' : 'border-indigo-100 bg-indigo-50/40'
+                                    )}>
+                                        <div className="flex items-center justify-between">
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-white/40' : 'text-slate-400'}`}>
+                                                Choose content type
+                                            </span>
+                                            <button
+                                                onClick={() => setShowBlockPicker(false)}
                                                 className={cn(
-                                                    'h-10 rounded-xl pl-9 pr-4 text-xs font-medium border-2 transition-all',
-                                                    validationError ? 'border-rose-400/60' : isDark ? 'bg-white/[0.04] text-white border-white/8 focus-visible:border-white/20' : 'bg-slate-50 border-slate-200 focus-visible:border-slate-400'
+                                                    'w-6 h-6 rounded-lg flex items-center justify-center transition-colors',
+                                                    isDark ? 'text-slate-600 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
                                                 )}
-                                            />
+                                            >
+                                                <X size={12} />
+                                            </button>
                                         </div>
-
-                                        {/* Browse library */}
-                                        <Button
-                                            type="button"
-                                            onClick={() => setLibraryOpen(true)}
-                                            className={`h-10 rounded-xl border-2 flex items-center gap-1.5 font-black text-[10px] uppercase tracking-wider transition-all bg-transparent flex-shrink-0 px-3 ${isDark ? `border-white/10 text-slate-400 hover:border-${accent.name}-400/40 hover:bg-${accent.name}-400/5 hover:${accent.text}` : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}
-                                        >
-                                            <Library size={13} /> Media
-                                        </Button>
-
-                                        {/* Storage toggle */}
-                                        <div className={`h-10 px-1 rounded-xl flex gap-0.5 border-2 ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-200'} flex-shrink-0`}>
-                                            {[{ id: 'r2', label: 'Cloud', icon: Cloud }, { id: 'local', label: 'Server', icon: HardDrive }].map(opt => {
-                                                const isActive = storagePref === opt.id;
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {BLOCK_TYPES.map((bt2) => {
+                                                const accent2 = TYPE_ACCENT[bt2.id];
                                                 return (
-                                                    <button key={opt.id} type="button"
-                                                        onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
+                                                    <button
+                                                        key={bt2.id}
+                                                        onClick={() => { addBlock(bt2.id); setShowBlockPicker(false); }}
                                                         className={cn(
-                                                            'flex items-center gap-1 px-2.5 rounded-lg text-[9px] font-black uppercase tracking-wide transition-all',
-                                                            isActive ? isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm border border-slate-200' : isDark ? 'text-slate-600 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
-                                                        )}>
-                                                        <opt.icon size={10} />{opt.label}
+                                                            'flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all group',
+                                                            isDark
+                                                                ? 'border-white/5 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.06]'
+                                                                : 'border-slate-100 bg-white hover:shadow-md hover:border-slate-200'
+                                                        )}
+                                                        style={!isDark ? { borderLeftColor: accent2.border, borderLeftWidth: '3px' } : {}}
+                                                    >
+                                                        <div
+                                                            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                                                            style={{ backgroundColor: isDark ? accent2.darkBg : accent2.lightBg }}
+                                                        >
+                                                            <bt2.icon size={16} className={bt2.color} />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className={`text-xs font-black leading-none mb-0.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>{bt2.label}</p>
+                                                            <p className={`text-[9px] font-medium leading-none ${isDark ? 'text-white/30' : 'text-slate-400'}`}>{bt2.desc}</p>
+                                                        </div>
                                                     </button>
                                                 );
                                             })}
                                         </div>
                                     </div>
+                                )}
 
-                                    {validationError && (
-                                        <p className="text-[10px] font-bold text-rose-500 flex items-center gap-1.5 px-1">
-                                            <span className="w-1 h-1 rounded-full bg-rose-500 flex-shrink-0" />{validationError}
-                                        </p>
-                                    )}
-
-                                    {/* Current content pill */}
-                                    {hasContent && (
-                                        <div className={cn(
-                                            'flex items-center gap-3 p-3 rounded-xl border-2 group/pill',
-                                            isDark ? `border-${accent.name}-400/20 bg-white/[0.02]` : 'border-emerald-100 bg-emerald-50/50'
-                                        )}>
-                                            <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm', isDark ? 'bg-white/5' : 'bg-white border border-slate-100')}>
-                                                {selectedType
-                                                    ? <selectedType.icon size={16} className={isDark ? 'text-white' : selectedType.color} />
-                                                    : <CheckCircle2 size={16} className="text-emerald-500" />}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className={`text-[11px] font-black truncate ${t.textPrimary(isDark)}`}>
-                                                    {editingLesson!.content_url!.startsWith('cf-stream://')
-                                                        ? `Cloudflare Stream: ${editingLesson!.content_url!.replace('cf-stream://', '').slice(0, 12)}…`
-                                                        : editingLesson!.content_url!.split('/').pop()?.split('?')[0] || 'Content linked'}
-                                                </p>
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                    <span className={`text-[9px] font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>
-                                                        {selectedType?.label || 'Content'} linked
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1 flex-shrink-0">
-                                                <button type="button"
-                                                    onClick={() => window.open(editingLesson!.content_url!, '_blank')}
-                                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/10 text-slate-500' : 'hover:bg-white text-slate-400 hover:text-slate-700'}`}>
-                                                    <ExternalLink size={14} />
+                                {/* Storage toggle */}
+                                <div className={cn(
+                                    'flex items-center justify-between px-4 py-3 rounded-xl border-2',
+                                    isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50'
+                                )}>
+                                    <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Upload to</span>
+                                    <div className={`h-7 px-1 rounded-lg flex gap-0.5 border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-200'}`}>
+                                        {[{ id: 'r2', label: 'Cloud', icon: Cloud }, { id: 'local', label: 'Server', icon: HardDrive }].map((opt) => {
+                                            const active = storagePref === opt.id;
+                                            return (
+                                                <button
+                                                    key={opt.id}
+                                                    type="button"
+                                                    onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
+                                                    className={cn(
+                                                        'flex items-center gap-1 px-2.5 rounded-md text-[9px] font-black uppercase tracking-wide transition-all',
+                                                        active
+                                                            ? isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-900 shadow-sm'
+                                                            : isDark ? 'text-slate-600 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
+                                                    )}
+                                                >
+                                                    <opt.icon size={9} /> {opt.label}
                                                 </button>
-                                                <button type="button"
-                                                    onClick={() => setEditingLesson({ ...editingLesson, content_url: '' })}
-                                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-rose-500/20 text-rose-500/40 hover:text-rose-400' : 'hover:bg-rose-50 text-slate-300 hover:text-rose-500'}`}>
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Quiz placeholder */}
-                            {isQuiz && (
-                                <div className={`p-6 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center text-center gap-3 ${isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50'}`}>
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                                        <HelpCircle size={24} />
-                                    </div>
-                                    <div>
-                                        <p className={`text-sm font-black uppercase tracking-wide ${t.textPrimary(isDark)}`}>Quiz Questions</p>
-                                        <p className={`text-[10px] font-medium mt-1 ${t.textMuted(isDark)}`}>
-                                            Questions are managed in the Quiz Builder after saving.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Assignment placeholder */}
-                            {isAssignment && (
-                                <div className={`p-6 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center text-center gap-3 ${isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50'}`}>
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-violet-500/10 text-violet-400' : 'bg-violet-50 text-violet-600'}`}>
-                                        <Trophy size={24} />
-                                    </div>
-                                    <div>
-                                        <p className={`text-sm font-black uppercase tracking-wide ${t.textPrimary(isDark)}`}>Assignment Mission</p>
-                                        <p className={`text-[10px] font-medium mt-1 ${t.textMuted(isDark)}`}>
-                                            Students submit a document. Managed in the full lesson editor.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* XP + Duration */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                    <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>XP Reward</Label>
-                                    <div className="relative">
-                                        <Zap size={13} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-violet-400' : 'text-violet-500'}`} />
-                                        <Input
-                                            type="number" min="0"
-                                            value={editingLesson?.xp_reward || 0}
-                                            onChange={(e) => setEditingLesson({ ...editingLesson, xp_reward: Number(e.target.value) })}
-                                            className={`h-10 rounded-xl pl-8 pr-4 text-sm font-bold border-2 ${isDark ? 'bg-white/[0.06] text-violet-400 border-white/8' : 'bg-slate-50 text-violet-600 border-slate-200'}`}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Duration (min)</Label>
-                                    <div className="relative">
-                                        <Clock size={13} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />
-                                        <Input
-                                            type="number" min="1"
-                                            value={editingLesson?.duration || editingLesson?.duration_minutes || 0}
-                                            onChange={(e) => setEditingLesson({ ...editingLesson, duration: Number(e.target.value), duration_minutes: Number(e.target.value) })}
-                                            className={`h-10 rounded-xl pl-8 pr-4 text-sm font-bold border-2 ${isDark ? 'bg-white/[0.06] text-sky-400 border-white/8' : 'bg-slate-50 text-sky-600 border-slate-200'}`}
-                                        />
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
+                        )}
 
-                            {/* Published toggle */}
-                            <div className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-colors ${(editingLesson?.is_published ?? true) ? (isDark ? `border-${accent.name}-400/30 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-200 ${accent.softLight.split(' ')[0]}`) : t.border(isDark)}`}>
+                        {/* ── QUIZ MODE ─────────────────────────── */}
+                        {lessonMode === 'quiz' && (
+                            <div className={cn(
+                                'p-6 rounded-2xl border-2 border-dashed flex flex-col items-center text-center gap-3',
+                                isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50'
+                            )}>
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                                    <HelpCircle size={24} />
+                                </div>
                                 <div>
-                                    <Label className={`text-sm font-black ${(editingLesson?.is_published ?? true) && isDark ? accent.text : t.textPrimary(isDark)}`}>Publish Lesson</Label>
-                                    <p className={`text-[10px] font-medium mt-0.5 ${t.textMuted(isDark)}`}>Make this lesson visible to students.</p>
+                                    <p className={`text-sm font-black uppercase tracking-wide ${t.textPrimary(isDark)}`}>Quiz Builder</p>
+                                    <p className={`text-[10px] font-medium mt-1 max-w-[280px] ${t.textMuted(isDark)}`}>
+                                        {editingLesson?.id
+                                            ? 'Open the quiz builder to add & manage questions.'
+                                            : 'Save this lesson first, then use the quiz builder to add questions.'}
+                                    </p>
                                 </div>
-                                <Switch
-                                    checked={editingLesson?.is_published ?? true}
-                                    onCheckedChange={(val) => setEditingLesson({ ...editingLesson, is_published: val })}
-                                    className={`data-[state=checked]:${accent.bg}`}
-                                />
-                            </div>
-
-                            {/* Quiz builder launcher */}
-                            {isQuiz && editingLesson && (
-                                <div className="space-y-3 pt-2 border-t border-dashed border-white/5">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className={`text-[10px] font-black uppercase tracking-widest ${isDark ? accent.text : 'text-slate-700'}`}>Quiz Management</h4>
-                                        <Button type="button" variant="outline" size="sm"
+                                {editingLesson?.id && (
+                                    <div className="flex flex-wrap gap-2 justify-center">
+                                        <Button
+                                            type="button"
+                                            onClick={() => router.push(`/admin/quiz/${editingLesson.id}`)}
+                                            className={`rounded-full px-5 font-black text-[10px] h-9 gap-2 ${accent.bg} text-slate-900 ${accent.bgHover}`}
+                                        >
+                                            <MonitorPlay size={12} /> Open Quiz Builder
+                                        </Button>
+                                        <Button
+                                            type="button" variant="outline" size="sm"
                                             onClick={() => setImportOpen(true)}
-                                            className="rounded-full h-7 border-2 font-bold px-3 text-[9px]">
+                                            className="rounded-full h-9 border-2 font-bold px-3 text-[10px]"
+                                        >
                                             <FileDown size={11} className="mr-1" /> Import Quiz
                                         </Button>
                                     </div>
-                                    <div className={`p-4 rounded-2xl border-2 flex items-center justify-between gap-4 ${isDark ? `${accent.softDark.split(' ')[0].replace('/10', '/5')} border-${accent.name}-400/20` : 'bg-slate-50 border-slate-200'}`}>
-                                        <div>
-                                            <p className={`text-sm font-black uppercase tracking-tight ${isDark ? accent.text : 'text-slate-900'}`}>Quiz Builder</p>
-                                            <p className={`text-[10px] font-medium mt-0.5 ${t.textMuted(isDark)}`}>
-                                                {editingLesson.id ? 'Add & manage questions' : 'Save lesson first to build quiz'}
-                                            </p>
-                                        </div>
-                                        <Button type="button" disabled={!editingLesson.id}
-                                            onClick={() => router.push(`/admin/quiz/${editingLesson.id}`)}
-                                            className={`rounded-full px-5 font-black text-[10px] h-10 gap-2 shrink-0 ${accent.bg} text-slate-900 ${accent.bgHover} shadow-lg`}
-                                            style={t.glowStyle(isDark, accent)}>
-                                            <MonitorPlay size={13} strokeWidth={3} />
-                                            {editingLesson.id ? 'Build Quiz' : 'Save First'}
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
+                        )}
+
+                        {/* Description */}
+                        <div className="space-y-1.5">
+                            <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Description</Label>
+                            <Textarea
+                                placeholder="What will students learn in this lesson?"
+                                value={editingLesson?.description || ''}
+                                onChange={(e) => setEditingLesson({ ...editingLesson, description: e.target.value })}
+                                className={`rounded-xl min-h-[80px] p-3 text-sm font-medium border-2 transition-all resize-none ${isDark ? 'bg-white/[0.06] text-white border-white/8 focus-visible:border-white/20' : 'bg-slate-50 border-slate-200 text-slate-900 focus-visible:border-slate-400'}`}
+                            />
                         </div>
 
-                        {/* ── RIGHT: Live Preview (xl+ only) ──────────── */}
-                        <div className={cn(
-                            'hidden xl:flex xl:flex-col xl:w-[360px] xl:min-w-[360px] flex-shrink-0 border-l overflow-y-auto',
-                            isDark ? 'border-white/8 bg-[#0a0d14]' : 'border-slate-100 bg-slate-50/60'
-                        )}>
-                            {/* Preview header */}
-                            <div className={`px-5 py-4 border-b flex items-center gap-2 ${t.border(isDark)}`}>
-                                <Eye size={14} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Student Preview</span>
-                                <span className={`ml-auto text-[9px] font-black px-2 py-0.5 rounded-full ${isDark ? 'bg-white/5 text-slate-500' : 'bg-slate-200 text-slate-400'} uppercase tracking-widest`}>
-                                    Live
-                                </span>
+                        {/* XP + Duration */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>XP Reward</Label>
+                                <div className="relative">
+                                    <Zap size={13} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-violet-400' : 'text-violet-500'}`} />
+                                    <Input
+                                        type="number" min="0"
+                                        value={editingLesson?.xp_reward || 0}
+                                        onChange={(e) => setEditingLesson({ ...editingLesson, xp_reward: Number(e.target.value) })}
+                                        className={`h-10 rounded-xl pl-8 pr-4 text-sm font-bold border-2 ${isDark ? 'bg-white/[0.06] text-violet-400 border-white/8' : 'bg-slate-50 text-violet-600 border-slate-200'}`}
+                                    />
+                                </div>
                             </div>
-
-                            <div className="p-4 sm:p-5 space-y-4">
-                                {/* Simulated lesson header bar */}
-                                <div className={`flex items-center gap-2 p-2.5 rounded-xl ${isDark ? 'bg-white/[0.03] border border-white/5' : 'bg-white border border-slate-100 shadow-sm'}`}>
-                                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isDark ? 'bg-white/10' : 'bg-slate-100'}`}>
-                                        <div className={`w-2 h-2 rounded-sm ${isDark ? 'bg-slate-500' : 'bg-slate-400'}`} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className={`h-1.5 rounded-full w-16 mb-1 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
-                                        <p className={`text-[10px] font-black truncate ${t.textPrimary(isDark)}`}>
-                                            {editingLesson?.title || 'Lesson Title'}
-                                        </p>
-                                    </div>
-                                    <div className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider ${isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
-                                        +{editingLesson?.xp_reward || 0} XP
-                                    </div>
+                            <div className="space-y-1.5">
+                                <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Duration (min)</Label>
+                                <div className="relative">
+                                    <Clock size={13} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />
+                                    <Input
+                                        type="number" min="1"
+                                        value={editingLesson?.duration || editingLesson?.duration_minutes || 0}
+                                        onChange={(e) => setEditingLesson({ ...editingLesson, duration: Number(e.target.value), duration_minutes: Number(e.target.value) })}
+                                        className={`h-10 rounded-xl pl-8 pr-4 text-sm font-bold border-2 ${isDark ? 'bg-white/[0.06] text-sky-400 border-white/8' : 'bg-slate-50 text-sky-600 border-slate-200'}`}
+                                    />
                                 </div>
+                            </div>
+                        </div>
 
-                                {/* Content preview */}
-                                <div className={`rounded-xl overflow-hidden border ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
-                                    <PreviewContentArea />
-                                </div>
-
-                                {/* Lesson info card */}
-                                <div className={`rounded-2xl p-4 space-y-3 ${isDark ? 'bg-white/[0.03] border border-white/5' : 'bg-white border border-slate-100 shadow-sm'}`}>
-                                    {/* Type badge */}
-                                    {selectedType && (
-                                        <div className="flex items-center gap-1.5">
-                                            <div className={`w-1 h-3.5 rounded-full ${isDark ? 'bg-indigo-500' : 'bg-indigo-600'}`} />
-                                            <span className={`text-[9px] font-black uppercase tracking-widest ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                                                {selectedType.label} Module
-                                            </span>
-                                        </div>
-                                    )}
-                                    <h3 className={`text-base font-black uppercase tracking-tight leading-tight ${t.textPrimary(isDark)}`}>
-                                        {editingLesson?.title || <span className={`${t.textMuted(isDark)}`}>Lesson Title</span>}
-                                    </h3>
-                                    {editingLesson?.description && (
-                                        <p className={`text-xs font-medium leading-relaxed line-clamp-3 ${t.textMuted(isDark)}`}>
-                                            {editingLesson.description}
-                                        </p>
-                                    )}
-
-                                    {/* Stats row */}
-                                    <div className={`flex items-center gap-3 pt-3 border-t ${t.border(isDark)}`}>
-                                        <div className="flex items-center gap-1.5">
-                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isDark ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
-                                                <Star size={11} className="text-amber-500 fill-amber-500" />
-                                            </div>
-                                            <span className={`text-[10px] font-black ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                                                +{editingLesson?.xp_reward || 0} XP
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isDark ? 'bg-sky-500/10' : 'bg-sky-50'}`}>
-                                                <Clock size={11} className="text-sky-500" />
-                                            </div>
-                                            <span className={`text-[10px] font-black ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>
-                                                {editingLesson?.duration || editingLesson?.duration_minutes || 0} min
-                                            </span>
-                                        </div>
-                                        <div className={`ml-auto flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-black uppercase ${(editingLesson?.is_published ?? true) ? isDark ? 'text-emerald-400 bg-emerald-500/10' : 'text-emerald-600 bg-emerald-50' : isDark ? 'text-slate-500 bg-white/5' : 'text-slate-400 bg-slate-100'}`}>
-                                            <div className={`w-1.5 h-1.5 rounded-full ${(editingLesson?.is_published ?? true) ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                                            {(editingLesson?.is_published ?? true) ? 'Published' : 'Draft'}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Mobile note */}
-                                <p className={`text-[9px] font-bold text-center uppercase tracking-widest ${t.textMuted(isDark)}`}>
-                                    Optimised for mobile & desktop
+                        {/* Published toggle */}
+                        <div className={cn(
+                            'flex items-center justify-between p-4 rounded-2xl border-2 transition-colors',
+                            (editingLesson?.is_published ?? true)
+                                ? isDark
+                                    ? `border-${accent.name}-400/30 bg-${accent.name}-400/5`
+                                    : 'border-indigo-200 bg-indigo-50/50'
+                                : t.border(isDark)
+                        )}>
+                            <div>
+                                <Label className={`text-sm font-black ${(editingLesson?.is_published ?? true) && isDark ? accent.text : t.textPrimary(isDark)}`}>
+                                    Publish Lesson
+                                </Label>
+                                <p className={`text-[10px] font-medium mt-0.5 ${t.textMuted(isDark)}`}>
+                                    Make this lesson visible to students.
                                 </p>
                             </div>
+                            <Switch
+                                checked={editingLesson?.is_published ?? true}
+                                onCheckedChange={(val) => setEditingLesson({ ...editingLesson, is_published: val })}
+                            />
                         </div>
                     </div>
 
-                    {/* ── Footer ──────────────────────────────────────── */}
-                    <div className={`px-5 sm:px-7 py-4 border-t flex items-center justify-between gap-3 flex-shrink-0 ${isDark ? 'border-white/8 bg-[#0f1219]' : 'border-slate-100 bg-white'}`}>
-                        <Button variant="ghost" onClick={() => onOpenChange(false)}
-                            className={`rounded-xl h-10 px-5 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-600'}`}>
+                    {/* ── Footer ───────────────────────────────── */}
+                    <div className={`px-6 py-4 border-t flex items-center justify-between gap-3 ${t.border(isDark)}`}>
+                        <Button
+                            variant="ghost"
+                            onClick={() => onOpenChange(false)}
+                            className={`rounded-full px-6 font-black text-xs ${isDark ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500'}`}
+                        >
                             Cancel
                         </Button>
                         <Button
-                            onClick={onSave}
-                            disabled={!editingLesson?.title?.trim() || !!validationError}
-                            className={`rounded-xl h-10 px-7 font-black text-sm shadow-lg transition-all ${(!editingLesson?.title?.trim() || !!validationError) ? 'opacity-50 cursor-not-allowed' : ''} ${t.btnPrimary(isDark, accent)}`}
-                            style={t.glowStyle(isDark, accent)}>
+                            onClick={handleSave}
+                            className={`rounded-full px-8 font-black text-xs h-11 ${accent.bg} text-slate-900 ${accent.bgHover} shadow-lg`}
+                        >
                             {isEditing ? 'Save Changes' : 'Create Lesson'}
                         </Button>
                     </div>
-
                 </DialogContent>
             </Dialog>
 
+            {/* Media Library picker */}
             <MediaLibraryPicker
                 open={libraryOpen}
                 onOpenChange={setLibraryOpen}
-                filterType={libraryFilterType}
-                folder="lesson"
-                currentUrl={editingLesson?.content_url}
-                onSelect={(url, assetId) => setEditingLesson({ ...editingLesson, content_url: url, asset_id: assetId })}
-            />
-
-            <EntityLibraryPicker
-                open={importOpen}
-                onOpenChange={setImportOpen}
-                type="quiz"
-                onSelect={async (quizId) => {
-                    if (!editingLesson?.id) { toast.error("Save the lesson first before importing a quiz."); return; }
-                    try {
-                        const loadingId = toast.loading("Importing quiz…");
-                        await cloneQuizAction(quizId, editingLesson.id, editingLesson.course_id!);
-                        toast.success("Quiz imported", { id: loadingId });
-                    } catch (error) {
-                        console.error(error);
-                        toast.error("Failed to import quiz");
+                filterType={(() => {
+                    if (!libraryTargetId) return undefined;
+                    // Multi-image slot: "blockId:imgIdx"
+                    if (libraryTargetId.includes(':')) return 'image';
+                    const targetItem = contentItems.find(i => i.id === libraryTargetId);
+                    return targetItem ? getLibraryFilter(targetItem.type) : undefined;
+                })()}
+                onSelect={(url) => {
+                    if (libraryTargetId) {
+                        if (libraryTargetId.includes(':')) {
+                            // Multi-image slot
+                            const [blockId, imgIdxStr] = libraryTargetId.split(':');
+                            const imgIdx = parseInt(imgIdxStr, 10);
+                            const block = contentItems.find(i => i.id === blockId);
+                            if (block) {
+                                const updated = [...getImageUrls(block)];
+                                updated[imgIdx] = url;
+                                applyImageUrls(blockId, updated);
+                            }
+                        } else {
+                            applyBlockUpdate(libraryTargetId, 'url', url);
+                        }
+                        setLibraryTargetId(null);
                     }
+                    setLibraryOpen(false);
                 }}
             />
+
+            {/* Quiz import picker */}
+            {lessonMode === 'quiz' && editingLesson?.id && (
+                <EntityLibraryPicker
+                    open={importOpen}
+                    onOpenChange={setImportOpen}
+                    entityType="quiz"
+                    onSelect={async (sourceId) => {
+                        try {
+                            await cloneQuizAction(sourceId, editingLesson.id!);
+                            toast.success('Quiz imported!');
+                        } catch {
+                            toast.error('Failed to import quiz');
+                        }
+                        setImportOpen(false);
+                    }}
+                />
+            )}
         </>
     );
 }

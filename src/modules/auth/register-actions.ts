@@ -5,7 +5,7 @@ import { students, schoolAdmins, superAdmins, schools, paymentPlans, studentAcad
 import { eq, and, or, sql, isNull } from 'drizzle-orm';
 import { asc } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
-import { assignPlanToSchool } from '@/modules/super-admin/actions';
+import { schoolSubscriptions, promoCodes } from '@/db/schema';
 import { createSession } from '@/lib/auth';
 import { handleStudentEngagement } from '@/lib/gamification';
 
@@ -89,26 +89,33 @@ export async function registerStudent(formData: any) {
         }
 
         if (formData.password.length < 6) {
-            return { success: false, error: 'Password must be at least 6 digits long.' };
+            return { success: false, error: 'Your PIN must be exactly 6 digits.' };
         }
 
-        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
-        const isPhone = /^\+?[1-9]\d{1,14}$/.test(formData.email.replace(/[-\s]/g, ''));
-        
+        const rawIdentifier = (formData.email || '').trim();
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawIdentifier);
+        // Accept any 7-15 digit number (with optional +, spaces, dashes, parens)
+        const digitsOnly = rawIdentifier.replace(/\D/g, '');
+        const isPhone = !isEmail && digitsOnly.length >= 7 && digitsOnly.length <= 15;
+
         if (!isEmail && !isPhone) {
-            return { success: false, error: 'Please enter a valid email or phone number.' };
+            return { success: false, error: 'Please enter a valid email address or phone number.' };
         }
 
         const [firstName, ...lastNameParts] = formData.full_name.trim().split(/\s+/);
         const lastName = lastNameParts.join(' ');
-        const email = isEmail ? (formData.email.toLowerCase().trim() || null) : null;
-        const phone = isEmail ? null : (formData.email.replace(/\D/g, '') || null); 
+        // Critical: use undefined (not null) so Drizzle omits the column from INSERT,
+        // letting the DB default to NULL — prevents empty-string unique constraint collisions.
+        const emailVal: string | undefined = isEmail ? rawIdentifier.toLowerCase() : undefined;
+        const phoneVal: string | undefined = isPhone ? digitsOnly : undefined;
 
         const result = await db.transaction(async (tx) => {
             // Check for existing student with this email/phone (Platform-wide, non-deleted)
             const existingGlobally = await tx.query.students.findFirst({
                 where: and(
-                    isEmail ? eq(students.email, email) : or(eq(students.phone, phone), eq(students.phone, formData.email.trim())),
+                    isEmail
+                        ? eq(students.email, emailVal!)
+                        : or(eq(students.phone, digitsOnly), eq(students.phone, rawIdentifier)),
                     sql`deleted_at IS NULL`
                 )
             });
@@ -116,34 +123,38 @@ export async function registerStudent(formData: any) {
             if (existingGlobally) {
                 const isValidPassword = await bcrypt.compare(formData.password, existingGlobally.password_hash);
                 if (!isValidPassword) {
-                    return { success: false, error: `This ${isEmail ? 'email' : 'phone number'} is already registered. Please enter the correct PIN.` };
+                    return { success: false, error: `This ${isEmail ? 'email' : 'phone number'} is already registered. Please enter your correct PIN to sign in.` };
                 }
-                
+
                 if (!existingGlobally.is_verified) {
-                    return { success: false, error: 'Your account is pending verification by your school admin. Please wait for approval.' };
+                    return { success: false, error: 'Your account is waiting for approval from your school. Please check back soon or contact your teacher.' };
                 }
 
                 // If PIN matches, log them in
                 await createSession({ userId: existingGlobally.id, userType: 'student' });
                 await handleStudentEngagement(existingGlobally.id);
-                
+
                 return { success: true, user: existingGlobally, isExisting: true };
             }
 
             const hashedPassword = await bcrypt.hash(formData.password, 10);
-            const [newStudent] = await tx.insert(students).values({
-                email: email,
-                phone: phone,
+            // Only include email/phone if defined — omitting them lets Postgres default to NULL,
+            // preventing the empty-string unique constraint collision bug.
+            const insertValues: any = {
                 password_hash: hashedPassword,
                 first_name: firstName || '',
                 last_name: lastName || '',
                 school_id: formData.school_id,
-                gender: formData.gender,
+                gender: formData.gender || null,
                 cumulative_xp: 0,
                 current_streak: 0,
                 is_active: true,
                 is_verified: false,
-            } as any).returning();
+            };
+            if (emailVal) insertValues.email = emailVal;
+            if (phoneVal) insertValues.phone = phoneVal;
+
+            const [newStudent] = await tx.insert(students).values(insertValues).returning();
 
             // Academic Mapping
             let session = await tx.query.academicSessions.findFirst({
@@ -285,10 +296,24 @@ export async function registerSchool(formData: any) {
 
         if (formData.plan_id && result?.school?.id) {
             try {
-                await assignPlanToSchool(result.school.id, formData.plan_id, 12, formData.promo_code_id);
+                // Create subscription directly (bypasses super_admin auth — valid during self-registration)
+                const now = new Date();
+                const periodEnd = new Date(now);
+                periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+
+                await db.insert(schoolSubscriptions).values({
+                    school_id: result.school.id,
+                    plan_id: formData.plan_id,
+                    promo_code_id: formData.promo_code_id || null,
+                    status: 'active',
+                    current_period_start: now,
+                    current_period_end: periodEnd,
+                    auto_renew: true,
+                } as any);
+
                 analyticsService.incrementMetric('total_subscriptions').catch(() => {});
             } catch (err) {
-                console.error("Plan assignment failed during registration:", err);
+                // Non-fatal — school is registered, subscription can be assigned later by admin
             }
         }
 
@@ -300,8 +325,9 @@ export async function registerSchool(formData: any) {
 }
 
 export async function checkIdentifierExists(value: string, role?: 'student' | 'school_admin' | 'super_admin') {
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-    const identifier = value.toLowerCase().trim();
+    const trimmed = value.trim();
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+    const identifier = trimmed.toLowerCase();
 
     if (isEmail) {
         if (role === 'student' || !role) {

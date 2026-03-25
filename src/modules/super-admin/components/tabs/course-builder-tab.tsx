@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -20,6 +20,8 @@ import { useAdminTheme, t } from '../../theme-context';
 import {
     AlertDialog,
     AlertDialogContent,
+    AlertDialogTitle,
+    AlertDialogDescription,
 } from '@/components/ui/alert-dialog';
 
 interface CourseBuilderTabProps {
@@ -55,6 +57,9 @@ export function CourseBuilderTab({
 }: CourseBuilderTabProps) {
     const { isDark, accent } = useAdminTheme();
     const [itemToDelete, setItemToDelete] = useState<{ type: 'course' | 'lesson', id: string, name: string } | null>(null);
+    const [isDirtyOrder, setIsDirtyOrder] = useState(false);
+
+    useEffect(() => { setIsDirtyOrder(false); }, [selectedCourse?.id]);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -67,12 +72,14 @@ export function CourseBuilderTab({
             const oldIndex = lessons.findIndex(i => i.id === active.id);
             const newIndex = lessons.findIndex(i => i.id === over.id);
             const newItems = arrayMove(lessons, oldIndex, newIndex);
-
             setLessons(newItems);
-
-            // Auto-save silently
-            onSaveLessonOrder(newItems, true);
+            setIsDirtyOrder(true);
         }
+    }
+
+    function handleSaveOrder() {
+        onSaveLessonOrder(lessons, false);
+        setIsDirtyOrder(false);
     }
 
     const confirmDelete = () => {
@@ -142,7 +149,7 @@ export function CourseBuilderTab({
                                                 <p className={`font-black text-sm tracking-tight truncate ${isSelected ? (isDark ? accent.text : 'text-white') : t.textPrimary(isDark)}`}>{course.title}</p>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <p className={`text-[10px] font-bold ${isSelected ? (isDark ? 'text-white/60' : 'text-white/70') : t.textMuted(isDark)}`}>
-                                                        {course.lesson_count} LESSONS • {course.enrolled_count || 0} ENROLLED
+                                                        {course.lesson_count} LESSONS
                                                     </p>
                                                 </div>
                                             </div>
@@ -180,23 +187,31 @@ export function CourseBuilderTab({
                             {selectedCourse && <p className={`text-[12px] font-medium mt-0.5 ${t.textMuted(isDark)}`}>{lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'} in this course</p>}
                         </div>
                         <div className="flex gap-3">
-                            <Button size="sm"
-                                disabled={!selectedCourse}
-                                onClick={() => {
-                                    if (selectedCourse) {
-                                        setEditingLesson({
-                                            course_id: selectedCourse.id,
-                                            is_published: true,
-                                            content_type: 'video'
-                                        });
-                                        setShowLessonDialog(true);
-                                    }
-                                }}
-                                className={`rounded-full gap-2 h-10 px-5 text-[11px] font-black shadow-xl transition-all
-                                    ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)} ${!selectedCourse ? 'opacity-40 grayscale pointer-events-none' : ''}`}
-                                style={isDark && selectedCourse ? t.glowStyle(isDark, accent) : {}}>
-                                <Plus size={16} strokeWidth={3} /> NEW LESSON
-                            </Button>
+                            {isDirtyOrder ? (
+                                <Button size="sm"
+                                    onClick={handleSaveOrder}
+                                    className="rounded-full gap-2 h-10 px-5 text-[11px] font-black shadow-xl transition-all bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20">
+                                    <Save size={16} strokeWidth={3} /> SAVE ORDER
+                                </Button>
+                            ) : (
+                                <Button size="sm"
+                                    disabled={!selectedCourse}
+                                    onClick={() => {
+                                        if (selectedCourse) {
+                                            setEditingLesson({
+                                                course_id: selectedCourse.id,
+                                                is_published: true,
+                                                content_type: 'video'
+                                            });
+                                            setShowLessonDialog(true);
+                                        }
+                                    }}
+                                    className={`rounded-full gap-2 h-10 px-5 text-[11px] font-black shadow-xl transition-all
+                                        ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)} ${!selectedCourse ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                                    style={isDark && selectedCourse ? t.glowStyle(isDark, accent) : {}}>
+                                    <Plus size={16} strokeWidth={3} /> NEW LESSON
+                                </Button>
+                            )}
                         </div>
                     </div>
 
@@ -252,14 +267,14 @@ export function CourseBuilderTab({
                         <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-6 shadow-xl ${isDark ? 'bg-rose-500/10 text-rose-500 shadow-rose-500/10' : 'bg-rose-50 text-rose-500 shadow-rose-500/10'}`}>
                             <AlertOctagon size={32} />
                         </div>
-                        <h2 className={`text-xl font-[1000] tracking-tight mb-3 ${t.textPrimary(isDark)}`}>
+                        <AlertDialogTitle className={`text-xl font-[1000] tracking-tight mb-3 ${t.textPrimary(isDark)}`}>
                             Confirm Deletion
-                        </h2>
-                        <p className={`text-sm font-medium leading-relaxed ${t.textMuted(isDark)}`}>
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className={`text-sm font-medium leading-relaxed ${t.textMuted(isDark)}`}>
                             Are you sure you want to delete the {itemToDelete?.type} <span className={isDark ? 'text-white font-bold' : 'text-slate-900 font-bold'}>"{itemToDelete?.name}"</span>?
                             <br /><br />
                             This action cannot be undone.
-                        </p>
+                        </AlertDialogDescription>
                     </div>
                     <div className={`px-8 py-5 flex items-center gap-3 border-t ${isDark ? 'border-white/10 bg-[#0f1219]' : 'border-slate-100 bg-slate-50'}`}>
                         <Button variant="ghost" onClick={() => setItemToDelete(null)}
