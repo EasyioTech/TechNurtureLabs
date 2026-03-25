@@ -47,8 +47,9 @@ export type Lesson = {
     id: string;
     title: string;
     description: string | null;
-    content_type: 'video' | 'ppt' | 'pdf' | 'assignment' | 'quiz';
+    content_type: 'video' | 'ppt' | 'pdf' | 'quiz' | 'image' | 'assignment';
     content_url: string | null;
+    content_items?: string | null;
     asset_id?: string | null;
     duration: number;
     xp_reward: number;

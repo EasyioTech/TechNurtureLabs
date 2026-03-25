@@ -17,6 +17,15 @@ export async function POST(req: NextRequest) {
         }
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body.data;
 
+        // Skip HMAC for dev/preview simulated orders (non-production only)
+        const isPreviewOrder = razorpay_order_id.startsWith('order_PREVIEW_') || razorpay_order_id.startsWith('order_DEV_');
+        if (isPreviewOrder) {
+            if (process.env.NODE_ENV === 'production') {
+                return NextResponse.json({ success: false, error: 'Invalid order' }, { status: 400 });
+            }
+            return NextResponse.json({ success: true, payment_id: razorpay_payment_id, order_id: razorpay_order_id });
+        }
+
         const secret = serverEnv.RAZORPAY_KEY_SECRET;
         const hmacPayload = `${razorpay_order_id}|${razorpay_payment_id}`;
         const expectedSignature = crypto

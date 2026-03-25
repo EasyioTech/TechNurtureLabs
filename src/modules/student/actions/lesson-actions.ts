@@ -437,6 +437,16 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
     const percentage = Math.round((earnedScore / totalScorePossible) * 100);
     const passed = percentage >= Number(quiz.pass_percentage);
 
+    // Determine actual XP that will be awarded so we can store it and return it
+    let xpEarned = 0;
+    if (passed && quiz.lesson_id) {
+        const lessonData = await db.query.lessons.findFirst({
+            where: eq(lessons.id, quiz.lesson_id),
+            columns: { xp_reward: true }
+        });
+        xpEarned = lessonData?.xp_reward || 10;
+    }
+
     const attemptId = await db.transaction(async (tx) => {
         const [attempt] = await tx.insert(quizAttempts).values({
             user_id: userId,
@@ -446,6 +456,7 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
             score: earnedScore.toString(),
             max_score: totalScorePossible.toString(),
             passed: passed,
+            xp_earned: xpEarned,
             completed_at: new Date()
         }).returning({ id: quizAttempts.id });
 
@@ -468,6 +479,7 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
         total: totalScorePossible,
         percentage,
         passed,
+        xp_earned: xpEarned,
         feedback
     };
 }

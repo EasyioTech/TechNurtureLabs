@@ -8,7 +8,6 @@ import {
   ArrowRight, ShieldCheck, Target, Layers, Award
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 
 interface CourseDetailsClientProps {
@@ -34,7 +33,7 @@ export function CourseDetailsClient({ initialData }: CourseDetailsClientProps) {
     : 'Start Course';
 
   return (
-    <div className="min-h-screen bg-slate-50/30 pb-32 lg:pb-16 animate-in fade-in duration-500 selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="min-h-screen bg-slate-50/30 pb-32 lg:pb-16 selection:bg-indigo-100 selection:text-indigo-900">
       <CourseDetailsHeader title={course?.title || 'Learning Course'} progress={progress} />
 
       <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 py-6 lg:py-14">
@@ -44,16 +43,16 @@ export function CourseDetailsClient({ initialData }: CourseDetailsClientProps) {
           <div className="lg:col-span-8 space-y-8">
 
             {/* Hero thumbnail — always 16:9 */}
-            <motion.div
-              initial={{ y: 16, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-950 aspect-video shadow-[0_20px_60px_-10px_rgba(0,0,0,0.35)] border border-white/5"
-            >
-              <img
-                src={course?.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=1200'}
-                alt={course?.title}
-                className="w-full h-full object-cover opacity-60"
-              />
+            <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-950 aspect-video shadow-[0_20px_60px_-10px_rgba(0,0,0,0.35)] border border-white/5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {course?.thumbnail && (
+                <img
+                  src={course.thumbnail}
+                  alt={course?.title}
+                  decoding="async"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  className="absolute inset-0 w-full h-full object-cover opacity-60"
+                />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_rgba(99,102,241,0.25)_0%,_transparent_55%)]" />
 
@@ -74,7 +73,7 @@ export function CourseDetailsClient({ initialData }: CourseDetailsClientProps) {
                   {course?.description}
                 </p>
               </div>
-            </motion.div>
+            </div>
 
             {/* Quick stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -91,12 +90,7 @@ export function CourseDetailsClient({ initialData }: CourseDetailsClientProps) {
                 <span className="text-xl font-black text-indigo-600">{Math.round(progress)}%</span>
               </div>
               <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/50 shadow-inner mb-3">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
-                  className="h-full bg-indigo-600 rounded-full"
-                  transition={{ duration: 1.5, ease: 'circOut' }}
-                />
+                <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${progress}%` }} />
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
@@ -175,11 +169,9 @@ export function CourseDetailsClient({ initialData }: CourseDetailsClientProps) {
                     <span className="text-3xl font-black text-indigo-600 tracking-tighter leading-none">{Math.round(progress)}%</span>
                   </div>
                   <div className="h-6 bg-slate-50 rounded-2xl overflow-hidden p-1 border border-slate-100 shadow-inner">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progress}%` }}
+                    <div
                       className="h-full bg-indigo-600 rounded-full shadow-[0_0_20px_rgba(79,70,229,0.4)]"
-                      transition={{ duration: 2, ease: 'circOut' }}
+                      style={{ width: `${progress}%` }}
                     />
                   </div>
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mt-3">
@@ -213,11 +205,7 @@ export function CourseDetailsClient({ initialData }: CourseDetailsClientProps) {
               )}
 
               {progress === 100 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 p-4 rounded-[1.5rem] bg-emerald-50 border border-emerald-100 flex items-center gap-3"
-                >
+                <div className="mt-4 p-4 rounded-[1.5rem] bg-emerald-50 border border-emerald-100 flex items-center gap-3 animate-in fade-in duration-300">
                   <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-emerald-500 shadow-sm">
                     <Trophy size={20} />
                   </div>
@@ -225,7 +213,7 @@ export function CourseDetailsClient({ initialData }: CourseDetailsClientProps) {
                     <p className="text-[9px] font-black text-emerald-800 uppercase tracking-widest">Course Mastered</p>
                     <p className="text-[8px] font-bold text-emerald-600/70 uppercase mt-0.5">All lessons complete</p>
                   </div>
-                </motion.div>
+                </div>
               )}
             </section>
 

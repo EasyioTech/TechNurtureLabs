@@ -42,7 +42,7 @@ export function LeaderboardClient({ initialData }: LeaderboardClientProps) {
     }, [scope]);
 
     return (
-        <div className="min-h-screen bg-slate-50/10 pb-20 animate-in fade-in duration-700">
+        <div className="min-h-screen bg-slate-50/10 pb-20">
             {/* Competitive Header */}
             <div className="relative bg-slate-950 overflow-hidden py-10 md:py-14 lg:py-16 px-6 lg:px-12 border-b border-white/5">
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />

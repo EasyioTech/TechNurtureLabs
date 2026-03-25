@@ -47,7 +47,7 @@ export function ExploreClient({ initialData }: ExploreClientProps) {
     const featuredCourses = filteredCourses.slice(0, 4);
 
     return (
-        <div className="min-h-screen bg-slate-50/10 pb-32 animate-in fade-in duration-1000">
+        <div className="min-h-screen bg-slate-50/10 pb-32">
             {/* Search Section */}
             <div className="relative pt-24 pb-32 px-6 lg:px-12 bg-slate-950 overflow-hidden border-b border-white/5">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[150%] bg-[radial-gradient(circle_at_center,_rgba(99,102,241,0.15)_0%,_transparent_60%)] pointer-events-none" />

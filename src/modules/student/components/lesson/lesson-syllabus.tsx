@@ -3,15 +3,15 @@
 import React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Layers, CheckCircle2, Lock, Play, MonitorPlay, FileText, Trophy, HelpCircle } from 'lucide-react';
+import { Layers, CheckCircle2, Lock, Play, MonitorPlay, FileText, HelpCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const CONTENT_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
     video: { label: 'Video Lesson', icon: Play, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
     ppt: { label: 'Presentation', icon: MonitorPlay, color: 'text-sky-600 bg-sky-50 border-sky-100' },
     pdf: { label: 'Document', icon: FileText, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
-    assignment: { label: 'Assignment', icon: Trophy, color: 'text-rose-600 bg-rose-50 border-rose-100' },
     quiz: { label: 'Quiz', icon: HelpCircle, color: 'text-amber-600 bg-amber-50 border-amber-100' },
+    image: { label: 'Images', icon: FileText, color: 'text-violet-600 bg-violet-50 border-violet-100' },
 };
 
 interface LessonSyllabusProps {

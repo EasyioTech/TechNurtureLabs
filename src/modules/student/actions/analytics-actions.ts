@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { lessonProgress, courseProgress, quizAttempts, students } from '@/db/schema';
-import { eq, and, sql, gte } from 'drizzle-orm';
+import { eq, and, sql, gte, isNotNull } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
@@ -27,18 +27,19 @@ export async function getStudentDailyAnalytics() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Get completed lessons over last 7 days
+    // Get completed lessons over last 7 days (only rows with completed_at set)
     const recentLessons = await db.select({
-        date: sql<Date>`DATE(${lessonProgress.updated_at})`,
+        date: sql<Date>`DATE(${lessonProgress.completed_at})`,
         count: sql<number>`count(*)::integer`,
         xp: sql<number>`sum(${lessonProgress.xp_earned})::integer`
     }).from(lessonProgress)
         .where(and(
             eq(lessonProgress.user_id, userId),
-            gte(lessonProgress.updated_at, sevenDaysAgo)
+            isNotNull(lessonProgress.completed_at),
+            gte(lessonProgress.completed_at, sevenDaysAgo)
         ))
-        .groupBy(sql`DATE(${lessonProgress.updated_at})`)
-        .orderBy(sql`DATE(${lessonProgress.updated_at})`);
+        .groupBy(sql`DATE(${lessonProgress.completed_at})`)
+        .orderBy(sql`DATE(${lessonProgress.completed_at})`);
 
     // Get recent quiz grades
     const recentQuizzes = await db.select({
@@ -59,7 +60,7 @@ export async function getStudentDailyAnalytics() {
         const dateStr = targetDate.toISOString().split('T')[0];
 
         // Find matches
-        const lessonMatch = recentLessons.find(l => (l.date as unknown as string).startsWith(dateStr));
+        const lessonMatch = recentLessons.find(l => l.date && (l.date as unknown as string).startsWith(dateStr));
         const quizMatch = recentQuizzes.find(q => (q.date as unknown as string).startsWith(dateStr));
 
         chartData.push({

@@ -93,11 +93,11 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
         return { scope, data: [], title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard' };
     }
 
-    // Fetch accuracy stats
+    // Fetch accuracy stats — cast to float because score/max_score are stored as text
     const accuracyStats = await db.execute(sql`
-        SELECT user_id, AVG(score / NULLIF(max_score, 0) * 100) as avg_accuracy
+        SELECT user_id, AVG(score::float / NULLIF(max_score::float, 0) * 100) as avg_accuracy
         FROM quiz_attempts
-        WHERE user_id = ANY(${leaderIds}) 
+        WHERE user_id = ANY(${leaderIds})
         GROUP BY user_id
     `);
 

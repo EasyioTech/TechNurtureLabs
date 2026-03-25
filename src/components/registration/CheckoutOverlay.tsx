@@ -209,13 +209,19 @@ export const CheckoutOverlay: React.FC<CheckoutOverlayProps> = ({
                                     <><Loader2 size={20} className="animate-spin" /> Activating Portal...</>
                                 ) : promoLoading ? (
                                     <><Loader2 size={20} className="animate-spin" /> Applying promo...</>
+                                ) : checkoutOrder.final_amount === 0 ? (
+                                    <><BadgeCheck size={20} /> Activate For Free</>
+                                ) : checkoutOrder.previewMode ? (
+                                    <><CreditCard size={20} /> Complete Dev Payment</>
                                 ) : (
-                                    <><BadgeCheck size={20} /> Activate School Portal</>
+                                    <><CreditCard size={20} /> Pay with Razorpay</>
                                 )}
                             </button>
 
                             <p className="text-center text-[10px] text-slate-400 font-bold">
-                                Secure Instant Activation • No Payment Gateway Required
+                                {checkoutOrder.final_amount === 0
+                                    ? 'No payment required • Instant activation'
+                                    : 'Secured by Razorpay • 256-bit SSL encryption'}
                             </p>
                         </div>
                     </motion.div>

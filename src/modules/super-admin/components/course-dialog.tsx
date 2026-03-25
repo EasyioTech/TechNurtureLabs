@@ -2,7 +2,7 @@
 
 import React from 'react';
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,6 +78,9 @@ export function CourseDialog({
                                     </p>
                                 </div>
                             </DialogTitle>
+                            <DialogDescription className="sr-only">
+                                {isEditing ? 'Update the content and settings for this course.' : 'Provide the basic information for your new course.'}
+                            </DialogDescription>
                         </DialogHeader>
 
                         {/* Context Badges for Existing Courses */}

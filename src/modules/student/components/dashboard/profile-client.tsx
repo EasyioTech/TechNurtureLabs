@@ -132,7 +132,7 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
   const progressPercent = Math.min(100, (xpProgress / 1000) * 100);
 
   return (
-    <div className="min-h-screen bg-slate-50/10 pb-20 animate-in fade-in duration-700">
+    <div className="min-h-screen bg-slate-50/10 pb-20">
       {/* Strategic Profile Header */}
       <div className="relative bg-slate-950 overflow-hidden border-b border-white/5 py-10 md:py-16 lg:py-20">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.15)_0%,_transparent_70%)]" />

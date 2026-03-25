@@ -43,8 +43,8 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                                 <Activity size={16} />
                             </div>
                             <div>
-                                <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>User Activity</h3>
-                                <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Monitor student engagement and enrollment trends.</p>
+                                <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>Growth Dynamics</h3>
+                                <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Monitor student activity and institutional onboarding trends.</p>
                             </div>
                         </div>
                     </div>
@@ -69,7 +69,7 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                                     itemStyle={{ padding: '2px 0' }}
                                 />
                                 <Area type="monotone" dataKey="students" name="Active Students" stroke={areaStroke} fill="url(#grad1)" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: isDark ? '#1e293b' : '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
-                                <Area type="monotone" dataKey="enrollments" name="Total Enrollments" stroke={isDark ? '#0ea5e9' : '#0369a1'} fill="url(#grad2)" strokeWidth={3} dot={false} strokeDasharray="5 5" />
+                                <Area type="monotone" dataKey="schools" name="Active Schools" stroke={isDark ? '#38bdf8' : '#0ea5e9'} fill="url(#grad2)" strokeWidth={3} dot={false} strokeDasharray="5 5" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>

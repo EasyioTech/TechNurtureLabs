@@ -20,6 +20,17 @@ export async function fetchAdminMetadata() {
         redirect('/admin-portal/login');
     }
 
+    // 1. Try to serve from cache
+    try {
+        const cached = await redis.get(CACHE_KEY);
+        if (cached) {
+            console.log('[Metadata] Serving from cache...');
+            return JSON.parse(cached);
+        }
+    } catch (_) { /* Best effort */ }
+
+    // 2. Fetch from DB
+    console.log('[Metadata] Fetching from DB...');
     const [plansData, classesData, promoCodesData, settingsData, metricsData] = await Promise.all([
         db.query.paymentPlans.findMany({ orderBy: [asc(paymentPlans.price)] }),
         db.query.classes.findMany({ orderBy: [asc(classes.level)] }),
@@ -31,7 +42,7 @@ export async function fetchAdminMetadata() {
         })
     ]);
 
-    return {
+    const result = {
         plans: plansData.map(p => ({
             ...p,
             price: Number(p.price),
@@ -43,6 +54,13 @@ export async function fetchAdminMetadata() {
         platformSettings: settingsData || null,
         platformMetrics: metricsData.reverse(),
     };
+
+    // 3. Store in cache for 10 mins
+    try {
+        await redis.setex(CACHE_KEY, 600, JSON.stringify(result));
+    } catch (_) { /* Best effort */ }
+
+    return result;
 }
 
 export async function savePromoCode(data: any) {
@@ -196,7 +214,9 @@ export async function syncPlatformMetrics() {
             const totalSchoolsCount = allSchools.filter(s => new Date(s.created_at) <= dayEnd).length;
             const activeSchoolsCount = allSchools.filter(s => s.is_active && new Date(s.created_at) <= dayEnd).length;
             
+            // For revenue, we need to match the date string exactly (YYYY-MM-DD)
             const revenueDay = revenueByDay.find(r => r.date === dateStr);
+            // Active students is unique per day
             const activeDay = activeByDay.find(a => a.date === dateStr);
 
             await db.insert(platformMetricsDaily).values({

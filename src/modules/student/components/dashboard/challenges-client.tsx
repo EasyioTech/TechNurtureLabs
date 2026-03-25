@@ -46,7 +46,7 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50/10 pb-20 animate-in fade-in duration-700">
+        <div className="min-h-screen bg-slate-50/10 pb-20">
             {/* Strategic Header */}
             <div className="relative bg-slate-950 overflow-hidden py-16 md:py-20 lg:py-24 px-6 lg:px-12 border-b border-white/5">
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />

@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Play, ChevronRight, CheckCircle2 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 
 interface Course {
@@ -34,18 +33,37 @@ export function CourseCard({ course }: { course: Course }) {
 
   return (
     <Link href={`/student/course/${course.id}`} className="block h-full group">
-      <motion.div
-        whileHover={{ y: -3 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className={`bg-white border border-slate-100 rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col transition-all duration-300 hover:shadow-xl ${theme.glow} ${theme.hoverBorder} active:scale-[0.98]`}
+      {/*
+       * Replaced motion.div whileHover={{ y: -3 }} with CSS hover:-translate-y-[3px].
+       * The spring JS animation ran a rAF loop on every hover; CSS transform runs on
+       * the compositor thread with zero JS involvement.
+       */}
+      <div
+        className={`bg-white border border-slate-100 rounded-2xl sm:rounded-3xl overflow-hidden h-full flex flex-col transition-[transform,box-shadow,border-color] duration-300 hover:shadow-xl hover:-translate-y-[3px] ${theme.glow} ${theme.hoverBorder} active:scale-[0.98]`}
       >
         {/* ── Thumbnail ── */}
-        <div className="relative h-44 sm:h-48 overflow-hidden bg-slate-100 flex-shrink-0">
-          <img
-            src={course.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600'}
-            alt={course.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-          />
+        {/*
+         * Dark gradient is the always-visible base layer. The <img> sits on top of it.
+         * If there's no thumbnail URL, or the URL fails to load (onError hides the img),
+         * the gradient shows — keeping badges and overlays readable in all states.
+         * No external placeholder services needed.
+         */}
+        <div className="relative h-44 sm:h-48 overflow-hidden flex-shrink-0 bg-gradient-to-br from-slate-700 to-slate-800">
+          {/* Course initial shown when there's no image */}
+          {!course.thumbnail && (
+            <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none">
+              <span className="text-6xl font-black text-white/10 uppercase">{course.title[0]}</span>
+            </div>
+          )}
+          {course.thumbnail && (
+            <img
+              src={course.thumbnail}
+              alt={course.title}
+              decoding="async"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
 
           {/* Lesson count badge */}
@@ -77,7 +95,7 @@ export function CourseCard({ course }: { course: Course }) {
           {progress > 0 && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
               <div
-                className={`h-full ${theme.bar} transition-all duration-700`}
+                className={`h-full ${theme.bar}`}
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -102,11 +120,15 @@ export function CourseCard({ course }: { course: Course }) {
                 <span className={`text-[10px] font-black ${theme.text}`}>{Math.round(progress)}%</span>
               </div>
               <div className="h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
+                {/*
+                 * Replaced motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }}
+                 * with a plain div. The Framer version ran a JS rAF loop per card;
+                 * for a grid of 10+ cards this stacked into 10+ concurrent animation loops.
+                 * Progress here is a static server-derived value — no on-mount animation needed.
+                 */}
+                <div
                   className={`h-full ${theme.bar} rounded-full`}
-                  transition={{ duration: 1.2, ease: 'circOut' }}
+                  style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
@@ -121,14 +143,14 @@ export function CourseCard({ course }: { course: Course }) {
                   <span className="text-slate-400 ml-1 font-medium text-[9px]">done</span>
                 </span>
               </div>
-              <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${theme.text} group-hover:gap-2 transition-all`}>
+              <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${theme.text} group-hover:gap-2 transition-[gap] duration-200`}>
                 {isComplete ? 'Review' : progress > 0 ? 'Resume' : 'Start'}
                 <ChevronRight size={13} />
               </div>
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
     </Link>
   );
 }

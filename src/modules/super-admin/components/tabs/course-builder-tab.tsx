@@ -149,7 +149,7 @@ export function CourseBuilderTab({
                                                 <p className={`font-black text-sm tracking-tight truncate ${isSelected ? (isDark ? accent.text : 'text-white') : t.textPrimary(isDark)}`}>{course.title}</p>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <p className={`text-[10px] font-bold ${isSelected ? (isDark ? 'text-white/60' : 'text-white/70') : t.textMuted(isDark)}`}>
-                                                        {course.lesson_count} LESSONS
+                                                        {course.total_lessons || 0} LESSONS
                                                     </p>
                                                 </div>
                                             </div>

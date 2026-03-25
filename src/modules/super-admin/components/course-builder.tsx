@@ -114,7 +114,7 @@ export function CourseBuilder({ courseId }: { courseId: string }) {
       <EntityLibraryPicker
         open={importOpen}
         onOpenChange={setImportOpen}
-        type="lesson"
+        entityType="lesson"
         onSelect={handleImportLesson}
       />
 

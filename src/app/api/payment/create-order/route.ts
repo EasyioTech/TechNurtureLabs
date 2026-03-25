@@ -144,8 +144,7 @@ export async function POST(req: NextRequest) {
                 plan: { id: plan.id, name: plan.name, currency: plan.currency },
             });
         } catch (rpError: any) {
-            console.warn('Razorpay creation failed, falling back to simulated order for preview:', rpError.message);
-
+            // Razorpay keys not configured — return a simulated preview order (dev/staging only)
             // Return a mock order structure so the UI can proceed in "Preview Mode"
             return NextResponse.json({
                 free: false,

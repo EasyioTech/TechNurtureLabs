@@ -29,20 +29,45 @@ function fisherYatesShuffle<T>(arr: T[]): T[] {
 
 // ─── QuizResults ──────────────────────────────────────────────
 export function QuizResults({
-    score, total, percentage, xp, feedbackData, onRestart,
+    score, total, percentage, xp, xpEarned, feedbackData, onRestart, violations,
 }: {
     score: number;
     total: number;
     percentage: number;
     xp: number;
+    xpEarned?: number;
     feedbackData?: any[];
     onRestart?: () => void;
+    violations?: number;
 }) {
     const passed = percentage >= 60;
-    const earned = passed ? Math.round(xp * (percentage / 100)) : 0;
+    // Use actual server-awarded XP if available, otherwise fall back to fixed lesson XP
+    const earned = xpEarned !== undefined ? xpEarned : (passed ? xp : 0);
+    const autoSubmitted = violations !== undefined && violations >= 3;
 
     return (
         <div className="max-w-3xl mx-auto space-y-6 sm:space-y-12 px-4">
+            {/* Security violation alert */}
+            {violations !== undefined && violations > 0 && (
+                <div className="bg-rose-50 border-2 border-rose-100 p-6 rounded-2xl sm:rounded-3xl flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+                        <ShieldAlert size={18} className="text-rose-500" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black text-rose-700 uppercase tracking-widest mb-1">
+                            {autoSubmitted
+                                ? 'Assessment auto-submitted due to security violations'
+                                : `${violations} security violation${violations > 1 ? 's' : ''} detected`}
+                        </p>
+                        <p className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">
+                            {autoSubmitted
+                                ? 'Tab switching was detected 3 times. Your attempt has been recorded.'
+                                : 'Tab switching during an assessment is prohibited and has been logged.'}
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <div className={cn(
                 'p-8 sm:p-20 rounded-[2.5rem] sm:rounded-[4rem] border-2 text-center relative overflow-hidden',
                 passed ? 'bg-emerald-50 border-emerald-100 shadow-2xl' : 'bg-white border-slate-100 shadow-2xl'
@@ -144,6 +169,10 @@ export function QuizEngine({
     const submittedRef = useRef(false);
     // advanceRef always points to latest advance fn — safe to call from setTimeout/setInterval
     const advanceRef = useRef<(r?: Record<string, string>) => void>(() => {});
+    // responsesRef tracks latest responses without stale closures (used in violation handler)
+    const responsesRef = useRef<Record<string, string>>({});
+    // doSubmitRef allows violation handler to call server submit without stale closure
+    const doSubmitRef = useRef<(r: Record<string, string>) => void>(() => {});
 
     const isActive = phase === 'active';
     const q = questions[currentIdx];
@@ -183,10 +212,8 @@ export function QuizEngine({
             setStrikes(s => {
                 const next = s + 1;
                 if (next >= 3) {
-                    // Auto-submit with zero score
-                    setPhase('done');
-                    setResults({ score: 0, total: totalQ, percentage: 0, feedback: [], success: true });
-                    onComplete(0, false);
+                    // Submit to server with whatever responses exist — records the attempt and consumes an attempt slot
+                    doSubmitRef.current(responsesRef.current);
                 } else {
                     setWarning(
                         `Security violation: Tab switch detected (${next}/3). ` +
@@ -259,12 +286,15 @@ export function QuizEngine({
 
     // Keep advanceRef in sync so timer/setTimeout always uses latest
     useEffect(() => { advanceRef.current = advance; }, [advance]);
+    // Keep doSubmitRef in sync so violation handler always calls latest version
+    useEffect(() => { doSubmitRef.current = doSubmit; }, [doSubmit]);
 
     const handleSelect = useCallback((optionId: string) => {
         if (chosen !== null || !q || isSubmitting) return;
         setChosen(optionId);
         const updated = { ...responses, [q.id]: optionId };
         setResponses(updated);
+        responsesRef.current = updated; // Keep ref in sync for violation handler
         // Snapshot updated before timeout — use advanceRef to avoid stale closure
         const snap = updated;
         setTimeout(() => advanceRef.current(snap), 900);
@@ -272,6 +302,7 @@ export function QuizEngine({
 
     const startQuiz = useCallback(() => {
         submittedRef.current = false;
+        responsesRef.current = {};
         setCurrentIdx(0);
         setResponses({});
         setChosen(null);
@@ -332,8 +363,10 @@ export function QuizEngine({
                 total={results?.total ?? totalQ}
                 percentage={pct}
                 xp={lessonXp}
+                xpEarned={results?.xp_earned}
                 feedbackData={results?.feedback}
                 onRestart={pct < 60 ? startQuiz : undefined}
+                violations={strikes}
             />
         );
     }

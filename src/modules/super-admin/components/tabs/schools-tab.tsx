@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Building2, CheckCircle2, CreditCard, IndianRupee, Edit, Mail, MapPin, ArrowUpRight } from 'lucide-react';
 import { Stats, SchoolInfo, PaymentPlan } from '../../types';
@@ -29,12 +29,13 @@ interface SchoolsTabProps {
     setEditingSchool: (s: Partial<SchoolInfo> | null) => void;
     searchQuery?: string;
     classes: any[];
+    onSync?: () => void;
 }
 
 export function SchoolsTab({
     stats, schoolsList, paymentPlans = [], onToggleStatus, onSaveSchool, onAssignPlan,
     showEditDialog, setShowEditDialog, editingSchool, setEditingSchool, searchQuery = '',
-    classes
+    classes, onSync
 }: SchoolsTabProps) {
     const { isDark, accent } = useAdminTheme();
     const [assignSchoolId, setAssignSchoolId] = useState<string | null>(null);
@@ -73,9 +74,9 @@ export function SchoolsTab({
             {/* Stat Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {[
-                    { value: stats.activeSchools.toString(), label: 'Active Schools', icon: Building2, badge: `of ${stats.totalSchools}`, theme: 'accent' },
-                    { value: stats.activeSubscriptions.toString(), label: 'Subscriptions', icon: CheckCircle2, badge: 'active', theme: 'accent' },
-                    { value: `₹${stats.totalRevenue.toLocaleString('en-IN')}`, label: 'Total Revenue', icon: IndianRupee, badge: 'all-time', theme: 'accent' },
+                    { value: (stats?.activeSchools || 0).toString(), label: 'Active Institutions', icon: Building2, badge: `of ${stats?.totalSchools || 0} TOTAL`, theme: 'accent' },
+                    { value: (stats?.activeSubscriptions || 0).toString(), label: 'Active Subscriptions', icon: CheckCircle2, badge: `${stats?.trialingSubscriptions || 0} TRIALS`, theme: 'accent' },
+                    { value: `\u20B9${(stats?.totalRevenue || 0).toLocaleString('en-IN')}`, label: 'Platform Revenue', icon: IndianRupee, badge: 'ALL-TIME', theme: 'accent' },
                 ].map((item, i) => {
                     const activeTheme = isDark ? accent.softDark : accent.softLight;
                     return (
@@ -102,9 +103,11 @@ export function SchoolsTab({
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
                 className={`rounded-[24px] border overflow-hidden transition-all duration-300 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
                 <div className={`px-6 py-5 border-b ${t.border(isDark)} flex items-center justify-between`}>
-                    <div>
-                        <h3 className={`text-lg font-black tracking-tight ${t.textPrimary(isDark)}`}>School Directory</h3>
-                        <p className={`text-[12px] font-medium ${t.textMuted(isDark)}`}>Manage all registered schools and partner organizations.</p>
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <h3 className={`text-lg font-black tracking-tight ${t.textPrimary(isDark)}`}>School Directory</h3>
+                            <p className={`text-[12px] font-medium ${t.textMuted(isDark)}`}>Manage all registered schools and partner organizations.</p>
+                        </div>
                     </div>
                     <Badge className={`text-[10px] font-black px-3 py-1 rounded-full ${isDark ? 'bg-white/[0.12] text-white shadow-lg shadow-black/20' : 'bg-slate-900 text-white shadow-md shadow-slate-200'}`}>
                         {filteredSchools.length}{searchQuery ? ` of ${schoolsList.length}` : ''} TOTAL
@@ -208,6 +211,9 @@ export function SchoolsTab({
                         <DialogTitle className={`text-xl font-[1000] tracking-tight ${t.textPrimary(isDark)}`}>
                             {editingSchool?.id ? 'Edit School Details' : 'Register New School'}
                         </DialogTitle>
+                        <DialogDescription className="sr-only">
+                            {editingSchool?.id ? 'Update the details for the selected school.' : 'Fill in the information to register a new school.'}
+                        </DialogDescription>
                     </DialogHeader>
                     {editingSchool && (
                         <div className="space-y-4">

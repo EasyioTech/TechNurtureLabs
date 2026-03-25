@@ -102,62 +102,88 @@ export async function deleteQuizAdmin(quizId: string) {
     await db.delete(quizzes).where(eq(quizzes.id, quizId));
 }
 
-export async function cloneQuizAction(quizId: string, targetLessonId: string | null | undefined, targetCourseId: string) {
+export async function cloneQuizAction(quizId: string, targetLessonId: string | null | undefined, targetCourseId?: string | null) {
+    console.log(`[cloneQuizAction] Starting clone for quizId: ${quizId}, targetLessonId: ${targetLessonId}, targetCourseId: ${targetCourseId}`);
     const session = await verifySession();
     if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        console.error(`[cloneQuizAction] Unauthorized access attempt by ${session?.userId}`);
         redirect('/admin-portal/login');
     }
-    return await db.transaction(async (tx) => {
-        const sourceQuiz = await tx.query.quizzes.findFirst({
-            where: eq(quizzes.id, quizId),
-            with: { questions: true }
-        });
 
-        if (!sourceQuiz) throw new Error("Source quiz not found");
+    try {
+        return await db.transaction(async (tx) => {
+            console.log(`[cloneQuizAction] Fetching source quiz...`);
+            const sourceQuiz = await tx.query.quizzes.findFirst({
+                where: eq(quizzes.id, quizId),
+                with: { questions: true }
+            });
 
-        const [clonedQuiz] = await tx.insert(quizzes).values({
-            lesson_id: targetLessonId,
-            course_id: targetCourseId,
-            title: `${sourceQuiz.title} (Copy)`,
-            description: sourceQuiz.description,
-            time_limit_secs: sourceQuiz.time_limit_secs,
-            pass_percentage: sourceQuiz.pass_percentage,
-            max_attempts: sourceQuiz.max_attempts,
-            xp_reward: sourceQuiz.xp_reward,
-            is_published: sourceQuiz.is_published,
-        } as any).returning();
+            if (!sourceQuiz) {
+                console.error(`[cloneQuizAction] Source quiz ${quizId} not found`);
+                throw new Error("Source quiz not found");
+            }
 
-        if (sourceQuiz.questions && sourceQuiz.questions.length > 0) {
-            for (const q of sourceQuiz.questions) {
-                const [clonedQuestion] = await tx.insert(quizQuestions).values({
-                    quiz_id: clonedQuiz.id,
-                    question_text: q.question_text,
-                    question_type: q.question_type,
-                    explanation: q.explanation,
-                    points: q.points,
-                    time_limit_secs: q.time_limit_secs,
-                    sequence_order: q.sequence_order,
-                }).returning();
+            // Determine target course ID: use provided one, or fall back to source quiz's course_id
+            const finalCourseId = targetCourseId || sourceQuiz.course_id;
+            
+            if (!finalCourseId) {
+                console.error(`[cloneQuizAction] Could not determine target course ID`);
+                throw new Error("Destination course ID is required");
+            }
 
-                const sourceOptions = await tx.query.quizOptions.findMany({
-                    where: eq(quizOptions.question_id, q.id)
-                });
+            console.log(`[cloneQuizAction] Inserting cloned quiz for course ${finalCourseId}...`);
+            const [clonedQuiz] = await tx.insert(quizzes).values({
+                lesson_id: targetLessonId || null,
+                course_id: finalCourseId,
+                title: `${sourceQuiz.title} (Copy)`,
+                description: sourceQuiz.description || '',
+                time_limit_secs: sourceQuiz.time_limit_secs || 0,
+                pass_percentage: sourceQuiz.pass_percentage || '60.00',
+                max_attempts: sourceQuiz.max_attempts || 3,
+                xp_reward: sourceQuiz.xp_reward || 20,
+                is_published: sourceQuiz.is_published ?? false,
+            } as any).returning();
 
-                if (sourceOptions.length > 0) {
-                    await tx.insert(quizOptions).values(
-                        sourceOptions.map(opt => ({
-                            question_id: clonedQuestion.id,
-                            option_text: opt.option_text,
-                            is_correct: opt.is_correct,
-                            sequence_order: opt.sequence_order
-                        }))
-                    );
+            console.log(`[cloneQuizAction] Cloned quiz created with ID: ${clonedQuiz.id}. Found ${sourceQuiz.questions?.length || 0} questions.`);
+
+            if (sourceQuiz.questions && sourceQuiz.questions.length > 0) {
+                for (const q of sourceQuiz.questions) {
+                    console.log(`[cloneQuizAction] Cloning question: ${q.question_text.substring(0, 30)}...`);
+                    const [clonedQuestion] = await tx.insert(quizQuestions).values({
+                        quiz_id: clonedQuiz.id,
+                        question_text: q.question_text,
+                        question_type: q.question_type,
+                        explanation: q.explanation || '',
+                        points: q.points || 1,
+                        time_limit_secs: q.time_limit_secs || 0,
+                        sequence_order: q.sequence_order,
+                    }).returning();
+
+                    const sourceOptions = await tx.query.quizOptions.findMany({
+                        where: eq(quizOptions.question_id, q.id)
+                    });
+
+                    if (sourceOptions.length > 0) {
+                        console.log(`[cloneQuizAction] Inserting ${sourceOptions.length} options for question ${clonedQuestion.id}`);
+                        await tx.insert(quizOptions).values(
+                            sourceOptions.map(opt => ({
+                                question_id: clonedQuestion.id,
+                                option_text: opt.option_text,
+                                is_correct: opt.is_correct,
+                                sequence_order: opt.sequence_order
+                            }))
+                        );
+                    }
                 }
             }
-        }
 
-        return clonedQuiz;
-    });
+            console.log(`[cloneQuizAction] Successfully cloned quiz ${quizId} to ${clonedQuiz.id}`);
+            return clonedQuiz;
+        });
+    } catch (error: any) {
+        console.error(`[cloneQuizAction] Error cloning quiz:`, error);
+        throw error;
+    }
 }
 
 /**

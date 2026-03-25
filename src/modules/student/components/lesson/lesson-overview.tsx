@@ -38,14 +38,16 @@ export function LessonOverview({ lesson, lessonComplete, nextLesson }: LessonOve
 
       <div className="h-px bg-slate-100" />
 
-      {/* ─── Description ─── */}
-      <div className="space-y-2">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.35em]">About this lesson</p>
-        <p className="text-sm sm:text-base text-slate-500 leading-relaxed font-medium">
-          {lesson.description ||
-            `Enhance your proficiency in ${lesson.title} by mastering the core principles and methodologies examined in this module.`}
-        </p>
-      </div>
+      {/* ─── Description (Hidden if using multi-block as it is handled in LessonContent) ─── */}
+      {!lesson.content_items && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.35em]">About this lesson</p>
+          <p className="text-sm sm:text-base text-slate-500 leading-relaxed font-medium">
+            {lesson.description ||
+              `Enhance your proficiency in ${lesson.title} by mastering the core principles and methodologies examined in this module.`}
+          </p>
+        </div>
+      )}
 
       {/* ─── Stats grid ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">

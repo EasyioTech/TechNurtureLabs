@@ -122,6 +122,17 @@ function parseContentItems(lesson: Partial<Lesson> | null): ContentItem[] {
     return [];
 }
 
+// ── Auto XP helpers ────────────────────────────────────────────────────────
+// XP per content block type (defaults; admin can always override)
+const XP_PER_TYPE: Record<string, number> = { video: 20, ppt: 15, pdf: 15, image: 10 };
+
+function autoCalcXp(items: ContentItem[], mode: 'content' | 'quiz'): number {
+    if (mode === 'quiz') return 25;
+    if (items.length === 0) return 0;
+    const raw = items.reduce((sum, item) => sum + (XP_PER_TYPE[item.type] ?? 10), 0);
+    return Math.min(100, raw);
+}
+
 export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLesson, onSave }: LessonDialogProps) {
     const { isDark, accent } = useAdminTheme();
     const isEditing = !!editingLesson?.id;
@@ -136,6 +147,23 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [(editingLesson as any)?.content_items, editingLesson?.content_url, editingLesson?.content_type]
     );
+
+    // Track whether admin has manually overridden the auto XP value during this dialog session
+    const [isXpCustomized, setIsXpCustomized] = React.useState(false);
+
+    // When dialog opens: recalculate XP from ALL content blocks so multi-type lessons show correct sum
+    React.useEffect(() => {
+        if (open) {
+            setIsXpCustomized(false);
+            const parsedItems = parseContentItems(editingLesson);
+            const mode = getLessonMode(editingLesson?.content_type);
+            const autoXp = autoCalcXp(parsedItems, mode);
+            if (autoXp > 0) {
+                setEditingLesson({ ...(editingLesson as any), xp_reward: autoXp });
+            }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open]);
 
     // ── Upload state ──────────────────────────────────────────────
     const [showBlockPicker, setShowBlockPicker] = React.useState(false);
@@ -164,14 +192,17 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         // Pick DB-safe content_type from first item ('image' not in enum → use 'pdf')
         const firstType = items[0]?.type || 'video';
         const dbType: any = firstType === 'image' ? 'pdf' : firstType;
+        // Auto-fill XP from content composition unless admin has manually set a value
+        const autoXp = autoCalcXp(items, 'content');
         setEditingLesson({
             ...editingLesson,
             content_type: dbType,
             content_url: items[0]?.url || '',
             content_items: items.length > 0 ? JSON.stringify(items) : null,
             content_watched: false, // reset watched if items change
+            ...(!isXpCustomized && { xp_reward: autoXp }),
         } as any);
-    }, [editingLesson, setEditingLesson]);
+    }, [editingLesson, setEditingLesson, isXpCustomized]);
 
     const addBlock = (type: ContentItem['type']) => {
         syncItems([...contentItems, { id: genId(), type, url: '' }]);
@@ -206,15 +237,23 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     // ── Switch lesson mode ────────────────────────────────────────
     const switchMode = (mode: 'content' | 'quiz') => {
         if (mode === 'quiz') {
-            setEditingLesson({ ...editingLesson, content_type: 'quiz', content_url: '', content_items: null } as any);
+            setEditingLesson({
+                ...editingLesson,
+                content_type: 'quiz',
+                content_url: '',
+                content_items: null,
+                ...(!isXpCustomized && { xp_reward: 25 }),
+            } as any);
         } else {
-            // Switch to content mode: preserve existing items
+            // Switch to content mode: preserve existing items and auto-recalculate XP
             const preserved = contentItems.length > 0 ? contentItems : [];
+            const autoXp = autoCalcXp(preserved, 'content');
             setEditingLesson({
                 ...editingLesson,
                 content_type: 'video',
                 content_url: preserved[0]?.url || '',
                 content_items: preserved.length > 0 ? JSON.stringify(preserved) : null,
+                ...(!isXpCustomized && { xp_reward: autoXp }),
             } as any);
         }
     };
@@ -804,13 +843,34 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                         {/* XP + Duration */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>XP Reward</Label>
+                                <div className="flex items-center justify-between">
+                                    <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>XP Reward</Label>
+                                    {!isXpCustomized && (editingLesson?.xp_reward ?? 0) > 0 && (
+                                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${isDark ? 'bg-violet-500/20 text-violet-300' : 'bg-violet-100 text-violet-600'}`}>Auto</span>
+                                    )}
+                                    {isXpCustomized && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsXpCustomized(false);
+                                                const autoXp = autoCalcXp(contentItems, lessonMode);
+                                                setEditingLesson({ ...editingLesson, xp_reward: autoXp });
+                                            }}
+                                            className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${isDark ? 'bg-white/10 text-slate-400 hover:text-violet-300' : 'bg-slate-100 text-slate-400 hover:text-violet-600'}`}
+                                        >
+                                            Reset Auto
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="relative">
                                     <Zap size={13} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-violet-400' : 'text-violet-500'}`} />
                                     <Input
                                         type="number" min="0"
                                         value={editingLesson?.xp_reward || 0}
-                                        onChange={(e) => setEditingLesson({ ...editingLesson, xp_reward: Number(e.target.value) })}
+                                        onChange={(e) => {
+                                            setIsXpCustomized(true);
+                                            setEditingLesson({ ...editingLesson, xp_reward: Number(e.target.value) });
+                                        }}
                                         className={`h-10 rounded-xl pl-8 pr-4 text-sm font-bold border-2 ${isDark ? 'bg-white/[0.06] text-violet-400 border-white/8' : 'bg-slate-50 text-violet-600 border-slate-200'}`}
                                     />
                                 </div>
@@ -912,10 +972,16 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                     entityType="quiz"
                     onSelect={async (sourceId) => {
                         try {
-                            await cloneQuizAction(sourceId, editingLesson.id!);
+                            // Find the destination course ID from the lesson itself
+                            const destCourseId = editingLesson.course_id;
+                            console.log(`[LessonDialog] Importing quiz ${sourceId} into lesson ${editingLesson.id} (Course: ${destCourseId})`);
+                            
+                            await cloneQuizAction(sourceId, editingLesson.id!, destCourseId);
                             toast.success('Quiz imported!');
-                        } catch {
-                            toast.error('Failed to import quiz');
+                            if (onSave) onSave(); // Refresh data
+                        } catch (err: any) {
+                            console.error(`[LessonDialog] Import failed:`, err);
+                            toast.error(`Failed to import quiz: ${err.message || 'Unknown error'}`);
                         }
                         setImportOpen(false);
                     }}

@@ -240,21 +240,81 @@ export default function SchoolRegistrationPage() {
     }
   };
 
-  const handleRazorpayPayment = () => {
+  const handleRazorpayPayment = async () => {
     if (!checkoutOrder) {
       toast.error('Order session not found. Please try again.');
       return;
     }
 
-    // Simulate instant payment success for testing/production bypass
-    toast.success('Payment authorized via Secure Local Bypass!');
-    setLoading(true);
-    
-    // Slight delay to show it's "processing" for user experience
-    setTimeout(() => {
-      const simulatedPaymentId = `pay_LOCAL_BYPASS_${Math.random().toString(36).substring(7).toUpperCase()}`;
-      handleRegisterSchool(simulatedPaymentId);
-    }, 1200);
+    // FREE plan — no payment needed
+    if (checkoutOrder.free) {
+      handleRegisterSchool(null);
+      return;
+    }
+
+    // PREVIEW / DEV MODE — Razorpay keys not configured
+    if (checkoutOrder.previewMode) {
+      toast.info('Dev mode: simulating payment...', { duration: 1500 });
+      setLoading(true);
+      setTimeout(() => {
+        const simulatedPaymentId = `pay_DEV_${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+        handleRegisterSchool(simulatedPaymentId);
+      }, 1500);
+      return;
+    }
+
+    // REAL RAZORPAY PAYMENT
+    if (!window.Razorpay) {
+      toast.error('Payment gateway not loaded. Please refresh the page and try again.');
+      return;
+    }
+
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      amount: checkoutOrder.amount,
+      currency: checkoutOrder.currency || 'INR',
+      name: settings?.platform_name || 'TechNurture Labs',
+      description: `${checkoutOrder.plan.name} - Annual School License`,
+      order_id: checkoutOrder.order_id,
+      handler: async (response: any) => {
+        setLoading(true);
+        try {
+          const verifyRes = await fetch('/api/payment/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          });
+          const verifyData = await verifyRes.json();
+          if (!verifyData.success) {
+            toast.error('Payment verification failed. Please contact support.');
+            setLoading(false);
+            return;
+          }
+          handleRegisterSchool(response.razorpay_payment_id);
+        } catch {
+          toast.error('Payment verification error. Please contact support.');
+          setLoading(false);
+        }
+      },
+      prefill: {
+        name: formData.principal_name,
+        email: formData.contact_email,
+        contact: formData.contact_phone,
+      },
+      theme: { color: '#4F46E5' },
+      modal: {
+        ondismiss: () => {
+          toast.info('Payment cancelled. You can try again.');
+        }
+      }
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
   };
 
   const handleRegisterSchool = async (paymentId: string | null) => {

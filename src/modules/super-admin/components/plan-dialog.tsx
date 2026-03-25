@@ -7,6 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogFooter,
+    DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +59,9 @@ export function PaymentPlanDialog({
                     <DialogTitle className={`text-xl font-[1000] tracking-tight ${t.textPrimary(isDark)}`}>
                         {editingPlan?.id ? 'EDIT PLAN DETAILS' : 'CREATE PAYMENT TIER'}
                     </DialogTitle>
+                    <DialogDescription className="sr-only">
+                        {editingPlan?.id ? 'Modify the features and pricing of the selected payment plan.' : 'Define the settings for a new subscription tier.'}
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">

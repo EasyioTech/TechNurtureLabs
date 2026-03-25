@@ -42,7 +42,8 @@ const DEFAULT_STATS: Stats = {
     totalSchools: 0, activeSchools: 0,
     totalCourses: 0, publishedCourses: 0,
     totalLessons: 0, totalXp: 0, avgCompletion: 0,
-    totalRevenue: 0, activeSubscriptions: 0, totalEnrollments: 0,
+    totalRevenue: 0, activeSubscriptions: 0, 
+    trialingSubscriptions: 0, activePlansPercentage: 0
 };
 
 export function useAdminData() {
@@ -207,14 +208,22 @@ export function useAdminData() {
     async function saveLessonOrder(customLessons?: Lesson[], silent = false) {
         if (!selectedCourse) return;
         const targetLessons = customLessons || lessons;
+        
+        // Ensure each update has a valid ID and sequence index
         const updates = targetLessons.map((lesson, index) => ({
-            id: lesson.id, course_id: lesson.course_id, title: lesson.title, sequence_index: index,
+            id: lesson.id,
+            sequence_order: index + 1 // Use 1-based indexing for DB sequence_order
         }));
+
+        if (updates.length === 0) return;
+
         try {
+            console.log(`[useAdminData] Saving lesson order for ${updates.length} lessons`);
             await saveLessonOrderAdmin(updates);
             if (!silent) toast.success('Order saved');
-        } catch {
-            if (!silent) toast.error('Failed to save order');
+        } catch (err: any) {
+            console.error('[useAdminData] Failed to save lesson order:', err);
+            if (!silent) toast.error('Failed to save order: ' + (err.message || 'Unknown error'));
         }
     }
 
@@ -347,11 +356,16 @@ export function useAdminData() {
             } catch { toast.error("Failed to clone lesson"); }
         },
         cloneQuiz: async (quizId: string, targetCourseId: string) => {
+            console.log(`[useAdminData] Atttempting to clone quiz ${quizId} to course ${targetCourseId}`);
             try {
-                await cloneQuizAction(quizId, null, targetCourseId);
+                const res = await cloneQuizAction(quizId, null, targetCourseId);
+                console.log(`[useAdminData] Clone success:`, res);
                 toast.success("Quiz cloned successfully");
                 if (selectedCourse?.id === targetCourseId) selectCourse(selectedCourse);
-            } catch { toast.error("Failed to clone quiz"); }
+            } catch (err: any) { 
+                console.error(`[useAdminData] Clone failed:`, err);
+                toast.error("Failed to clone quiz: " + (err.message || "Unknown error")); 
+            }
         },
         syncMetrics: async () => {
             try {

@@ -221,8 +221,8 @@ function ContentBlock({
           url={block.url}
           onComplete={() => onComplete()}
           lessonComplete={lessonComplete}
-          pageNumber={pageNumber}
-          docMax={docMax}
+          pageNumber={pageNumber ?? 1}
+          docMax={docMax ?? 1}
           onLoadTotalPages={(total) => onDocStateChange?.(total)}
           onPageChange={onPageChange}
         />

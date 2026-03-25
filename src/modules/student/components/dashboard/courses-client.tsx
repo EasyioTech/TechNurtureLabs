@@ -35,7 +35,7 @@ export function CoursesClient({ initialData }: CoursesClientProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/20 pb-24 lg:pb-10 animate-in fade-in duration-500">
+    <div className="min-h-screen bg-slate-50/20 pb-24 lg:pb-10">
 
       {/* ─── Header ─── */}
       <div className="bg-white border-b border-slate-100 px-4 sm:px-6 lg:px-12 pt-5 pb-0 sm:pt-8">

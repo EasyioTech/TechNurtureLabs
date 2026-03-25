@@ -19,14 +19,14 @@ import { useAdminTheme, t } from '../theme-context';
 interface EntityLibraryPickerProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    type: 'lesson' | 'quiz';
+    entityType: 'lesson' | 'quiz';
     onSelect: (id: string) => void;
 }
 
 export function EntityLibraryPicker({
     open,
     onOpenChange,
-    type,
+    entityType,
     onSelect,
 }: EntityLibraryPickerProps) {
     const { isDark, accent } = useAdminTheme();
@@ -38,7 +38,7 @@ export function EntityLibraryPicker({
     async function loadData() {
         setLoading(true);
         try {
-            if (type === 'lesson') {
+            if (entityType === 'lesson') {
                 const lessons = await fetchGlobalLessons();
                 setData(lessons);
             } else {
@@ -56,7 +56,7 @@ export function EntityLibraryPicker({
             // eslint-disable-next-line react-hooks/set-state-in-effect
             loadData();
         }
-    }, [open, type]);
+    }, [open, entityType]);
 
 
     const filteredData = data.filter((item) =>
@@ -78,11 +78,11 @@ export function EntityLibraryPicker({
                 <SheetHeader className={`p-6 border-b ${t.border(isDark)} hover:bg-transparent`}>
                     <div className="flex items-center justify-between">
                         <SheetTitle className={`text-xl font-black tracking-tight ${t.textPrimary(isDark)}`}>
-                            Import {type === 'lesson' ? 'Chapter' : 'Quiz'}
+                            Import {entityType === 'lesson' ? 'Chapter' : 'Quiz'}
                         </SheetTitle>
                     </div>
                     <p className={`text-xs font-medium ${t.textMuted(isDark)}`}>
-                        Select a previously created {type} to clone into this course.
+                        Select a previously created {entityType} to clone into this course.
                     </p>
                 </SheetHeader>
 
@@ -90,7 +90,7 @@ export function EntityLibraryPicker({
                     <div className="relative">
                         <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${t.textMuted(isDark)}`} />
                         <Input
-                            placeholder={`Search ${type}s or courses...`}
+                            placeholder={`Search ${entityType}s or courses...`}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className={`pl-11 rounded-full h-11 border-2 focus:ring-${accent.name}-400/50 ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-slate-50 border-slate-200'}`}
@@ -107,9 +107,9 @@ export function EntityLibraryPicker({
                     ) : filteredData.length === 0 ? (
                         <div className="text-center py-20">
                             <div className={`w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
-                                {type === 'lesson' ? <BookOpen className={t.textMuted(isDark)} /> : <HelpCircle className={t.textMuted(isDark)} />}
+                                {entityType === 'lesson' ? <BookOpen className={t.textMuted(isDark)} /> : <HelpCircle className={t.textMuted(isDark)} />}
                             </div>
-                            <p className={`text-sm font-bold ${t.textPrimary(isDark)}`}>No {type}s found</p>
+                            <p className={`text-sm font-bold ${t.textPrimary(isDark)}`}>No {entityType}s found</p>
                             <p className={`text-xs ${t.textMuted(isDark)} mt-1`}>Try a different search term or check other courses.</p>
                         </div>
                     ) : (
@@ -123,7 +123,7 @@ export function EntityLibraryPicker({
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${t.initialCircle(isDark, accent)}`}>
-                                                {type === 'lesson' ? <BookOpen size={18} /> : <HelpCircle size={18} />}
+                                                {entityType === 'lesson' ? <BookOpen size={18} /> : <HelpCircle size={18} />}
                                             </div>
                                             <div className="min-w-0">
                                                 <p className={`font-black text-sm tracking-tight truncate ${t.textPrimary(isDark)}`}>{item.title}</p>
@@ -144,7 +144,7 @@ export function EntityLibraryPicker({
                                     </div>
                                     <div className="flex items-center gap-2 pt-1">
                                         <Badge variant="outline" className={`text-[9px] font-black uppercase px-2 py-0 ${isDark ? 'bg-white/[0.05] border-white/10' : 'bg-white border-slate-200'}`}>
-                                            {type === 'lesson' ? item.content_type : `${item.questions_count || 0} Questions`}
+                                            {entityType === 'lesson' ? item.content_type : `${item.questions_count || 0} Questions`}
                                         </Badge>
                                         <span className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>
                                             Created {new Date(item.created_at).toLocaleDateString()}

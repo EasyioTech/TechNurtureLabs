@@ -4,17 +4,19 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import {
     Users, School, BookOpen, IndianRupee, TrendingUp,
-    Zap, Activity, ArrowUpRight, GraduationCap,
+    Zap, Activity, ArrowUpRight, GraduationCap, RefreshCw
 } from 'lucide-react';
 import { EngagementCharts } from '../engagement-charts';
 import { Stats, PaymentPlan, SchoolInfo } from '../../types';
 import { useAdminTheme, t } from '../../theme-context';
+import { Button } from '@/components/ui/button';
 
 interface OverviewTabProps {
     stats: Stats;
     paymentPlans: PaymentPlan[];
     schoolsList: SchoolInfo[];
     platformMetrics: any[];
+    onSync?: () => Promise<void>;
 }
 
 function StatCard({ label, value, badge, icon: Icon, extra, delay = 0 }: {
@@ -91,18 +93,18 @@ function MiniStat({ label, value, icon: Icon, theme = 'accent', delay = 0 }: {
     );
 }
 
-export function OverviewTab({ stats, paymentPlans, schoolsList, platformMetrics }: OverviewTabProps) {
+export function OverviewTab({ stats, paymentPlans, schoolsList, platformMetrics, onSync }: OverviewTabProps) {
     const { isDark, accent } = useAdminTheme();
 
     const engagementData = platformMetrics.map(m => ({
         name: new Date(m.metric_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
         students: m.active_students,
-        enrollments: m.total_enrollments,
+        schools: m.active_schools,
     }));
 
     // Fallback if no engagement data
     if (engagementData.length === 0) {
-        engagementData.push({ name: 'Active', students: stats.activeStudents, enrollments: stats.totalEnrollments });
+        engagementData.push({ name: 'Active', students: stats.activeStudents, schools: stats.activeSchools });
     }
     const revenueData = platformMetrics.map(m => ({
         month: new Date(m.metric_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
@@ -133,27 +135,49 @@ export function OverviewTab({ stats, paymentPlans, schoolsList, platformMetrics 
             <div className={`flex-1 h-3 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'}`}>
                 <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: `${stats.avgCompletion}%` }}
+                    animate={{ width: `${stats.activePlansPercentage}%` }}
                     className={`h-full rounded-full ${accent.bg}`} style={t.barGlow(isDark, accent)} />
             </div>
-            <span className={`text-[12px] font-black tracking-tighter ${t.textPrimary(isDark)}`}>{stats.avgCompletion}%</span>
+            <span className={`text-[12px] font-black tracking-tighter ${t.textPrimary(isDark)}`}>{stats.activePlansPercentage}%</span>
         </div>
     );
 
+
+
     return (
         <div className="space-y-6">
+            <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/5 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
+                        <Activity size={20} />
+                    </div>
+                    <div>
+                        <h3 className={`text-sm font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Real-time Platform Pulse</h3>
+                        <p className={`text-[10px] font-bold ${t.textMuted(isDark)} uppercase tracking-widest`}>Aggregated platform performance metrics</p>
+                    </div>
+                </div>
+                <Button 
+                    onClick={onSync}
+                    size="sm"
+                    variant="outline"
+                    className={`rounded-full h-9 px-5 text-[10px] font-black border-2 gap-2 ${t.btnOutline(isDark)} transition-all hover:scale-105 active:scale-95`}
+                >
+                    <RefreshCw size={14} /> SYNC DATA
+                </Button>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard label="Total Revenue" value={`\u20B9${stats.totalRevenue.toLocaleString('en-IN')}`} icon={IndianRupee} delay={0} />
-                <StatCard label="Total Students" value={stats.totalStudents.toLocaleString()} icon={Users} delay={0.05} />
-                <StatCard label="Course Completion" value={`${stats.avgCompletion}%`} icon={Zap} extra={completionBar} delay={0.1} />
-                <StatCard label="Total Courses" value={stats.totalCourses.toString()} icon={BookOpen} delay={0.15} />
+                <StatCard label="Total Revenue" value={`\u20B9${(stats?.totalRevenue || 0).toLocaleString('en-IN')}`} icon={IndianRupee} delay={0} />
+                <StatCard label="Student Base" value={(stats?.totalStudents || 0).toLocaleString()} icon={Users} delay={0.05} />
+                <StatCard label="Platform Adoption" value={`${stats?.activePlansPercentage || 0}%`} icon={TrendingUp} extra={completionBar} delay={0.1} />
+                <StatCard label="Onboarding Success" value={`${stats?.publishedCourses || 0}/${stats?.totalCourses || 0}`} icon={BookOpen} delay={0.15} />
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <MiniStat label="Schools" value={`${stats.activeSchools}`} icon={School} theme="accent" delay={0.2} />
-                <MiniStat label="Total XP" value={stats.totalXp.toLocaleString()} icon={Zap} theme="accent" delay={0.24} />
-                <MiniStat label="Enrollments" value={stats.totalEnrollments.toString()} icon={GraduationCap} theme="accent" delay={0.28} />
-                <MiniStat label="Active Subs" value={stats.activeSubscriptions.toString()} icon={Activity} theme="accent" delay={0.32} />
+                <MiniStat label="Active Institutions" value={`${stats?.activeSchools || 0}`} icon={School} theme="accent" delay={0.2} />
+                <MiniStat label="Platform Activity" value={(stats?.totalXp || 0).toLocaleString()} icon={Zap} theme="emerald" delay={0.24} />
+                <MiniStat label="Paid Subscriptions" value={(stats?.activeSubscriptions || 0).toString()} icon={GraduationCap} theme="violet" delay={0.28} />
+                <MiniStat label="Active Trials" value={(stats?.trialingSubscriptions || 0).toString()} icon={Activity} theme="amber" delay={0.32} />
             </div>
 
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.36 }}>

@@ -389,38 +389,38 @@ function DashboardContent() {
                         </motion.p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                        {activePage !== 'courses' && (
-                            <>
-                                {activePage !== 'system' && (
-                                    <Button variant="outline" size="sm"
-                                        className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black border-2 transition-all ${t.btnOutline(isDark)}`}>
-                                        <Filter size={isDark ? 14 : 16} />FILTER
-                                    </Button>
-                                )}
-                                {activePage !== 'schools' && activePage !== 'users' && activePage !== 'system' && activePage !== 'courseMetrics' && (
-                                    <Button size="sm"
-                                        className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black shadow-xl transition-all
-                                            ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
-                                        style={isDark ? t.glowStyle(isDark, accent) : {}}
-                                        onClick={() => {
-                                            if (activePage === 'plans') {
-                                                data.setEditingPlan({ billing_cycle: 'monthly', features: [], is_active: true, trial_days: 0 });
-                                                data.setShowPlanDialog(true);
-                                            } else if (activePage === 'promo') {
-                                                data.setEditingPromoCode({ discount_type: 'percentage', is_active: true, max_uses: null, current_uses: 0 });
-                                                data.setShowPromoCodeDialog(true);
-                                            } else if (activePage === 'settings') {
-                                                settingsRef.current?.handleSave();
-                                            }
-                                        }}>
-                                        {activePage === 'settings' ? <Save size={20} strokeWidth={3} /> : <Plus size={20} strokeWidth={3} />}
-                                        {activePage === 'plans' ? 'UPDATE TIERS' :
-                                            activePage === 'promo' ? 'ADD CODE' :
-                                                activePage === 'settings' ? 'SAVE SETTINGS' :
-                                                    'QUICK ACTION'}
-                                    </Button>
-                                )}
-                            </>
+                        {activePage === 'plans' && (
+                            <Button size="sm"
+                                className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black shadow-xl transition-all
+                                    ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
+                                style={isDark ? t.glowStyle(isDark, accent) : {}}
+                                onClick={() => {
+                                    data.setEditingPlan({ billing_cycle: 'monthly', features: [], is_active: true, trial_days: 0 });
+                                    data.setShowPlanDialog(true);
+                                }}>
+                                <Plus size={20} strokeWidth={3} />UPDATE TIERS
+                            </Button>
+                        )}
+                        {activePage === 'promo' && (
+                            <Button size="sm"
+                                className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black shadow-xl transition-all
+                                    ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
+                                style={isDark ? t.glowStyle(isDark, accent) : {}}
+                                onClick={() => {
+                                    data.setEditingPromoCode({ discount_type: 'percentage', is_active: true, max_uses: null, current_uses: 0 });
+                                    data.setShowPromoCodeDialog(true);
+                                }}>
+                                <Plus size={20} strokeWidth={3} />ADD CODE
+                            </Button>
+                        )}
+                        {activePage === 'settings' && (
+                            <Button size="sm"
+                                className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black shadow-xl transition-all
+                                    ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
+                                style={isDark ? t.glowStyle(isDark, accent) : {}}
+                                onClick={() => settingsRef.current?.handleSave()}>
+                                <Save size={20} strokeWidth={3} />SAVE SETTINGS
+                            </Button>
                         )}
                     </div>
                 </div>
@@ -433,7 +433,7 @@ function DashboardContent() {
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.3, ease: 'circOut' }}
                     >
-                        {activePage === 'overview' && <OverviewTab stats={data.stats} paymentPlans={data.paymentPlans} schoolsList={data.schoolsList} platformMetrics={data.platformMetrics} />}
+                        {activePage === 'overview' && <OverviewTab stats={data.stats} paymentPlans={data.paymentPlans} schoolsList={data.schoolsList} platformMetrics={data.platformMetrics} onSync={data.syncMetrics} />}
                         {activePage === 'courses' && (
                             <CourseBuilderTab
                                 courses={data.courses} selectedCourse={data.selectedCourse}
@@ -479,6 +479,7 @@ function DashboardContent() {
                                 setEditingSchool={data.setEditingSchoolItem as any}
                                 searchQuery={searchQuery}
                                 classes={data.classes}
+                                onSync={data.syncMetrics}
                             />
                         )}
                         {activePage === 'users' && <MetricTables userMetrics={data.userMetrics} courseMetrics={[]} page={data.userMetricsPage} setPage={data.setUserMetricsPage} />}

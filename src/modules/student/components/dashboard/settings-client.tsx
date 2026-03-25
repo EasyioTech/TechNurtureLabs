@@ -243,7 +243,7 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50/10 pb-20 animate-in fade-in duration-700">
+        <div className="min-h-screen bg-slate-50/10 pb-20">
             {/* Command Header */}
             <div className="relative bg-white border-b border-slate-100 overflow-hidden py-16 md:py-20 lg:py-24 px-6 lg:px-12">
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-50/50 rounded-full blur-[150px] pointer-events-none translate-x-1/3 -translate-y-1/3" />

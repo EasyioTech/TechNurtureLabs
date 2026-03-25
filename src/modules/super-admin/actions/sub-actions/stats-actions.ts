@@ -20,10 +20,14 @@ export async function fetchAdminStats(): Promise<Stats> {
     }
 
     // 1. Attempt to fetch from high-performance Redis counters
-    const redisStats = await analyticsService.getGlobalStats();
+    const redisStats: any = await analyticsService.getGlobalStats();
     
-    // Check for "well-known" keys to determine if cache is warm
-    if (redisStats && redisStats.total_students) {
+    // Check if cache exists and hasn't explicitly expired (using a 'last_sync' key)
+    const lastSync = Number(redisStats.last_sync || 0);
+    const CACHE_MINUTES = 15; // Only refresh from DB every 15 mins max
+    const isCacheWarm = redisStats.total_students && (Date.now() - lastSync < CACHE_MINUTES * 60 * 1000);
+
+    if (isCacheWarm) {
         return {
             totalStudents: Number(redisStats.total_students || 0),
             activeStudents: Number(redisStats.active_students || 0),
@@ -36,21 +40,15 @@ export async function fetchAdminStats(): Promise<Stats> {
             avgCompletion: Number(redisStats.avg_completion || 0),
             totalRevenue: Number(redisStats.total_revenue || 0),
             activeSubscriptions: Number(redisStats.total_subscriptions || 0),
-            totalEnrollments: Number(redisStats.total_enrollments || 0),
+            trialingSubscriptions: Number(redisStats.trialing_subscriptions || 0),
+            activePlansPercentage: Number(redisStats.active_plans_pct || 0),
         };
     }
 
-    // 2. Fallback to SQL and Warm up the Redis cache (Lazy Sync)
+    // 2. Fallback to SQL (only if cache is stale or missing)
+    console.log('[Dashboard] Refreshing global stats from DB...');
     const [
-        sCount,
-        schData,
-        cData,
-        lCount,
-        eCount,
-        subCount,
-        xpRes,
-        revenueData,
-        completionData
+        sCount, schData, cData, lCount, subCount, xpRes, revenueData, completionData
     ] = await Promise.all([
         db.select({ val: count() }).from(students).where(isNull(students.deleted_at)),
         db.select({ 
@@ -61,34 +59,40 @@ export async function fetchAdminStats(): Promise<Stats> {
             total: sql`count(*)`, 
             published: sql`count(*) filter (where ${courses.is_published} = true)` 
         }).from(courses),
-        db.select({ val: count() }).from(lessons),
-        db.select({ val: count() }).from(enrollments),
-        db.select({ val: count() }).from(schoolSubscriptions).where(inArray(schoolSubscriptions.status, ['active', 'trialing'])),
+        db.select({ val: count() }).from(lessons).where(isNull(lessons.deleted_at)),
+        db.select({ 
+            active: sql`count(distinct ${schoolSubscriptions.school_id}) filter (where ${paymentTransactions.status} = 'captured' and ${schoolSubscriptions.status} = 'active')`,
+            trialing: sql`count(*) filter (where ${schoolSubscriptions.status} = 'trialing')`
+        }).from(schoolSubscriptions)
+          .leftJoin(paymentTransactions, eq(schoolSubscriptions.school_id, paymentTransactions.school_id)),
         db.select({ val: sql<number>`sum(${students.cumulative_xp})` }).from(students).where(isNull(students.deleted_at)),
-        db.select({ totalRevenue: sql<number>`coalesce(sum(${paymentTransactions.amount}), 0)` })
-            .from(paymentTransactions)
-            .where(eq(paymentTransactions.status, 'captured')),
-        db.select({
-            avg: sql<number>`coalesce(avg(case when ${lessonProgress.completed_at} is not null then 1.0 else 0.0 end), 0) * 100`
-        }).from(lessonProgress)
+        db.select({ totalRevenue: sql<number>`coalesce(sum(${paymentTransactions.amount}), 0)` }).from(paymentTransactions).where(eq(paymentTransactions.status, 'captured')),
+        db.select({ avg: sql<number>`coalesce(avg(case when ${lessonProgress.completed_at} is not null then 1.0 else 0.0 end), 0) * 100` }).from(lessonProgress)
     ]);
 
-    const stats = {
+    const activeSubscriptions = Number((subCount[0] as any).active || 0);
+    const trialingSubscriptions = Number((subCount[0] as any).trialing || 0);
+    const totalSchools = Number((schData[0] as any).total || 0);
+    const activeSchools = Number((schData[0] as any).active || 0);
+    const activePlansPercentage = totalSchools > 0 ? Math.round((activeSubscriptions / totalSchools) * 100) : 0;
+
+    const stats: Stats = {
         totalStudents: Number(sCount[0].val),
         activeStudents: 0, 
-        totalSchools: Number((schData[0] as any).total),
-        activeSchools: Number((schData[0] as any).active),
+        totalSchools,
+        activeSchools,
         totalCourses: Number((cData[0] as any).total),
         publishedCourses: Number((cData[0] as any).published),
         totalLessons: Number(lCount[0].val),
         totalXp: Number(xpRes[0].val || 0),
         avgCompletion: Math.round(Number(completionData[0].avg || 0)),
         totalRevenue: Number(revenueData[0].totalRevenue || 0),
-        activeSubscriptions: Number(subCount[0].val),
-        totalEnrollments: Number(eCount[0].val),
+        activeSubscriptions,
+        trialingSubscriptions,
+        activePlansPercentage
     };
 
-    // Cache for future loads
+    // Cache with a 'last_sync' timestamp to prevent constant DB hammering
     analyticsService.syncFromDb({
         total_students: stats.totalStudents,
         total_schools: stats.totalSchools,
@@ -97,8 +101,10 @@ export async function fetchAdminStats(): Promise<Stats> {
         total_xp: stats.totalXp,
         total_revenue: stats.totalRevenue,
         total_subscriptions: stats.activeSubscriptions,
-        total_enrollments: stats.totalEnrollments,
-        avg_completion: stats.avgCompletion
+        trialing_subscriptions: stats.trialingSubscriptions,
+        active_plans_pct: stats.activePlansPercentage,
+        avg_completion: stats.avgCompletion,
+        last_sync: Date.now()
     }).catch(() => {});
 
     return stats;

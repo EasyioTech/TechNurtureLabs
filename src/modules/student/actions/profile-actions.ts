@@ -75,11 +75,11 @@ export async function getStudentProfileData() {
         total_time: sql<number>`sum(${lessonProgress.time_spent_secs})`
     }).from(lessonProgress).where(and(eq(lessonProgress.user_id, session.userId), sql`${lessonProgress.completed_at} is not null`));
 
-    // Get all quiz attempts to calculate accuracy and average score
+    // Get all quiz attempts to calculate accuracy (as percentage) and pass rate
     const quizStats = await db.select({
         count: sql<number>`count(*)`,
         passed: sql<number>`count(*) filter (where ${quizAttempts.passed} = true)`,
-        avgScore: sql<number>`avg(${quizAttempts.score})`
+        avgScore: sql<number>`avg(${quizAttempts.score}::float / NULLIF(${quizAttempts.max_score}::float, 0) * 100)`
     }).from(quizAttempts).where(eq(quizAttempts.user_id, session.userId));
 
     const totalAttempts = Number(quizStats[0]?.count) || 0;

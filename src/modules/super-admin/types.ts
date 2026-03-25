@@ -23,6 +23,7 @@ export type Lesson = {
     description: string | null;
     content_type: string;
     content_url: string;
+    content_items?: string | null;
     asset_id?: string | null;
     sequence_order: number;
     sequence_index?: number;
@@ -81,7 +82,8 @@ export type Stats = {
     avgCompletion: number;
     totalRevenue: number;
     activeSubscriptions: number;
-    totalEnrollments: number;
+    trialingSubscriptions: number;
+    activePlansPercentage: number;
 };
 
 export type UserMetric = {

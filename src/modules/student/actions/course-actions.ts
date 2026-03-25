@@ -72,25 +72,13 @@ export async function ensureEnrollment(userId: string, courseId: string) {
     if (!currentSession) return null;
 
     if (role === 'student') {
+        // Only require the course to be published.
+        // Class-course mapping controls which courses appear in a student's list (filtering),
+        // but does NOT block access — any student from the school can enroll in any published course.
         const course = await db.query.courses.findFirst({
             where: and(eq(courses.id, courseId), eq(courses.is_published, true))
         });
         if (!course) return null;
-
-        if (!course.all_classes) {
-            const currentRecord = await db.query.studentAcademicRecords.findFirst({
-                where: and(eq(studentAcademicRecords.user_id, userId), eq(studentAcademicRecords.session_id, currentSession.id)),
-                orderBy: (records, { desc }) => [desc(records.created_at)]
-            });
-
-            if (!currentRecord?.class_id) return null;
-
-            const mapping = await db.query.courseClassMapping.findFirst({
-                where: and(eq(courseClassMapping.class_id, currentRecord.class_id), eq(courseClassMapping.course_id, courseId))
-            });
-
-            if (!mapping) return null;
-        }
     }
 
     const softDeleted = await db.query.enrollments.findFirst({
@@ -163,26 +151,8 @@ export async function getCourseDetailsData(courseId: string, bypassCache = false
         throw new Error('Course not found');
     }
 
-    if (role === 'student') {
-        const existingEnrollment = await db.query.enrollments.findFirst({
-            where: and(eq(enrollments.user_id, userId), eq(enrollments.course_id, courseId))
-        });
-
-        if (!existingEnrollment && !course.all_classes) {
-            const currentRecord = await db.query.studentAcademicRecords.findFirst({
-                where: eq(studentAcademicRecords.user_id, userId),
-                orderBy: (records, { desc }) => [desc(records.created_at)]
-            });
-
-            if (!currentRecord?.class_id) throw new Error('Course access denied');
-
-            const mapping = await db.query.courseClassMapping.findFirst({
-                where: and(eq(courseClassMapping.class_id, currentRecord.class_id), eq(courseClassMapping.course_id, courseId))
-            });
-
-            if (!mapping) throw new Error('Course access denied');
-        }
-    }
+    // Students can access any published course from their school.
+    // Class-course mapping is used for filtering/display only — not as an access gate.
 
     const courseLessons = await db.query.lessons.findMany({
         where: eq(lessons.course_id, courseId),

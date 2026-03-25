@@ -356,6 +356,7 @@ export const lessons = pgTable('lessons', {
     description: text('description'),
     content_type: lessonContentTypeEnum('content_type').notNull(),
     content_url: text('content_url'),
+    content_items: text('content_items'), // JSON: Array<{id,type,url}> for multi-block lessons
     asset_id: uuid('asset_id').references(() => mediaAssets.id, { onDelete: 'set null' }),
     sequence_order: integer('sequence_order').notNull(),
     duration_minutes: integer('duration_minutes'),
