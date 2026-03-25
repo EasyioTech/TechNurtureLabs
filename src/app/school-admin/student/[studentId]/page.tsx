@@ -10,6 +10,7 @@ import {
     BarChart2, Star, ShieldCheck, MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { handleThumbnailError } from '@/lib/media';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { motion } from 'framer-motion';
@@ -178,7 +179,7 @@ function StudentDetailsContent({ studentId }: { studentId: string }) {
                                 >
                                     <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-white/5 border border-white/10">
                                         {c.thumbnail_url ? (
-                                            <img src={c.thumbnail_url} alt={c.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                            <img src={c.thumbnail_url} alt={c.title} decoding="async" onError={handleThumbnailError} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-indigo-500 bg-indigo-500/5">
                                                 <BookOpen size={28} />

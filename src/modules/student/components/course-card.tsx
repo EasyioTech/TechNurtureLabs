@@ -3,6 +3,7 @@
 import React from 'react';
 import { Play, ChevronRight, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import { handleThumbnailError } from '@/lib/media';
 
 interface Course {
   id: string;
@@ -60,7 +61,7 @@ export function CourseCard({ course }: { course: Course }) {
               src={course.thumbnail}
               alt={course.title}
               decoding="async"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              onError={handleThumbnailError}
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
             />
           )}

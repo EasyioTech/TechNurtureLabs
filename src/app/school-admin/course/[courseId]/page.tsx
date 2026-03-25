@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/components/providers/auth-provider';
 import { fetchSchoolAdminCourseData } from '@/modules/school-admin/actions';
 import { useSchoolTheme, ts, SchoolThemeProvider } from '@/modules/school-admin/theme-context';
+import { handleThumbnailError } from '@/lib/media';
 
 type Course = {
     id: string;
@@ -211,7 +212,7 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
                         <div className="relative group/thumb w-full lg:w-[400px]">
                             <div className={`w-full aspect-video rounded-[32px] overflow-hidden border ${ts.border(isDark)} shadow-2xl transition-transform duration-700 group-hover/thumb:scale-[1.02]`}>
                                 {course.thumbnail ? (
-                                    <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
+                                    <img src={course.thumbnail} alt={course.title} decoding="async" onError={handleThumbnailError} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-50'}`}>
                                         <BookOpen size={48} className="text-indigo-500" strokeWidth={1} />

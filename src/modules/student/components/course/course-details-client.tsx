@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { handleThumbnailError } from '@/lib/media';
 
 interface CourseDetailsClientProps {
   initialData: {
@@ -49,7 +50,7 @@ export function CourseDetailsClient({ initialData }: CourseDetailsClientProps) {
                   src={course.thumbnail}
                   alt={course?.title}
                   decoding="async"
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  onError={handleThumbnailError}
                   className="absolute inset-0 w-full h-full object-cover opacity-60"
                 />
               )}

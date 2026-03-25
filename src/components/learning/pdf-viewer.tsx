@@ -13,15 +13,18 @@ import {
     Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-// Use local worker to avoid CDN dependency and CSP issues in production.
+// Use the locally served worker (copied from node_modules at build time by next.config.ts).
+// This version is guaranteed to match the installed pdfjs-dist — no CDN dependency.
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
-// Static options to avoid re-renders and console warnings in react-pdf
+// cMapUrl and standardFontDataUrl must match the installed pdfjs-dist version.
+// next.config.ts copies the worker from that same version so they are in sync.
+// The version constant is kept here so it only needs to be updated once.
+const PDFJS_VERSION = pdfjs.version; // read from the live bundle — always correct
 const STABLE_PDF_OPTIONS = {
-    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+    cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/cmaps/`,
     cMapPacked: true,
-    standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/',
+    standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/standard_fonts/`,
     disableFontFace: true,
     rangeChunkSize: 65536,
     maxImageSize: 1024 * 1024 * 4,

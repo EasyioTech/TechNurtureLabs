@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,20 +17,39 @@ interface Course {
     enrolled_count: number;
 }
 
+function cdnFallback(e: React.SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    if (!img.dataset.proxyAttempt) {
+        img.dataset.proxyAttempt = '1';
+        try {
+            const u = new URL(img.src);
+            if (!u.pathname.startsWith('/api/')) {
+                img.src = `/api/media/r2${u.pathname}`;
+                return;
+            }
+        } catch { /* not a valid absolute URL */ }
+    }
+    // Both attempts failed — hide the img, gradient placeholder shows through
+    img.style.display = 'none';
+}
+
 export function CourseCard({ course, index }: { course: Course; index: number }) {
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
+        <div
+            className="animate-in fade-in slide-in-from-bottom-4 duration-300"
+            style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'backwards' }}
         >
             <Card className="bg-white/80 backdrop-blur-xl border-slate-200/60 shadow-lg hover:shadow-xl transition-all group overflow-hidden">
-                <div className="relative h-40 overflow-hidden">
-                    <img
-                        src={course.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400'}
-                        alt={course.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
+                <div className="relative h-40 overflow-hidden bg-gradient-to-br from-slate-700 to-slate-800">
+                    {course.thumbnail && (
+                        <img
+                            src={course.thumbnail}
+                            alt={course.title}
+                            decoding="async"
+                            onError={cdnFallback}
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 to-transparent" />
                     <div className="absolute top-3 right-3">
                         <Badge className={course.published ? 'bg-emerald-500 text-white border-0' : 'bg-slate-500 text-white border-0'}>
@@ -57,6 +75,6 @@ export function CourseCard({ course, index }: { course: Course; index: number })
                     </Link>
                 </CardContent>
             </Card>
-        </motion.div>
+        </div>
     );
 }

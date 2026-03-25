@@ -93,3 +93,37 @@ export type MediaAssetForUrl = {
     file_path: string;
     file_url?: string | null;
 };
+
+/**
+ * Client-side <img> onError handler for course thumbnails.
+ *
+ * Two-stage fallback:
+ *   1. CDN → proxy: if assets.technurture.io (or any external CDN) is
+ *      unreachable, retry via the internal authenticated R2 proxy
+ *      at /api/media/r2/<key>. This keeps thumbnails visible even when
+ *      the Cloudflare custom domain is not yet configured / temporarily down.
+ *   2. Proxy → hide: if the proxy also fails (file missing in R2), hide the
+ *      img so the parent container's gradient placeholder shows through.
+ *
+ * Usage:
+ *   import { handleThumbnailError } from '@/lib/media';
+ *   <img src={url} onError={handleThumbnailError} ... />
+ */
+export function handleThumbnailError(e: { currentTarget: HTMLImageElement }) {
+    const img = e.currentTarget;
+    if (!img.dataset.proxyAttempt) {
+        img.dataset.proxyAttempt = '1';
+        try {
+            const u = new URL(img.src);
+            // Only retry if it's an external HTTPS URL, not already the internal proxy
+            if (u.protocol === 'https:' && !u.pathname.startsWith('/api/')) {
+                img.src = `/api/media/r2${u.pathname}`;
+                return;
+            }
+        } catch {
+            // img.src was relative or malformed — no retry possible
+        }
+    }
+    // Both CDN and internal proxy failed — hide the broken img element
+    img.style.display = 'none';
+}

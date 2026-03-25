@@ -10,6 +10,7 @@ import {
   Star, Clock, Zap, Flag, MapPin, Sparkles, ChevronRight,
   BookOpen, Award, Target
 } from 'lucide-react';
+import { handleThumbnailError } from '@/lib/media';
 import { StudentHeader } from '@/modules/student/components/header';
 import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import { getStudentProfileData } from '@/modules/student/actions/profile-actions';
@@ -126,12 +127,16 @@ export default function JourneyPage({ params }: { params: Promise<{ courseId: st
           <div className="space-y-6">
             <div>
               <Card className="bg-white border-slate-200 shadow-sm overflow-hidden">
-                <div className="h-32 relative overflow-hidden bg-slate-100">
-                  <img
-                    src={course?.thumbnail || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400'}
-                    alt={course?.title}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="h-32 relative overflow-hidden bg-gradient-to-br from-slate-700 to-slate-800">
+                  {course?.thumbnail && (
+                    <img
+                      src={course.thumbnail}
+                      alt={course?.title}
+                      decoding="async"
+                      onError={handleThumbnailError}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 to-transparent" />
                   <div className="absolute bottom-3 left-4 right-4">
                     <span className="px-2 py-0.5 rounded bg-white text-[10px] font-bold text-slate-800">

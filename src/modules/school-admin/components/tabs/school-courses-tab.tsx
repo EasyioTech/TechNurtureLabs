@@ -8,6 +8,7 @@ import { useSchoolTheme, ts } from '../../theme-context';
 import { BookOpen, Users, Zap, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import { handleThumbnailError } from '@/lib/media';
 
 interface CoursesTabProps {
     courseMetrics: SchoolCourseMetric[];
@@ -91,7 +92,7 @@ export function SchoolCoursesTab({ courseMetrics, schoolClasses = [] }: CoursesT
                         <div className="aspect-[16/10] relative overflow-hidden flex-shrink-0">
                             <div className="absolute inset-0 bg-gradient-to-t from-[#0c0f1a]/80 to-transparent z-10 opacity-60" />
                             {course.thumbnail_url ? (
-                                <img src={course.thumbnail_url} alt={course.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                <img src={course.thumbnail_url} alt={course.title} decoding="async" onError={handleThumbnailError} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                             ) : (
                                 <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-50'}`}>
                                     <BookOpen size={48} className="text-indigo-500/30" strokeWidth={1.5} />

@@ -11,6 +11,7 @@ import {
 } from '@dnd-kit/sortable';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { handleThumbnailError } from '@/lib/media';
 import { Plus, Save, Edit, Trash2, BookOpen, Layers, AlertOctagon } from 'lucide-react';
 import { SortableLessonItem } from '../lesson-item-sortable';
 import { CourseDialog } from '../course-dialog';
@@ -140,7 +141,7 @@ export function CourseBuilderTab({
                                                     ? isDark ? `${accent.bg} text-slate-900 shadow-lg shadow-${accent.name}-400/20` : 'bg-white text-slate-900 ring-2 ring-white/20'
                                                     : isDark ? 'bg-white/[0.12] text-slate-300 border border-white/10 shadow-inner' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
                                                 {course.thumbnail || course.thumbnail_url ? (
-                                                    <img src={course.thumbnail || course.thumbnail_url || ''} alt="" className="w-full h-full object-cover" />
+                                                    <img src={course.thumbnail || course.thumbnail_url || ''} alt="" decoding="async" onError={handleThumbnailError} className="w-full h-full object-cover" />
                                                 ) : (
                                                     <BookOpen size={18} />
                                                 )}

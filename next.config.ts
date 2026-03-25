@@ -2,12 +2,13 @@ import type { NextConfig } from "next";
 import path from "node:path";
 import fs from "node:fs";
 
-// Copy PDF.js worker to public/ so pdf-viewer can load it without hitting unpkg CDN.
-// Runs at config evaluation time (both dev and build).
+// Copy PDF.js worker to public/ on every config evaluation so the worker always
+// matches the installed pdfjs-dist version. Unconditional overwrite prevents a
+// stale committed worker from mismatching a pdfjs-dist upgrade.
 try {
   const workerSrc = path.join(process.cwd(), "node_modules/pdfjs-dist/build/pdf.worker.min.mjs");
   const workerDest = path.join(process.cwd(), "public/pdf.worker.min.mjs");
-  if (fs.existsSync(workerSrc) && !fs.existsSync(workerDest)) {
+  if (fs.existsSync(workerSrc)) {
     fs.copyFileSync(workerSrc, workerDest);
   }
 } catch (_) {}

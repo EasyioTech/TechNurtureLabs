@@ -48,3 +48,12 @@ next-env.d.ts
 .claude/
 tmp/
 
+# PDF.js worker — copied from node_modules/pdfjs-dist at build time by next.config.ts.
+# Never commit; the file is always regenerated to match the installed pdfjs-dist version.
+/public/pdf.worker.min.mjs
+
+# Temporary patch/dump files — these should never be committed
+*.sql
+fix_*.sh
+seed_*.sh
+
