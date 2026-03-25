@@ -28,6 +28,7 @@ const STABLE_PDF_OPTIONS = {
     disableFontFace: true,
     rangeChunkSize: 65536,
     maxImageSize: 1024 * 1024 * 4,
+    withCredentials: true,
 };
 
 const MAX_RENDER_WIDTH = 900;
@@ -160,7 +161,7 @@ export function PDFViewer({
             {/* PDF page area — height is natural (driven by aspect ratio of each page) */}
             <div className="w-full relative group">
                 <Document
-                    file={{ url: absoluteUrl, withCredentials: true }}
+                    file={absoluteUrl}
                     onLoadSuccess={onDocumentLoadSuccess}
                     onLoadError={onDocumentLoadError}
                     loading={<PDFLoader />}
