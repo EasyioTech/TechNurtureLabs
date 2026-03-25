@@ -160,7 +160,7 @@ export function PDFViewer({
             {/* PDF page area — height is natural (driven by aspect ratio of each page) */}
             <div className="w-full relative group">
                 <Document
-                    file={absoluteUrl}
+                    file={{ url: absoluteUrl, withCredentials: true }}
                     onLoadSuccess={onDocumentLoadSuccess}
                     onLoadError={onDocumentLoadError}
                     loading={<PDFLoader />}

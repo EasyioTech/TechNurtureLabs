@@ -72,7 +72,8 @@ export async function GET(
         if (response.ContentLength) headers.set('Content-Length', response.ContentLength.toString());
         if (response.ContentRange) headers.set('Content-Range', response.ContentRange);
         if (response.AcceptRanges) headers.set('Accept-Ranges', response.AcceptRanges);
-        headers.set('Cache-Control', 'private, max-age=3600');
+        headers.set('Cache-Control', 'public, max-age=3600, no-transform');
+        headers.set('Access-Control-Expose-Headers', 'Accept-Ranges, Content-Range, Content-Length');
 
         const isPartial = range && !!response.ContentRange;
 
