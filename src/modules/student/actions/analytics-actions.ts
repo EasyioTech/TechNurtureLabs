@@ -27,9 +27,12 @@ export async function getStudentDailyAnalytics() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Get completed lessons over last 7 days (only rows with completed_at set)
+    // Get completed lessons over last 7 days (only rows with completed_at set).
+    // TO_CHAR ensures the date is always returned as a 'YYYY-MM-DD' string regardless
+    // of driver date-parsing settings, eliminating the fragile (date as unknown as string)
+    // startsWith() pattern that breaks when pg returns a Date object.
     const recentLessons = await db.select({
-        date: sql<Date>`DATE(${lessonProgress.completed_at})`,
+        date: sql<string>`TO_CHAR(DATE(${lessonProgress.completed_at}), 'YYYY-MM-DD')`,
         count: sql<number>`count(*)::integer`,
         xp: sql<number>`sum(${lessonProgress.xp_earned})::integer`
     }).from(lessonProgress)
@@ -43,7 +46,7 @@ export async function getStudentDailyAnalytics() {
 
     // Get recent quiz grades
     const recentQuizzes = await db.select({
-        date: sql<Date>`DATE(${quizAttempts.completed_at})`,
+        date: sql<string>`TO_CHAR(DATE(${quizAttempts.completed_at}), 'YYYY-MM-DD')`,
         avgScore: sql<number>`avg((${quizAttempts.score}::float / ${quizAttempts.max_score}::float) * 100)::integer`
     }).from(quizAttempts)
         .where(and(
@@ -59,9 +62,9 @@ export async function getStudentDailyAnalytics() {
         targetDate.setDate(targetDate.getDate() - i);
         const dateStr = targetDate.toISOString().split('T')[0];
 
-        // Find matches
-        const lessonMatch = recentLessons.find(l => l.date && (l.date as unknown as string).startsWith(dateStr));
-        const quizMatch = recentQuizzes.find(q => (q.date as unknown as string).startsWith(dateStr));
+        // Find matches — direct string equality since TO_CHAR guarantees 'YYYY-MM-DD' format
+        const lessonMatch = recentLessons.find(l => l.date === dateStr);
+        const quizMatch = recentQuizzes.find(q => q.date === dateStr);
 
         chartData.push({
             date: targetDate.toLocaleDateString('en-US', { weekday: 'short' }),

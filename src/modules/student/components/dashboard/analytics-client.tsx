@@ -24,6 +24,19 @@ interface AnalyticsClientProps {
 export function AnalyticsClient({ initialData }: AnalyticsClientProps) {
     const { profile, chartData, summary } = initialData;
 
+    // Guard against missing data (network error during SSR)
+    if (!profile || !summary) {
+        return (
+            <div className="min-h-screen bg-slate-50/10 flex items-center justify-center">
+                <div className="text-center">
+                    <BarChart3 size={48} className="text-slate-200 mx-auto mb-4" />
+                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Analytics unavailable</p>
+                    <p className="text-xs text-slate-300 mt-2">Please refresh the page to try again.</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-50/10 pb-32">
             {/* Analytical Header */}
@@ -51,7 +64,7 @@ export function AnalyticsClient({ initialData }: AnalyticsClientProps) {
                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Points Earned</span>
                                 <div className="flex items-center gap-4">
                                     <TrendingUp size={28} className="text-emerald-400" />
-                                    <span className="text-4xl font-black text-white tracking-tighter">+{summary.weeklyXp} XP</span>
+                                    <span className="text-4xl font-black text-white tracking-tighter">+{summary.weeklyXp ?? 0} XP</span>
                                 </div>
                             </div>
                         </div>
@@ -66,9 +79,9 @@ export function AnalyticsClient({ initialData }: AnalyticsClientProps) {
                                 </div>
                                 <h3 className="text-3xl font-black text-white uppercase tracking-tighter mb-8">Student Profile</h3>
                                 <div className="space-y-4 w-full bg-black/20 rounded-[2.5rem] p-8 backdrop-blur-md border border-white/5">
-                                    <ProfileStat label="Current Level" value={`Level ${profile.level}`} />
-                                    <ProfileStat label="Total Points" value={profile.xp.toLocaleString()} />
-                                    <ProfileStat label="Best Streak" value={`${profile.longest_streak} Days`} />
+                                    <ProfileStat label="Current Level" value={`Level ${profile.level ?? 1}`} />
+                                    <ProfileStat label="Total Points" value={(profile.xp ?? 0).toLocaleString()} />
+                                    <ProfileStat label="Best Streak" value={`${profile.longest_streak ?? 0} Days`} />
                                 </div>
                            </div>
                         </div>
@@ -79,9 +92,9 @@ export function AnalyticsClient({ initialData }: AnalyticsClientProps) {
             {/* Matrix Data */}
             <main className="max-w-[1440px] mx-auto px-6 lg:px-12 -mt-16 relative z-20">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-12 mb-16">
-                    <StatBox label="Lessons Completed" value={summary.weeklyLessons} icon={Clock} color="bg-indigo-600" />
-                    <StatBox label="Quiz Accuracy" value={`${summary.avgWeeklyAccuracy}%`} icon={Target} color="bg-slate-900" />
-                    <StatBox label="Weekly XP" value={`+${summary.weeklyXp}`} icon={Award} color="bg-slate-700" />
+                    <StatBox label="Lessons Completed" value={summary.weeklyLessons ?? 0} icon={Clock} color="bg-indigo-600" />
+                    <StatBox label="Quiz Accuracy" value={`${summary.avgWeeklyAccuracy ?? 0}%`} icon={Target} color="bg-slate-900" />
+                    <StatBox label="Weekly XP" value={`+${summary.weeklyXp ?? 0}`} icon={Award} color="bg-slate-700" />
                 </div>
 
                 <div className="bg-white rounded-[4rem] p-10 lg:p-16 border border-slate-100 shadow-2xl shadow-slate-200/40 relative overflow-hidden group">

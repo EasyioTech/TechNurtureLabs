@@ -371,15 +371,23 @@ export async function finalizeAndCompleteLesson(lessonId: string, token: string)
         });
     });
 
-    // 6. Gamification Hooks (Outside transaction to allow Redis failures to handle gracefully)
+    // 6. Gamification Hooks (outside transaction so Redis failures are non-fatal)
     try {
         await awardXP(userId, xpToAdd, schoolId, 'student');
         await incrementProgressCounter(userId, 'lessons');
         await handleStudentEngagement(userId);
-        
-        // Final triggers
-        const { checkAndAwardAchievements } = await import('@/modules/student/actions/achievement-actions');
-        await checkAndAwardAchievements();
+
+        // Fire-and-forget: the achievement check is the heaviest part of lesson
+        // completion (4+ DB queries). Decoupling it from the response path means
+        // the student gets immediate feedback instead of waiting for the check.
+        // The dirty-bit set by awardXP guarantees the check runs before the next
+        // dashboard load — no achievement will be silently skipped.
+        import('@/modules/student/actions/achievement-actions')
+            .then(({ checkAndAwardAchievementsInternal }) =>
+                checkAndAwardAchievementsInternal(userId).catch(e =>
+                    console.error('[Achievement] Background check failed after lesson completion:', e)
+                )
+            );
     } catch (e) {
         console.error("Post-completion gamification failed:", e);
     }

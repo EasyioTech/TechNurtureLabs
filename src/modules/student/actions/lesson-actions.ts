@@ -276,6 +276,11 @@ export async function saveVideoProgress(lessonId: string, seconds: number, perce
     const session = await verifySession();
     if (!session) return;
 
+    // Rate-limit: allow at most one DB write per 5 seconds per user+lesson
+    const rateLimitKey = `rl:video_progress:${session.userId}:${lessonId}`;
+    const acquired = await redis.set(rateLimitKey, '1', 'EX', 5, 'NX');
+    if (!acquired) return;
+
     const existing = await db.query.lessonProgress.findFirst({
         where: and(eq(lessonProgress.user_id, session.userId), eq(lessonProgress.lesson_id, lessonId))
     });
@@ -319,6 +324,11 @@ export async function saveVideoProgress(lessonId: string, seconds: number, perce
 export async function updateTimeSpent(lessonId: string, seconds: number) {
     const session = await verifySession();
     if (!session) return;
+
+    // Rate-limit: allow at most one DB write per 15 seconds per user+lesson
+    const rateLimitKey = `rl:time_spent:${session.userId}:${lessonId}`;
+    const acquired = await redis.set(rateLimitKey, '1', 'EX', 15, 'NX');
+    if (!acquired) return;
 
     await db.update(lessonProgress)
         .set({

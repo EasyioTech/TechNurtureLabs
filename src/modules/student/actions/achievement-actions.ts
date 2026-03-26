@@ -200,8 +200,6 @@ export async function checkAndAwardAchievementsInternal(userId: string) {
     
     if (!needed) return { success: true, unlocked: [] };
 
-    if (!needed) return { success: true, unlocked: [] };
-
     // Move role check to a student metadata fetch if needed, 
     // but for background processing we assume validity.
 
@@ -393,8 +391,9 @@ export async function getStudentAchievementsData() {
         throw new Error('Access denied: Student access only');
     }
 
-    // Trigger check/seed on load to ensure sync
-    await checkAndAwardAchievements();
+    // Run the achievement check directly (skips a second verifySession round-trip).
+    // Uses the internal function so it can also be called from background workers.
+    await checkAndAwardAchievementsInternal(userId);
 
     const allAchievements = await db.query.achievements.findMany({
         where: eq(achievements.is_active, true),

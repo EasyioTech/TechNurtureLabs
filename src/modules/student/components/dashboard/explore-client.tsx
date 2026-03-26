@@ -166,7 +166,7 @@ export function ExploreClient({ initialData }: ExploreClientProps) {
                                         <h5 className="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none group-hover:text-indigo-600 transition-colors mb-10">{course.title}</h5>
                                         
                                         <div className="mt-auto flex items-center justify-between pt-8 border-t border-slate-50">
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{course.totalLessons} SECTIONS</span>
+                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{course.totalLessons ?? 0} SECTIONS</span>
                                             <Link href={`/student/course/${course.id}`}>
                                                 <Button variant="ghost" className="h-10 px-0 hover:bg-transparent text-indigo-600 font-black uppercase tracking-widest text-[10px] group-hover:translate-x-2 transition-all flex items-center gap-3">
                                                     Protocol Details <ArrowRight size={16} />

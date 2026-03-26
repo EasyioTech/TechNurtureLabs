@@ -26,20 +26,24 @@ export function LeaderboardClient({ initialData }: LeaderboardClientProps) {
     const userStats = data.userStats || initialData.userStats || { rank: 0, rankPercentage: 0 };
 
     useEffect(() => {
-        if (scope === initialData.scope && data === initialData) return;
-        
+        // When switching back to the initial scope, restore cached initial data instantly
+        if (scope === (initialData.scope || 'school')) {
+            setData(initialData);
+            return;
+        }
+
         async function update() {
             setLoading(true);
             try {
                 const res = await getStudentLeaderboard(scope);
                 setData(res);
             } catch (err) {
-                console.error(err);
+                console.error('[Leaderboard] fetch error:', err);
             }
             setLoading(false);
         }
         update();
-    }, [scope]);
+    }, [scope]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <div className="min-h-screen bg-slate-50/10 pb-20">

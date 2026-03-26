@@ -111,7 +111,7 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
                                 <div>
                                     <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">Primary Objectives</h3>
                                     <div className="flex items-center gap-3 text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">
-                                        <Wand2 size={14} className="animate-pulse" /> Resets in {24 - new Date().getHours()}H
+                                        <Wand2 size={14} className="animate-pulse" /> Resets in {(() => { const now = new Date(); const h = 23 - now.getHours(); const m = 59 - now.getMinutes(); return h > 0 ? `${h}H ${m}M` : `${m}M`; })()}
                                     </div>
                                 </div>
                                 <div className="text-[10px] md:text-[11px] font-black text-slate-300 uppercase tracking-[0.4em]">ID: CHALLENGE_SRV_2024</div>

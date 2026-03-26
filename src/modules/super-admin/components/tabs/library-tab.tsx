@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useDeferredValue, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     BookOpen, Zap, Search, Copy, ExternalLink, 
@@ -46,15 +46,22 @@ export function LibraryTab({
     const [targetCourseId, setTargetCourseId] = useState<string>('');
     const [cloning, setCloning] = useState(false);
 
-    const filteredLessons = lessons.filter(l => 
-        l.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        l.course_title?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // useDeferredValue lets React prioritise input responsiveness: the search input
+    // updates immediately while the expensive re-render of potentially hundreds of
+    // motion.div cards is deferred to the next idle frame, eliminating main-thread lag.
+    const deferredSearch = useDeferredValue(searchQuery);
 
-    const filteredQuizzes = quizzes.filter(q => 
-        q.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        q.course_title?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredLessons = useMemo(() =>
+        lessons.filter(l =>
+            l.title.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+            l.course_title?.toLowerCase().includes(deferredSearch.toLowerCase())
+        ), [lessons, deferredSearch]);
+
+    const filteredQuizzes = useMemo(() =>
+        quizzes.filter(q =>
+            q.title.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+            q.course_title?.toLowerCase().includes(deferredSearch.toLowerCase())
+        ), [quizzes, deferredSearch]);
 
     const handleClone = async () => {
         if (!cloneItem || !targetCourseId) return;

@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
+import { toast } from 'sonner';
+import {
     Trophy, Star, Flame, BookOpen, Clock, Target,
-    Sparkles, Award, Crown, Medal, Calendar, Edit3, Check, X,
-    Zap, GraduationCap, TrendingUp, Heart, Shield, Rocket, ArrowLeft, Camera,
-    ArrowRight, Activity, Share2
+    Award, Crown, Edit3, X,
+    Zap, GraduationCap, Heart, Shield, Rocket, Camera,
+    ArrowRight, Activity, Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
@@ -69,9 +70,13 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
 
   React.useEffect(() => {
     if (profile?.avatar_style) {
-      const [color, icon] = profile.avatar_style.split(':');
-      setSelectedColor(color || 'indigo');
-      setSelectedIcon(icon || 'rocket');
+      const parts = profile.avatar_style.split(':');
+      // Validate both parts are known IDs before applying — guards against
+      // avatar_url containing a real URL (e.g. "https://...") on first load
+      const validColor = AVATAR_COLORS.find(c => c.id === parts[0]);
+      const validIcon  = AVATAR_ICONS.find(i => i.id === parts[1]);
+      if (validColor) setSelectedColor(validColor.id);
+      if (validIcon)  setSelectedIcon(validIcon.id);
     }
   }, [profile]);
 
@@ -81,31 +86,36 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
       await updateStudentBio(bioText);
       setProfile({ ...profile, bio: bioText });
       setEditingBio(false);
+      toast.success('Bio updated successfully');
     } catch (err) {
       console.error(err);
+      toast.error('Failed to update bio. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const saveProfile = async () => {
+    if (!formData.first_name.trim() || !formData.last_name.trim()) {
+      toast.error('First and last name are required.');
+      return;
+    }
     setIsSaving(true);
     try {
-      await updateStudentProfile({
-        ...formData,
-        bio: bioText
-      });
+      await updateStudentProfile({ ...formData, bio: bioText });
       setProfile({
         ...profile,
         first_name: formData.first_name,
         last_name: formData.last_name,
         full_name: `${formData.first_name} ${formData.last_name}`,
         phone: formData.phone,
-        bio: bioText
+        bio: bioText,
       });
       setEditingProfile(false);
+      toast.success('Profile updated successfully');
     } catch (err) {
       console.error(err);
+      toast.error('Failed to update profile. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -118,8 +128,10 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
       await updateStudentAvatar(avatarStyle);
       setProfile({ ...profile, avatar_style: avatarStyle });
       setEditingAvatar(false);
+      toast.success('Avatar updated successfully');
     } catch (err) {
       console.error(err);
+      toast.error('Failed to update avatar. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -479,13 +491,3 @@ function TacticalStat({ icon: Icon, label, value, color, bg }: any) {
   );
 }
 
-function Loader2(props: any) {
-    return (
-        <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-        >
-            <Activity {...props} />
-        </motion.div>
-    );
-}

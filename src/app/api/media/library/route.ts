@@ -27,8 +27,12 @@ export async function GET(request: NextRequest) {
         if (folder && folder !== 'all') {
             filters.push(eq(mediaAssets.folder, folder));
         }
-        if (search) {
-            filters.push(ilike(mediaAssets.original_name, `%${search}%`));
+        // Require at least 2 characters before issuing a LIKE query with a leading wildcard.
+        // A single character (or empty string) forces Postgres to scan every row in the table.
+        // The real long-term fix is the pg_trgm GIN index added in migration 0004 — once that
+        // index is in place, even short trigram searches are fast.
+        if (search && search.trim().length >= 2) {
+            filters.push(ilike(mediaAssets.original_name, `%${search.trim()}%`));
         }
 
         const whereClause = filters.length > 0 ? (filters.length > 1 ? and(...filters) : filters[0]) : undefined;

@@ -4,7 +4,8 @@ import { db } from '@/lib/db';
 import { 
     lessons, auditLogs, courses
 } from '@/db/schema';
-import { eq, asc, desc, sql } from 'drizzle-orm';
+import { eq, asc, desc, sql, count, ilike, and } from 'drizzle-orm';
+import { z } from 'zod';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { updateCourseTotals } from './course-actions';
@@ -34,48 +35,68 @@ export async function fetchLessonAdmin(id: string) {
     return await db.query.lessons.findFirst({ where: eq(lessons.id, id) });
 }
 
-export async function saveLessonAdmin(lessonData: any) {
+const lessonSchema = z.object({
+    id: z.string().uuid().optional(),
+    course_id: z.string().uuid().optional(),
+    title: z.string().min(1, 'Title is required').max(255),
+    description: z.string().optional().default(''),
+    content_type: z.enum(['video', 'ppt', 'pdf', 'quiz', 'assignment']),
+    content_url: z.string().optional().default(''),
+    content_items: z.any().optional().nullable(),
+    asset_id: z.string().uuid().optional().nullable(),
+    xp_reward: z.number().int().min(0).default(10),
+    duration: z.number().int().min(0).optional(),
+    duration_minutes: z.number().int().min(0).optional(),
+    is_published: z.boolean().optional().default(true),
+});
+
+export async function saveLessonAdmin(lessonData: unknown) {
     const session = await verifySession();
     if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
         redirect('/admin-portal/login');
     }
-    if (lessonData.id) {
+
+    const data = lessonSchema.parse(lessonData);
+    const durationMinutes = data.duration ?? data.duration_minutes ?? 10;
+
+    if (data.id) {
         const [updated] = await db.update(lessons).set({
-            title: lessonData.title,
-            description: lessonData.description || '',
-            content_type: lessonData.content_type,
-            content_url: lessonData.content_url || '',
-            content_items: lessonData.content_items ?? null,
-            asset_id: lessonData.asset_id ?? null,
-            xp_reward: lessonData.xp_reward || 10,
-            duration_minutes: lessonData.duration || lessonData.duration_minutes || 10,
-            is_published: lessonData.is_published ?? true,
+            title: data.title,
+            description: data.description,
+            content_type: data.content_type,
+            content_url: data.content_url,
+            content_items: data.content_items ?? null,
+            asset_id: data.asset_id ?? null,
+            xp_reward: data.xp_reward,
+            duration_minutes: durationMinutes,
+            is_published: data.is_published ?? true,
             updated_at: new Date()
-        }).where(eq(lessons.id, lessonData.id)).returning();
+        }).where(eq(lessons.id, data.id)).returning();
 
         await updateCourseTotals(updated.course_id);
         await invalidateCourseCaches(updated.course_id);
         return { ...updated, sequence_index: updated.sequence_order, duration: updated.duration_minutes };
     } else {
-        // SQL optimized max order fetch
-        const maxOrderResult = await db.select({ 
-            max: sql<number>`COALESCE(MAX(${lessons.sequence_order}), 0)` 
-        }).from(lessons).where(eq(lessons.course_id, lessonData.course_id));
-        
+        if (!data.course_id) throw new Error('course_id is required when creating a lesson');
+
+        const maxOrderResult = await db.select({
+            max: sql<number>`COALESCE(MAX(${lessons.sequence_order}), 0)`
+        }).from(lessons).where(eq(lessons.course_id, data.course_id));
+
         const newOrder = Number(maxOrderResult[0].max) + 1;
 
         const [created] = await db.insert(lessons).values({
-            course_id: lessonData.course_id,
-            title: lessonData.title,
-            description: lessonData.description || '',
-            content_type: lessonData.content_type || 'video',
-            content_url: lessonData.content_url || '',
-            content_items: lessonData.content_items ?? null,
-            asset_id: lessonData.asset_id ?? null,
-            xp_reward: lessonData.xp_reward || 10,
-            duration_minutes: lessonData.duration || lessonData.duration_minutes || 10,
+            course_id: data.course_id,
+            title: data.title,
+            description: data.description,
+            content_type: data.content_type,
+            content_url: data.content_url,
+            content_items: data.content_items ?? null,
+            asset_id: data.asset_id ?? null,
+            xp_reward: data.xp_reward,
+            duration_minutes: durationMinutes,
             sequence_order: newOrder,
-            is_published: lessonData.is_published ?? true,
+            is_published: data.is_published ?? true,
         } as any).returning();
 
         await updateCourseTotals(created.course_id);
@@ -157,26 +178,54 @@ export async function cloneLessonAction(lessonId: string, targetCourseId: string
 }
 
 /**
- * Global Library: Fetch all lessons across all courses
+ * Global Library: Fetch lessons across all courses with server-side pagination + search.
+ * Previously returned every lesson with no LIMIT — a single query could return tens of
+ * thousands of rows as content grows.  Now bounded to `limit` rows per page (default 50,
+ * max 200) with an optional full-text search pushed down to Postgres.
  */
-export async function fetchGlobalLessons() {
+export async function fetchGlobalLessons({
+    page = 1,
+    limit = 50,
+    search = '',
+}: { page?: number; limit?: number; search?: string } = {}) {
     const session = await verifySession();
     if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
         redirect('/admin-portal/login');
     }
 
-    const data = await db.select({
-        id: lessons.id,
-        title: lessons.title,
-        content_type: lessons.content_type,
-        created_at: lessons.created_at,
-        course_title: courses.title,
-    })
-    .from(lessons)
-    .innerJoin(courses, eq(lessons.course_id, courses.id))
-    .where(sql`lessons.deleted_at IS NULL`)
-    .orderBy(desc(lessons.created_at));
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.min(200, Math.max(1, limit));
+    const offset = (safePage - 1) * safeLimit;
 
-    return data;
+    const searchFilter = search.trim().length >= 2
+        ? ilike(lessons.title, `%${search.trim()}%`)
+        : undefined;
+
+    const baseWhere = searchFilter
+        ? and(sql`lessons.deleted_at IS NULL`, searchFilter)
+        : sql`lessons.deleted_at IS NULL`;
+
+    const [data, countResult] = await Promise.all([
+        db.select({
+            id: lessons.id,
+            title: lessons.title,
+            content_type: lessons.content_type,
+            created_at: lessons.created_at,
+            course_title: courses.title,
+        })
+        .from(lessons)
+        .innerJoin(courses, eq(lessons.course_id, courses.id))
+        .where(baseWhere)
+        .orderBy(desc(lessons.created_at))
+        .limit(safeLimit)
+        .offset(offset),
+
+        db.select({ total: count() })
+        .from(lessons)
+        .where(baseWhere),
+    ]);
+
+    const total = Number(countResult[0]?.total ?? 0);
+    return { data, total, pages: Math.ceil(total / safeLimit), page: safePage };
 }
 

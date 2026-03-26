@@ -7,6 +7,7 @@ import {
     auditLogs, schoolSubscriptions, students, enrollments, schools, paymentTransactions, lessonProgress
 } from '@/db/schema';
 import { eq, asc, desc, count, sql, and, lte, inArray, not, isNull } from 'drizzle-orm';
+import { z } from 'zod';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { redis } from '@/lib/redis';
@@ -63,18 +64,33 @@ export async function fetchAdminMetadata() {
     return result;
 }
 
-export async function savePromoCode(data: any) {
+const promoCodeSchema = z.object({
+    id: z.string().uuid().optional(),
+    code: z.string().min(3, 'Code must be at least 3 characters').max(50)
+        .regex(/^[A-Z0-9_-]+$/i, 'Code may only contain letters, digits, hyphens, and underscores'),
+    discount_type: z.enum(['percentage', 'fixed']),
+    discount_value: z.number().min(0),
+    max_uses: z.number().int().min(1).optional().nullable(),
+    valid_from: z.string().optional().nullable(),
+    valid_until: z.string().optional().nullable(),
+    is_active: z.boolean().optional().default(true),
+});
+
+export async function savePromoCode(promoData: unknown) {
     const session = await verifySession();
     if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
         redirect('/admin-portal/login');
     }
 
+    const data = promoCodeSchema.parse(promoData);
+    const code = data.code.toUpperCase();
+
     if (data.id) {
         const [updated] = await db.update(promoCodes).set({
-            code: data.code.toUpperCase(),
+            code,
             discount_type: data.discount_type,
-            discount_value: data.discount_value?.toString(),
-            max_uses: data.max_uses,
+            discount_value: data.discount_value.toString(),
+            max_uses: data.max_uses ?? null,
             valid_from: data.valid_from ? new Date(data.valid_from) : null,
             valid_until: data.valid_until ? new Date(data.valid_until) : null,
             is_active: data.is_active ?? true,
@@ -84,10 +100,10 @@ export async function savePromoCode(data: any) {
         return [updated];
     } else {
         const [inserted] = await db.insert(promoCodes).values({
-            code: data.code.toUpperCase(),
+            code,
             discount_type: data.discount_type,
-            discount_value: data.discount_value?.toString(),
-            max_uses: data.max_uses,
+            discount_value: data.discount_value.toString(),
+            max_uses: data.max_uses ?? null,
             valid_from: data.valid_from ? new Date(data.valid_from) : null,
             valid_until: data.valid_until ? new Date(data.valid_until) : null,
             is_active: data.is_active ?? true,
@@ -117,31 +133,49 @@ export async function deletePromoCode(id: string) {
     }
 }
 
-export async function savePlanAdmin(planData: any) {
+const planSchema = z.object({
+    id: z.string().uuid().optional(),
+    name: z.string().min(1, 'Plan name is required').max(100),
+    description: z.string().optional().default(''),
+    price: z.number().min(0, 'Price cannot be negative'),
+    billing_cycle: z.enum(['monthly', 'quarterly', 'semi_annual', 'annual']).default('monthly'),
+    currency: z.string().max(3).default('INR'),
+    features: z.record(z.string(), z.any()).optional().default({}),
+    max_students: z.number().int().min(1, 'At least 1 student required'),
+    trial_days: z.number().int().min(0).default(0),
+    is_active: z.boolean().optional().default(true),
+    is_popular: z.boolean().optional().default(false),
+});
+
+export async function savePlanAdmin(planData: unknown) {
     const session = await verifySession();
     if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
         redirect('/admin-portal/login');
     }
-    if (planData.is_popular) {
+
+    const data = planSchema.parse(planData);
+
+    // Unmark any previously-popular plan before setting a new one
+    if (data.is_popular) {
         await db.update(paymentPlans).set({ is_popular: false });
     }
 
     const planPayload = {
-        name: planData.name,
-        description: planData.description || '',
-        price: planData.price.toString(),
-        billing_cycle: planData.billing_cycle || 'monthly',
-        currency: planData.currency || 'INR',
-        features: planData.features || {},
-        max_students: planData.max_students,
-        trial_days: planData.trial_days || 0,
-        is_active: planData.is_active ?? true,
-        is_popular: planData.is_popular ?? false,
-        updated_at: new Date()
+        name: data.name,
+        description: data.description,
+        price: data.price.toString(),
+        billing_cycle: data.billing_cycle,
+        currency: data.currency,
+        features: data.features,
+        max_students: data.max_students,
+        trial_days: data.trial_days,
+        is_active: data.is_active ?? true,
+        is_popular: data.is_popular ?? false,
+        updated_at: new Date(),
     };
 
-    if (planData.id) {
-        const [updated] = await db.update(paymentPlans).set(planPayload).where(eq(paymentPlans.id, planData.id)).returning();
+    if (data.id) {
+        const [updated] = await db.update(paymentPlans).set(planPayload).where(eq(paymentPlans.id, data.id)).returning();
         await redis.del(CACHE_KEY);
         return { ...updated, price: Number(updated.price) };
     } else {

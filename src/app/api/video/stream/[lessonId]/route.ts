@@ -3,7 +3,6 @@ import { verifySession } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { lessons } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { getObjectStream } from '@/lib/storage';
 import { redis } from '@/lib/redis';
 
 /**
@@ -97,66 +96,36 @@ async function handleStream(req: NextRequest, context: { params: Promise<{ lesso
             }
         }
 
-        // 5. Handle Cloudflare R2
-        if (method === 'HEAD') {
-            const { HeadObjectCommand } = await import('@aws-sdk/client-s3');
-            const { s3Client, isCloudflareConfigured } = await import('@/lib/storage');
-            
-            if (!s3Client || !isCloudflareConfigured) {
-                return new NextResponse('Cloud Storage not configured', { status: 501 });
-            }
+        // 5. Handle Cloudflare R2 — generate a short-lived signed URL and redirect.
+        //
+        // Previously the server proxied the entire video stream, holding a Node.js
+        // worker open for the full video duration. At 100 concurrent viewers that
+        // exhausts all worker slots and makes the rest of the site unresponsive.
+        //
+        // A 307 redirect hands the transfer off to R2/Cloudflare directly. The
+        // Node.js worker is freed as soon as the redirect is returned (~1ms).
+        // Range requests work natively: the browser re-sends the Range header to R2
+        // when following the redirect, so seeking/buffering is unaffected.
+        //
+        // The signed URL expires in 30 minutes. Even if captured, it cannot be used
+        // beyond that window — and the learning-session gate still controls issuance.
+        const { getSignedDownloadUrl, isCloudflareConfigured } = await import('@/lib/storage');
 
-            try {
-                const headCommand = new HeadObjectCommand({
-                    Bucket: process.env.CLOUDFLARE_BUCKET_NAME,
-                    Key: key
-                });
-                const headRes = await s3Client.send(headCommand);
-                
-                const resHeaders = new Headers();
-                if (headRes.ContentType) resHeaders.set('Content-Type', headRes.ContentType);
-                if (headRes.ContentLength) resHeaders.set('Content-Length', headRes.ContentLength.toString());
-                if (headRes.AcceptRanges) resHeaders.set('Accept-Ranges', headRes.AcceptRanges);
-                
-                return new Response(null, {
-                    status: 200,
-                    headers: resHeaders
-                });
-            } catch (headErr: any) {
-                if (headErr.name === 'NoSuchKey' || headErr.name === 'NotFound') {
-                    return new NextResponse('File not found in R2', { status: 404 });
-                }
-                throw headErr;
-            }
+        if (!isCloudflareConfigured) {
+            return new NextResponse('Cloud Storage not configured', { status: 501 });
         }
 
         try {
-            const { getObjectStream } = await import('@/lib/storage');
-            const { body, contentType, contentLength, contentRange, acceptRanges } = await getObjectStream(key, range || undefined);
-
-            if (!body) {
-                return new NextResponse('Empty stream from storage', { status: 404 });
-            }
-
-            const resHeaders = new Headers();
-            if (contentType) resHeaders.set('Content-Type', contentType);
-            if (contentLength) resHeaders.set('Content-Length', contentLength.toString());
-            if (contentRange) resHeaders.set('Content-Range', contentRange);
-            if (acceptRanges) resHeaders.set('Accept-Ranges', acceptRanges);
-            
-            resHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-            resHeaders.set('Connection', 'keep-alive');
-
-            return new Response(body as any, {
-                status: range ? 206 : 200,
-                headers: resHeaders
-            });
-        } catch (streamErr: any) {
-            console.error('[Video Stream R2 Error]:', streamErr);
-            if (streamErr.name === 'NoSuchKey' || streamErr.name === 'NotFound') {
+            const signedMethod = method === 'HEAD' ? 'HEAD' : 'GET';
+            const signedUrl = await getSignedDownloadUrl(key, 1800, signedMethod);
+            // 307 Temporary Redirect preserves the HTTP method (GET stays GET, HEAD stays HEAD)
+            return NextResponse.redirect(signedUrl, { status: 307 });
+        } catch (signErr: any) {
+            console.error('[Video Stream R2 Sign Error]:', signErr);
+            if (signErr.name === 'NoSuchKey' || signErr.name === 'NotFound') {
                 return new NextResponse('File not found in R2', { status: 404 });
             }
-            return new NextResponse(streamErr.message || 'Stream Error', { status: 502 });
+            return new NextResponse(signErr.message || 'Failed to generate stream URL', { status: 502 });
         }
         
     } catch (error: any) {

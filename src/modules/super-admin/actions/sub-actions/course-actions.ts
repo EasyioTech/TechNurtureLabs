@@ -6,6 +6,7 @@ import {
     courseClassMapping, auditLogs 
 } from '@/db/schema';
 import { eq, count, sql, and, desc, asc, inArray } from 'drizzle-orm';
+import { z } from 'zod';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { redis } from '@/lib/redis';
@@ -65,37 +66,56 @@ export async function updateCourseTotals(courseId: string) {
 
 import { analyticsService } from '@/lib/services/analytics-service';
 
-export async function saveCourseAdmin(courseData: any) {
+const courseSchema = z.object({
+    id: z.string().uuid().optional(),
+    title: z.string().min(1, 'Title is required').max(255),
+    description: z.string().optional().default(''),
+    // Accept either field name used by the frontend
+    thumbnail: z.string().optional(),
+    thumbnail_url: z.string().optional(),
+    published: z.boolean().optional(),
+    is_published: z.boolean().optional(),
+    all_classes: z.boolean().optional().default(false),
+    classIds: z.array(z.string().uuid()).optional(),
+    created_by: z.string().uuid().optional(),
+    userId: z.string().uuid().optional(),
+});
+
+export async function saveCourseAdmin(courseData: unknown) {
     const session = await verifySession();
     if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
         redirect('/admin-portal/login');
     }
-    const slug = courseData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
-    let courseId = courseData.id;
+    const data = courseSchema.parse(courseData);
+    const slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const thumbnailUrl = data.thumbnail ?? data.thumbnail_url ?? '';
+    const isPublished = data.published ?? data.is_published ?? false;
+
+    let courseId = data.id;
     let isNew = false;
 
     if (courseId) {
         await db.update(courses).set({
-            title: courseData.title,
-            slug: slug,
-            description: courseData.description || '',
-            thumbnail_url: courseData.thumbnail || courseData.thumbnail_url || '',
-            is_published: courseData.published ?? courseData.is_published ?? false,
-            all_classes: courseData.all_classes ?? false,
+            title: data.title,
+            slug,
+            description: data.description,
+            thumbnail_url: thumbnailUrl,
+            is_published: isPublished,
+            all_classes: data.all_classes ?? false,
             updated_at: new Date()
         }).where(eq(courses.id, courseId));
     } else {
-        const createdBy = courseData.created_by || courseData.userId || session?.userId;
+        const createdBy = data.created_by ?? data.userId ?? session.userId;
         if (!createdBy) throw new Error("Unauthorized: Cannot create course without user ID.");
 
         const [created] = await db.insert(courses).values({
-            title: courseData.title,
-            slug: slug,
-            description: courseData.description || '',
-            thumbnail_url: courseData.thumbnail || courseData.thumbnail_url || '',
-            is_published: courseData.published ?? courseData.is_published ?? false,
-            all_classes: courseData.all_classes ?? false,
+            title: data.title,
+            slug,
+            description: data.description,
+            thumbnail_url: thumbnailUrl,
+            is_published: isPublished,
+            all_classes: data.all_classes ?? false,
             created_by: createdBy,
             total_lessons: 0,
             total_xp: 0,
@@ -104,13 +124,13 @@ export async function saveCourseAdmin(courseData: any) {
         isNew = true;
     }
 
-    if (courseData.classIds && Array.isArray(courseData.classIds)) {
-        await db.delete(courseClassMapping).where(eq(courseClassMapping.course_id, courseId));
-        if (courseData.classIds.length > 0) {
+    if (data.classIds) {
+        await db.delete(courseClassMapping).where(eq(courseClassMapping.course_id, courseId!));
+        if (data.classIds.length > 0) {
             await db.insert(courseClassMapping).values(
-                courseData.classIds.map((classId: string) => ({
-                    course_id: courseId,
-                    class_id: classId
+                data.classIds.map((classId) => ({
+                    course_id: courseId!,
+                    class_id: classId,
                 }))
             );
         }

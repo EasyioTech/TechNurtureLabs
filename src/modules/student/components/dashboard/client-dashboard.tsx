@@ -100,6 +100,9 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
   // re-running whenever the parent component re-renders with a new array identity.
   const coursesRef = useRef(courses);
   const challengesRef = useRef(challenges);
+  // Keep refs current when props update
+  useEffect(() => { coursesRef.current = courses; }, [courses]);
+  useEffect(() => { challengesRef.current = challenges; }, [challenges]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ type: string; title: string; href: string }[]>([]);

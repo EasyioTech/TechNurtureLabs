@@ -379,43 +379,6 @@ export async function getSchoolStats(schoolId: string) {
 // STUDENTS (paginated + searchable)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getSchoolStudents(schoolId: string) {
-    await verifySchoolAdminContext(schoolId);
-    const studentsData = await db.query.students.findMany({
-        where: and(eq(students.school_id, schoolId), isNull(students.deleted_at)),
-        orderBy: [desc(students.cumulative_xp)],
-    });
-    const studentIds = studentsData.map(s => s.id);
-
-    const progressData = studentIds.length > 0
-        ? await db.select().from(lessonProgress).where(inArray(lessonProgress.user_id, studentIds))
-        : [];
-
-    const classRecords = studentIds.length > 0
-        ? await db.query.studentAcademicRecords.findMany({
-            where: and(inArray(studentAcademicRecords.user_id, studentIds), eq(studentAcademicRecords.school_id, schoolId)),
-            with: { academicClass: true } as any
-        })
-        : [];
-
-    const classMap = new Map<string, string>();
-    classRecords.forEach((r: any) => classMap.set(r.user_id, r.academicClass?.name || ''));
-
-    return studentsData.map(s => ({
-        id: s.id,
-        full_name: `${s.first_name} ${s.last_name}`,
-        email: s.email,
-        total_xp: Number(s.cumulative_xp),
-        level: Math.floor(Number(s.cumulative_xp) / 1000) + 1,
-        current_streak: calculateTrueStreak(s),
-        longest_streak: s.longest_streak || 0,
-        lessons_completed: progressData.filter(p => p.user_id === s.id && p.completed_at != null).length,
-        is_active: s.is_active,
-        last_active_at: s.last_active_at?.toISOString() || null,
-        class_name: classMap.get(s.id) || '',
-    }));
-}
-
 export async function getSchoolStudentDetails(userId: string) {
     await verifyStudentContext(userId);
     const student = await db.query.students.findFirst({
@@ -423,8 +386,14 @@ export async function getSchoolStudentDetails(userId: string) {
     });
     if (!student) return null;
 
-    const progressData = await db.select().from(lessonProgress).where(eq(lessonProgress.user_id, userId));
-    const lessonsDone = progressData.filter(p => p.completed_at != null).length;
+    const [lessonsDoneResult] = await db
+        .select({ count: count() })
+        .from(lessonProgress)
+        .where(and(
+            eq(lessonProgress.user_id, userId),
+            isNotNull(lessonProgress.completed_at)
+        ));
+    const lessonsDone = Number(lessonsDoneResult?.count ?? 0);
 
     const courseProgressData = await db.select().from(courseProgress).where(eq(courseProgress.user_id, userId));
     const courseIds = courseProgressData.map(cp => cp.course_id);
@@ -498,59 +467,102 @@ export async function getSchoolStudentDetails(userId: string) {
 
 export async function getSchoolCourseAnalytics(schoolId: string) {
     await verifySchoolAdminContext(schoolId);
-    // Only published courses
-    const schoolEnrollments = await db.query.enrollments.findMany({
-        where: eq(enrollments.school_id, schoolId),
-        with: { course: true }
-    });
 
-    const activeEnrollments = schoolEnrollments.filter(e => e.course?.is_published);
+    // 1. Get school class IDs
+    const classMapping = await db.select({ class_id: schoolClassMapping.class_id })
+        .from(schoolClassMapping)
+        .where(eq(schoolClassMapping.school_id, schoolId));
+    const schoolClassIds = classMapping.map(m => m.class_id);
 
-    const classMapping = await db.query.schoolClassMapping.findMany({
-        where: eq(schoolClassMapping.school_id, schoolId)
-    });
-    const schoolClassIds = classMapping.map(gm => gm.class_id);
-
+    // 2. Get valid course IDs for this school
     let validCourseIds: string[] = [];
     if (schoolClassIds.length > 0) {
-        const mappings = await db.query.courseClassMapping.findMany({
-            where: inArray(courseClassMapping.class_id, schoolClassIds)
-        });
+        const mappings = await db.select({ course_id: courseClassMapping.course_id })
+            .from(courseClassMapping)
+            .where(inArray(courseClassMapping.class_id, schoolClassIds));
         validCourseIds = Array.from(new Set(mappings.map(m => m.course_id)));
     }
 
-    const allValidCourses = await db.query.courses.findMany({
-        where: and(
-            eq(courses.is_published, true),
-            validCourseIds.length > 0
-                ? or(eq(courses.all_classes, true), inArray(courses.id, validCourseIds))
-                : eq(courses.all_classes, true)
-        )
-    });
+    // 3. Get published courses applicable to this school
+    const validCourses = await db.select({
+        id: courses.id,
+        title: courses.title,
+        thumbnail_url: courses.thumbnail_url,
+        is_published: courses.is_published,
+        all_classes: courses.all_classes,
+        description: courses.description,
+    })
+    .from(courses)
+    .where(and(
+        eq(courses.is_published, true),
+        validCourseIds.length > 0
+            ? or(eq(courses.all_classes, true), inArray(courses.id, validCourseIds))
+            : eq(courses.all_classes, true)
+    ));
 
-    const courseMap = new Map<string, any>();
+    if (validCourses.length === 0) return [];
+    const courseIds = validCourses.map(c => c.id);
 
-    allValidCourses.forEach(c => {
-        courseMap.set(c.id, { course: c, enrolledUserIds: new Set() });
-    });
+    // 4. Get school student IDs (one lightweight query)
+    const schoolStudents = await db.select({ id: students.id })
+        .from(students)
+        .where(and(eq(students.school_id, schoolId), isNull(students.deleted_at)));
+    const studentIds = schoolStudents.map(s => s.id);
 
-    activeEnrollments.forEach(e => {
-        if (!e.course) return;
-        if (!courseMap.has(e.course.id)) courseMap.set(e.course.id, { course: e.course, enrolledUserIds: new Set() });
-        courseMap.get(e.course.id).enrolledUserIds.add(e.user_id);
-    });
+    if (studentIds.length === 0) {
+        return validCourses.map(c => ({
+            id: c.id, title: c.title, thumbnail_url: c.thumbnail_url,
+            is_published: c.is_published, lesson_count: 0, enrolled_count: 0,
+            completion_rate: 0, avg_xp: 0, total_time_mins: 0,
+            mapped_classes: c.all_classes ? ['All Classes'] : [],
+            description: c.description,
+        }));
+    }
 
-    const courseIds = Array.from(courseMap.keys());
-    if (courseIds.length === 0) return [];
+    // 5. Push all aggregations to Postgres — no row-level JS filtering
+    const [enrollmentCounts, progressStats, lessonCounts, courseClassMaps] = await Promise.all([
+        db.select({
+            course_id: enrollments.course_id,
+            count: count(),
+        })
+        .from(enrollments)
+        .where(and(
+            inArray(enrollments.course_id, courseIds),
+            inArray(enrollments.user_id, studentIds)
+        ))
+        .groupBy(enrollments.course_id),
 
-    const lessonsData = await db.query.lessons.findMany({ where: inArray(lessons.course_id, courseIds) });
-    const cpData = await db.select().from(courseProgress).where(inArray(courseProgress.course_id, courseIds));
+        db.select({
+            course_id: courseProgress.course_id,
+            total_entries: count(),
+            completed: sql<number>`COUNT(CASE WHEN ${courseProgress.completed_at} IS NOT NULL THEN 1 END)`,
+            avg_xp: avg(courseProgress.total_xp_earned),
+            total_time_secs: sum(courseProgress.total_time_secs),
+        })
+        .from(courseProgress)
+        .where(and(
+            inArray(courseProgress.course_id, courseIds),
+            inArray(courseProgress.user_id, studentIds)
+        ))
+        .groupBy(courseProgress.course_id),
 
-    // Get actual mapped class data for tags
-    const courseClassMaps = await db.query.courseClassMapping.findMany({
-        where: inArray(courseClassMapping.course_id, courseIds),
-        with: { academicClass: true } as any
-    });
+        db.select({
+            course_id: lessons.course_id,
+            count: count(),
+        })
+        .from(lessons)
+        .where(inArray(lessons.course_id, courseIds))
+        .groupBy(lessons.course_id),
+
+        db.query.courseClassMapping.findMany({
+            where: inArray(courseClassMapping.course_id, courseIds),
+            with: { academicClass: true } as any
+        }),
+    ]);
+
+    const enrollMap = new Map(enrollmentCounts.map(r => [r.course_id, Number(r.count)]));
+    const progressMap = new Map(progressStats.map(r => [r.course_id, r]));
+    const lessonMap = new Map(lessonCounts.map(r => [r.course_id, Number(r.count)]));
 
     const ccmCache = new Map<string, string[]>();
     courseClassMaps.forEach((ccm: any) => {
@@ -559,34 +571,23 @@ export async function getSchoolCourseAnalytics(schoolId: string) {
         ccmCache.set(ccm.course_id, [...current, ccm.academicClass.name]);
     });
 
-    // Only include school's students
-    const studentsData = await db.query.students.findMany({
-        where: eq(students.school_id, schoolId)
-    });
-    const studentIds = new Set(studentsData.map(s => s.id));
-    const schoolCpData = cpData.filter(cp => studentIds.has(cp.user_id));
-
-    return courseIds.map(courseId => {
-        const { course, enrolledUserIds } = courseMap.get(courseId)!;
-        const courseLessons = lessonsData.filter(l => l.course_id === courseId);
-        const schoolEnrolled = Array.from(enrolledUserIds).filter(id => studentIds.has(id as string));
-        const cpEntries = schoolCpData.filter(cp => cp.course_id === courseId);
-        const completed = cpEntries.filter(cp => cp.completed_at != null).length;
-        const totalXp = cpEntries.reduce((a, cp) => a + (cp.total_xp_earned || 0), 0);
-        const totalSecs = cpEntries.reduce((a, cp) => a + (cp.total_time_secs || 0), 0);
-
+    return validCourses.map(c => {
+        const progress = progressMap.get(c.id);
+        const totalEntries = Number(progress?.total_entries || 0);
+        const completed = Number(progress?.completed || 0);
+        const totalTimeSecs = Number(progress?.total_time_secs || 0);
         return {
-            id: course.id,
-            title: course.title,
-            thumbnail_url: course.thumbnail_url,
-            is_published: course.is_published,
-            lesson_count: courseLessons.length,
-            enrolled_count: schoolEnrolled.length,
-            completion_rate: cpEntries.length > 0 ? Math.round((completed / cpEntries.length) * 100) : 0,
-            avg_xp: cpEntries.length > 0 ? Math.round(totalXp / cpEntries.length) : 0,
-            total_time_mins: Math.round(totalSecs / 60),
-            mapped_classes: course.all_classes ? ['All Classes'] : (ccmCache.get(courseId) || []),
-            description: course.description,
+            id: c.id,
+            title: c.title,
+            thumbnail_url: c.thumbnail_url,
+            is_published: c.is_published,
+            lesson_count: lessonMap.get(c.id) ?? 0,
+            enrolled_count: enrollMap.get(c.id) ?? 0,
+            completion_rate: totalEntries > 0 ? Math.round((completed / totalEntries) * 100) : 0,
+            avg_xp: totalEntries > 0 ? Math.round(Number(progress?.avg_xp || 0)) : 0,
+            total_time_mins: Math.round(totalTimeSecs / 60),
+            mapped_classes: c.all_classes ? ['All Classes'] : (ccmCache.get(c.id) || []),
+            description: c.description,
         };
     });
 }
@@ -598,14 +599,23 @@ export async function getSchoolCourseAnalytics(schoolId: string) {
 export async function getSchoolLeaderboard(schoolId: string, limit = 10) {
     await verifySchoolAdminContext(schoolId);
     const studentsData = await db.query.students.findMany({
-        where: eq(students.school_id, schoolId),
+        where: and(eq(students.school_id, schoolId), isNull(students.deleted_at)),
         orderBy: [desc(students.cumulative_xp)],
         limit
     });
+    if (studentsData.length === 0) return [];
+
     const studentIds = studentsData.map(s => s.id);
-    const progressData = studentIds.length > 0
-        ? await db.select().from(lessonProgress).where(inArray(lessonProgress.user_id, studentIds))
-        : [];
+    const completionCounts = await db
+        .select({ user_id: lessonProgress.user_id, count: count() })
+        .from(lessonProgress)
+        .where(and(
+            inArray(lessonProgress.user_id, studentIds),
+            isNotNull(lessonProgress.completed_at)
+        ))
+        .groupBy(lessonProgress.user_id);
+
+    const completionMap = new Map(completionCounts.map(r => [r.user_id, Number(r.count)]));
 
     return studentsData.map((s, i) => ({
         rank: i + 1,
@@ -615,7 +625,7 @@ export async function getSchoolLeaderboard(schoolId: string, limit = 10) {
         total_xp: Number(s.cumulative_xp),
         level: Math.floor(Number(s.cumulative_xp) / 1000) + 1,
         current_streak: calculateTrueStreak(s),
-        lessons_completed: progressData.filter(p => p.user_id === s.id && p.completed_at != null).length,
+        lessons_completed: completionMap.get(s.id) ?? 0,
     }));
 }
 

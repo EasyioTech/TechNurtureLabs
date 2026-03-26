@@ -39,11 +39,11 @@ export function EntityLibraryPicker({
         setLoading(true);
         try {
             if (entityType === 'lesson') {
-                const lessons = await fetchGlobalLessons();
-                setData(lessons);
+                const result = await fetchGlobalLessons();
+                setData(result.data);
             } else {
-                const quizzes = await fetchGlobalQuizzes();
-                setData(quizzes);
+                const result = await fetchGlobalQuizzes();
+                setData(result.data);
             }
         } catch (error) {
             console.error('Failed to fetch entities:', error);

@@ -1,8 +1,8 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { students, studentAcademicRecords } from '@/db/schema';
-import { eq, and, desc, inArray, sql, isNotNull, isNull } from 'drizzle-orm';
+import { students, studentAcademicRecords, quizAttempts, lessonProgress } from '@/db/schema';
+import { eq, and, desc, inArray, sql, isNotNull, isNull, count, sum } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { redis } from '@/lib/redis';
@@ -93,27 +93,32 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
         return { scope, data: [], title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard' };
     }
 
-    // Fetch accuracy stats — cast to float because score/max_score are stored as text
-    const accuracyStats = await db.execute(sql`
-        SELECT user_id, AVG(score::float / NULLIF(max_score::float, 0) * 100) as avg_accuracy
-        FROM quiz_attempts
-        WHERE user_id = ANY(${leaderIds})
-        GROUP BY user_id
-    `);
+    // Fetch accuracy and progress stats in parallel using Drizzle query builder
+    // (avoids raw ANY($1) parameterization issues with JS arrays)
+    const [accuracyStats, progressStats] = await Promise.all([
+        db.select({
+            user_id: quizAttempts.user_id,
+            avg_accuracy: sql<number>`AVG(${quizAttempts.score}::float / NULLIF(${quizAttempts.max_score}::float, 0) * 100)`
+        })
+        .from(quizAttempts)
+        .where(inArray(quizAttempts.user_id, leaderIds))
+        .groupBy(quizAttempts.user_id),
 
-    // Fetch lessons completed for efficiency
-    const progressStats = await db.execute(sql`
-        SELECT user_id, COUNT(*) as lessons_completed, SUM(time_spent_secs) as total_time
-        FROM lesson_progress
-        WHERE user_id = ANY(${leaderIds}) AND completed_at IS NOT NULL
-        GROUP BY user_id
-    `);
+        db.select({
+            user_id: lessonProgress.user_id,
+            lessons_completed: count(),
+            total_time: sum(lessonProgress.time_spent_secs)
+        })
+        .from(lessonProgress)
+        .where(and(inArray(lessonProgress.user_id, leaderIds), isNotNull(lessonProgress.completed_at)))
+        .groupBy(lessonProgress.user_id)
+    ]);
 
     const accuracyMap = new Map<string, number>(
-        (accuracyStats as any[]).map((r: any) => [String(r.user_id), Number(r.avg_accuracy) || 0])
+        accuracyStats.map(r => [String(r.user_id), Number(r.avg_accuracy) || 0])
     );
     const progressMap = new Map<string, { count: number, time: number }>(
-        (progressStats as any[]).map((r: any) => [String(r.user_id), { 
+        progressStats.map(r => [String(r.user_id), {
             count: Number(r.lessons_completed) || 0,
             time: Number(r.total_time) || 0
         }])
@@ -135,8 +140,8 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
             initials: (u.first_name?.[0] || 'S') + (u.last_name?.[0] || ''),
             xp: xpNum,
             level: Math.floor(xpNum / 1000) + 1,
-            accuracy: accuracy || 85, // Default/Fallback if no quizzes
-            efficiency: efficiency || 75, // Default/Fallback
+            accuracy: accuracy,
+            efficiency: efficiency,
             isCurrentUser: u.id === userId
         };
     });

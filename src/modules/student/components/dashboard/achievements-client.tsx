@@ -30,7 +30,7 @@ export function AchievementsClient({ initialData }: AchievementsClientProps) {
     const nextGoal = nextGoalAch ? {
         name: nextGoalAch.name,
         requirement: nextGoalAch.description,
-        progress: Math.min(100, Math.floor((stats.xp % 1000) / 10))
+        progress: Math.min(100, Math.round(((stats.xp % 1000) / 1000) * 100))
     } : null;
 
     return (

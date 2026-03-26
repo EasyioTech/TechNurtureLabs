@@ -98,7 +98,7 @@ export async function getStudentProfileData() {
         learningTimeMinutes: Math.floor((Number(lessonsData[0]?.total_time) || 0) / 60),
         quizzesPassed: passedAttempts,
         accuracy: avgScore, // Using average score as 'Score'
-        efficiency: efficiency || 75, // Default fallback
+        efficiency: efficiency,
         rank: rank,
         rankPercentage: rankPercentage
     };

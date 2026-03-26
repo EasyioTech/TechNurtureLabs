@@ -338,13 +338,13 @@ export function useAdminData() {
 
         loadGlobalLessons: async () => {
             setGlobalLoading(true);
-            try { setGlobalLessons(await fetchGlobalLessons()); }
+            try { setGlobalLessons((await fetchGlobalLessons()).data); }
             catch { toast.error("Failed to load global lessons"); }
             finally { setGlobalLoading(false); }
         },
         loadGlobalQuizzes: async () => {
             setGlobalLoading(true);
-            try { setGlobalQuizzes(await fetchGlobalQuizzes()); }
+            try { setGlobalQuizzes((await fetchGlobalQuizzes()).data); }
             catch { toast.error("Failed to load global quizzes"); }
             finally { setGlobalLoading(false); }
         },

@@ -16,9 +16,9 @@ export default async function StudentLayout({
     }
 
     const [profileStats, coursesData, settings] = await Promise.all([
-        getStudentProfileAndStats().catch(() => null),
-        getStudentDashboardCourses().catch(() => null),
-        getPlatformSettings().catch(() => null)
+        getStudentProfileAndStats().catch((e) => { console.error('[StudentLayout] profileStats:', e); return null; }),
+        getStudentDashboardCourses().catch((e) => { console.error('[StudentLayout] coursesData:', e); return null; }),
+        getPlatformSettings().catch((e) => { console.error('[StudentLayout] settings:', e); return null; }),
     ]);
 
     const data = profileStats ? {

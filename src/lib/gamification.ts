@@ -50,9 +50,22 @@ export async function awardXP(userId: string, xp: number, schoolId?: string | nu
 
         await pipeline.exec();
 
-        // Invalidate Student Dashboard Cache if student gain XP
+        // Invalidate Student Dashboard Cache if student gains XP
         if (userType === 'student') {
             await invalidateStudentDashboardCache(userId);
+        }
+
+        // Emit event for background queue processing (achievement checks, leveling, etc.)
+        // Fire-and-forget — event emission is non-critical and must never block XP writes.
+        if (userType === 'student') {
+            import('./services/event-service').then(({ eventService }) =>
+                eventService.emit('student.xp_gained', {
+                    userId,
+                    schoolId: schoolId ?? undefined,
+                    amount: xp,
+                    timestamp: Date.now(),
+                }).catch(() => { /* non-critical */ })
+            );
         }
     } catch (err) {
         console.error("Error awarding XP:", err);

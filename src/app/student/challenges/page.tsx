@@ -1,5 +1,6 @@
 import React from 'react';
 import { getStudentProfileAndStats } from '@/modules/student/actions';
+import { getOrGenerateDailyChallenges } from '@/modules/student/actions/challenge-actions';
 import { ChallengesClient } from '@/modules/student/components/dashboard/challenges-client';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -12,12 +13,17 @@ export default async function ChallengesPage() {
         redirect('/login');
     }
 
-    const data = await getStudentProfileAndStats();
+    const [data, dailyChallenges] = await Promise.all([
+        getStudentProfileAndStats(),
+        getOrGenerateDailyChallenges(session.userId),
+    ]);
 
-    const initialData = {
-        dailyChallenges: (data as any).dailyChallenges || [],
-        stats: data.stats
-    };
-
-    return <ChallengesClient initialData={initialData} />;
+    return (
+        <ChallengesClient
+            initialData={{
+                dailyChallenges,
+                stats: data.stats,
+            }}
+        />
+    );
 }
