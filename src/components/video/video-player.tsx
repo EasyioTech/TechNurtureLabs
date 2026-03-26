@@ -6,6 +6,7 @@ import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/l
 import '@vidstack/react/player/styles/default/theme.css';
 import '@vidstack/react/player/styles/default/layouts/video.css';
 import { cn } from '@/lib/utils';
+import { CheckCircle2 } from 'lucide-react';
 import { saveVideoProgress } from '@/modules/student/actions/lesson-actions';
 
 interface VideoPlayerProps {
@@ -45,13 +46,16 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
     function syncProgress() {
-      if (!player.current || player.current.paused) return;
+      if (!player.current) return;
       const currentTime = player.current.currentTime;
       const duration = player.current.duration;
-      if (duration <= 0) return;
+      if (!duration || duration <= 0) return;
 
       const pct = Math.floor((currentTime / duration) * 100);
       setVerifiedProgress(prev => Math.max(prev, pct));
+
+      // Only save to DB while playing (not paused) to avoid spamming on pause
+      if (player.current.paused) return;
 
       saveVideoProgress(lessonId, currentTime, pct).catch(() => {
         if (retryTimer) clearTimeout(retryTimer);
@@ -134,6 +138,24 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
           <DefaultVideoLayout icons={defaultLayoutIcons} />
         </MediaPlayer>
       </div>
+
+      {/* Manual completion fallback — appears after 90% watch time if onEnded was missed */}
+      {!isCompleted && verifiedProgress >= 90 && (
+        <div className="bg-black px-4 py-3 flex items-center justify-end">
+          <button
+            onClick={() => {
+              if (!isCompleted) {
+                setIsCompleted(true);
+                onComplete?.(true);
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-emerald-500/20"
+          >
+            <CheckCircle2 size={14} />
+            Mark Complete
+          </button>
+        </div>
+      )}
     </div>
   );
 }

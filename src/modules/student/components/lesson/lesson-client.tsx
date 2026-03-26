@@ -55,7 +55,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
     return () => clearInterval(interval);
   }, [lessonComplete, lesson.id]);
 
-  const handleComplete = async (isVideo?: boolean, quizPercentage?: number, isPerfect?: boolean) => {
+  const handleComplete = React.useCallback(async (isVideo?: boolean, quizPercentage?: number, isPerfect?: boolean) => {
     if (lessonComplete && !quizPercentage) {
       setShowCelebration(true);
       return;
@@ -64,7 +64,6 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
       setIsSaving(true);
       setShowCelebration(true); // show modal immediately for fast feedback
 
-      // Save completion to DB (video path was previously doing this inside the player)
       const res = await completeLessonAndReward(lesson.id, quizPercentage, isPerfect);
 
       if (res?.success || res?.alreadyCompleted) {
@@ -93,7 +92,10 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
     } finally {
       setIsSaving(false);
     }
-  };
+  // lesson.id and lesson.course_id are stable for the lifetime of the page;
+  // lessonComplete is a guard that prevents double-saves.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonComplete, lesson.id, lesson.course_id]);
 
   const handlePageSelect = (p: number) => {
     if (p > docTotal || p < 1) return;
