@@ -2,10 +2,11 @@
 
 import React, { useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useMotionValue } from 'framer-motion';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, Youtube, Video } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { CloudflareStreamPlayer } from '../video/cloudflare-stream-player';
 
-const CustomVideoPlayer = ({ src }: { src: string }) => {
+const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
 
@@ -20,6 +21,44 @@ const CustomVideoPlayer = ({ src }: { src: string }) => {
             setIsPlaying(!isPlaying);
         }
     };
+
+    if (type === 'stream') {
+        const uid = src.replace('cf-stream://', '');
+        return (
+            <div className="absolute inset-0">
+                <CloudflareStreamPlayer uid={uid} />
+            </div>
+        );
+    }
+
+    if (type === 'youtube') {
+        let videoId = src;
+        if (src.includes('v=')) {
+            videoId = src.split('v=')[1].split('&')[0];
+        } else if (src.includes('youtu.be/')) {
+            videoId = src.split('youtu.be/')[1].split('?')[0];
+        }
+        return (
+            <iframe
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`}
+                className="absolute inset-0 w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+            />
+        );
+    }
+
+    if (type === 'vimeo') {
+        const videoId = src.split('/').pop();
+        return (
+            <iframe
+                src={`https://player.vimeo.com/video/${videoId}`}
+                className="absolute inset-0 w-full h-full"
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowFullScreen
+            />
+        );
+    }
 
     return (
         <div className="absolute inset-0 group bg-black cursor-pointer overflow-hidden" onClick={togglePlay}>
@@ -65,6 +104,7 @@ export const DemoMaterial = () => {
     const textY = isMobile ? 0 : textYTransform;
 
     const [videoUrl, setVideoUrl] = React.useState('');
+    const [videoType, setVideoType] = React.useState('youtube');
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
@@ -73,6 +113,7 @@ export const DemoMaterial = () => {
             .then(data => {
                 if (data.settings?.hero_video_url) {
                     setVideoUrl(data.settings.hero_video_url);
+                    setVideoType(data.settings.hero_video_type || 'youtube');
                 }
             })
             .catch(console.error)
@@ -115,9 +156,12 @@ export const DemoMaterial = () => {
                         {/* Inner Video Container */}
                         <div className="relative rounded-[2.2rem] md:rounded-[3.2rem] overflow-hidden aspect-video bg-black shadow-2xl">
                             {videoUrl ? (
-                                <CustomVideoPlayer src={videoUrl} />
+                                <CustomVideoPlayer src={videoUrl} type={videoType} />
                             ) : (
-                                <div className="w-full h-full bg-slate-900 animate-pulse" />
+                                <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-slate-500 gap-4">
+                                     <Video className="w-12 h-12 opacity-20 animate-pulse" />
+                                     <span className="text-xs font-bold uppercase tracking-widest opacity-40">Loading Platform Hero Video</span>
+                                </div>
                             )}
                         </div>
                     </div>

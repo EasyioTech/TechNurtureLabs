@@ -17,7 +17,7 @@ import { saveVideoProgress } from '@/modules/student/actions/lesson-actions';
 
 interface CloudflareStreamPlayerProps {
     uid: string;
-    lessonId: string;
+    lessonId?: string;
     initialProgress?: {
         last_position_secs: number;
         progress_pct: number;
@@ -52,7 +52,7 @@ export function CloudflareStreamPlayer({
 
     // ── postMessage from Cloudflare iframe ────────────────────────────────────
     useEffect(() => {
-        if (isCompleted) return;
+        if (isCompleted || !lessonId) return;
 
         let lastSyncTime = 0;
 
@@ -70,7 +70,7 @@ export function CloudflareStreamPlayer({
                     const now = Date.now();
                     if (now - lastSyncTime > 10000) {
                         lastSyncTime = now;
-                        saveVideoProgress(lessonId, data.currentTime, pct).catch(() => {});
+                        saveVideoProgress(lessonId!, data.currentTime, pct).catch(() => {});
                     }
                 }
 
@@ -90,12 +90,12 @@ export function CloudflareStreamPlayer({
 
     // ── Flush progress on tab hide ─────────────────────────────────────────
     useEffect(() => {
-        if (isCompleted) return;
+        if (isCompleted || !lessonId) return;
 
         function handleVisibilityChange() {
             if (document.visibilityState === 'hidden' && verifiedProgress > 0) {
                 const estimatedTime = (verifiedProgress / 100) * 600;
-                saveVideoProgress(lessonId, estimatedTime, verifiedProgress).catch(() => {});
+                saveVideoProgress(lessonId!, estimatedTime, verifiedProgress).catch(() => {});
             }
         }
         document.addEventListener('visibilitychange', handleVisibilityChange);

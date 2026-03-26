@@ -172,7 +172,12 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     const [libraryOpen, setLibraryOpen] = React.useState(false);
     const [libraryTargetId, setLibraryTargetId] = React.useState<string | null>(null);
     const [importOpen, setImportOpen] = React.useState(false);
-    const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
+    
+    // storagePref is 'stream' for videos by default, 'r2' for others.
+    // We allow switching for non-video types.
+    // storagePref is 'stream' for videos by default, 'r2' for others.
+    // We allow switching for non-video types.
+    const [storagePref, setStoragePref] = React.useState<'r2' | 'local' | 'stream'>('r2');
 
     // No onSuccess/onError callbacks — we await upload() directly to avoid stale closures
     const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload();
@@ -266,7 +271,11 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         setUploadFile(file);
 
         try {
-            if (file.type.startsWith('video/')) {
+            // Determine if we should use Stream for this specific file
+            const isVideoFile = file.type.startsWith('video/');
+            const useStream = isVideoFile && storagePref !== 'local';
+
+            if (useStream) {
                 const res = await fetch('/api/media/stream-upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -290,7 +299,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                 }
             }
             // Standard upload (non-video or CF Stream fallback)
-            const result: any = await upload(file, { purpose: 'library', storagePreference: storagePref, folder: 'lesson' });
+            const result: any = await upload(file, { purpose: 'library', storagePreference: storagePref === 'local' ? 'local' : 'r2', folder: 'lesson' });
             if (result?.url) applyBlockUpdate(itemId, 'url', result.url);
             toast.success('File uploaded');
         } catch (err: any) {
@@ -702,9 +711,9 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                     <button
                                         onClick={() => setShowBlockPicker(true)}
                                         className={cn(
-                                            'w-full h-10 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wide transition-all',
+                                            'w-full h-11 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wide transition-all',
                                             isDark
-                                                ? 'border-white/10 text-slate-600 hover:border-white/20 hover:text-slate-300 hover:bg-white/[0.02]'
+                                                ? 'border-white/10 text-slate-500 hover:border-white/20 hover:text-white hover:bg-white/[0.04]'
                                                 : 'border-slate-200 text-slate-400 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50'
                                         )}
                                     >
@@ -712,7 +721,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                     </button>
                                 ) : (
                                     <div className={cn(
-                                        'rounded-2xl border-2 p-3 space-y-2.5',
+                                        'rounded-2xl border-2 p-3.5 space-y-3',
                                         isDark ? 'border-white/8 bg-white/[0.02]' : 'border-indigo-100 bg-indigo-50/40'
                                     )}>
                                         <div className="flex items-center justify-between">
@@ -722,11 +731,11 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                             <button
                                                 onClick={() => setShowBlockPicker(false)}
                                                 className={cn(
-                                                    'w-6 h-6 rounded-lg flex items-center justify-center transition-colors',
+                                                    'w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
                                                     isDark ? 'text-slate-600 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
                                                 )}
                                             >
-                                                <X size={12} />
+                                                <X size={14} />
                                             </button>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
@@ -763,29 +772,49 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
 
                                 {/* Storage toggle */}
                                 <div className={cn(
-                                    'flex items-center justify-between px-4 py-3 rounded-xl border-2',
-                                    isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50'
+                                    'flex flex-col gap-2.5 px-4 py-3 rounded-xl border-2',
+                                    isDark ? 'border-white/5 bg-white/[0.02]' : 'border-slate-100 bg-slate-50'
                                 )}>
-                                    <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Upload to</span>
-                                    <div className={`h-7 px-1 rounded-lg flex gap-0.5 border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-200'}`}>
-                                        {[{ id: 'r2', label: 'Cloud', icon: Cloud }, { id: 'local', label: 'Server', icon: HardDrive }].map((opt) => {
-                                            const active = storagePref === opt.id;
-                                            return (
-                                                <button
-                                                    key={opt.id}
-                                                    type="button"
-                                                    onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
-                                                    className={cn(
-                                                        'flex items-center gap-1 px-2.5 rounded-md text-[9px] font-black uppercase tracking-wide transition-all',
-                                                        active
-                                                            ? isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-900 shadow-sm'
-                                                            : isDark ? 'text-slate-600 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
-                                                    )}
-                                                >
-                                                    <opt.icon size={9} /> {opt.label}
-                                                </button>
-                                            );
-                                        })}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Storage Preferences</span>
+                                            <p className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>Optimized for performance</p>
+                                        </div>
+                                        <div className={`h-8 px-1 rounded-lg flex gap-0.5 border shadow-sm ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-200'}`}>
+                                            {[
+                                                { id: 'r2', label: 'Cloud', icon: Cloud }, 
+                                                { id: 'local', label: 'Server', icon: HardDrive }
+                                            ].map((opt) => {
+                                                const active = (storagePref === 'local' ? 'local' : 'r2') === opt.id;
+                                                return (
+                                                    <button
+                                                        key={opt.id}
+                                                        type="button"
+                                                        onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
+                                                        className={cn(
+                                                            'flex items-center gap-1.5 px-3 rounded-md text-[9px] font-black uppercase tracking-wide transition-all',
+                                                            active
+                                                                ? isDark ? 'bg-white/10 text-white shadow-inner' : 'bg-slate-100 text-slate-900 shadow-sm'
+                                                                : isDark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600'
+                                                        )}
+                                                    >
+                                                        <opt.icon size={10} /> {opt.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                    <div className={cn(
+                                        'px-3 py-2 rounded-lg border flex items-center gap-3',
+                                        isDark ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'
+                                    )}>
+                                        <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', isDark ? 'bg-indigo-400/20 text-indigo-300' : 'bg-indigo-100 text-indigo-600')}>
+                                            <Zap size={14} />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className={cn('text-[10px] font-black uppercase tracking-tight', isDark ? 'text-indigo-300' : 'text-indigo-800')}>Cloudflare Stream Active</p>
+                                            <p className={cn('text-[9px] font-bold leading-tight truncate', isDark ? 'text-indigo-300/60' : 'text-indigo-600/70')}>Videos auto-optimized for 4K & Mobile data</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
