@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Loader2, Video, Save, Link2, UploadCloud, Film, GraduationCap, Plus, Trash2, Hash } from 'lucide-react';
 import { MediaLibraryPicker } from '../media-library-picker';
 import { ImageUpload } from '@/modules/shared/components/image-upload';
+import { VideoUpload } from '@/modules/shared/components/video-upload';
 import { Palette, Shield, Settings2, Smartphone, Key, AlertCircle, CheckCircle, Columns, Rows, Square, Lock } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -553,27 +554,12 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                         )}
 
                         {videoType === 'upload' ? (
-                            <div className="mt-2 space-y-3">
-                                <div className="flex gap-3 items-center">
-                                    <Input
-                                        value={videoUrl}
-                                        readOnly
-                                        placeholder="Select a video from R2 library"
-                                        className={`text-base font-medium h-14 rounded-xl flex-1 ${isDark ? '!bg-white/[0.04] border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
-                                    />
-                                    <Button
-                                        onClick={() => setPickerOpen(true)}
-                                        className={`h-14 px-6 rounded-xl font-bold ${accent.bg} text-slate-100 uppercase tracking-wider`}
-                                    >
-                                        Browse Library
-                                    </Button>
-                                </div>
-                                <MediaLibraryPicker
-                                    open={pickerOpen}
-                                    onOpenChange={setPickerOpen}
-                                    onSelect={(url) => setVideoUrl(url)}
-                                    filterType="video"
-                                    currentUrl={videoUrl}
+                            <div className="mt-2">
+                                <VideoUpload
+                                    value={videoUrl}
+                                    onChange={(url) => setVideoUrl(url)}
+                                    isDark={isDark}
+                                    folder="landing"
                                 />
                             </div>
                         ) : (
