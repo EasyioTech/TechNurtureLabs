@@ -280,65 +280,65 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
             </div>
           )}
 
-          {/* Bottom spacer so content clears the mobile sticky bar */}
-          <div className="h-20 lg:h-0" />
-        </div>
-      </div>
+          {/* ─── Bottom lesson action bar (all devices) ─── */}
+          <div className="border-t border-slate-100 bg-white px-4 sm:px-8 lg:px-12 py-4 sm:py-5 max-w-[1100px] mx-auto w-full">
+            <div className="flex items-center gap-4">
 
-      {/* ─── Mobile sticky bottom navigation ─── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[90] bg-white/95 backdrop-blur-lg border-t border-slate-100 shadow-[0_-2px_16px_rgba(0,0,0,0.06)]">
-        <div className="flex items-center gap-3 px-4 py-3">
+              {/* Status icon */}
+              {lessonComplete ? (
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <CheckIcon size={16} className="text-emerald-500" />
+                </div>
+              ) : (
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100/60 flex items-center justify-center flex-shrink-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse" />
+                </div>
+              )}
 
-          {/* Status icon */}
-          {lessonComplete ? (
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
-              <CheckIcon size={15} className="text-emerald-500" />
+              {/* Lesson info */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">
+                  {lessonComplete ? 'Completed' : 'In Progress'} · {currentLessonIndex + 1} of {totalLessons}
+                </p>
+                <p className="text-xs sm:text-sm font-black text-slate-800 truncate leading-tight uppercase tracking-tight">
+                  {lesson.title}
+                </p>
+              </div>
+
+              {/* CTA */}
+              {lessonComplete ? (
+                nextLesson ? (
+                  <Link href={`/student/lesson/${nextLesson.id}`} className="flex-shrink-0">
+                    <span className="flex items-center gap-2 h-11 px-5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-indigo-600 transition-colors">
+                      Next Lesson <ChevronRight size={14} strokeWidth={3} />
+                    </span>
+                  </Link>
+                ) : (
+                  <Link href="/student" className="flex-shrink-0">
+                    <span className="flex items-center gap-2 h-11 px-5 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-emerald-600 transition-colors">
+                      <Home size={14} /> Back to Home
+                    </span>
+                  </Link>
+                )
+              ) : (
+                <button
+                  onClick={() => handleComplete(false)}
+                  disabled={isSaving}
+                  className="flex-shrink-0 flex items-center gap-2 h-11 px-5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap disabled:opacity-60 hover:bg-indigo-700 active:scale-95 transition-all"
+                >
+                  {isSaving ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <CheckIcon size={14} />
+                  )}
+                  {isSaving ? 'Saving…' : 'Mark as Complete'}
+                </button>
+              )}
             </div>
-          ) : (
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100/60 flex items-center justify-center flex-shrink-0">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse" />
-            </div>
-          )}
-
-          {/* Lesson info */}
-          <div className="flex-1 min-w-0">
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">
-              {lessonComplete ? 'Completed' : 'In Progress'} · {currentLessonIndex + 1} of {totalLessons}
-            </p>
-            <p className="text-[11px] font-black text-slate-800 truncate leading-tight uppercase tracking-tight">
-              {lesson.title}
-            </p>
           </div>
 
-          {/* CTA */}
-          {lessonComplete ? (
-            nextLesson ? (
-              <Link href={`/student/lesson/${nextLesson.id}`} className="flex-shrink-0">
-                <span className="flex items-center gap-1.5 h-10 px-4 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
-                  Next <ChevronRight size={13} strokeWidth={3} />
-                </span>
-              </Link>
-            ) : (
-              <Link href="/student" className="flex-shrink-0">
-                <span className="flex items-center gap-1.5 h-10 px-4 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
-                  <Home size={13} /> Home
-                </span>
-              </Link>
-            )
-          ) : (
-            <button
-              onClick={() => handleComplete(false)}
-              disabled={isSaving}
-              className="flex-shrink-0 flex items-center gap-1.5 h-10 px-4 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap disabled:opacity-60 active:scale-95 transition-transform"
-            >
-              {isSaving ? (
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <CheckIcon size={13} />
-              )}
-              {isSaving ? 'Saving…' : 'Mark Done'}
-            </button>
-          )}
+          {/* Bottom spacer */}
+          <div className="h-6" />
         </div>
       </div>
 
