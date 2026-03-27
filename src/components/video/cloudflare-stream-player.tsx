@@ -106,10 +106,12 @@ export function CloudflareStreamPlayer({
         let lastDbSync = 0;
 
         function handleMessage(event: MessageEvent) {
-            // Only accept messages from Cloudflare origins
+            // Accept messages from Cloudflare origins OR same-origin (production HTTP)
             if (
+                event.origin !== window.location.origin &&
                 !event.origin.includes('videodelivery.net') &&
-                !event.origin.includes('cloudflarestream.com')
+                !event.origin.includes('cloudflarestream.com') &&
+                !event.origin.includes('iframe.videodelivery.net')
             ) return;
 
             try {
@@ -117,17 +119,27 @@ export function CloudflareStreamPlayer({
                 const data: any = typeof raw === 'string' ? JSON.parse(raw) : raw;
                 if (!data || typeof data !== 'object') return;
 
+                // Cloudflare sometimes wraps the payload: { data: { type, time, duration } }
+                const payload: any = data.data && typeof data.data === 'object' ? data.data : data;
+
                 // ── Capture duration ──────────────────────────────────────
-                // Cloudflare sends duration in loadedmetadata and in timeupdate
-                if (data.duration && data.duration > 0) {
-                    durationRef.current = data.duration;
+                // Cloudflare sends duration in loadedmetadata, timeupdate, and sometimes durationchange
+                const dur: number =
+                    payload.duration ?? data.duration ?? 0;
+                if (dur > 0) {
+                    durationRef.current = dur;
                 }
 
-                // ── timeupdate ────────────────────────────────────────────
-                // Cloudflare Stream uses `data.time`, NOT `data.currentTime`
-                const ct: number | null = data.time ?? data.currentTime ?? null;
+                // Normalise event name — Cloudflare sends { type } or { event }
+                const eventName: string = payload.type ?? payload.event ?? data.type ?? data.event ?? '';
 
-                if (data.type === 'timeupdate' && ct !== null) {
+                // ── timeupdate ────────────────────────────────────────────
+                // Cloudflare Stream uses `time` (not `currentTime`) in most builds.
+                // Extract from both the outer and inner payload for resilience.
+                const ct: number | null =
+                    payload.time ?? payload.currentTime ?? data.time ?? data.currentTime ?? null;
+
+                if ((eventName === 'timeupdate' || (ct !== null && eventName === '')) && ct !== null) {
                     // While a seek-back is in flight, ignore incoming events —
                     // they represent the player catching up to our seek command,
                     // not a new user action.
@@ -142,8 +154,6 @@ export function CloudflareStreamPlayer({
 
                     if (!completedRef.current && ct > allowedMax) {
                         // Student tried to skip forward — push them back.
-                        // seekIframeTo sets seekingBackRef so the resulting
-                        // timeupdate at the rewound position is ignored.
                         seekIframeTo(maxWatchedRef.current);
                         return;
                     }
@@ -151,7 +161,6 @@ export function CloudflareStreamPlayer({
                     // Legitimate position — advance the watermark
                     maxWatchedRef.current = Math.max(maxWatchedRef.current, ct);
 
-                    // Update progress percentage for UI and DB
                     if (duration > 0) {
                         const pct = Math.min(100, Math.floor((ct / duration) * 100));
 
@@ -164,23 +173,31 @@ export function CloudflareStreamPlayer({
                             }
                         }
 
-                        // Auto-complete fallback: if 95%+ watched and ended never fired
-                        if (pct >= 95) {
+                        // Near-end detection: within 3 s of end counts as complete
+                        const nearEnd = ct >= duration - 3;
+
+                        // Auto-complete: 90%+ watched OR within 3 s of end
+                        if (pct >= 90 || nearEnd) {
                             fireComplete();
                         }
                     }
                 }
 
                 // ── Video ended ───────────────────────────────────────────
-                if (data.type === 'ended' || data.event === 'ended') {
+                if (eventName === 'ended' || data.type === 'ended' || data.event === 'ended') {
                     // Save final position before completing
                     if (lessonId) {
-                        const dur = durationRef.current;
-                        if (dur > 0) {
-                            saveVideoProgress(lessonId, dur, 100).catch(() => {});
+                        const finalDur = durationRef.current;
+                        if (finalDur > 0) {
+                            saveVideoProgress(lessonId, finalDur, 100).catch(() => {});
                         }
                     }
                     fireComplete();
+                }
+
+                // ── loadedmetadata — capture duration early ───────────────
+                if (eventName === 'loadedmetadata' || eventName === 'durationchange') {
+                    // duration already captured above; nothing else to do
                 }
             } catch {
                 // Ignore parse errors from unrelated postMessages
