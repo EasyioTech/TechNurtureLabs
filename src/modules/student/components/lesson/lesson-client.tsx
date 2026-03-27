@@ -310,8 +310,8 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
             </p>
           </div>
 
-          {/* CTA — only visible when lesson is done */}
-          {lessonComplete && (
+          {/* CTA */}
+          {lessonComplete ? (
             nextLesson ? (
               <Link href={`/student/lesson/${nextLesson.id}`} className="flex-shrink-0">
                 <span className="flex items-center gap-1.5 h-10 px-4 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
@@ -325,6 +325,19 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                 </span>
               </Link>
             )
+          ) : (
+            <button
+              onClick={() => handleComplete(false)}
+              disabled={isSaving}
+              className="flex-shrink-0 flex items-center gap-1.5 h-10 px-4 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap disabled:opacity-60 active:scale-95 transition-transform"
+            >
+              {isSaving ? (
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <CheckIcon size={13} />
+              )}
+              {isSaving ? 'Saving…' : 'Mark Done'}
+            </button>
           )}
         </div>
       </div>
