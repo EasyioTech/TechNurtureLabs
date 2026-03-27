@@ -14,11 +14,12 @@ interface MetricTablesProps {
     userMetrics: UserMetric[];
     page?: number;
     setPage?: (p: number) => void;
+    totalPages?: number;
 }
 
 type UserSortField = 'full_name' | 'total_xp' | 'level' | 'lessons_completed';
 
-export function MetricTables({ userMetrics, page = 0, setPage }: MetricTablesProps) {
+export function MetricTables({ userMetrics, page = 0, setPage, totalPages = 1 }: MetricTablesProps) {
     const { isDark, accent } = useAdminTheme();
     
     // M-7: Added local sorting and filtering for enhanced report usability
@@ -41,7 +42,8 @@ export function MetricTables({ userMetrics, page = 0, setPage }: MetricTablesPro
         return result;
     }, [userMetrics, userSort, studentSearch]);
 
-    const totalPages = Math.ceil(filteredAndSortedUsers.length / USER_METRICS_PAGE_SIZE);
+    const localTotalPages = Math.ceil(filteredAndSortedUsers.length / USER_METRICS_PAGE_SIZE);
+    const serverTotalPages = totalPages || localTotalPages;
     const pagedMetrics = filteredAndSortedUsers.slice(page * USER_METRICS_PAGE_SIZE, (page + 1) * USER_METRICS_PAGE_SIZE);
 
     const toggleUserSort = (field: UserSortField) => {
@@ -119,7 +121,7 @@ export function MetricTables({ userMetrics, page = 0, setPage }: MetricTablesPro
                     </div>
 
                     {/* Pagination Footer */}
-                    {totalPages > 1 && setPage && (
+                    {serverTotalPages > 1 && setPage && (
                         <div className={`px-6 py-4 border-t ${t.border(isDark)} flex items-center justify-between`}>
                             <p className={`text-[11px] font-bold ${t.textMuted(isDark)}`}>
                                 Showing {page * USER_METRICS_PAGE_SIZE + 1}–{Math.min((page + 1) * USER_METRICS_PAGE_SIZE, filteredAndSortedUsers.length)} of {filteredAndSortedUsers.length} students
@@ -130,8 +132,8 @@ export function MetricTables({ userMetrics, page = 0, setPage }: MetricTablesPro
                                     className={`rounded-full h-8 px-4 text-[11px] font-black disabled:opacity-30 ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-700'}`}>
                                     <ChevronLeft size={14} className="mr-1" /> Prev
                                 </Button>
-                                <span className={`text-[11px] font-black px-2 ${t.textMuted(isDark)}`}>{page + 1} / {totalPages}</span>
-                                <Button variant="ghost" size="sm" disabled={page >= totalPages - 1}
+                                <span className={`text-[11px] font-black px-2 ${t.textMuted(isDark)}`}>{page + 1} / {serverTotalPages}</span>
+                                <Button variant="ghost" size="sm" disabled={page >= serverTotalPages - 1}
                                     onClick={() => setPage(page + 1)}
                                     className={`rounded-full h-8 px-4 text-[11px] font-black disabled:opacity-30 ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-700'}`}>
                                     Next <ChevronRight size={14} className="ml-1" />

@@ -113,6 +113,7 @@ function DashboardContent() {
             data.loadGlobalLessons(data.globalLessonsPage, searchQuery);
             data.loadGlobalQuizzes(data.globalQuizzesPage, searchQuery);
         }
+        // Only re-run when page indices or search query changes, NOT when 'data' or 'activePage' itself changes if they are already stable
     }, [activePage, data.userMetricsPage, data.schoolsPage, data.coursesPage, data.globalLessonsPage, data.globalQuizzesPage, searchQuery]);
 
     if (data.loading) {
@@ -515,7 +516,12 @@ function DashboardContent() {
                                         </div>
                                     </div>
                                 </div>
-                                <MetricTables userMetrics={data.userMetrics} page={data.userMetricsPage} setPage={data.setUserMetricsPage} />
+                                <MetricTables 
+                                    userMetrics={data.userMetrics} 
+                                    page={data.userMetricsPage} 
+                                    setPage={data.setUserMetricsPage} 
+                                    totalPages={data.totalStudentPages}
+                                />
                             </div>
                         )}
                         { activePage === 'system' && <SystemHealthTab />}
