@@ -36,7 +36,10 @@ export function StudentLayoutShell({
     }, []);
 
     return (
-        <div className="flex min-h-screen bg-slate-50 overflow-x-hidden selection:bg-indigo-100">
+        <div 
+            onContextMenu={(e) => e.preventDefault()}
+            className="flex min-h-screen bg-slate-50 overflow-x-hidden select-none"
+        >
             {!isLessonPage && sidebar}
             {/*
               * transition-[padding-left] instead of transition-all — only the padding
