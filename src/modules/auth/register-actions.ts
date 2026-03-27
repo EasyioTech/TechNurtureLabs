@@ -104,10 +104,13 @@ export async function registerStudent(formData: any) {
 
         const [firstName, ...lastNameParts] = formData.full_name.trim().split(/\s+/);
         const lastName = lastNameParts.join(' ');
-        // Critical: use undefined (not null) so Drizzle omits the column from INSERT,
-        // letting the DB default to NULL — prevents empty-string unique constraint collisions.
+        
+        // Normalize: Email to lowercase, Phone to digits only
         const emailVal: string | undefined = isEmail ? rawIdentifier.toLowerCase() : undefined;
         const phoneVal: string | undefined = isPhone ? digitsOnly : undefined;
+
+        // For phone comparison, also check last 10 digits to handle country code variations
+        const phoneLast10 = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
 
         const result = await db.transaction(async (tx) => {
             // Check for existing student with this email/phone (Platform-wide, non-deleted)
@@ -115,7 +118,11 @@ export async function registerStudent(formData: any) {
                 where: and(
                     isEmail
                         ? eq(students.email, emailVal!)
-                        : or(eq(students.phone, digitsOnly), eq(students.phone, rawIdentifier)),
+                        : or(
+                            eq(students.phone, phoneVal!),
+                            eq(students.phone, phoneLast10), // check 10 digit version
+                            sql`${students.phone} LIKE ${'%' + phoneLast10}` // fuzzy end match
+                          ),
                     sql`deleted_at IS NULL`
                 )
             });
@@ -354,13 +361,15 @@ export async function checkIdentifierExists(value: string, role?: 'student' | 's
         return { exists: false };
     } else {
         // Normalize phone: remove all non-digits for comparison
-        const normalizedPhone = value.replace(/\D/g, '');
+        const digitsOnly = value.replace(/\D/g, '');
+        const last10 = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
         
         const student = await db.query.students.findFirst({
             where: and(
                 or(
-                    eq(students.phone, identifier),
-                    eq(students.phone, normalizedPhone)
+                    eq(students.phone, digitsOnly),
+                    eq(students.phone, last10),
+                    sql`${students.phone} LIKE ${'%' + last10}`
                 ), 
                 sql`deleted_at IS NULL`
             )
@@ -368,12 +377,12 @@ export async function checkIdentifierExists(value: string, role?: 'student' | 's
         
         if (student) return { exists: true, role: 'student' };
 
-        // Also check school admins for phone if needed
         const admin = await db.query.schoolAdmins.findFirst({
             where: and(
                 or(
-                    eq(schoolAdmins.phone, identifier),
-                    eq(schoolAdmins.phone, normalizedPhone)
+                    eq(schoolAdmins.phone, digitsOnly),
+                    eq(schoolAdmins.phone, last10),
+                    sql`${schoolAdmins.phone} LIKE ${'%' + last10}`
                 ),
                 sql`deleted_at IS NULL`
             )

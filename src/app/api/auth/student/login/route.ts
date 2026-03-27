@@ -42,14 +42,20 @@ export async function POST(request: NextRequest) {
         const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
         // Strip all non-digits for phone lookup — matches however the number was stored
         const digitsOnly = identifier.replace(/\D/g, '');
+        const last10 = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
         const normalizedIdentifier = isEmail ? identifier.toLowerCase() : digitsOnly;
 
         const user = await db.query.students.findFirst({
             where: and(
                 isEmail
                     ? eq(students.email, normalizedIdentifier)
-                    // Try both the raw trimmed value and digits-only — handles +91..., 0..., etc.
-                    : sql`${students.phone} = ${identifier} OR ${students.phone} = ${digitsOnly}`,
+                    // Robust phone match: digits-only, explicit match, or end-of-string match (last 10)
+                    : or(
+                        eq(students.phone, digitsOnly),
+                        eq(students.phone, identifier),
+                        eq(students.phone, last10),
+                        sql`${students.phone} LIKE ${'%' + last10}`
+                      ),
                 sql`${students.deleted_at} IS NULL`,
                 eq(students.is_active, true)
             )

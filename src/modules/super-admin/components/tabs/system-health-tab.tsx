@@ -89,7 +89,7 @@ export function SystemHealthTab() {
                                 <Cpu size={16} className={accent.text} />
                                 <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>CPU Load ({server.cpuCount} Cores)</span>
                             </div>
-                            <span className={`text-lg font-[1000] ${t.textPrimary(isDark)}`}>{server.loadAvg1m.toFixed(2)}</span>
+                            <span className={`text-lg font-black ${t.textPrimary(isDark)}`}>{server.loadAvg1m.toFixed(2)}</span>
                         </div>
                         <div className={`h-2 w-full rounded-full ${isDark ? 'bg-white/10' : 'bg-neutral-200'} overflow-hidden`}>
                             <motion.div
@@ -111,7 +111,7 @@ export function SystemHealthTab() {
                                 <HardDrive size={16} className={accent.text} />
                                 <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>OS RAM</span>
                             </div>
-                            <span className={`text-lg font-[1000] ${t.textPrimary(isDark)}`}>{server.memUsagePercent.toFixed(1)}%</span>
+                            <span className={`text-lg font-black ${t.textPrimary(isDark)}`}>{server.memUsagePercent.toFixed(1)}%</span>
                         </div>
                         <div className={`h-2 w-full rounded-full ${isDark ? 'bg-white/10' : 'bg-neutral-200'} overflow-hidden`}>
                             <motion.div
@@ -133,7 +133,7 @@ export function SystemHealthTab() {
                                 <Activity size={16} className={accent.text} />
                                 <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Node JS Heap</span>
                             </div>
-                            <span className={`text-lg font-[1000] ${t.textPrimary(isDark)}`}>{server.heapUsagePercent.toFixed(1)}%</span>
+                            <span className={`text-lg font-black ${t.textPrimary(isDark)}`}>{server.heapUsagePercent.toFixed(1)}%</span>
                         </div>
                         <div className={`h-2 w-full rounded-full ${isDark ? 'bg-white/10' : 'bg-neutral-200'} overflow-hidden`}>
                             <motion.div
@@ -155,7 +155,7 @@ export function SystemHealthTab() {
                         </div>
                         <div>
                             <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)} mb-1`}>Network Capacity</p>
-                            <p className={`text-xl font-[1000] ${server.loadAvg1m > server.cpuCount ? 'text-rose-500' : 'text-emerald-500'}`}>
+                            <p className={`text-xl font-black ${server.loadAvg1m > server.cpuCount ? 'text-rose-500' : 'text-emerald-500'}`}>
                                 {server.loadAvg1m > server.cpuCount ? 'High Load' : 'Optimal'}
                             </p>
                         </div>
@@ -169,7 +169,7 @@ export function SystemHealthTab() {
                             </div>
                             <div className="flex-1">
                                 <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)} mb-1`}>Cloudflare R2</p>
-                                <p className={`text-xl font-[1000] ${server.cloudflare.status === 'Connected' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                <p className={`text-xl font-black ${server.cloudflare.status === 'Connected' ? 'text-emerald-500' : 'text-rose-500'}`}>
                                     {server.cloudflare.status === 'Connected' ? 'Online' : 'Offline'}
                                 </p>
                                 <div className="flex items-center gap-2 mt-1">
@@ -209,7 +209,7 @@ export function SystemHealthTab() {
                         </div>
                         <div>
                             <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)} mb-1`}>Database Latency</p>
-                            <p className={`text-xl font-[1000] ${data.database.pingMs < 100 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                            <p className={`text-xl font-black ${data.database.pingMs < 100 ? 'text-emerald-500' : 'text-amber-500'}`}>
                                 {data.database.pingMs} ms
                             </p>
                         </div>
@@ -222,7 +222,7 @@ export function SystemHealthTab() {
                         </div>
                         <div>
                             <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)} mb-1`}>Active Connections</p>
-                            <p className={`text-xl font-[1000] ${data.database.activeConnections > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                            <p className={`text-xl font-black ${data.database.activeConnections > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>
                                 {data.database.activeConnections}
                             </p>
                         </div>
@@ -235,7 +235,7 @@ export function SystemHealthTab() {
                         </div>
                         <div>
                             <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)} mb-1`}>Total Size</p>
-                            <p className={`text-xl font-[1000] ${t.textPrimary(isDark)}`}>
+                            <p className={`text-xl font-black ${t.textPrimary(isDark)}`}>
                                 {data.database.totalSize}
                             </p>
                         </div>
@@ -273,7 +273,7 @@ export function SystemHealthTab() {
                                 />
                             </svg>
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className={`text-3xl font-[1000] ${t.textPrimary(isDark)}`}>{stats.health_score}</span>
+                                <span className={`text-3xl font-black ${t.textPrimary(isDark)}`}>{stats.health_score}</span>
                                 <span className={`text-[9px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>SCORE</span>
                             </div>
                         </div>
@@ -329,7 +329,7 @@ export function SystemHealthTab() {
                                 </div>
                                 <div className="mt-4">
                                     <p className={`text-[9px] font-black uppercase tracking-[0.2em] ${t.textMuted(isDark)}`}>{card.label}</p>
-                                    <p className={`text-lg font-[1000] mt-1 ${t.textPrimary(isDark)} ${card.color || ''}`}>{card.value}</p>
+                                    <p className={`text-lg font-black mt-1 ${t.textPrimary(isDark)} ${card.color || ''}`}>{card.value}</p>
                                     {card.sub && <p className={`text-[8px] font-black mt-0.5 ${t.textMuted(isDark)} uppercase tracking-wider`}>{card.sub}</p>}
                                 </div>
                             </motion.div>
@@ -416,7 +416,7 @@ export function SystemHealthTab() {
                                 </div>
                                 <div className="space-y-4">
                                     <div className="flex items-end justify-between">
-                                        <p className={`text-2xl font-[1000] ${t.textPrimary(isDark)}`}>{stats.hit_ratio.toFixed(1)}%</p>
+                                        <p className={`text-2xl font-black ${t.textPrimary(isDark)}`}>{stats.hit_ratio.toFixed(1)}%</p>
                                         <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>{stats.keyspace_hits} Hits</p>
                                     </div>
                                     <div className={`h-2 w-full rounded-full ${isDark ? 'bg-white/10' : 'bg-neutral-200'} overflow-hidden`}>

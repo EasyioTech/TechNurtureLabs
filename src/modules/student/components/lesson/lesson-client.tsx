@@ -8,7 +8,7 @@ import { LessonSyllabus } from '@/modules/student/components/lesson/lesson-sylla
 import { updateTimeSpent, getCourseDetailsData, completeLessonAndReward } from '@/modules/student/actions';
 import {
   BookOpen, Trophy, Star, X, CheckCircle2 as CheckIcon,
-  ArrowRight, ChevronRight, Home, PlayCircle
+  ArrowRight, ChevronRight, Home,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -124,7 +124,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
   const courseProgress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-black lg:bg-white text-slate-950 flex flex-col">
+    <div className="min-h-screen bg-white text-slate-950 flex flex-col">
       <LessonHeader
         courseId={lesson.course_id}
         courseTitle={courseData?.course?.title || 'Course'}
@@ -280,49 +280,53 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
             </div>
           )}
 
-          {/* Bottom padding so sticky bar doesn't overlap content on mobile */}
-          <div className="h-24 sm:h-0 lg:h-0" />
+          {/* Bottom spacer so content clears the mobile sticky bar */}
+          <div className="h-20 lg:h-0" />
         </div>
       </div>
 
-      {/* ─── Mobile sticky bottom bar ─── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[90] bg-white/95 backdrop-blur-xl border-t border-slate-100 px-4 py-3 flex items-center gap-3 shadow-[0_-8px_32px_rgba(0,0,0,0.08)]">
-        {/* Progress + lesson info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate">
-              {courseData?.course?.title}
-            </span>
-            <span className="text-[9px] font-black text-indigo-600 flex-shrink-0 ml-2">{courseProgress}%</span>
-          </div>
-          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-indigo-600 rounded-full transition-all duration-700"
-              style={{ width: `${courseProgress}%` }}
-            />
-          </div>
-        </div>
+      {/* ─── Mobile sticky bottom navigation ─── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[90] bg-white/95 backdrop-blur-lg border-t border-slate-100 shadow-[0_-2px_16px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center gap-3 px-4 py-3">
 
-        {/* CTA */}
-        {lessonComplete ? (
-          nextLesson ? (
-            <Link href={`/student/lesson/${nextLesson.id}`} className="flex-shrink-0">
-              <button className="h-11 px-5 bg-indigo-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 active:scale-95 shadow-lg shadow-indigo-200 whitespace-nowrap">
-                Next <ChevronRight size={14} />
-              </button>
-            </Link>
+          {/* Status icon */}
+          {lessonComplete ? (
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+              <CheckIcon size={15} className="text-emerald-500" />
+            </div>
           ) : (
-            <Link href="/student" className="flex-shrink-0">
-              <button className="h-11 px-5 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 active:scale-95 whitespace-nowrap">
-                <Home size={14} /> Home
-              </button>
-            </Link>
-          )
-        ) : (
-          <div className="flex-shrink-0 h-11 px-4 bg-slate-100 rounded-xl flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
-            <PlayCircle size={14} /> Watching
+            <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100/60 flex items-center justify-center flex-shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse" />
+            </div>
+          )}
+
+          {/* Lesson info */}
+          <div className="flex-1 min-w-0">
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">
+              {lessonComplete ? 'Completed' : 'In Progress'} · {currentLessonIndex + 1} of {totalLessons}
+            </p>
+            <p className="text-[11px] font-black text-slate-800 truncate leading-tight uppercase tracking-tight">
+              {lesson.title}
+            </p>
           </div>
-        )}
+
+          {/* CTA — only visible when lesson is done */}
+          {lessonComplete && (
+            nextLesson ? (
+              <Link href={`/student/lesson/${nextLesson.id}`} className="flex-shrink-0">
+                <span className="flex items-center gap-1.5 h-10 px-4 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
+                  Next <ChevronRight size={13} strokeWidth={3} />
+                </span>
+              </Link>
+            ) : (
+              <Link href="/student" className="flex-shrink-0">
+                <span className="flex items-center gap-1.5 h-10 px-4 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap">
+                  <Home size={13} /> Home
+                </span>
+              </Link>
+            )
+          )}
+        </div>
       </div>
 
       {/* ─── Completion celebration overlay ─── */}

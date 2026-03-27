@@ -2,9 +2,17 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Sparkles, Menu, X, ArrowRight, GraduationCap, School } from 'lucide-react';
+import { Sparkles, Menu, X, ArrowRight, GraduationCap, School, LogIn, UserCircle, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 
 const navLinks = [
     { label: 'Curriculum', href: '#features' },
@@ -17,6 +25,7 @@ export const FlatNavigation = ({ settings }: { settings?: any }) => {
     const [scrolled, setScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [activeSection, setActiveSection] = useState('');
+    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 30);
@@ -118,27 +127,14 @@ export const FlatNavigation = ({ settings }: { settings?: any }) => {
 
                         {/* Right Actions */}
                         <div className="hidden lg:flex items-center gap-3 shrink-0">
-                            <Link
-                                href="/school-portal/login"
-                                className={cn(
-                                    "flex items-center gap-2 text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all",
-                                    "text-slate-600 hover:text-slate-900",
-                                    scrolled
-                                        ? "hover:bg-slate-100"
-                                        : "hover:bg-slate-900/[0.04]"
-                                )}
+                            <button
+                                onClick={() => setIsLoginModalOpen(true)}
+                                className="flex items-center gap-2 text-[13px] font-semibold text-white bg-slate-900 hover:bg-slate-800 px-6 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-[1px] active:translate-y-0"
                             >
-                                <School size={15} className="text-slate-400" />
-                                School Login
-                            </Link>
-
-                            <Link
-                                href="/login"
-                                className="flex items-center gap-2 text-[13px] font-semibold text-white bg-slate-900 hover:bg-slate-800 px-5 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-[1px] active:translate-y-0"
-                            >
-                                Student Login
-                                <ArrowRight size={14} />
-                            </Link>
+                                <LogIn size={15} />
+                                Login
+                                <ArrowRight size={14} className="ml-0.5 opacity-60" />
+                            </button>
                         </div>
 
                         {/* Mobile Toggle */}
@@ -227,27 +223,77 @@ export const FlatNavigation = ({ settings }: { settings?: any }) => {
                             </div>
 
                             <div className="space-y-3 pt-4 border-t border-slate-100">
-                                <Link
-                                    href="/school-portal/login"
-                                    className="flex items-center justify-center gap-2 w-full py-3.5 font-semibold text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors"
-                                    onClick={closeMobile}
-                                >
-                                    <School size={16} className="text-slate-400" />
-                                    School Login
-                                </Link>
-                                <Link
-                                    href="/login"
+                                <button
+                                    onClick={() => {
+                                        closeMobile();
+                                        setIsLoginModalOpen(true);
+                                    }}
                                     className="flex items-center justify-center gap-2 w-full py-3.5 font-semibold text-sm text-white bg-slate-900 rounded-xl shadow-sm hover:bg-slate-800 transition-colors"
-                                    onClick={closeMobile}
                                 >
-                                    Student Login
+                                    <LogIn size={16} />
+                                    Login to Portal
                                     <ArrowRight size={15} />
-                                </Link>
+                                </button>
                             </div>
                         </motion.div>
                     </>
                 )}
             </AnimatePresence>
+
+            {/* Login Selection Modal */}
+            <Dialog open={isLoginModalOpen} onOpenChange={setIsLoginModalOpen}>
+                <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-none bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-y-auto max-h-[90vh]">
+                    <div className="relative p-5 sm:p-8 pt-8 sm:pt-10">
+                        <DialogHeader className="mb-6 sm:mb-8 text-center sm:text-center">
+                            <div className="mx-auto w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-slate-900 flex items-center justify-center mb-3 sm:mb-4 shadow-lg">
+                                <Sparkles className="text-white" size={20} />
+                            </div>
+                            <DialogTitle className="text-xl sm:text-2xl font-black text-slate-900 mb-1 sm:mb-2 leading-tight">Welcome Back</DialogTitle>
+                            <DialogDescription className="text-slate-500 text-sm sm:text-base leading-snug px-2">
+                                Select your portal to continue your learning journey
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="grid gap-3 sm:gap-4">
+                            <Link
+                                href="/login"
+                                onClick={() => setIsLoginModalOpen(false)}
+                                className="group relative flex items-center gap-3 sm:gap-5 p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-300 shadow-sm hover:shadow-md"
+                            >
+                                <div className="w-11 h-11 sm:w-14 sm:h-14 shrink-0 rounded-lg sm:rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center group-hover:scale-105 sm:group-hover:scale-110 transition-transform duration-300">
+                                    <GraduationCap size={22} className="sm:size-[28px]" />
+                                </div>
+                                <div className="flex-1 text-left min-w-0">
+                                    <h3 className="font-bold text-slate-900 text-base sm:text-lg group-hover:text-blue-700 transition-colors truncate">I am a Student</h3>
+                                    <p className="text-slate-500 text-[12px] sm:text-sm line-clamp-1">Access your courses, tasks, and progress</p>
+                                </div>
+                                <ArrowRight size={18} className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all shrink-0" />
+                            </Link>
+
+                            <Link
+                                href="/school-portal/login"
+                                onClick={() => setIsLoginModalOpen(false)}
+                                className="group relative flex items-center gap-3 sm:gap-5 p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all duration-300 shadow-sm hover:shadow-md"
+                            >
+                                <div className="w-11 h-11 sm:w-14 sm:h-14 shrink-0 rounded-lg sm:rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center group-hover:scale-105 sm:group-hover:scale-110 transition-transform duration-300">
+                                    <School size={22} className="sm:size-[28px]" />
+                                </div>
+                                <div className="flex-1 text-left min-w-0">
+                                    <h3 className="font-bold text-slate-900 text-base sm:text-lg group-hover:text-indigo-700 transition-colors truncate">I am a Teacher</h3>
+                                    <p className="text-slate-500 text-[12px] sm:text-sm line-clamp-1">Manage classrooms, students, and content</p>
+                                </div>
+                                <ArrowRight size={18} className="text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all shrink-0" />
+                            </Link>
+                        </div>
+
+                        <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-50 text-center">
+                            <p className="text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-widest">
+                                Secure Access Powered by TechNurture
+                            </p>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </>
     );
 };

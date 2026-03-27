@@ -6,7 +6,7 @@
  * Features:
  * - Adaptive bitrate streaming (HLS/DASH) via Cloudflare
  * - Progress tracking via postMessage API (uses data.time — Cloudflare's actual field)
- * - Duration capture from loadedmetadata event
+ * - Duration capture from loadedmetadata / timeupdate events
  * - No-skip enforcement: forward seeks beyond watched position are blocked
  * - Auto-complete when video ends OR when ≥95% is watched
  * - Manual "Mark Complete" fallback button at ≥90% watch time
@@ -14,9 +14,8 @@
  * - Fullscreen → landscape lock on mobile
  */
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Lock } from 'lucide-react';
 import { saveVideoProgress } from '@/modules/student/actions/lesson-actions';
 
 interface CloudflareStreamPlayerProps {
@@ -41,10 +40,6 @@ export function CloudflareStreamPlayer({
 }: CloudflareStreamPlayerProps) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
-    const [isCompleted, setIsCompleted] = useState(!!initialProgress?.completed_at);
-    const [verifiedProgress, setVerifiedProgress] = useState(initialProgress?.progress_pct || 0);
-    const [skipBlocked, setSkipBlocked] = useState(false);
-
     // Refs kept outside React state so they're readable inside message handlers
     // without stale-closure issues and without triggering re-renders.
     const completedRef = useRef(!!initialProgress?.completed_at);
@@ -52,6 +47,9 @@ export function CloudflareStreamPlayer({
     const maxWatchedRef = useRef<number>(initialProgress?.last_position_secs || 0);
     // Video duration — populated from loadedmetadata or the first timeupdate that includes it
     const durationRef = useRef<number>(0);
+    // True while a seek-back postMessage is in flight — prevents the resulting
+    // timeupdate from being re-detected as a new forward skip (infinite loop fix).
+    const seekingBackRef = useRef(false);
 
     // Build embed URL with optional resume timestamp
     const startTimeSecs =
@@ -68,10 +66,19 @@ export function CloudflareStreamPlayer({
     ].join('');
 
     // ── Seek the Cloudflare iframe to a given time ──────────────────────────
+    // Correct command is { currentTime: seconds } — NOT { seek: seconds }.
+    // We set seekingBackRef while in-flight so the resulting timeupdate is
+    // ignored and doesn't trigger another round of skip detection.
     const seekIframeTo = useCallback((time: number) => {
         try {
-            // Cloudflare Stream accepts {seek: number} postMessages
-            iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ seek: time }), '*');
+            seekingBackRef.current = true;
+            iframeRef.current?.contentWindow?.postMessage(
+                JSON.stringify({ currentTime: time }),
+                '*',
+            );
+            // Release the lock after the player has had time to respond (~400 ms).
+            // If the postMessage is ignored (player not ready), the lock still clears.
+            setTimeout(() => { seekingBackRef.current = false; }, 400);
         } catch {}
     }, []);
 
@@ -79,13 +86,15 @@ export function CloudflareStreamPlayer({
     const fireComplete = useCallback(() => {
         if (completedRef.current) return;
         completedRef.current = true;
-        setIsCompleted(true);
         onComplete?.(true);
     }, [onComplete]);
 
     // ── postMessage listener from Cloudflare iframe ─────────────────────────
+    // NOTE: The listener is intentionally NOT gated on lessonId so that the
+    // ended / 95% auto-complete path always fires even when lessonId is absent
+    // (e.g. admin preview). DB saves are still gated on lessonId.
     useEffect(() => {
-        if (completedRef.current || !lessonId) return;
+        if (completedRef.current) return;
 
         let lastDbSync = 0;
 
@@ -102,7 +111,7 @@ export function CloudflareStreamPlayer({
                 if (!data || typeof data !== 'object') return;
 
                 // ── Capture duration ──────────────────────────────────────
-                // Cloudflare sends duration in loadedmetadata; also sometimes in timeupdate
+                // Cloudflare sends duration in loadedmetadata and in timeupdate
                 if (data.duration && data.duration > 0) {
                     durationRef.current = data.duration;
                 }
@@ -112,6 +121,11 @@ export function CloudflareStreamPlayer({
                 const ct: number | null = data.time ?? data.currentTime ?? null;
 
                 if (data.type === 'timeupdate' && ct !== null) {
+                    // While a seek-back is in flight, ignore incoming events —
+                    // they represent the player catching up to our seek command,
+                    // not a new user action.
+                    if (seekingBackRef.current) return;
+
                     const duration = durationRef.current;
 
                     // ── No-skip enforcement ───────────────────────────────
@@ -120,12 +134,11 @@ export function CloudflareStreamPlayer({
                     const allowedMax = maxWatchedRef.current + 3;
 
                     if (!completedRef.current && ct > allowedMax) {
-                        // Student tried to skip forward — push them back
+                        // Student tried to skip forward — push them back.
+                        // seekIframeTo sets seekingBackRef so the resulting
+                        // timeupdate at the rewound position is ignored.
                         seekIframeTo(maxWatchedRef.current);
-                        // Show brief on-screen indicator
-                        setSkipBlocked(true);
-                        setTimeout(() => setSkipBlocked(false), 1800);
-                        return; // discard this position update
+                        return;
                     }
 
                     // Legitimate position — advance the watermark
@@ -134,16 +147,17 @@ export function CloudflareStreamPlayer({
                     // Update progress percentage for UI and DB
                     if (duration > 0) {
                         const pct = Math.min(100, Math.floor((ct / duration) * 100));
-                        setVerifiedProgress(prev => Math.max(prev, pct));
 
                         // Throttled DB save (at most once every 10 s)
-                        const now = Date.now();
-                        if (now - lastDbSync > 10_000) {
-                            lastDbSync = now;
-                            saveVideoProgress(lessonId!, ct, pct).catch(() => {});
+                        if (lessonId) {
+                            const now = Date.now();
+                            if (now - lastDbSync > 10_000) {
+                                lastDbSync = now;
+                                saveVideoProgress(lessonId, ct, pct).catch(() => {});
+                            }
                         }
 
-                        // Auto-complete fallback: if 95 %+ watched and ended never fired
+                        // Auto-complete fallback: if 95%+ watched and ended never fired
                         if (pct >= 95) {
                             fireComplete();
                         }
@@ -153,9 +167,11 @@ export function CloudflareStreamPlayer({
                 // ── Video ended ───────────────────────────────────────────
                 if (data.type === 'ended' || data.event === 'ended') {
                     // Save final position before completing
-                    const dur = durationRef.current;
-                    if (dur > 0 && lessonId) {
-                        saveVideoProgress(lessonId, dur, 100).catch(() => {});
+                    if (lessonId) {
+                        const dur = durationRef.current;
+                        if (dur > 0) {
+                            saveVideoProgress(lessonId, dur, 100).catch(() => {});
+                        }
                     }
                     fireComplete();
                 }
@@ -166,7 +182,6 @@ export function CloudflareStreamPlayer({
 
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    // fireComplete and seekIframeTo are stable (useCallback with no deps that change)
     }, [lessonId, fireComplete, seekIframeTo]);
 
     // ── Flush progress when tab is hidden ───────────────────────────────────
@@ -214,7 +229,6 @@ export function CloudflareStreamPlayer({
 
     return (
         <div className={cn('w-full overflow-hidden bg-black', className)}>
-            {/* Video iframe */}
             <div className="relative aspect-video w-full">
                 <iframe
                     ref={iframeRef}
@@ -224,58 +238,6 @@ export function CloudflareStreamPlayer({
                     allowFullScreen
                     loading="lazy"
                 />
-
-                {/* Skip-blocked toast overlay */}
-                {skipBlocked && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="flex items-center gap-2 bg-slate-900/90 backdrop-blur-sm text-white px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-2xl border border-white/10">
-                            <Lock size={13} />
-                            Please watch the video in order
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Below-video status bar */}
-            <div className="bg-slate-950 px-4 py-2.5 flex items-center justify-between gap-4">
-                {/* Progress pip */}
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-indigo-500 rounded-full transition-all duration-500"
-                            style={{ width: `${verifiedProgress}%` }}
-                        />
-                    </div>
-                    <span className="text-[10px] font-black text-slate-500 tabular-nums flex-shrink-0">
-                        {verifiedProgress}%
-                    </span>
-                </div>
-
-                {/* No-skip hint */}
-                {!isCompleted && (
-                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1 flex-shrink-0">
-                        <Lock size={9} /> No skip
-                    </span>
-                )}
-
-                {/* Manual complete fallback (≥90% watched, auto-complete at 95% may not have fired) */}
-                {!isCompleted && verifiedProgress >= 90 && lessonId && (
-                    <button
-                        onClick={() => fireComplete()}
-                        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
-                    >
-                        <CheckCircle2 size={12} />
-                        Complete
-                    </button>
-                )}
-
-                {/* Completed badge */}
-                {isCompleted && (
-                    <span className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900/40 text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-widest">
-                        <CheckCircle2 size={12} />
-                        Done
-                    </span>
-                )}
             </div>
         </div>
     );

@@ -4,6 +4,7 @@ import React, { useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useMotionValue } from 'framer-motion';
 import { Play, Pause, Youtube, Video } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 import { CloudflareStreamPlayer } from '../video/cloudflare-stream-player';
 
 const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
@@ -131,19 +132,25 @@ export const DemoMaterial = () => {
 
                 <motion.div
                     style={{ opacity: textOpacity, y: textY }}
-                    className="text-center absolute top-[5%] md:top-[8%] left-0 right-0 z-20 px-4"
+                    className={cn(
+                        "text-center z-20 px-4 w-full",
+                        isMobile ? "relative pt-4 pb-12" : "absolute top-[5%] md:top-[8%] left-0 right-0"
+                    )}
                 >
-                    <span className="text-sm font-bold text-blue-600 uppercase tracking-widest bg-blue-50 py-2.5 px-6 rounded-full inline-block mb-8">
+                    <span className="text-[10px] md:text-sm font-bold text-blue-600 uppercase tracking-[0.2em] bg-blue-50 py-2.5 px-6 rounded-full inline-block mb-4 md:mb-8 shadow-sm border border-blue-100/50">
                         Video Demonstration
                     </span>
-                    <h2 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                    <h2 className="text-4xl md:text-7xl font-black text-slate-900 tracking-tight leading-tight">
                         Experience the <span className="text-blue-600">Future</span>
                     </h2>
                 </motion.div>
 
                 <motion.div
                     style={isMobile ? {} : { scale }}
-                    className="relative w-full max-w-5xl mx-auto origin-center z-10 mt-8 md:mt-24 group cursor-pointer"
+                    className={cn(
+                        "relative w-full max-w-5xl mx-auto origin-center z-10 group cursor-pointer",
+                        isMobile ? "mt-0" : "mt-8 md:mt-24"
+                    )}
                 >
                     {/* Dynamic Halo Glow behind the video */}
                     <motion.div

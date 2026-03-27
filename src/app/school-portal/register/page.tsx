@@ -8,6 +8,7 @@ import Script from 'next/script';
 import confetti from 'canvas-confetti';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -491,79 +492,94 @@ export default function SchoolRegistrationPage() {
                       <MapPin size={16} />
                       Location Details
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.state ? 'text-rose-500' : 'text-slate-600'}`}>State *</Label>
-                        <Select
-                          value={formData.state}
-                          onValueChange={(value) => {
-                            setFormData({ ...formData, state: value });
-                            if (errors.state) setErrors(prev => ({ ...prev, state: '' }));
-                          }}
-                        >
-                          <SelectTrigger className={`group bg-white border h-14 px-5 text-slate-900 rounded-2xl font-medium focus:ring-4 transition-all relative ${errors.state ? 'border-rose-400 ring-rose-500/10' : 'border-slate-200 focus:ring-slate-950/5'
-                            }`}>
-                            <div className="flex items-center gap-3 w-full">
-                              <Map size={18} className="text-slate-400 group-hover:text-indigo-600 transition-colors flex-shrink-0" />
-                              <div className="flex-1 text-left">
-                                <SelectValue placeholder="Select state" />
-                              </div>
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent className="bg-white border-slate-200 max-h-60 rounded-xl shadow-2xl">
-                            {INDIAN_STATES.map((state) => (
-                              <SelectItem key={state} value={state} className="py-3 rounded-lg focus:bg-slate-50 transition-colors">{state}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errors.state && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.state}</p>}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.district ? 'text-rose-500' : 'text-slate-600'}`}>District *</Label>
-                        <div className="relative group">
-                          {formData.state === 'Jammu and Kashmir' ? (
-                            <Select
-                              value={formData.district}
-                              onValueChange={(value) => {
-                                setFormData({ ...formData, district: value });
-                                if (errors.district) setErrors(prev => ({ ...prev, district: '' }));
-                              }}
-                            >
-                              <SelectTrigger className={`bg-white border h-14 px-5 text-slate-900 rounded-2xl font-medium focus:ring-4 transition-all ${errors.district ? 'border-rose-400 ring-rose-500/10' : 'border-slate-200 focus:ring-slate-950/5'
-                                }`}>
-                                <div className="flex items-center gap-3 w-full">
-                                  <Compass size={18} className="text-slate-400 group-hover:text-indigo-600 transition-colors flex-shrink-0" />
-                                  <div className="flex-1 text-left">
-                                    <SelectValue placeholder="Select district" />
-                                  </div>
+                    <div className="space-y-2">
+                      {/* Labels and Inputs in aligned rows */}
+                      <div className="flex gap-3">
+                        <div className="flex-1 space-y-1.5 min-w-0">
+                          <Label className={`text-[9px] ml-3 uppercase tracking-widest font-black transition-colors ${errors.state ? 'text-rose-500' : 'text-slate-500'}`}>State *</Label>
+                          <Select
+                            value={formData.state}
+                            onValueChange={(value) => {
+                              setFormData({ ...formData, state: value });
+                              if (errors.state) setErrors(prev => ({ ...prev, state: '' }));
+                            }}
+                          >
+                            <SelectTrigger className={cn(
+                               "group bg-white border h-[42px] px-4 w-full transition-all relative rounded-full text-[11px] font-bold overflow-hidden",
+                               errors.state ? 'border-rose-400 ring-rose-500/10' : 'border-slate-200 focus:ring-slate-950/5'
+                            )}>
+                              <div className="flex items-center gap-2 w-full min-w-0">
+                                <Map size={13} className="text-slate-400 flex-shrink-0" />
+                                <div className="flex-1 text-left truncate whitespace-nowrap overflow-hidden">
+                                  <SelectValue placeholder="State" />
                                 </div>
-                              </SelectTrigger>
-                              <SelectContent className="bg-white border-slate-200 max-h-60 rounded-xl shadow-2xl">
-                                {JK_DISTRICTS.map((district) => (
-                                  <SelectItem key={district} value={district} className="py-3 rounded-lg focus:bg-slate-50 transition-colors">{district}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <div className="relative">
-                              <div className="absolute left-5 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                                <Compass size={18} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
                               </div>
-                              <Input
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-slate-200 max-h-60 rounded-2xl shadow-2xl">
+                              {INDIAN_STATES.map((state) => (
+                                <SelectItem key={state} value={state} className="py-2 rounded-lg focus:bg-slate-50 text-[11px] font-semibold">{state}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex-1 space-y-1.5 min-w-0">
+                          <Label className={`text-[9px] ml-3 uppercase tracking-widest font-black transition-colors ${errors.district ? 'text-rose-500' : 'text-slate-500'}`}>District *</Label>
+                          <div className="relative h-[42px]">
+                            {formData.state === 'Jammu and Kashmir' ? (
+                              <Select
                                 value={formData.district}
-                                onChange={(e) => {
-                                  setFormData({ ...formData, district: e.target.value });
+                                onValueChange={(value) => {
+                                  setFormData({ ...formData, district: value });
                                   if (errors.district) setErrors(prev => ({ ...prev, district: '' }));
                                 }}
-                                className={`bg-white h-14 pl-12 pr-5 rounded-2xl transition-all font-medium text-base shadow-sm border ${errors.district ? 'border-rose-400 focus:border-rose-500 ring-rose-500/10 focus:ring-4' : 'border-slate-200 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5'
-                                  }`}
-                                placeholder="District Name"
-                              />
-                            </div>
-                          )}
+                              >
+                                <SelectTrigger className={cn(
+                                  "group bg-white border h-[42px] px-4 w-full transition-all relative rounded-full text-[11px] font-bold overflow-hidden",
+                                  errors.district ? 'border-rose-400 ring-rose-500/10' : 'border-slate-200 focus:ring-slate-950/5'
+                                )}>
+                                  <div className="flex items-center gap-2 w-full min-w-0">
+                                    <Compass size={13} className="text-slate-400 flex-shrink-0" />
+                                    <div className="flex-1 text-left truncate whitespace-nowrap overflow-hidden">
+                                      <SelectValue placeholder="District" />
+                                    </div>
+                                  </div>
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-slate-200 max-h-60 rounded-2xl shadow-2xl">
+                                  {JK_DISTRICTS.map((district) => (
+                                    <SelectItem key={district} value={district} className="py-2 rounded-lg focus:bg-slate-50 text-[11px] font-semibold">{district}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <div className="relative">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                                  <Compass size={13} className="text-slate-400" />
+                                </div>
+                                <Input
+                                  value={formData.district}
+                                  onChange={(e) => {
+                                    setFormData({ ...formData, district: e.target.value });
+                                    if (errors.district) setErrors(prev => ({ ...prev, district: '' }));
+                                  }}
+                                  className={cn(
+                                     "bg-white h-[42px] pl-10 pr-4 text-[11px] font-bold shadow-sm border rounded-full transition-all",
+                                     errors.district ? 'border-rose-400 focus:border-rose-500 ring-rose-500/10' : 'border-slate-200 focus:border-slate-950 focus:ring-slate-950/5'
+                                  )}
+                                  placeholder="District"
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        {errors.district && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.district}</p>}
+                      </div>
+                      <div className="flex gap-3">
+                         <div className="flex-1 min-w-0">
+                            {errors.state && <p className="text-[9px] text-rose-500 font-bold ml-3 animate-in fade-in slide-in-from-top-1">{errors.state}</p>}
+                         </div>
+                         <div className="flex-1 min-w-0">
+                            {errors.district && <p className="text-[9px] text-rose-500 font-bold ml-3 animate-in fade-in slide-in-from-top-1">{errors.district}</p>}
+                         </div>
                       </div>
                     </div>
                   </div>

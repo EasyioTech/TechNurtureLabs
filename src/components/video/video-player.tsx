@@ -18,7 +18,6 @@ import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/l
 import '@vidstack/react/player/styles/default/theme.css';
 import '@vidstack/react/player/styles/default/layouts/video.css';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Lock } from 'lucide-react';
 import { saveVideoProgress } from '@/modules/student/actions/lesson-actions';
 
 interface VideoPlayerProps {
@@ -38,9 +37,6 @@ interface VideoPlayerProps {
 export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete, className }: VideoPlayerProps) {
   const player = useRef<any>(null);
   const [isReady, setIsReady] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(!!initialProgress?.completed_at);
-  const [verifiedProgress, setVerifiedProgress] = useState(initialProgress?.progress_pct || 0);
-  const [skipBlocked, setSkipBlocked] = useState(false);
 
   // Highest legitimately-watched position — used for no-skip and DB flush
   const maxWatchedRef = useRef<number>(initialProgress?.last_position_secs || 0);
@@ -50,7 +46,6 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
   const fireComplete = useCallback(() => {
     if (completedRef.current) return;
     completedRef.current = true;
-    setIsCompleted(true);
     onComplete?.(true);
   }, [onComplete]);
 
@@ -80,7 +75,6 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
       maxWatchedRef.current = Math.max(maxWatchedRef.current, ct);
 
       const pct = Math.min(100, Math.floor((ct / duration) * 100));
-      setVerifiedProgress(prev => Math.max(prev, pct));
 
       // Only write to DB while actively playing
       if (player.current.paused) return;
@@ -117,8 +111,6 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
     const allowed = maxWatchedRef.current + 3;
     if (ct > allowed) {
       player.current.currentTime = maxWatchedRef.current;
-      setSkipBlocked(true);
-      setTimeout(() => setSkipBlocked(false), 1800);
     }
   }, []);
 
@@ -130,9 +122,6 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
     if (!duration || duration <= 0) return;
 
     maxWatchedRef.current = Math.max(maxWatchedRef.current, ct);
-
-    const pct = Math.min(100, Math.floor((ct / duration) * 100));
-    setVerifiedProgress(prev => Math.max(prev, pct));
   }, []);
 
   // ── Video ended → complete ────────────────────────────────────────────────
@@ -195,57 +184,6 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
           <DefaultVideoLayout icons={defaultLayoutIcons} />
         </MediaPlayer>
 
-        {/* Skip-blocked toast */}
-        {skipBlocked && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-            <div className="flex items-center gap-2 bg-slate-900/90 backdrop-blur-sm text-white px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-2xl border border-white/10">
-              <Lock size={13} />
-              Please watch the video in order
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Below-video status bar */}
-      <div className="bg-slate-950 px-4 py-2.5 flex items-center justify-between gap-4">
-        {/* Progress pip */}
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-indigo-500 rounded-full transition-all duration-500"
-              style={{ width: `${verifiedProgress}%` }}
-            />
-          </div>
-          <span className="text-[10px] font-black text-slate-500 tabular-nums flex-shrink-0">
-            {verifiedProgress}%
-          </span>
-        </div>
-
-        {/* No-skip hint */}
-        {!isCompleted && (
-          <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1 flex-shrink-0">
-            <Lock size={9} /> No skip
-          </span>
-        )}
-
-        {/* Manual complete fallback at ≥90% */}
-        {!isCompleted && verifiedProgress >= 90 && (
-          <button
-            onClick={() => fireComplete()}
-            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
-          >
-            <CheckCircle2 size={12} />
-            Complete
-          </button>
-        )}
-
-        {/* Completed badge */}
-        {isCompleted && (
-          <span className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900/40 text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-widest">
-            <CheckCircle2 size={12} />
-            Done
-          </span>
-        )}
       </div>
     </div>
   );

@@ -336,7 +336,7 @@ export function LessonContent({
   return (
     <section className={cn(
       'relative transition-all duration-700',
-      isFocusMode ? 'fixed inset-0 top-0 z-[100] bg-black overflow-auto' : 'bg-black lg:bg-white'
+      isFocusMode ? 'fixed inset-0 top-0 z-[100] bg-black overflow-auto' : 'bg-white'
     )}>
 
       {/* ── Multi-block content with Smart Order ────────────── */}

@@ -50,13 +50,13 @@ export const HeroSectionLight = ({ settings }: { settings?: any }) => {
 
                         <ScrollReveal delay={0.4} direction="up" duration={0.8}>
                             <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
-                                <Link href="/register/student" className="w-full sm:w-auto">
+                                <Link href="/register/school" className="w-full sm:w-auto">
                                     <motion.button
                                         whileHover={{ y: -1 }}
                                         whileTap={{ y: 1 }}
                                         className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold px-8 py-4 rounded-xl shadow-lg shadow-slate-900/20 transition-all text-base cursor-pointer"
                                     >
-                                        Start Free Trial
+                                        Register Your School
                                         <ArrowRight size={18} />
                                     </motion.button>
                                 </Link>
@@ -66,8 +66,8 @@ export const HeroSectionLight = ({ settings }: { settings?: any }) => {
                                         whileTap={{ y: 1 }}
                                         className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-slate-700 font-semibold px-8 py-4 rounded-xl shadow-sm border border-slate-200 transition-all text-base cursor-pointer"
                                     >
-                                        <Presentation size={18} className="text-slate-500" />
-                                        Book a Demo
+                                        <Presentation size={18} className="text-blue-600" />
+                                        Login or Book a Demo
                                     </motion.button>
                                 </Link>
                             </div>

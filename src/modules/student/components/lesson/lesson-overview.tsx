@@ -1,19 +1,17 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Clock, Star, ShieldCheck, Zap, Lock, ChevronRight } from 'lucide-react';
+import { Clock, Star, ShieldCheck, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Lesson } from '@/modules/student/types';
 
 interface LessonOverviewProps {
   lesson: Lesson;
   lessonComplete: boolean;
-  nextLesson?: any;
 }
 
-export function LessonOverview({ lesson, lessonComplete, nextLesson }: LessonOverviewProps) {
+export function LessonOverview({ lesson, lessonComplete }: LessonOverviewProps) {
   const typeLabel = lesson.content_type
     ? lesson.content_type.charAt(0).toUpperCase() + lesson.content_type.slice(1)
     : 'Lesson';
@@ -80,37 +78,6 @@ export function LessonOverview({ lesson, lessonComplete, nextLesson }: LessonOve
         />
       </div>
 
-      {/* ─── Progression card (desktop sidebar feel, mobile compact) ─── */}
-      <div className="bg-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-7 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full -mr-16 -mt-16 blur-3xl" />
-        <div className="relative z-10 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">
-              Module {lesson.sequence_index + 1}
-            </p>
-            <p className="text-base sm:text-lg font-black text-white uppercase leading-tight">
-              {lessonComplete
-                ? nextLesson ? 'Ready for next lesson' : 'Course milestone reached'
-                : 'Currently in progress'}
-            </p>
-          </div>
-          {lessonComplete && nextLesson ? (
-            <Link href={`/student/lesson/${nextLesson.id}`} className="flex-shrink-0">
-              <button className="h-11 px-5 bg-indigo-600 text-white rounded-xl flex items-center gap-2 font-black uppercase tracking-widest text-[9px] hover:bg-indigo-500 transition-all active:scale-95 shadow-lg shadow-indigo-500/20 whitespace-nowrap">
-                Next <ChevronRight size={14} />
-              </button>
-            </Link>
-          ) : lessonComplete ? (
-            <div className="flex-shrink-0 h-10 px-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center text-[9px] font-black text-emerald-400 uppercase tracking-widest whitespace-nowrap">
-              Finished
-            </div>
-          ) : (
-            <div className="flex-shrink-0 h-10 px-4 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">
-              <Lock size={11} /> In Progress
-            </div>
-          )}
-        </div>
-      </div>
     </motion.div>
   );
 }
