@@ -563,7 +563,7 @@ export function MediaLibraryPicker({
                                                     ? (isDark ? `border-${accent.name}-400 ring-2 ring-${accent.name}-400/20` : `border-${accent.name}-400 ring-2 ring-${accent.name}-400/10`)
                                                     : (isDark ? 'border-white/5 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]' : 'border-slate-100 hover:border-slate-300 bg-slate-50 hover:bg-white')}`}
                                             onClick={() => {
-                                                onSelect(video.uid, video.uid);
+                                                onSelect('cf-stream://' + video.uid, video.uid);
                                                 onOpenChange(false);
                                             }}
                                         >

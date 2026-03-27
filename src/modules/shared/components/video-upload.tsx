@@ -105,9 +105,9 @@ export function VideoUpload({ value, onChange, label, description, isDark = fals
                 >
                     {value ? (
                         <>
-                            {value.length === 32 && !value.includes('/') && !value.includes('.') ? (
+                            {value.startsWith('cf-stream://') || (value.length === 32 && !value.includes('/') && !value.includes('.')) ? (
                                 <iframe
-                                    src={`https://iframe.videodelivery.net/${value}`}
+                                    src={`https://iframe.videodelivery.net/${value.replace('cf-stream://', '')}`}
                                     className="w-full h-full border-0"
                                     allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
                                     allowFullScreen
