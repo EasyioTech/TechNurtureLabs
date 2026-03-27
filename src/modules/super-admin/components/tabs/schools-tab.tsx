@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Building2, CheckCircle2, CreditCard, IndianRupee, Edit, Mail, MapPin, ArrowUpRight } from 'lucide-react';
+import { Building2, CheckCircle2, CreditCard, IndianRupee, Edit, Mail, MapPin, ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Stats, SchoolInfo, PaymentPlan } from '../../types';
 import { useAdminTheme, t } from '../../theme-context';
 
