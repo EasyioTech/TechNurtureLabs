@@ -9,9 +9,10 @@ import { Lesson } from '@/modules/student/types';
 interface LessonOverviewProps {
   lesson: Lesson;
   lessonComplete: boolean;
+  nextLesson?: Lesson | null;
 }
 
-export function LessonOverview({ lesson, lessonComplete }: LessonOverviewProps) {
+export function LessonOverview({ lesson, lessonComplete, nextLesson }: LessonOverviewProps) {
   const typeLabel = lesson.content_type
     ? lesson.content_type.charAt(0).toUpperCase() + lesson.content_type.slice(1)
     : 'Lesson';
