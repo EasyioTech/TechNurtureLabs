@@ -154,6 +154,42 @@ export async function deleteStreamVideo(uid: string): Promise<void> {
     }
 }
 
+/**
+ * List videos from Cloudflare Stream.
+ */
+export async function listStreamVideos(limit: number = 20, search?: string) {
+    if (!isStreamConfigured()) {
+        throw new Error('Cloudflare Stream is not configured.');
+    }
+
+    const params = new URLSearchParams({
+        limit: limit.toString(),
+        sort_by: 'created',
+        sort_order: 'desc',
+    });
+    if (search) params.set('search', search);
+
+    const res = await fetch(`${getAccountUrl()}?${params.toString()}`, {
+        headers: getHeaders(),
+    });
+
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Cloudflare Stream list failed (${res.status}): ${text}`);
+    }
+
+    const data = await res.json();
+    return data.result.map((r: any) => ({
+        uid: r.uid,
+        name: r.meta?.name || 'Untitled Video',
+        duration: r.duration,
+        thumbnail: r.thumbnail,
+        readyToStream: r.readyToStream,
+        created: r.created,
+        preview: r.preview,
+    }));
+}
+
 // ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────

@@ -15,7 +15,7 @@ import { UploadProgress } from '@/components/shared/upload-progress';
 import { uploadStore } from '@/lib/upload-store';
 import { useAuth } from '@/components/providers/auth-provider';
 
-type AssetType = 'all' | 'video' | 'image' | 'document';
+type AssetType = 'all' | 'video' | 'image' | 'document' | 'cloudflare_stream';
 
 interface MediaAsset {
     id: string;
@@ -58,7 +58,8 @@ function AssetIcon({ asset_type, mime_type, className }: { asset_type: string; m
 
 const TABS: { id: AssetType; label: string; icon: React.ElementType }[] = [
     { id: 'all', label: 'All', icon: HardDrive },
-    { id: 'video', label: 'Videos', icon: Film },
+    { id: 'video', label: 'Local/R2 Videos', icon: Film },
+    { id: 'cloudflare_stream', label: 'Cloudflare Stream', icon: Cloud },
     { id: 'image', label: 'Images', icon: ImageIcon },
     { id: 'document', label: 'Docs', icon: FileText },
 ];
@@ -143,9 +144,31 @@ export function MediaLibraryPicker({
     React.useEffect(() => {
         if (!open) return;
         setPage(1);
-        loadAssets(activeTab, activeFolder, 1, debouncedSearch, false);
+        if (activeTab === 'cloudflare_stream') {
+            loadStreamVideos(debouncedSearch);
+        } else {
+            loadAssets(activeTab, activeFolder, 1, debouncedSearch, false);
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [debouncedSearch]);
+
+    const [streamVideos, setStreamVideos] = React.useState<any[]>([]);
+    async function loadStreamVideos(query: string = '') {
+        setLoading(true);
+        setError(null);
+        try {
+            const params = new URLSearchParams();
+            if (query) params.set('search', query);
+            const res = await fetch(`/api/media/stream-list?${params.toString()}`);
+            if (!res.ok) throw new Error('Failed to load stream videos');
+            const data = await res.json();
+            setStreamVideos(data.videos || []);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }
 
     async function loadAssets(type: AssetType, targetFolder: string, targetPage: number, query: string, append: boolean) {
         if (append) setLoadingMore(true);
@@ -195,7 +218,11 @@ export function MediaLibraryPicker({
     function handleTabChange(tab: AssetType) {
         setActiveTab(tab);
         setPage(1);
-        loadAssets(tab, activeFolder, 1, debouncedSearch, false);
+        if (tab === 'cloudflare_stream') {
+            loadStreamVideos(debouncedSearch);
+        } else {
+            loadAssets(tab, activeFolder, 1, debouncedSearch, false);
+        }
     }
 
     function handleFolderChange(folderId: string) {
@@ -318,7 +345,11 @@ export function MediaLibraryPicker({
     }
 
     const visibleTabs = filterType
-        ? TABS.filter(tab => tab.id === filterType || tab.id === 'all')
+        ? TABS.filter(tab => {
+            if (tab.id === 'all') return true;
+            if (filterType === 'video') return tab.id === 'video' || tab.id === 'cloudflare_stream';
+            return tab.id === filterType;
+        })
         : TABS;
 
     return (
@@ -518,6 +549,55 @@ export function MediaLibraryPicker({
                             <p className={`text-sm font-bold ${t.textMuted(isDark)}`}>
                                 {search ? 'No assets match your search.' : 'No assets uploaded yet.'}
                             </p>
+                        </div>
+                    ) : activeTab === 'cloudflare_stream' ? (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-2 gap-3">
+                                {streamVideos.map(video => {
+                                    const isSelected = video.uid === currentUrl?.split('/').pop();
+                                    return (
+                                        <div
+                                            key={video.uid}
+                                            className={`relative group/card text-left rounded-2xl border-2 overflow-hidden transition-all cursor-pointer
+                                                ${isSelected
+                                                    ? (isDark ? `border-${accent.name}-400 ring-2 ring-${accent.name}-400/20` : `border-${accent.name}-400 ring-2 ring-${accent.name}-400/10`)
+                                                    : (isDark ? 'border-white/5 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]' : 'border-slate-100 hover:border-slate-300 bg-slate-50 hover:bg-white')}`}
+                                            onClick={() => {
+                                                onSelect(video.uid, video.uid);
+                                                onOpenChange(false);
+                                            }}
+                                        >
+                                            <div className={`aspect-video relative flex items-center justify-center ${isDark ? 'bg-white/[0.03]' : 'bg-slate-100'}`}>
+                                                {video.thumbnail ? (
+                                                    <img src={video.thumbnail} alt={video.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Film size={20} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+                                                )}
+
+                                                {isSelected && (
+                                                    <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-lg ${accent.bg} text-slate-900`}>
+                                                        <Check size={12} strokeWidth={3} />
+                                                    </div>
+                                                )}
+
+                                                <div className={`absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-orange-500 text-white shadow-sm`}>
+                                                    <Cloud size={8} />
+                                                    Stream
+                                                </div>
+                                            </div>
+
+                                            <div className="p-2.5 space-y-0.5">
+                                                <p className={`text-[11px] font-black truncate ${t.textPrimary(isDark)}`}>
+                                                    {video.name}
+                                                </p>
+                                                <p className={`text-[9px] font-bold uppercase tracking-wider ${t.textMuted(isDark)}`}>
+                                                    {video.readyToStream ? 'Ready' : 'Processing'} · {Math.floor(video.duration / 60)}m {Math.floor(video.duration % 60)}s
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     ) : (
                         <div className="space-y-6">

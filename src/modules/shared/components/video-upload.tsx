@@ -105,7 +105,16 @@ export function VideoUpload({ value, onChange, label, description, isDark = fals
                 >
                     {value ? (
                         <>
-                            <video src={value} className="w-full h-full object-contain" controls />
+                            {value.length === 32 && !value.includes('/') && !value.includes('.') ? (
+                                <iframe
+                                    src={`https://iframe.videodelivery.net/${value}`}
+                                    className="w-full h-full border-0"
+                                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                />
+                            ) : (
+                                <video src={value} className="w-full h-full object-contain" controls />
+                            )}
                         </>
                     ) : (
                         <div onClick={handlePickerClick} className="flex flex-col items-center">

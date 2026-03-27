@@ -103,13 +103,19 @@ function ImageCarousel({ urls, onComplete, lessonComplete }: {
 }
 
 function isCloudflareStreamUrl(url: string): boolean {
-  return url.startsWith('cf-stream://') || url.includes('videodelivery.net/');
+  // Check for specialized protocol, direct delivery domain, or plain 32-char hex UID
+  return url.startsWith('cf-stream://') || 
+         url.includes('videodelivery.net/') || 
+         (url.length === 32 && !url.includes('/') && !url.includes('.'));
 }
 
 function extractStreamUid(url: string): string {
   if (url.startsWith('cf-stream://')) return url.replace('cf-stream://', '');
-  const match = url.match(/videodelivery\.net\/([a-f0-9]+)/i);
-  return match?.[1] || url;
+  if (url.includes('videodelivery.net/')) {
+    const match = url.match(/videodelivery\.net\/([a-f0-9]+)/i);
+    return match?.[1] || url;
+  }
+  return url;
 }
 
 // Parse content_items JSON. Falls back to single content_url for old lessons.
