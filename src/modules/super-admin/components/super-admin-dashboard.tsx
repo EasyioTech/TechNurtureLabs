@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
     LayoutGrid, BookOpen, CreditCard, Users, BarChart3,
     Building2, Bell, Search, Sun, Moon, Filter, LogOut, Plus, Palette, Check, Settings,
-    Menu, X, Save, Library
+    Menu, X, Save, Library, Activity, Zap, GraduationCap
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useAdminData } from '../hooks/use-admin-data';
@@ -50,7 +50,6 @@ const NAV_ITEMS = [
     { id: 'schools', label: 'SCHOOLS', icon: Building2 },
     { id: 'library', label: 'LIBRARY', icon: Library },
     { id: 'users', label: 'STUDENTS', icon: Users },
-    { id: 'courseMetrics', label: 'REPORTS', icon: BarChart3, iconOnly: true },
     { id: 'system', label: 'SYSTEM', icon: LayoutGrid, iconOnly: true },
     { id: 'settings', label: 'SETTINGS', icon: Settings, iconOnly: true },
 ];
@@ -63,7 +62,6 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
     schools: { title: 'Schools & Partners', subtitle: 'View and manage all registered school accounts.' },
     users: { title: 'Student Management', subtitle: 'Track student progress and overall engagement.' },
     library: { title: 'Content Library', subtitle: 'Browse and reuse content across the platform.' },
-    courseMetrics: { title: 'Performance Reports', subtitle: 'Analyze course effectiveness and student success.' },
     system: { title: 'Engine Status', subtitle: 'Monitor Redis performance and infrastructure health.' },
     settings: { title: 'Platform Settings', subtitle: 'Manage global platform configuration and hero video.' },
 };
@@ -108,14 +106,14 @@ function DashboardContent() {
         if (activePage === 'users') {
             data.loadStudents(data.userMetricsPage, searchQuery);
         } else if (activePage === 'schools' || activePage === 'overview') {
-            data.loadSchools();
+            data.loadSchools(data.schoolsPage, searchQuery);
         } else if (activePage === 'courses') {
-            data.loadCourses();
+            data.loadCourses(data.coursesPage);
         } else if (activePage === 'library') {
-            data.loadGlobalLessons();
-            data.loadGlobalQuizzes();
+            data.loadGlobalLessons(data.globalLessonsPage, searchQuery);
+            data.loadGlobalQuizzes(data.globalQuizzesPage, searchQuery);
         }
-    }, [activePage, data.userMetricsPage, searchQuery]);
+    }, [activePage, data.userMetricsPage, data.schoolsPage, data.coursesPage, data.globalLessonsPage, data.globalQuizzesPage, searchQuery]);
 
     if (data.loading) {
         return (
@@ -480,10 +478,46 @@ function DashboardContent() {
                                 searchQuery={searchQuery}
                                 classes={data.classes}
                                 onSync={data.syncMetrics}
+                                page={data.schoolsPage}
+                                setPage={data.setSchoolsPage}
+                                totalPages={data.totalSchoolsPages}
                             />
                         )}
-                        {activePage === 'users' && <MetricTables userMetrics={data.userMetrics} courseMetrics={[]} page={data.userMetricsPage} setPage={data.setUserMetricsPage} />}
-                        {activePage === 'courseMetrics' && <MetricTables userMetrics={[]} courseMetrics={data.courseMetrics} />}
+                        {activePage === 'users' && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    <div className={`rounded-2xl border p-5 flex items-center gap-4 transition-all duration-300 shadow-sm shadow-black/5 ${t.card(isDark)}`}>
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border ${isDark ? 'bg-sky-400/10 text-sky-400 border-sky-400/20' : 'bg-sky-50 text-sky-600 border-sky-100'}`}><Users size={20} /></div>
+                                        <div>
+                                            <p className={`text-2xl font-black tracking-tighter ${t.textPrimary(isDark)}`}>{(data.stats.totalStudents || 0).toLocaleString()}</p>
+                                            <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Total Students</p>
+                                        </div>
+                                    </div>
+                                    <div className={`rounded-2xl border p-5 flex items-center gap-4 transition-all duration-300 shadow-sm shadow-black/5 ${t.card(isDark)}`}>
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border ${isDark ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}><Activity size={20} /></div>
+                                        <div>
+                                            <p className={`text-2xl font-black tracking-tighter ${t.textPrimary(isDark)}`}>{(data.stats.activeStudents || 0).toLocaleString()}</p>
+                                            <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Active (30d)</p>
+                                        </div>
+                                    </div>
+                                    <div className={`rounded-2xl border p-5 flex items-center gap-4 transition-all duration-300 shadow-sm shadow-black/5 ${t.card(isDark)}`}>
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border ${isDark ? 'bg-violet-400/10 text-violet-400 border-violet-400/20' : 'bg-violet-50 text-violet-600 border-violet-100'}`}><Zap size={20} /></div>
+                                        <div>
+                                            <p className={`text-2xl font-black tracking-tighter ${t.textPrimary(isDark)}`}>{(data.stats.totalXp || 0).toLocaleString()}</p>
+                                            <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Total XP Earned</p>
+                                        </div>
+                                    </div>
+                                    <div className={`rounded-2xl border p-5 flex items-center gap-4 transition-all duration-300 shadow-sm shadow-black/5 ${t.card(isDark)}`}>
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border ${isDark ? 'bg-amber-400/10 text-amber-400 border-amber-400/20' : 'bg-amber-50 text-amber-600 border-amber-100'}`}><GraduationCap size={20} /></div>
+                                        <div>
+                                            <p className={`text-2xl font-black tracking-tighter ${t.textPrimary(isDark)}`}>{(data.stats.avgCompletion || 0)}%</p>
+                                            <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Avg Completion</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <MetricTables userMetrics={data.userMetrics} page={data.userMetricsPage} setPage={data.setUserMetricsPage} />
+                            </div>
+                        )}
                         { activePage === 'system' && <SystemHealthTab />}
                         { activePage === 'library' && (
                             <LibraryTab 

@@ -41,14 +41,18 @@ export async function POST(request: NextRequest) {
       where: and(eq(superAdmins.email, email.toLowerCase()), isNull(superAdmins.deleted_at), eq(superAdmins.is_active, true))
     });
 
+    // Always run bcrypt.compare to prevent timing-based email enumeration
+    const DUMMY_HASH = '$2b$12$placeholder.hash.for.timing.safety.xxxxxxxxxxxxxxxxxxx';
+    const isValidPassword = admin
+        ? await bcrypt.compare(password, admin.password_hash)
+        : (await bcrypt.compare(password, DUMMY_HASH), false);
+
     if (!admin) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
-
-    const isValidPassword = await bcrypt.compare(password, admin.password_hash);
 
     if (!isValidPassword) {
       return NextResponse.json(

@@ -6,12 +6,14 @@ import {
     students, schoolClassMapping, auditLogs, 
     schoolAdmins, promoCodes
 } from '@/db/schema';
-import { eq, count, sql, and, not, desc, asc } from 'drizzle-orm';
+import { eq, count, sql, and, not, desc, asc, inArray, ilike, isNull } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { redis } from '@/lib/redis';
 import { z } from 'zod';
 import { addMonths } from 'date-fns';
+import bcrypt from 'bcryptjs';
+import { analyticsService } from '@/lib/services/analytics-service';
 
 const CACHE_KEY = 'cache:admin:schools';
 
@@ -21,7 +23,7 @@ export async function fetchAdminSchools(page: number = 0, limit: number = 50, se
         redirect('/admin-portal/login');
     }
 
-    const baseQuery = db.select({
+    let query = db.select({
         id: schools.id,
         name: schools.name,
         email: schools.email,
@@ -34,30 +36,40 @@ export async function fetchAdminSchools(page: number = 0, limit: number = 50, se
     })
     .from(schools)
     .leftJoin(schoolSubscriptions, eq(schools.id, schoolSubscriptions.school_id))
-    .leftJoin(paymentPlans, eq(schoolSubscriptions.plan_id, paymentPlans.id));
+    .leftJoin(paymentPlans, eq(schoolSubscriptions.plan_id, paymentPlans.id))
+    .$dynamic();
 
-    if (search) {
-        baseQuery.where(sql`${schools.name} ILIKE ${'%' + search + '%'}`);
-    }
+    const whereFilter = search
+        ? and(isNull(schools.deleted_at), ilike(schools.name, `%${search}%`))
+        : isNull(schools.deleted_at);
 
-    const data = await baseQuery
+    query = query.where(whereFilter);
+
+    const data = await query
         .orderBy(desc(schools.created_at))
         .limit(limit)
         .offset(page * limit);
 
+    const totalRes = await db.select({ count: count() }).from(schools).where(whereFilter);
+    const total = Number(totalRes[0].count);
+
     const schoolIds = data.map(s => s.id);
     let mappingData: any[] = [];
     if (schoolIds.length > 0) {
-        mappingData = await db.select().from(schoolClassMapping).where(sql`${schoolClassMapping.school_id} IN ${schoolIds}`);
+        mappingData = await db.select().from(schoolClassMapping).where(inArray(schoolClassMapping.school_id, schoolIds));
     }
 
-    return data.map(s => ({
-        ...s,
-        classIds: mappingData.filter(m => m.school_id === s.id).map(m => m.class_id),
-        plan_name: s.plan_name || 'No Plan',
-        subscription_status: s.subscription_status || 'inactive',
-        student_count: Number(s.student_count || 0)
-    }));
+    return {
+        data: data.map(s => ({
+            ...s,
+            classIds: mappingData.filter(m => m.school_id === s.id).map(m => m.class_id),
+            plan_name: s.plan_name || 'No Plan',
+            subscription_status: s.subscription_status || 'inactive',
+            student_count: Number(s.student_count || 0)
+        })),
+        total,
+        pages: Math.ceil(total / limit)
+    };
 }
 
 export async function toggleSchoolStatus(schoolId: string, isActive: boolean) {
@@ -115,20 +127,21 @@ export async function saveSchoolAdmin(schoolData: any) {
 
     const validatedData = schoolAdminSchema.parse(schoolData);
     const email = validatedData.email.toLowerCase().trim();
-    const slug = validatedData.slug || validatedData.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    let slug = validatedData.slug || validatedData.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
     return await db.transaction(async (tx) => {
         let schoolId = validatedData.id;
 
+        // Check for existing platform admin with this email
         const conflictAdmin = await tx.query.schoolAdmins.findFirst({
-            where: schoolId 
-                ? and(eq(schoolAdmins.email, email), not(eq(schoolAdmins.id, schoolId)))
-                : eq(schoolAdmins.email, email)
+            where: and(eq(schoolAdmins.email, email), isNull(schoolAdmins.deleted_at))
         });
 
-        if (conflictAdmin) throw new Error('This email address is already associated with another school account.');
+        if (!schoolId && conflictAdmin) throw new Error('A school administrator with this email already exists on the platform.');
+        if (schoolId && conflictAdmin && conflictAdmin.school_id !== schoolId) throw new Error('This email is already taken by another school.');
 
         if (schoolId) {
+            const [oldSchool] = await tx.select().from(schools).where(eq(schools.id, schoolId));
             await tx.update(schools).set({
                 name: validatedData.name,
                 email: email,
@@ -143,7 +156,32 @@ export async function saveSchoolAdmin(schoolData: any) {
                 is_active: validatedData.is_active,
                 updated_at: new Date(),
             }).where(eq(schools.id, schoolId));
+
+            // H-10: Update/Sync School Admin Record
+            const adminUpdatePayload: any = {
+                first_name: validatedData.name.split(' ')[0] || 'Admin',
+                last_name: validatedData.name.split(' ').slice(1).join(' ') || '',
+                email: email,
+                is_active: validatedData.is_active,
+                updated_at: new Date(),
+            };
+
+            if (validatedData.password) {
+                adminUpdatePayload.password_hash = await bcrypt.hash(validatedData.password, 10);
+            }
+
+            await tx.update(schoolAdmins)
+                .set(adminUpdatePayload)
+                .where(eq(schoolAdmins.school_id, schoolId));
         } else {
+            // M-1: Ensure Slug Uniqueness
+            const existingSlug = await tx.query.schools.findFirst({
+                where: and(eq(schools.slug, slug), isNull(schools.deleted_at))
+            });
+            if (existingSlug) {
+                slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+            }
+
             const [created] = await tx.insert(schools).values({
                 name: validatedData.name,
                 email: email,
@@ -153,6 +191,19 @@ export async function saveSchoolAdmin(schoolData: any) {
                 is_active: validatedData.is_active,
             } as any).returning();
             schoolId = created.id;
+
+            // H-10: Create Primary School Admin Account
+            const hashedPassword = await bcrypt.hash(validatedData.password || 'Welcome@123', 10);
+            await tx.insert(schoolAdmins).values({
+                school_id: schoolId,
+                first_name: validatedData.name.split(' ')[0] || 'Admin',
+                last_name: validatedData.name.split(' ').slice(1).join(' ') || '',
+                email: email,
+                password_hash: hashedPassword,
+                is_active: true,
+            });
+
+            analyticsService.incrementMetric('total_schools').catch(() => {});
         }
 
         if (validatedData.classIds) {
@@ -167,6 +218,15 @@ export async function saveSchoolAdmin(schoolData: any) {
             }
         }
 
+        await tx.insert(auditLogs).values({
+            user_id: session.userId,
+            user_type: session.userType,
+            action: validatedData.id ? 'update' : 'create',
+            entity_type: 'school',
+            entity_id: schoolId,
+            new_values: validatedData,
+        } as any);
+
         await redis.del(CACHE_KEY);
         return { success: true, id: schoolId };
     });
@@ -178,11 +238,23 @@ export async function assignPlanToSchool(schoolId: string, planId: string, billi
         redirect('/admin-portal/login');
     }
     
+    const safeBillingMonths = Math.max(1, Math.min(120, Math.floor(billingMonths || 12)));
     const now = new Date();
-    const periodEnd = addMonths(now, billingMonths);
+    const periodEnd = addMonths(now, safeBillingMonths);
 
     return await db.transaction(async (tx) => {
         if (promoCodeId) {
+            const [promo] = await tx.select({
+                id: promoCodes.id, is_active: promoCodes.is_active,
+                valid_until: promoCodes.valid_until, max_uses: promoCodes.max_uses,
+                current_uses: promoCodes.current_uses,
+            }).from(promoCodes).where(eq(promoCodes.id, promoCodeId)).limit(1);
+            if (!promo) throw new Error('Promo code not found');
+            if (!promo.is_active) throw new Error('Promo code is no longer active');
+            if (promo.valid_until && new Date(promo.valid_until) < now) throw new Error('Promo code has expired');
+            if (promo.max_uses != null && Number(promo.current_uses) >= promo.max_uses) {
+                throw new Error('Promo code has reached its usage limit');
+            }
             await tx.update(promoCodes)
                 .set({ current_uses: sql`${promoCodes.current_uses} + 1` })
                 .where(eq(promoCodes.id, promoCodeId));

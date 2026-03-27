@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Activity, PieChart as PieChartIcon, TrendingUp } from 'lucide-react';
 import {
     ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
@@ -25,6 +25,8 @@ interface EngagementChartsProps {
 
 export function EngagementCharts({ engagementData, planDistribution, revenueData }: EngagementChartsProps) {
     const { isDark, accent } = useAdminTheme();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
     const grid = isDark ? 'rgba(255,255,255,0.05)' : '#f0f0f0';
     const axis = isDark ? '#94a3b8' : '#64748b'; // Slate 400 for dark mode, Slate 500 for light mode
     const ttBg = isDark ? '#0f172a' : '#ffffff';
@@ -49,7 +51,7 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                         </div>
                     </div>
                     <div className="h-[280px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        {!mounted ? <div className="w-full h-full" /> : <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={engagementData}>
                                 <defs>
                                     <linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1">
@@ -71,7 +73,7 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                                 <Area type="monotone" dataKey="students" name="Active Students" stroke={areaStroke} fill="url(#grad1)" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: isDark ? '#1e293b' : '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
                                 <Area type="monotone" dataKey="schools" name="Active Schools" stroke={isDark ? '#38bdf8' : '#0ea5e9'} fill="url(#grad2)" strokeWidth={3} dot={false} strokeDasharray="5 5" />
                             </AreaChart>
-                        </ResponsiveContainer>
+                        </ResponsiveContainer>}
                     </div>
                 </div>
 
@@ -86,7 +88,7 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                         </div>
                     </div>
                     <div className="h-[200px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        {!mounted ? <div className="w-full h-full" /> : <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie data={planDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value" strokeWidth={0}>
                                     {planDistribution.map((_, i) => (
@@ -95,7 +97,7 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                                 </Pie>
                                 <Tooltip contentStyle={{ backgroundColor: ttBg, border: `1px solid ${ttBorder}`, borderRadius: '12px', fontSize: '11px', fontWeight: 800 }} />
                             </PieChart>
-                        </ResponsiveContainer>
+                        </ResponsiveContainer>}
                     </div>
                     <div className="flex flex-col gap-2 mt-4 max-h-[140px] overflow-y-auto no-scrollbar">
                         {planDistribution.map((item, i) => (
@@ -127,7 +129,7 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                     </div>
                 </div>
                 <div className="h-[240px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    {!mounted ? <div className="w-full h-full" /> : <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={revenueData}>
                             <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
                             <XAxis dataKey="month" stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />
@@ -139,7 +141,7 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                             />
                             <Bar dataKey="revenue" fill={barFill} radius={[6, 6, 6, 6]} barSize={revenueData.length > 10 ? 12 : 32} />
                         </BarChart>
-                    </ResponsiveContainer>
+                    </ResponsiveContainer>}
                 </div>
             </div>
         </div>

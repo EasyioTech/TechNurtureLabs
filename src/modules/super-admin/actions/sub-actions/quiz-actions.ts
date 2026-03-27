@@ -1,8 +1,8 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { 
-    quizzes, quizQuestions, quizOptions, courses
+import {
+    quizzes, quizQuestions, quizOptions, quizAttempts, courses
 } from '@/db/schema';
 import { eq, asc, desc, sql, count, ilike, and } from 'drizzle-orm';
 import { z } from 'zod';
@@ -70,41 +70,59 @@ export async function saveQuizAdmin(quizData: unknown) {
 
     const data = quizSchema.parse(quizData);
     const passPercentage = (data.pass_percentage ?? 60).toString();
-    let quizId = data.id;
+    return await db.transaction(async (tx) => {
+        if (quizId) {
+            await tx.update(quizzes).set({
+                title: data.title,
+                description: data.description,
+                time_limit_secs: data.time_limit_secs,
+                pass_percentage: passPercentage,
+                max_attempts: data.max_attempts,
+                xp_reward: data.xp_reward,
+                is_published: data.is_published ?? true,
+                updated_at: new Date()
+            }).where(eq(quizzes.id, quizId));
+        } else {
+            const [created] = await tx.insert(quizzes).values({
+                lesson_id: data.lesson_id ?? null,
+                course_id: data.course_id ?? null,
+                title: data.title,
+                description: data.description,
+                time_limit_secs: data.time_limit_secs,
+                pass_percentage: passPercentage,
+                max_attempts: data.max_attempts,
+                xp_reward: data.xp_reward,
+                is_published: data.is_published ?? true,
+            } as any).returning();
+            quizId = created.id;
+        }
 
-    if (quizId) {
-        await db.update(quizzes).set({
-            title: data.title,
-            description: data.description,
-            time_limit_secs: data.time_limit_secs,
-            pass_percentage: passPercentage,
-            max_attempts: data.max_attempts,
-            xp_reward: data.xp_reward,
-            is_published: data.is_published ?? true,
-            updated_at: new Date()
-        }).where(eq(quizzes.id, quizId));
-    } else {
-        const [created] = await db.insert(quizzes).values({
-            lesson_id: data.lesson_id ?? null,
-            course_id: data.course_id ?? null,
-            title: data.title,
-            description: data.description,
-            time_limit_secs: data.time_limit_secs,
-            pass_percentage: passPercentage,
-            max_attempts: data.max_attempts,
-            xp_reward: data.xp_reward,
-            is_published: data.is_published ?? true,
-        } as any).returning();
-        quizId = created.id;
-    }
+        if (data.questions && data.questions.length > 0) {
+            // Guard: if students have already attempted this quiz, preserve questions to avoid
+            // cascading deletion of quizAttemptAnswers (which reference question IDs).
+            const attemptCount = await tx.select({ val: count() })
+                .from(quizAttempts)
+                .where(eq(quizAttempts.quiz_id, quizId!));
+            const hasAttempts = Number(attemptCount[0]?.val || 0) > 0;
 
-    if (data.questions && data.questions.length > 0) {
-        // Delete old questions (cascade will delete options)
-        await db.delete(quizQuestions).where(eq(quizQuestions.quiz_id, quizId!));
+            if (hasAttempts) {
+                // Return quiz as-is — question edits are blocked to protect student records
+                return await tx.query.quizzes.findFirst({
+                    where: eq(quizzes.id, quizId!),
+                    with: {
+                        questions: {
+                            orderBy: [asc(quizQuestions.sequence_order)],
+                            with: { options: { orderBy: [asc(quizOptions.sequence_order)] } }
+                        }
+                    }
+                });
+            }
 
-        for (let i = 0; i < data.questions.length; i++) {
-            const q = data.questions[i];
-            const [newQuestion] = await db.insert(quizQuestions).values({
+            // No student attempts — safe to delete and recreate questions
+            await tx.delete(quizQuestions).where(eq(quizQuestions.quiz_id, quizId!));
+
+            // M-4: Efficient Batch Inserting to avoid N+1 I/O
+            const questionsToInsert = data.questions.map((q, i) => ({
                 quiz_id: quizId!,
                 question_text: q.question_text,
                 question_type: q.question_type,
@@ -112,22 +130,42 @@ export async function saveQuizAdmin(quizData: unknown) {
                 points: q.points,
                 time_limit_secs: q.time_limit_secs,
                 sequence_order: i + 1,
-            }).returning();
+            }));
+            const insertedQuestions = await tx.insert(quizQuestions).values(questionsToInsert).returning();
 
-            if (q.options && q.options.length > 0) {
-                await db.insert(quizOptions).values(
-                    q.options.map((opt, optIdx) => ({
-                        question_id: newQuestion.id,
+            const allOptionsToInsert = [];
+            for (let i = 0; i < data.questions.length; i++) {
+                const q = data.questions[i];
+                const insertedQId = insertedQuestions[i].id;
+                if (q.options && q.options.length > 0) {
+                    allOptionsToInsert.push(...q.options.map((opt, optIdx) => ({
+                        question_id: insertedQId,
                         option_text: typeof opt === 'string' ? opt : opt.option_text,
                         is_correct: typeof opt === 'string' ? (opt === q.correct_answer) : opt.is_correct,
                         sequence_order: optIdx + 1,
-                    }))
-                );
+                    })));
+                }
+            }
+
+            if (allOptionsToInsert.length > 0) {
+                await tx.insert(quizOptions).values(allOptionsToInsert);
             }
         }
-    }
 
-    return await fetchQuizAdmin(data.lesson_id ?? '');
+        return await tx.query.quizzes.findFirst({
+            where: eq(quizzes.id, quizId!),
+            with: {
+                questions: {
+                    orderBy: [asc(quizQuestions.sequence_order)],
+                    with: {
+                        options: {
+                            orderBy: [asc(quizOptions.sequence_order)]
+                        }
+                    }
+                }
+            }
+        });
+    });
 }
 
 export async function deleteQuizAdmin(quizId: string) {
@@ -139,35 +177,34 @@ export async function deleteQuizAdmin(quizId: string) {
 }
 
 export async function cloneQuizAction(quizId: string, targetLessonId: string | null | undefined, targetCourseId?: string | null) {
-    console.log(`[cloneQuizAction] Starting clone for quizId: ${quizId}, targetLessonId: ${targetLessonId}, targetCourseId: ${targetCourseId}`);
     const session = await verifySession();
     if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        console.error(`[cloneQuizAction] Unauthorized access attempt by ${session?.userId}`);
         redirect('/admin-portal/login');
     }
 
     try {
         return await db.transaction(async (tx) => {
-            console.log(`[cloneQuizAction] Fetching source quiz...`);
+            // H-4: Integrated Eager Loading for options to eliminate N+1 queries during clone
             const sourceQuiz = await tx.query.quizzes.findFirst({
                 where: eq(quizzes.id, quizId),
-                with: { questions: true }
+                with: { 
+                    questions: {
+                        with: { options: true }
+                    } 
+                }
             });
 
             if (!sourceQuiz) {
-                console.error(`[cloneQuizAction] Source quiz ${quizId} not found`);
                 throw new Error("Source quiz not found");
             }
 
             // Determine target course ID: use provided one, or fall back to source quiz's course_id
             const finalCourseId = targetCourseId || sourceQuiz.course_id;
-            
+
             if (!finalCourseId) {
-                console.error(`[cloneQuizAction] Could not determine target course ID`);
                 throw new Error("Destination course ID is required");
             }
 
-            console.log(`[cloneQuizAction] Inserting cloned quiz for course ${finalCourseId}...`);
             const [clonedQuiz] = await tx.insert(quizzes).values({
                 lesson_id: targetLessonId || null,
                 course_id: finalCourseId,
@@ -180,44 +217,44 @@ export async function cloneQuizAction(quizId: string, targetLessonId: string | n
                 is_published: sourceQuiz.is_published ?? false,
             } as any).returning();
 
-            console.log(`[cloneQuizAction] Cloned quiz created with ID: ${clonedQuiz.id}. Found ${sourceQuiz.questions?.length || 0} questions.`);
-
             if (sourceQuiz.questions && sourceQuiz.questions.length > 0) {
-                for (const q of sourceQuiz.questions) {
-                    console.log(`[cloneQuizAction] Cloning question: ${q.question_text.substring(0, 30)}...`);
-                    const [clonedQuestion] = await tx.insert(quizQuestions).values({
-                        quiz_id: clonedQuiz.id,
-                        question_text: q.question_text,
-                        question_type: q.question_type,
-                        explanation: q.explanation || '',
-                        points: q.points || 1,
-                        time_limit_secs: q.time_limit_secs || 0,
-                        sequence_order: q.sequence_order,
-                    }).returning();
+                // Batch insert all cloned questions
+                const questionsToInsert = sourceQuiz.questions.map(q => ({
+                    quiz_id: clonedQuiz.id,
+                    question_text: q.question_text,
+                    question_type: q.question_type,
+                    explanation: q.explanation || '',
+                    points: q.points || 1,
+                    time_limit_secs: q.time_limit_secs || 0,
+                    sequence_order: q.sequence_order,
+                }));
+                const insertedQuestions = await tx.insert(quizQuestions).values(questionsToInsert).returning();
 
-                    const sourceOptions = await tx.query.quizOptions.findMany({
-                        where: eq(quizOptions.question_id, q.id)
-                    });
-
-                    if (sourceOptions.length > 0) {
-                        console.log(`[cloneQuizAction] Inserting ${sourceOptions.length} options for question ${clonedQuestion.id}`);
-                        await tx.insert(quizOptions).values(
-                            sourceOptions.map(opt => ({
-                                question_id: clonedQuestion.id,
+                // Flatten all options to clone in a single batch insert
+                const allClonedOptions = [];
+                for (let i = 0; i < sourceQuiz.questions.length; i++) {
+                    const sourceQ = sourceQuiz.questions[i];
+                    const targetQId = insertedQuestions[i].id;
+                    if (sourceQ.options && sourceQ.options.length > 0) {
+                        for (const opt of sourceQ.options) {
+                            allClonedOptions.push({
+                                question_id: targetQId,
                                 option_text: opt.option_text,
                                 is_correct: opt.is_correct,
                                 sequence_order: opt.sequence_order
-                            }))
-                        );
+                            });
+                        }
                     }
+                }
+
+                if (allClonedOptions.length > 0) {
+                    await tx.insert(quizOptions).values(allClonedOptions);
                 }
             }
 
-            console.log(`[cloneQuizAction] Successfully cloned quiz ${quizId} to ${clonedQuiz.id}`);
             return clonedQuiz;
         });
     } catch (error: any) {
-        console.error(`[cloneQuizAction] Error cloning quiz:`, error);
         throw error;
     }
 }

@@ -163,7 +163,7 @@ export const students = pgTable('students', {
 
 export const paymentPlans = pgTable('payment_plans', {
     id: uuid('id').defaultRandom().primaryKey(),
-    name: text('name').notNull().unique(),
+    name: text('name').notNull(),
     description: text('description'),
     billing_cycle: billingCycleEnum('billing_cycle').notNull(),
     price: numeric('price', { precision: 12, scale: 2 }).notNull(),
@@ -176,11 +176,15 @@ export const paymentPlans = pgTable('payment_plans', {
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
-});
+}, (table) => [
+    uniqueIndex('uq_payment_plans_name')
+        .on(table.name)
+        .where(sql`deleted_at IS NULL`),
+]);
 
 export const promoCodes = pgTable('promo_codes', {
     id: uuid('id').defaultRandom().primaryKey(),
-    code: text('code').notNull().unique(),
+    code: text('code').notNull(),
     discount_type: discountTypeEnum('discount_type').notNull(),
     discount_value: numeric('discount_value', { precision: 12, scale: 2 }).notNull(),
     max_uses: integer('max_uses'),
@@ -190,7 +194,12 @@ export const promoCodes = pgTable('promo_codes', {
     is_active: boolean('is_active').notNull().default(true),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+    deleted_at: timestamp('deleted_at', { withTimezone: true }),
+}, (table) => [
+    uniqueIndex('uq_promo_codes_code')
+        .on(table.code)
+        .where(sql`deleted_at IS NULL`),
+]);
 
 export const schoolSubscriptions = pgTable('school_subscriptions', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -267,12 +276,19 @@ export const invoices = pgTable('invoices', {
 
 export const classes = pgTable('classes', {
     id: uuid('id').defaultRandom().primaryKey(),
-    name: text('name').notNull().unique(),
-    level: integer('level').notNull().unique(),
+    name: text('name').notNull(),
+    level: integer('level').notNull(),
     // ISSUE 16: soft delete — hard deleting breaks all historical student records for the class
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+    uniqueIndex('uq_classes_name')
+        .on(table.name)
+        .where(sql`deleted_at IS NULL`),
+    uniqueIndex('uq_classes_level')
+        .on(table.level)
+        .where(sql`deleted_at IS NULL`),
+]);
 
 export const schoolClassMapping = pgTable('school_class_mapping', {
     id: uuid('id').defaultRandom().primaryKey(),

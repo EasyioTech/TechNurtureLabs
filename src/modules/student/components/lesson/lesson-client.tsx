@@ -261,7 +261,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
           <LessonContent
             lesson={lesson}
             isFocusMode={false}
-            onComplete={(isVideo, qP, iP) => handleComplete(isVideo, qP, iP)}
+            onComplete={handleComplete}
             lessonComplete={lessonComplete}
             pageNumber={docPage}
             docMax={docMax}

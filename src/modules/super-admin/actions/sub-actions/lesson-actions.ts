@@ -79,12 +79,6 @@ export async function saveLessonAdmin(lessonData: unknown) {
     } else {
         if (!data.course_id) throw new Error('course_id is required when creating a lesson');
 
-        const maxOrderResult = await db.select({
-            max: sql<number>`COALESCE(MAX(${lessons.sequence_order}), 0)`
-        }).from(lessons).where(eq(lessons.course_id, data.course_id));
-
-        const newOrder = Number(maxOrderResult[0].max) + 1;
-
         const [created] = await db.insert(lessons).values({
             course_id: data.course_id,
             title: data.title,
@@ -95,7 +89,8 @@ export async function saveLessonAdmin(lessonData: unknown) {
             asset_id: data.asset_id ?? null,
             xp_reward: data.xp_reward,
             duration_minutes: durationMinutes,
-            sequence_order: newOrder,
+            // H-5: Atomic subquery to prevent sequence order race conditions
+            sequence_order: sql`(SELECT COALESCE(MAX(sequence_order), 0) + 1 FROM lessons WHERE course_id = ${data.course_id})`,
             is_published: data.is_published ?? true,
         } as any).returning();
 
@@ -133,18 +128,33 @@ export async function saveLessonOrderAdmin(updates: any[]) {
     if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
         redirect('/admin-portal/login');
     }
-    for (const update of updates) {
-        await db.update(lessons)
-            .set({ sequence_order: update.sequence_index || update.sequence_order })
-            .where(eq(lessons.id, update.id));
+    if (updates.length === 0) return;
+
+    // Validate all IDs are proper UUIDs before using in raw SQL
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    for (const u of updates) {
+        if (!UUID_REGEX.test(u.id)) throw new Error('Invalid lesson ID');
+        const order = u.sequence_index ?? u.sequence_order;
+        if (!Number.isInteger(order) || order < 0) throw new Error('Invalid sequence order');
     }
 
-    if (updates.length > 0) {
-        const first = await db.query.lessons.findFirst({ where: eq(lessons.id, updates[0].id) });
-        if (first) {
-            await updateCourseTotals(first.course_id);
-            await invalidateCourseCaches(first.course_id);
-        }
+    // Single bulk UPDATE using CASE WHEN — avoids N+1 round trips
+    const ids = updates.map(u => u.id);
+    const caseWhen = updates
+        .map(u => `WHEN id = '${u.id}' THEN ${u.sequence_index ?? u.sequence_order}`)
+        .join(' ');
+
+    await db.execute(sql`
+        UPDATE lessons
+        SET sequence_order = CASE ${sql.raw(caseWhen)} ELSE sequence_order END,
+            updated_at = NOW()
+        WHERE id = ANY(${sql.raw(`ARRAY[${ids.map(id => `'${id}'`).join(',')}]::uuid[]`)})
+    `);
+
+    const first = await db.query.lessons.findFirst({ where: eq(lessons.id, updates[0].id) });
+    if (first) {
+        await updateCourseTotals(first.course_id);
+        await invalidateCourseCaches(first.course_id);
     }
 }
 
@@ -157,17 +167,12 @@ export async function cloneLessonAction(lessonId: string, targetCourseId: string
     const sourceLesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
     if (!sourceLesson) throw new Error("Source lesson not found");
 
-    const maxOrderResult = await db.select({ 
-        max: sql<number>`COALESCE(MAX(${lessons.sequence_order}), 0)` 
-    }).from(lessons).where(eq(lessons.course_id, targetCourseId));
-    
-    const newOrder = Number(maxOrderResult[0].max) + 1;
-
     const [cloned] = await db.insert(lessons).values({
         ...sourceLesson,
         id: undefined,
         course_id: targetCourseId,
-        sequence_order: newOrder,
+        // H-5: Atomic subquery for sequence order during cloning
+        sequence_order: sql`(SELECT COALESCE(MAX(sequence_order), 0) + 1 FROM lessons WHERE course_id = ${targetCourseId})`,
         created_at: new Date(),
         updated_at: new Date()
     } as any).returning();

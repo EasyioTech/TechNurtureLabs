@@ -34,7 +34,7 @@ import {
 
 export const USER_METRICS_PAGE_SIZE = 25;
 import {
-    Course, Lesson, PaymentPlan, Stats, UserMetric, CourseMetric, SchoolInfo, PromoCode,
+    Course, Lesson, PaymentPlan, Stats, UserMetric, SchoolInfo, PromoCode,
 } from '../types';
 
 const DEFAULT_STATS: Stats = {
@@ -56,7 +56,6 @@ export function useAdminData() {
     const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
     const [schoolsList, setSchoolsList] = useState<SchoolInfo[]>([]);
     const [userMetrics, setUserMetrics] = useState<UserMetric[]>([]);
-    const [courseMetrics, setCourseMetrics] = useState<CourseMetric[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
     const [courseClassMappings, setCourseClassMappings] = useState<any[]>([]);
     const [platformSettings, setPlatformSettings] = useState<any | null>(null);
@@ -69,6 +68,19 @@ export function useAdminData() {
     const [totalStudentsCount, setTotalStudentsCount] = useState(0);
     const [totalStudentPages, setTotalStudentPages] = useState(0);
     const [studentsLoading, setStudentsLoading] = useState(false);
+
+    const [schoolsPage, setSchoolsPage] = useState(0);
+    const [totalSchoolsCount, setTotalSchoolsCount] = useState(0);
+    const [totalSchoolsPages, setTotalSchoolsPages] = useState(0);
+
+    const [coursesPage, setCoursesPage] = useState(0);
+    const [totalCoursesCount, setTotalCoursesCount] = useState(0);
+    const [totalCoursesPages, setTotalCoursesPages] = useState(0);
+
+    const [globalLessonsPage, setGlobalLessonsPage] = useState(1);
+    const [totalGlobalLessonsPages, setTotalGlobalLessonsPages] = useState(0);
+    const [globalQuizzesPage, setGlobalQuizzesPage] = useState(1);
+    const [totalGlobalQuizzesPages, setTotalGlobalQuizzesPages] = useState(0);
 
     // Dialog state
     const [showCourseDialog, setShowCourseDialog] = useState(false);
@@ -114,13 +126,13 @@ export function useAdminData() {
                 id: s.id,
                 full_name: s.full_name,
                 email: s.email || '',
-                school_name: 'Loading...', 
+                school_name: s.school_name ?? 'Unknown',
                 total_xp: s.total_xp,
                 level: s.level,
                 current_streak: s.current_streak || 0,
                 longest_streak: s.longest_streak || 0,
-                lessons_completed: 0, 
-                last_activity: s.last_active_at ? s.last_active_at.toISOString() : null,
+                lessons_completed: s.lessons_completed ?? 0,
+                last_activity: s.last_active_at ? new Date(s.last_active_at).toISOString() : null,
             })));
             setTotalStudentsCount(data.total);
             setTotalStudentPages(data.pages);
@@ -132,21 +144,33 @@ export function useAdminData() {
         }
     }
 
-    async function loadSchools() {
+    async function loadSchools(page = 0, search?: string) {
+        setLoading(true);
         try {
-            const data = await fetchAdminSchools();
-            setSchoolsList(data as any);
+            const res = await fetchAdminSchools(page, 50, search);
+            setSchoolsList(res.data as any);
+            setSchoolsPage(page);
+            setTotalSchoolsCount(res.total);
+            setTotalSchoolsPages(res.pages);
         } catch (error) {
             toast.error("Failed to load schools");
+        } finally {
+            setLoading(false);
         }
     }
 
-    async function loadCourses() {
+    async function loadCourses(page = 0) {
+        setLoading(true);
         try {
-            const data = await fetchAdminCourses();
-            setCourses(data as any);
+            const res = await fetchAdminCourses(page, 50);
+            setCourses(res.data as any);
+            setCoursesPage(page);
+            setTotalCoursesCount(res.total);
+            setTotalCoursesPages(res.pages);
         } catch (error) {
             toast.error("Failed to load courses");
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -218,11 +242,9 @@ export function useAdminData() {
         if (updates.length === 0) return;
 
         try {
-            console.log(`[useAdminData] Saving lesson order for ${updates.length} lessons`);
             await saveLessonOrderAdmin(updates);
             if (!silent) toast.success('Order saved');
         } catch (err: any) {
-            console.error('[useAdminData] Failed to save lesson order:', err);
             if (!silent) toast.error('Failed to save order: ' + (err.message || 'Unknown error'));
         }
     }
@@ -322,7 +344,7 @@ export function useAdminData() {
 
     return {
         loading, stats, courses, selectedCourse, lessons, setLessons,
-        paymentPlans, promoCodes, schoolsList, userMetrics, courseMetrics,
+        paymentPlans, promoCodes, schoolsList, userMetrics,
         classes, courseClassMappings, platformSettings, platformMetrics,
         userMetricsPage, setUserMetricsPage,
         totalStudentsCount, totalStudentPages, studentsLoading,
@@ -336,18 +358,29 @@ export function useAdminData() {
         saveLesson, deleteLesson, saveLessonOrder, deleteQuiz,
         savePlan, deletePlan, savePromoCode, deletePromoCode, toggleSchoolStatus, saveSchool, assignPlan,
 
-        loadGlobalLessons: async () => {
+        loadGlobalLessons: async (page = 1, search = '') => {
             setGlobalLoading(true);
-            try { setGlobalLessons((await fetchGlobalLessons()).data); }
+            try { 
+                const res = await fetchGlobalLessons({ page, search });
+                setGlobalLessons(res.data);
+                setGlobalLessonsPage(page);
+                setTotalGlobalLessonsPages(res.pages);
+            }
             catch { toast.error("Failed to load global lessons"); }
             finally { setGlobalLoading(false); }
         },
-        loadGlobalQuizzes: async () => {
+        loadGlobalQuizzes: async (page = 1, search = '') => {
             setGlobalLoading(true);
-            try { setGlobalQuizzes((await fetchGlobalQuizzes()).data); }
+            try { 
+                const res = await fetchGlobalQuizzes({ page, search });
+                setGlobalQuizzes(res.data);
+                setGlobalQuizzesPage(page);
+                setTotalGlobalQuizzesPages(res.pages);
+            }
             catch { toast.error("Failed to load global quizzes"); }
             finally { setGlobalLoading(false); }
         },
+        // ... (cloneLesson, cloneQuiz, syncMetrics etc remain same)
         cloneLesson: async (lessonId: string, targetCourseId: string) => {
             try {
                 await cloneLessonAction(lessonId, targetCourseId);
@@ -356,15 +389,12 @@ export function useAdminData() {
             } catch { toast.error("Failed to clone lesson"); }
         },
         cloneQuiz: async (quizId: string, targetCourseId: string) => {
-            console.log(`[useAdminData] Atttempting to clone quiz ${quizId} to course ${targetCourseId}`);
             try {
-                const res = await cloneQuizAction(quizId, null, targetCourseId);
-                console.log(`[useAdminData] Clone success:`, res);
+                await cloneQuizAction(quizId, null, targetCourseId);
                 toast.success("Quiz cloned successfully");
                 if (selectedCourse?.id === targetCourseId) selectCourse(selectedCourse);
-            } catch (err: any) { 
-                console.error(`[useAdminData] Clone failed:`, err);
-                toast.error("Failed to clone quiz: " + (err.message || "Unknown error")); 
+            } catch (err: any) {
+                toast.error("Failed to clone quiz: " + (err.message || "Unknown error"));
             }
         },
         syncMetrics: async () => {
@@ -376,6 +406,10 @@ export function useAdminData() {
                 } else throw new Error();
             } catch { toast.error("Sync failed"); }
         },
-        globalLessons, globalQuizzes, globalLoading
+        globalLessons, globalQuizzes, globalLoading,
+        schoolsPage, totalSchoolsPages, setSchoolsPage,
+        coursesPage, totalCoursesPages, setCoursesPage,
+        globalLessonsPage, totalGlobalLessonsPages,
+        globalQuizzesPage, totalGlobalQuizzesPages,
     };
 }

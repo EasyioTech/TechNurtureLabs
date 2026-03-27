@@ -6,7 +6,7 @@ import {
     enrollments, schoolSubscriptions, paymentTransactions, 
     lessonProgress 
 } from '@/db/schema';
-import { eq, count, sql, isNull, inArray } from 'drizzle-orm';
+import { eq, count, sql, isNull, isNotNull, inArray, and, gte } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { Stats } from '../../types';
@@ -46,11 +46,13 @@ export async function fetchAdminStats(): Promise<Stats> {
     }
 
     // 2. Fallback to SQL (only if cache is stale or missing)
-    console.log('[Dashboard] Refreshing global stats from DB...');
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
     const [
-        sCount, schData, cData, lCount, subCount, xpRes, revenueData, completionData
+        sCount, activeStudentCount, schData, cData, lCount, subCount, xpRes, revenueData, completionData
     ] = await Promise.all([
         db.select({ val: count() }).from(students).where(isNull(students.deleted_at)),
+        db.select({ val: count() }).from(students).where(and(isNull(students.deleted_at), isNotNull(students.last_active_at), sql`${students.last_active_at} >= ${thirtyDaysAgo.toISOString()}`)),
         db.select({ 
             total: sql`count(*)`, 
             active: sql`count(*) filter (where ${schools.is_active} = true)` 
@@ -60,13 +62,12 @@ export async function fetchAdminStats(): Promise<Stats> {
             published: sql`count(*) filter (where ${courses.is_published} = true)` 
         }).from(courses),
         db.select({ val: count() }).from(lessons).where(isNull(lessons.deleted_at)),
-        db.select({ 
-            active: sql`count(distinct ${schoolSubscriptions.school_id}) filter (where ${paymentTransactions.status} = 'captured' and ${schoolSubscriptions.status} = 'active')`,
+        db.select({
+            active: sql`count(*) filter (where ${schoolSubscriptions.status} = 'active')`,
             trialing: sql`count(*) filter (where ${schoolSubscriptions.status} = 'trialing')`
-        }).from(schoolSubscriptions)
-          .leftJoin(paymentTransactions, eq(schoolSubscriptions.school_id, paymentTransactions.school_id)),
+        }).from(schoolSubscriptions),
         db.select({ val: sql<number>`sum(${students.cumulative_xp})` }).from(students).where(isNull(students.deleted_at)),
-        db.select({ totalRevenue: sql<number>`coalesce(sum(${paymentTransactions.amount}), 0)` }).from(paymentTransactions).where(eq(paymentTransactions.status, 'captured')),
+        db.select({ totalRevenue: sql<number>`coalesce(sum(${paymentTransactions.amount}::numeric), 0)` }).from(paymentTransactions).where(eq(paymentTransactions.status, 'captured')),
         db.select({ avg: sql<number>`coalesce(avg(case when ${lessonProgress.completed_at} is not null then 1.0 else 0.0 end), 0) * 100` }).from(lessonProgress)
     ]);
 
@@ -78,7 +79,7 @@ export async function fetchAdminStats(): Promise<Stats> {
 
     const stats: Stats = {
         totalStudents: Number(sCount[0].val),
-        activeStudents: 0, 
+        activeStudents: Number(activeStudentCount[0].val),
         totalSchools,
         activeSchools,
         totalCourses: Number((cData[0] as any).total),
@@ -95,6 +96,7 @@ export async function fetchAdminStats(): Promise<Stats> {
     // Cache with a 'last_sync' timestamp to prevent constant DB hammering
     analyticsService.syncFromDb({
         total_students: stats.totalStudents,
+        active_students: stats.activeStudents,
         total_schools: stats.totalSchools,
         total_courses: stats.totalCourses,
         total_lessons: stats.totalLessons,

@@ -1,49 +1,86 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { UserMetric, CourseMetric } from '../types';
+import { Input } from '@/components/ui/input';
+import { UserMetric } from '../types';
 import { useAdminTheme, t } from '../theme-context';
 import { USER_METRICS_PAGE_SIZE } from '../hooks/use-admin-data';
-import { Zap, Trophy, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Zap, Trophy, CheckCircle2, ChevronLeft, ChevronRight, ArrowUpDown, Search } from 'lucide-react';
 
 interface MetricTablesProps {
     userMetrics: UserMetric[];
-    courseMetrics: CourseMetric[];
     page?: number;
     setPage?: (p: number) => void;
 }
 
-export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: MetricTablesProps) {
+type UserSortField = 'full_name' | 'total_xp' | 'level' | 'lessons_completed';
+
+export function MetricTables({ userMetrics, page = 0, setPage }: MetricTablesProps) {
     const { isDark, accent } = useAdminTheme();
-    const totalPages = Math.ceil(userMetrics.length / USER_METRICS_PAGE_SIZE);
-    const pagedMetrics = userMetrics
-        .sort((a, b) => b.total_xp - a.total_xp)
-        .slice(page * USER_METRICS_PAGE_SIZE, (page + 1) * USER_METRICS_PAGE_SIZE);
+    
+    // M-7: Added local sorting and filtering for enhanced report usability
+    const [userSort, setUserSort] = useState<{ field: UserSortField, direction: 'asc' | 'desc' }>({ field: 'total_xp', direction: 'desc' });
+    const [studentSearch, setStudentSearch] = useState('');
+
+    const filteredAndSortedUsers = useMemo(() => {
+        let result = [...userMetrics];
+        if (studentSearch) {
+            const query = studentSearch.toLowerCase();
+            result = result.filter(u => u.full_name.toLowerCase().includes(query) || u.email.toLowerCase().includes(query));
+        }
+        result.sort((a, b) => {
+            const aVal = a[userSort.field];
+            const bVal = b[userSort.field];
+            if (aVal < bVal) return userSort.direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return userSort.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+        return result;
+    }, [userMetrics, userSort, studentSearch]);
+
+    const totalPages = Math.ceil(filteredAndSortedUsers.length / USER_METRICS_PAGE_SIZE);
+    const pagedMetrics = filteredAndSortedUsers.slice(page * USER_METRICS_PAGE_SIZE, (page + 1) * USER_METRICS_PAGE_SIZE);
+
+    const toggleUserSort = (field: UserSortField) => {
+        setUserSort(prev => ({ field, direction: prev.field === field && prev.direction === 'desc' ? 'asc' : 'desc' }));
+        if (setPage) setPage(0);
+    };
 
     return (
         <div className="space-y-6">
             {userMetrics.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
                     className={`rounded-[24px] border overflow-hidden transition-all duration-300 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
-                    <div className={`px-6 py-5 border-b ${t.border(isDark)} flex items-center justify-between`}>
-                        <div>
+                    <div className={`px-6 py-5 border-b ${t.border(isDark)} flex items-center justify-between flex-wrap gap-4`}>
+                        <div className="flex-1">
                             <h3 className={`font-black text-lg tracking-tight ${t.textPrimary(isDark)}`}>Student Leaderboard</h3>
                             <p className={`text-[12px] font-medium ${t.textMuted(isDark)}`}>
-                                Engagement rankings based on earned experience points
-                                <span className={`ml-2 font-black ${isDark ? accent.text : 'text-slate-600'}`}>
-                                    ({userMetrics.length} students)
-                                </span>
+                                Engagement rankings based on {userSort.field.replace('_', ' ')}
                             </p>
                         </div>
-                        <Badge className={`text-[10px] font-black px-3 py-1 rounded-full ${isDark ? 'bg-white/[0.08] text-white' : 'bg-slate-900 text-white'}`}>GLOBAL</Badge>
+                        <div className="flex items-center gap-3">
+                            <div className="relative group">
+                                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${t.textMuted(isDark)}`} />
+                                <Input 
+                                    placeholder="Find student..."
+                                    value={studentSearch}
+                                    onChange={(e) => { setStudentSearch(e.target.value); if (setPage) setPage(0); }}
+                                    className={`h-9 w-48 pl-9 rounded-full text-[11px] font-bold border-2 ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}
+                                />
+                            </div>
+                            <Button variant="outline" size="sm" onClick={() => toggleUserSort('total_xp')}
+                                className={`h-9 rounded-full px-4 text-[11px] font-black border-2 ${userSort.field === 'total_xp' ? t.btnPrimary(isDark, accent) : t.btnOutline(isDark)}`}>
+                                XP <ArrowUpDown size={12} className="ml-1.5 opacity-60" />
+                            </Button>
+                        </div>
                     </div>
                     <div className={t.divider(isDark)}>
                         {pagedMetrics.map((u, i) => {
                             const globalRank = page * USER_METRICS_PAGE_SIZE + i;
-                            const isTop3 = globalRank < 3;
+                            const isTop3 = !studentSearch && globalRank < 3;
                             return (
                                 <motion.div key={u.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
                                     className={`px-6 py-4 flex items-center gap-4 transition-all group ${t.cardHover(isDark)}`}>
@@ -85,7 +122,7 @@ export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: 
                     {totalPages > 1 && setPage && (
                         <div className={`px-6 py-4 border-t ${t.border(isDark)} flex items-center justify-between`}>
                             <p className={`text-[11px] font-bold ${t.textMuted(isDark)}`}>
-                                Showing {page * USER_METRICS_PAGE_SIZE + 1}–{Math.min((page + 1) * USER_METRICS_PAGE_SIZE, userMetrics.length)} of {userMetrics.length} students
+                                Showing {page * USER_METRICS_PAGE_SIZE + 1}–{Math.min((page + 1) * USER_METRICS_PAGE_SIZE, filteredAndSortedUsers.length)} of {filteredAndSortedUsers.length} students
                             </p>
                             <div className="flex items-center gap-2">
                                 <Button variant="ghost" size="sm" disabled={page === 0}
@@ -102,59 +139,6 @@ export function MetricTables({ userMetrics, courseMetrics, page = 0, setPage }: 
                             </div>
                         </div>
                     )}
-                </motion.div>
-            )}
-
-            {courseMetrics.length > 0 && (
-                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                    className={`rounded-[24px] border overflow-hidden transition-all duration-300 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
-                    <div className={`px-6 py-5 border-b ${t.border(isDark)}`}>
-                        <h3 className={`font-black text-lg tracking-tight ${t.textPrimary(isDark)}`}>Course Performance Analytics</h3>
-                        <p className={`text-[12px] font-medium ${t.textMuted(isDark)}`}>Detailed engagement and completion data for all active training modules.</p>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead><tr className={`border-b ${t.border(isDark)} bg-slate-500/[0.02]`}>
-                                {['Course', 'Status', 'Lessons', 'Students', 'Completion Rate', 'Avg. XP', 'Time Spent'].map(h => (
-                                    <th key={h} className={`px-6 py-4 text-[10px] font-black uppercase tracking-widest ${h === 'Course' ? 'text-left' : 'text-right'} ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{h}</th>
-                                ))}
-                            </tr></thead>
-                            <tbody className={t.divider(isDark)}>
-                                {courseMetrics.map((c, i) => (
-                                    <motion.tr key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}
-                                        className={`transition-all group ${t.cardHover(isDark)}`}>
-                                        <td className="px-6 py-5">
-                                            <p className={`font-black text-[13px] tracking-tight ${t.textPrimary(isDark)}`}>{c.title}</p>
-                                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)} mt-0.5`}>ID: {c.id.slice(0, 8)}</p>
-                                        </td>
-                                        <td className="px-6 py-5 text-right">
-                                            <Badge className={`text-[9px] font-black px-2 py-0.5 rounded-md ${c.is_published ? t.live(isDark) : t.draft(isDark)}`}>
-                                                {c.is_published ? 'ACTIVE' : 'DRAFT'}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-6 py-5 text-right font-black text-[13px]">{c.lesson_count}</td>
-                                        <td className={`px-6 py-5 text-right font-black text-[13px] ${isDark ? accent.text : `text-${accent.name}-600`}`}>{c.enrolled_count}</td>
-                                        <td className="px-6 py-5 text-right min-w-[140px]">
-                                            <div className="flex items-center justify-end gap-2.5">
-                                                <div className={`w-16 h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-slate-100'} ring-1 ring-black/5`}>
-                                                    <motion.div initial={{ width: 0 }} animate={{ width: `${c.completion_rate}%` }}
-                                                        className={`h-full rounded-full ${accent.bg}`} style={t.barGlow(isDark, accent)} />
-                                                </div>
-                                                <span className={`text-[12px] font-black tracking-tight ${t.textPrimary(isDark)}`}>{c.completion_rate}%</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-5 text-right"><Badge className={`text-[10px] font-black ${isDark ? accent.softDark.split(' ').slice(0, 2).join(' ') : accent.softLight.split(' ').slice(0, 2).join(' ')}`}>{c.avg_xp} XP</Badge></td>
-                                        <td className="px-6 py-5 text-right">
-                                            <div className="flex flex-col items-end">
-                                                <span className={`text-[12px] font-black ${t.textPrimary(isDark)}`}>{c.total_time_mins}m</span>
-                                                <span className={`text-[9px] font-bold ${t.textMuted(isDark)} uppercase tracking-tighter`}>Total Time</span>
-                                            </div>
-                                        </td>
-                                    </motion.tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
                 </motion.div>
             )}
         </div>

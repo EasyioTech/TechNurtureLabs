@@ -173,11 +173,9 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     const [libraryTargetId, setLibraryTargetId] = React.useState<string | null>(null);
     const [importOpen, setImportOpen] = React.useState(false);
     
-    // storagePref is 'stream' for videos by default, 'r2' for others.
-    // We allow switching for non-video types.
-    // storagePref is 'stream' for videos by default, 'r2' for others.
-    // We allow switching for non-video types.
-    const [storagePref, setStoragePref] = React.useState<'r2' | 'local' | 'stream'>('r2');
+    const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
+    const [streamProgress, setStreamProgress] = React.useState(0);
+    const [isStreamUploading, setIsStreamUploading] = React.useState(false);
 
     // No onSuccess/onError callbacks — we await upload() directly to avoid stale closures
     const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload();
@@ -271,32 +269,44 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         setUploadFile(file);
 
         try {
-            // Determine if we should use Stream for this specific file
             const isVideoFile = file.type.startsWith('video/');
-            const useStream = isVideoFile && storagePref !== 'local';
 
-            if (useStream) {
+            if (isVideoFile) {
+                // Videos always upload to Cloudflare Stream — no R2 path for video
                 const res = await fetch('/api/media/stream-upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ fileName: file.name }),
                 });
                 if (!res.ok) {
-                    if (res.status === 503) {
-                        toast.info('Using standard upload (Cloudflare Stream not configured)');
-                    } else {
-                        throw new Error('Stream upload unavailable');
-                    }
-                } else {
-                    const { uploadUrl, uid } = await res.json();
-                    toast.info('Uploading to Cloudflare Stream…');
-                    const fd = new FormData(); fd.append('file', file);
-                    const cfRes = await fetch(uploadUrl, { method: 'POST', body: fd });
-                    if (!cfRes.ok) throw new Error('Cloudflare upload failed');
-                    applyBlockUpdate(itemId, 'url', `cf-stream://${uid}`);
-                    toast.success('Video uploaded to Cloudflare Stream!');
-                    return;
+                    throw new Error(
+                        res.status === 503
+                            ? 'Cloudflare Stream is not configured on this server. Contact your administrator.'
+                            : 'Failed to initialise stream upload'
+                    );
                 }
+                const { uploadUrl, uid } = await res.json();
+                toast.info('Uploading to Cloudflare Stream…');
+                setIsStreamUploading(true);
+                setStreamProgress(0);
+                await new Promise<void>((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', uploadUrl, true);
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) setStreamProgress(Math.round((e.loaded / e.total) * 100));
+                    };
+                    xhr.onload = () =>
+                        xhr.status >= 200 && xhr.status < 300
+                            ? resolve()
+                            : reject(new Error(`Cloudflare upload failed (${xhr.status})`));
+                    xhr.onerror = () => reject(new Error('Cloudflare upload network error'));
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    xhr.send(fd);
+                });
+                applyBlockUpdate(itemId, 'url', `cf-stream://${uid}`);
+                toast.success('Video uploaded to Cloudflare Stream!');
+                return;
             }
             // Standard upload (non-video or CF Stream fallback)
             const result: any = await upload(file, { purpose: 'library', storagePreference: storagePref === 'local' ? 'local' : 'r2', folder: 'lesson' });
@@ -305,6 +315,8 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         } catch (err: any) {
             toast.error(err?.message || 'Upload failed');
         } finally {
+            setIsStreamUploading(false);
+            setStreamProgress(0);
             setActiveUploadItemId(null);
             setUploadFile(null);
         }
@@ -464,7 +476,8 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                 <div className="space-y-2">
                                     {contentItems.map((item, idx) => {
                                         const bt = BLOCK_TYPES.find(b => b.id === item.type) || BLOCK_TYPES[0];
-                                        const isUploadingThis = isUploading && activeUploadItemId === item.id;
+                                        const isStreamUploadingThis = isStreamUploading && activeUploadItemId === item.id;
+                                        const isUploadingThis = (isUploading || isStreamUploading) && activeUploadItemId === item.id;
                                         const isUploaded = item.url.startsWith('/api/') || item.url.includes('r2.cloudflare') || item.url.startsWith('cf-stream://');
                                         const displayUrl = isUploaded
                                             ? item.url.startsWith('cf-stream://')
@@ -660,7 +673,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                                                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, item.id); }}
                                                                 />
                                                                 {isUploadingThis
-                                                                    ? <><Loader2 size={11} className="animate-spin" /> {progress}%</>
+                                                                    ? <><Loader2 size={11} className="animate-spin" /> {isStreamUploadingThis ? streamProgress : progress}%</>
                                                                     : <><Upload size={11} /> Upload</>
                                                                 }
                                                             </label>
@@ -691,11 +704,11 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                                 {isUploadingThis && uploadFile && (
                                                     <div className="px-3 pb-3">
                                                         <UploadProgress
-                                                            progress={progress}
+                                                            progress={isStreamUploadingThis ? streamProgress : progress}
                                                             fileName={uploadFile.name}
-                                                            isUploading={isUploading}
+                                                            isUploading={isUploading || isStreamUploading}
                                                             error={uploadError}
-                                                            onCancel={abort}
+                                                            onCancel={isStreamUploadingThis ? undefined : abort}
                                                             onReset={resetUpload}
                                                             isDark={isDark}
                                                         />
@@ -770,53 +783,57 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                     </div>
                                 )}
 
-                                {/* Storage toggle */}
-                                <div className={cn(
-                                    'flex flex-col gap-2.5 px-4 py-3 rounded-xl border-2',
-                                    isDark ? 'border-white/5 bg-white/[0.02]' : 'border-slate-100 bg-slate-50'
-                                )}>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <span className={`text-[10px] font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Storage Preferences</span>
-                                            <p className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>Optimized for performance</p>
-                                        </div>
-                                        <div className={`h-8 px-1 rounded-lg flex gap-0.5 border shadow-sm ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-200'}`}>
-                                            {[
-                                                { id: 'r2', label: 'Cloud', icon: Cloud }, 
-                                                { id: 'local', label: 'Server', icon: HardDrive }
-                                            ].map((opt) => {
-                                                const active = (storagePref === 'local' ? 'local' : 'r2') === opt.id;
-                                                return (
-                                                    <button
-                                                        key={opt.id}
-                                                        type="button"
-                                                        onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
-                                                        className={cn(
-                                                            'flex items-center gap-1.5 px-3 rounded-md text-[9px] font-black uppercase tracking-wide transition-all',
-                                                            active
-                                                                ? isDark ? 'bg-white/10 text-white shadow-inner' : 'bg-slate-100 text-slate-900 shadow-sm'
-                                                                : isDark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600'
-                                                        )}
-                                                    >
-                                                        <opt.icon size={10} /> {opt.label}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
+                                {/* Storage — Stream-only for video blocks, R2/Local for everything else */}
+                                {contentItems.some(i => i.type === 'video') ? (
                                     <div className={cn(
-                                        'px-3 py-2 rounded-lg border flex items-center gap-3',
-                                        isDark ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'
+                                        'px-4 py-3 rounded-xl border-2',
+                                        isDark ? 'border-indigo-500/20 bg-indigo-500/[0.04]' : 'border-indigo-100 bg-indigo-50/60'
                                     )}>
-                                        <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', isDark ? 'bg-indigo-400/20 text-indigo-300' : 'bg-indigo-100 text-indigo-600')}>
-                                            <Zap size={14} />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className={cn('text-[10px] font-black uppercase tracking-tight', isDark ? 'text-indigo-300' : 'text-indigo-800')}>Cloudflare Stream Active</p>
-                                            <p className={cn('text-[9px] font-bold leading-tight truncate', isDark ? 'text-indigo-300/60' : 'text-indigo-600/70')}>Videos auto-optimized for 4K & Mobile data</p>
+                                        <div className={cn('flex items-center gap-3')}>
+                                            <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', isDark ? 'bg-indigo-400/20 text-indigo-300' : 'bg-indigo-100 text-indigo-600')}>
+                                                <Zap size={15} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className={cn('text-[10px] font-black uppercase tracking-tight', isDark ? 'text-indigo-300' : 'text-indigo-800')}>Cloudflare Stream — Videos Only</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className={cn(
+                                        'flex flex-col gap-2.5 px-4 py-3 rounded-xl border-2',
+                                        isDark ? 'border-white/5 bg-white/[0.02]' : 'border-slate-100 bg-slate-50'
+                                    )}>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Storage Preferences</span>
+                                                <p className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>For PDFs, images, and other assets</p>
+                                            </div>
+                                            <div className={`h-8 px-1 rounded-lg flex gap-0.5 border shadow-sm ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-200'}`}>
+                                                {[
+                                                    { id: 'r2', label: 'Cloud', icon: Cloud },
+                                                    { id: 'local', label: 'Server', icon: HardDrive }
+                                                ].map((opt) => {
+                                                    const active = storagePref === opt.id;
+                                                    return (
+                                                        <button
+                                                            key={opt.id}
+                                                            type="button"
+                                                            onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
+                                                            className={cn(
+                                                                'flex items-center gap-1.5 px-3 rounded-md text-[9px] font-black uppercase tracking-wide transition-all',
+                                                                active
+                                                                    ? isDark ? 'bg-white/10 text-white shadow-inner' : 'bg-slate-100 text-slate-900 shadow-sm'
+                                                                    : isDark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600'
+                                                            )}
+                                                        >
+                                                            <opt.icon size={10} /> {opt.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -1003,7 +1020,6 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                         try {
                             // Find the destination course ID from the lesson itself
                             const destCourseId = editingLesson.course_id;
-                            console.log(`[LessonDialog] Importing quiz ${sourceId} into lesson ${editingLesson.id} (Course: ${destCourseId})`);
                             
                             await cloneQuizAction(sourceId, editingLesson.id!, destCourseId);
                             toast.success('Quiz imported!');

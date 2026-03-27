@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -11,24 +11,31 @@ import {
     ChevronLeft,
     ChevronRight,
     Loader2,
+    RefreshCw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-// Use the locally served worker (copied from node_modules at build time by next.config.ts).
-// This version is guaranteed to match the installed pdfjs-dist — no CDN dependency.
+
+// Worker is copied from node_modules/pdfjs-dist at build/dev-start time by next.config.ts.
+// This guarantees the worker version exactly matches the installed pdfjs-dist — no mismatch possible.
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
-// cMapUrl and standardFontDataUrl must match the installed pdfjs-dist version.
-// next.config.ts copies the worker from that same version so they are in sync.
-// The version constant is kept here so it only needs to be updated once.
-const PDFJS_VERSION = pdfjs.version; // read from the live bundle — always correct
+// ── Local asset paths ────────────────────────────────────────────────────────
+// cMaps and standard_fonts are copied from node_modules/pdfjs-dist to public/ by
+// next.config.ts on every build/dev start.  Serving them from our own origin
+// eliminates ALL CDN dependencies (jsDelivr, unpkg, etc.) — PDFs load correctly
+// even on school networks that block external CDNs.
 const STABLE_PDF_OPTIONS = {
-    cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/cmaps/`,
+    cMapUrl: '/pdfjs-cmaps/',
     cMapPacked: true,
-    standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/standard_fonts/`,
+    standardFontDataUrl: '/pdfjs-fonts/',
+    // Disable CSS @font-face injection — canvas-based font rendering is more
+    // consistent across devices, especially on older Android WebViews.
     disableFontFace: true,
+    // 64 KB chunks: PDF.js fetches the document in pieces for range-request support.
+    // Smaller chunks mean faster first-page render on slow connections.
     rangeChunkSize: 65536,
+    // 4 MB max image size per page — prevent OOM on low-memory devices
     maxImageSize: 1024 * 1024 * 4,
-    withCredentials: true,
 };
 
 const MAX_RENDER_WIDTH = 900;
@@ -57,6 +64,9 @@ export function PDFViewer({
     const [numPages, setNumPages] = useState<number>(0);
     const [containerWidth, setContainerWidth] = useState<number>(400);
     const [error, setError] = useState<string | null>(null);
+    // Incrementing this key forces <Document> to unmount and remount on retry,
+    // which cancels any in-flight fetch and starts a completely fresh load.
+    const [retryKey, setRetryKey] = useState(0);
     // Direction hint for page-turn animation: +1 = forward, -1 = backward
     const [slideDir, setSlideDir] = useState<1 | -1>(1);
 
@@ -67,6 +77,7 @@ export function PDFViewer({
     const touchStartX = useRef<number>(0);
     const touchStartY = useRef<number>(0);
 
+    // Measure container width for responsive page rendering
     useEffect(() => {
         const updateWidth = () => {
             if (containerRef.current) {
@@ -74,13 +85,14 @@ export function PDFViewer({
                 if (w > 0) setContainerWidth(Math.min(w, MAX_RENDER_WIDTH));
             }
         };
-
-        const resizeObserver = new ResizeObserver(updateWidth);
-        if (containerRef.current) resizeObserver.observe(containerRef.current);
+        const ro = new ResizeObserver(updateWidth);
+        if (containerRef.current) ro.observe(containerRef.current);
         updateWidth();
-        return () => resizeObserver.disconnect();
+        return () => ro.disconnect();
     }, []);
 
+    // Resolve relative URLs to absolute — PDF.js needs a fully qualified URL
+    // to correctly determine the origin for CORS and range-request handling.
     const absoluteUrl = useMemo(() => {
         if (!url) return '';
         if (/^https?:\/\//i.test(url)) return url;
@@ -90,16 +102,43 @@ export function PDFViewer({
         return url;
     }, [url]);
 
-    // Reset completion flag when the document URL changes
+    // ── withCredentials: same-origin only ────────────────────────────────────
+    // Our auth-proxy routes (/api/media/...) require the session cookie — they are
+    // same-origin requests so withCredentials: true works fine.
+    //
+    // Direct R2 / CDN URLs are cross-origin.  Setting withCredentials: true on a
+    // cross-origin request triggers a CORS preflight that R2 cannot satisfy, which
+    // causes every PDF on a CDN-hosted bucket to fail with a CORS error.
+    //
+    // Fix: only enable withCredentials when the URL shares our origin.
+    const fileOptions = useMemo(() => {
+        const isSameOrigin =
+            !absoluteUrl ||
+            !absoluteUrl.startsWith('http') ||
+            (typeof window !== 'undefined' && absoluteUrl.startsWith(window.location.origin));
+        return { ...STABLE_PDF_OPTIONS, withCredentials: isSameOrigin };
+    }, [absoluteUrl]);
+
+    // Reset state whenever the source document changes
     useEffect(() => {
         completedRef.current = false;
+        setError(null);
+        setNumPages(0);
+        setRetryKey(0);
     }, [url]);
+
+    // Retry: clear error and remount <Document> with a fresh key
+    const handleRetry = useCallback(() => {
+        setError(null);
+        setNumPages(0);
+        setRetryKey(k => k + 1);
+    }, []);
 
     const onDocumentLoadSuccess = ({ numPages: n }: { numPages: number }) => {
         setNumPages(n);
         setError(null);
         onLoadTotalPages?.(n);
-        // Single-page document: complete immediately — nothing to navigate
+        // Single-page document: mark complete immediately
         if (n === 1 && !completedRef.current) {
             completedRef.current = true;
             onComplete();
@@ -107,8 +146,25 @@ export function PDFViewer({
     };
 
     const onDocumentLoadError = (err: Error) => {
-        console.error('[PDFViewer] Load error:', err);
-        setError('Failed to load document. The file may be unavailable or corrupted.');
+        const msg = (err?.message || '').toLowerCase();
+        let friendly: string;
+        if (msg.includes('401') || msg.includes('403') || msg.includes('unauthori')) {
+            friendly = 'Your session has expired. Please refresh the page and try again.';
+        } else if (msg.includes('404') || msg.includes('not found')) {
+            friendly = 'Document not found. Please contact your administrator.';
+        } else if (
+            msg.includes('network') ||
+            msg.includes('fetch') ||
+            msg.includes('failed to fetch') ||
+            msg.includes('load failed')
+        ) {
+            friendly = 'Network error — check your internet connection and tap Retry.';
+        } else if (msg.includes('worker')) {
+            friendly = 'PDF engine failed to load. Please refresh the page.';
+        } else {
+            friendly = 'Could not load the document. Tap Retry to try again.';
+        }
+        setError(friendly);
     };
 
     const handleNextPage = () => {
@@ -125,7 +181,6 @@ export function PDFViewer({
         }
     };
 
-    // Native touch handlers — reliable cross-browser swipe detection
     const handleTouchStart = (e: React.TouchEvent) => {
         touchStartX.current = e.touches[0].clientX;
         touchStartY.current = e.touches[0].clientY;
@@ -134,41 +189,63 @@ export function PDFViewer({
     const handleTouchEnd = (e: React.TouchEvent) => {
         const deltaX = e.changedTouches[0].clientX - touchStartX.current;
         const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-        // Only count as horizontal swipe if x movement dominates and > 40px
         if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 40) {
             if (deltaX < 0) handleNextPage();
             else handlePrevPage();
         }
     };
 
-    // Rendered page width — capped at MAX_RENDER_WIDTH and container width
     const pageWidth = Math.max(Math.min(containerWidth, MAX_RENDER_WIDTH), 200);
 
-    if (!absoluteUrl || error) {
+    // ── Missing URL ──────────────────────────────────────────────────────────
+    if (!absoluteUrl) {
         return (
-            <div className="py-20 text-center max-w-lg mx-auto">
+            <div className="py-20 text-center max-w-lg mx-auto px-6">
                 <AlertTriangle className="mx-auto text-rose-500 mb-6" size={48} />
-                <h3 className="text-xl font-black text-slate-900 uppercase">Stream Interrupted</h3>
+                <h3 className="text-xl font-black text-slate-900 uppercase">No Document</h3>
                 <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-4">
-                    {error ?? 'No document URL provided.'}
+                    No document URL was provided for this lesson.
                 </p>
+            </div>
+        );
+    }
+
+    // ── Load error with Retry ────────────────────────────────────────────────
+    if (error) {
+        return (
+            <div className="py-20 text-center max-w-lg mx-auto px-6">
+                <AlertTriangle className="mx-auto text-rose-500 mb-6" size={48} />
+                <h3 className="text-xl font-black text-slate-900 uppercase mb-4">Document Unavailable</h3>
+                <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8 max-w-sm mx-auto">
+                    {error}
+                </p>
+                <button
+                    onClick={handleRetry}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-sm font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-600/20"
+                >
+                    <RefreshCw size={15} /> Retry
+                </button>
             </div>
         );
     }
 
     return (
         <div className={cn('w-full flex flex-col bg-white', className)} ref={containerRef}>
-            {/* PDF page area — height is natural (driven by aspect ratio of each page) */}
             <div className="w-full relative group">
+                {/*
+                 * key={`${absoluteUrl}-${retryKey}`} ensures:
+                 *   - A new URL always starts a fresh Document (no stale state)
+                 *   - Retry increments retryKey which remounts and re-fetches
+                 */}
                 <Document
+                    key={`${absoluteUrl}-${retryKey}`}
                     file={absoluteUrl}
                     onLoadSuccess={onDocumentLoadSuccess}
                     onLoadError={onDocumentLoadError}
                     loading={<PDFLoader />}
                     className="flex flex-col items-center py-4 sm:py-8"
-                    options={STABLE_PDF_OPTIONS}
+                    options={fileOptions}
                 >
-                    {/* Swipe wrapper — natural height, native touch */}
                     <div
                         className="relative w-full flex justify-center overflow-hidden"
                         onTouchStart={handleTouchStart}
@@ -185,9 +262,9 @@ export function PDFViewer({
                                 className="w-full flex justify-center"
                             >
                                 {/*
-                                 * Pass only `width` — react-pdf derives height from the page's
-                                 * own aspect ratio (including rotation metadata). This correctly
-                                 * handles landscape pages without needing any manual height calc.
+                                 * Only pass `width` — react-pdf derives height from the page's
+                                 * own aspect ratio metadata.  This correctly handles landscape
+                                 * pages without any manual height calculation.
                                  */}
                                 <Page
                                     pageNumber={pageNumber}
@@ -199,7 +276,7 @@ export function PDFViewer({
                             </motion.div>
                         </AnimatePresence>
 
-                        {/* Desktop hover navigation overlays */}
+                        {/* Desktop hover-nav overlays */}
                         {pageNumber > 1 && (
                             <button
                                 onClick={handlePrevPage}
@@ -224,13 +301,11 @@ export function PDFViewer({
                         )}
                     </div>
                 </Document>
-
             </div>
 
-            {/* Inline page navigation — not fixed, stays within the lesson view */}
+            {/* Bottom page navigation — only shown when document has multiple pages */}
             {numPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-white">
-                    {/* Prev */}
                     <button
                         onClick={handlePrevPage}
                         disabled={pageNumber === 1}
@@ -240,12 +315,10 @@ export function PDFViewer({
                         <ChevronLeft size={16} />
                     </button>
 
-                    {/* Progress */}
                     <div className="flex flex-col items-center gap-0.5">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                             Page {pageNumber} of {numPages}
                         </span>
-                        {/* Mini progress bar */}
                         <div className="w-24 h-1 rounded-full bg-slate-100 overflow-hidden">
                             <div
                                 className="h-full rounded-full bg-indigo-500 transition-all duration-300"
@@ -254,7 +327,6 @@ export function PDFViewer({
                         </div>
                     </div>
 
-                    {/* Next OR Mark Complete */}
                     {pageNumber < numPages ? (
                         <button
                             onClick={handleNextPage}

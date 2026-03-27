@@ -36,7 +36,7 @@ export async function getPublicPricingPlans() {
     }
 }
 export async function getPlatformSettings() {
-    if (isBuild) return {
+    const defaultSettings = {
         id: 'global',
         platform_name: 'TechNurture',
         logo_url: null,
@@ -48,5 +48,27 @@ export async function getPlatformSettings() {
         created_at: new Date(),
         updated_at: new Date()
     };
-    return await getCachedPlatformSettings();
+
+    if (isBuild) {
+        try {
+            const settings = await db.query.platformSettings.findFirst({
+                where: eq(platformSettings.id, 'global')
+            });
+            return settings || defaultSettings;
+        } catch (e) {
+            return defaultSettings;
+        }
+    }
+    
+    const cached = await getCachedPlatformSettings();
+    if (cached) return cached;
+
+    // Fallback to direct DB if cache is empty
+    try {
+        return await db.query.platformSettings.findFirst({
+            where: eq(platformSettings.id, 'global')
+        }) || defaultSettings;
+    } catch (e) {
+        return defaultSettings;
+    }
 }

@@ -30,17 +30,21 @@ interface SchoolsTabProps {
     searchQuery?: string;
     classes: any[];
     onSync?: () => void;
+    page?: number;
+    setPage?: (p: number) => void;
+    totalPages?: number;
 }
 
 export function SchoolsTab({
     stats, schoolsList, paymentPlans = [], onToggleStatus, onSaveSchool, onAssignPlan,
     showEditDialog, setShowEditDialog, editingSchool, setEditingSchool, searchQuery = '',
-    classes, onSync
+    classes, onSync, page = 0, setPage, totalPages = 1
 }: SchoolsTabProps) {
     const { isDark, accent } = useAdminTheme();
     const [assignSchoolId, setAssignSchoolId] = useState<string | null>(null);
     const [selectedPlanId, setSelectedPlanId] = useState<string>('');
 
+    // M-2: Server-side search handled by parent, filtering here is redundant but kept for safety if list isn't refreshed instantly
     const filteredSchools = searchQuery
         ? schoolsList.filter(s =>
             s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -110,7 +114,7 @@ export function SchoolsTab({
                         </div>
                     </div>
                     <Badge className={`text-[10px] font-black px-3 py-1 rounded-full ${isDark ? 'bg-white/[0.12] text-white shadow-lg shadow-black/20' : 'bg-slate-900 text-white shadow-md shadow-slate-200'}`}>
-                        {filteredSchools.length}{searchQuery ? ` of ${schoolsList.length}` : ''} TOTAL
+                        PAGE {page + 1}{totalPages > 1 ? ` OF ${totalPages}` : ''}
                     </Badge>
                 </div>
                 <div className={t.divider(isDark)}>
@@ -172,7 +176,7 @@ export function SchoolsTab({
                                                 <SelectContent className={`rounded-2xl border ${isDark ? 'bg-[#0f1219] border-white/10' : 'bg-white border-slate-200'}`}>
                                                     {paymentPlans.map(p => (
                                                         <SelectItem key={p.id} value={p.id} className="text-[12px] font-bold cursor-pointer">
-                                                            {p.name}  ₹{p.price.toLocaleString()}/{p.billing_cycle}
+                                                            {p.name}   ₹{p.price.toLocaleString()}/{p.billing_cycle}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -202,6 +206,27 @@ export function SchoolsTab({
                         </div>
                     )}
                 </div>
+
+                {/* Pagination Footer (M-2) */}
+                {totalPages > 1 && setPage && (
+                    <div className={`px-6 py-4 border-t ${t.border(isDark)} flex items-center justify-between`}>
+                        <p className={`text-[11px] font-bold ${t.textMuted(isDark)}`}>
+                            Page {page + 1} of {totalPages}
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="sm" disabled={page === 0}
+                                onClick={() => setPage(page - 1)}
+                                className={`rounded-full h-8 px-4 text-[11px] font-black disabled:opacity-30 ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-700'}`}>
+                                <ChevronLeft size={14} className="mr-1" /> Prev
+                            </Button>
+                            <Button variant="ghost" size="sm" disabled={page >= totalPages - 1}
+                                onClick={() => setPage(page + 1)}
+                                className={`rounded-full h-8 px-4 text-[11px] font-black disabled:opacity-30 ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-700'}`}>
+                                Next <ChevronRight size={14} className="ml-1" />
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </motion.div>
 
             {/* Edit Dialog */}

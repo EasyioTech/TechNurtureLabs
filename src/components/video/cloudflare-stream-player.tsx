@@ -1,19 +1,22 @@
 'use client';
 
 /**
- * CloudflareStreamPlayer — Renders a Cloudflare Stream video
- * using the official iframe embed with full adaptive streaming.
+ * CloudflareStreamPlayer — Renders a Cloudflare Stream video via iframe embed.
  *
  * Features:
- * - Adaptive bitrate streaming (HLS/DASH) handled by Cloudflare
- * - Progress tracking via postMessage API
- * - Auto-resume from last position
+ * - Adaptive bitrate streaming (HLS/DASH) via Cloudflare
+ * - Progress tracking via postMessage API (uses data.time — Cloudflare's actual field)
+ * - Duration capture from loadedmetadata event
+ * - No-skip enforcement: forward seeks beyond watched position are blocked
+ * - Auto-complete when video ends OR when ≥95% is watched
+ * - Manual "Mark Complete" fallback button at ≥90% watch time
+ * - Auto-resume from last saved position
  * - Fullscreen → landscape lock on mobile
  */
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Lock } from 'lucide-react';
 import { saveVideoProgress } from '@/modules/student/actions/lesson-actions';
 
 interface CloudflareStreamPlayerProps {
@@ -37,121 +40,171 @@ export function CloudflareStreamPlayer({
     className,
 }: CloudflareStreamPlayerProps) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
+
     const [isCompleted, setIsCompleted] = useState(!!initialProgress?.completed_at);
     const [verifiedProgress, setVerifiedProgress] = useState(initialProgress?.progress_pct || 0);
+    const [skipBlocked, setSkipBlocked] = useState(false);
 
-    // Build embed URL with resume timestamp
-    const startTimeSecs = initialProgress?.last_position_secs && initialProgress.last_position_secs > 10 && !isCompleted
-        ? Math.floor(initialProgress.last_position_secs)
-        : 0;
+    // Refs kept outside React state so they're readable inside message handlers
+    // without stale-closure issues and without triggering re-renders.
+    const completedRef = useRef(!!initialProgress?.completed_at);
+    // Highest video position the student has legitimately watched
+    const maxWatchedRef = useRef<number>(initialProgress?.last_position_secs || 0);
+    // Video duration — populated from loadedmetadata or the first timeupdate that includes it
+    const durationRef = useRef<number>(0);
+
+    // Build embed URL with optional resume timestamp
+    const startTimeSecs =
+        !completedRef.current &&
+        initialProgress?.last_position_secs &&
+        initialProgress.last_position_secs > 10
+            ? Math.floor(initialProgress.last_position_secs)
+            : 0;
 
     const embedUrl = [
         `https://iframe.videodelivery.net/${uid}`,
-        `?autoplay=false&preload=auto`,
+        `?autoplay=false&preload=auto&enableIframeApi=true`,
         startTimeSecs ? `&startTime=${startTimeSecs}` : '',
     ].join('');
 
-    // ── postMessage from Cloudflare iframe ────────────────────────────────────
+    // ── Seek the Cloudflare iframe to a given time ──────────────────────────
+    const seekIframeTo = useCallback((time: number) => {
+        try {
+            // Cloudflare Stream accepts {seek: number} postMessages
+            iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ seek: time }), '*');
+        } catch {}
+    }, []);
+
+    // ── Fire lesson completion exactly once ─────────────────────────────────
+    const fireComplete = useCallback(() => {
+        if (completedRef.current) return;
+        completedRef.current = true;
+        setIsCompleted(true);
+        onComplete?.(true);
+    }, [onComplete]);
+
+    // ── postMessage listener from Cloudflare iframe ─────────────────────────
     useEffect(() => {
-        if (isCompleted || !lessonId) return;
+        if (completedRef.current || !lessonId) return;
 
-        let lastSyncTime = 0;
-        // Track whether onComplete has been called to prevent double-fire
-        let firedComplete = false;
-
-        function fireComplete() {
-            if (firedComplete) return;
-            firedComplete = true;
-            setIsCompleted(true);
-            onComplete?.(true);
-        }
+        let lastDbSync = 0;
 
         function handleMessage(event: MessageEvent) {
-            // Cloudflare Stream sends from either of these origins
+            // Only accept messages from Cloudflare origins
             if (
                 !event.origin.includes('videodelivery.net') &&
-                !event.origin.includes('cloudflarestream.com') &&
-                !event.origin.includes('iframe.cloudflarestream.com')
+                !event.origin.includes('cloudflarestream.com')
             ) return;
 
             try {
-                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                const raw = event.data;
+                const data: any = typeof raw === 'string' ? JSON.parse(raw) : raw;
                 if (!data || typeof data !== 'object') return;
 
-                // Cloudflare Stream postMessage API uses `data.time`, not `data.currentTime`
-                const currentTime = data.currentTime ?? data.time ?? null;
-                const duration = data.duration ?? null;
+                // ── Capture duration ──────────────────────────────────────
+                // Cloudflare sends duration in loadedmetadata; also sometimes in timeupdate
+                if (data.duration && data.duration > 0) {
+                    durationRef.current = data.duration;
+                }
 
-                // Progress tracking (timeupdate)
-                if (data.type === 'timeupdate' && currentTime !== null && duration) {
-                    const pct = Math.floor((currentTime / duration) * 100);
-                    setVerifiedProgress(prev => {
-                        const next = Math.max(prev, pct);
-                        return next;
-                    });
+                // ── timeupdate ────────────────────────────────────────────
+                // Cloudflare Stream uses `data.time`, NOT `data.currentTime`
+                const ct: number | null = data.time ?? data.currentTime ?? null;
 
-                    const now = Date.now();
-                    if (now - lastSyncTime > 10000) {
-                        lastSyncTime = now;
-                        saveVideoProgress(lessonId!, currentTime, pct).catch(() => {});
+                if (data.type === 'timeupdate' && ct !== null) {
+                    const duration = durationRef.current;
+
+                    // ── No-skip enforcement ───────────────────────────────
+                    // Allow up to 3 seconds ahead of maxWatched (covers normal
+                    // playback gaps between timeupdate events and resume offsets).
+                    const allowedMax = maxWatchedRef.current + 3;
+
+                    if (!completedRef.current && ct > allowedMax) {
+                        // Student tried to skip forward — push them back
+                        seekIframeTo(maxWatchedRef.current);
+                        // Show brief on-screen indicator
+                        setSkipBlocked(true);
+                        setTimeout(() => setSkipBlocked(false), 1800);
+                        return; // discard this position update
                     }
 
-                    // Fallback: if 95%+ watched and ended event never fires, complete anyway
-                    if (pct >= 95) {
-                        fireComplete();
+                    // Legitimate position — advance the watermark
+                    maxWatchedRef.current = Math.max(maxWatchedRef.current, ct);
+
+                    // Update progress percentage for UI and DB
+                    if (duration > 0) {
+                        const pct = Math.min(100, Math.floor((ct / duration) * 100));
+                        setVerifiedProgress(prev => Math.max(prev, pct));
+
+                        // Throttled DB save (at most once every 10 s)
+                        const now = Date.now();
+                        if (now - lastDbSync > 10_000) {
+                            lastDbSync = now;
+                            saveVideoProgress(lessonId!, ct, pct).catch(() => {});
+                        }
+
+                        // Auto-complete fallback: if 95 %+ watched and ended never fired
+                        if (pct >= 95) {
+                            fireComplete();
+                        }
                     }
                 }
 
-                // Video ended → bubble up immediately
+                // ── Video ended ───────────────────────────────────────────
                 if (data.type === 'ended' || data.event === 'ended') {
+                    // Save final position before completing
+                    const dur = durationRef.current;
+                    if (dur > 0 && lessonId) {
+                        saveVideoProgress(lessonId, dur, 100).catch(() => {});
+                    }
                     fireComplete();
                 }
-            } catch {}
+            } catch {
+                // Ignore parse errors from unrelated postMessages
+            }
         }
 
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [lessonId, isCompleted, onComplete]);
+    // fireComplete and seekIframeTo are stable (useCallback with no deps that change)
+    }, [lessonId, fireComplete, seekIframeTo]);
 
-    // ── Flush progress on tab hide ─────────────────────────────────────────
+    // ── Flush progress when tab is hidden ───────────────────────────────────
     useEffect(() => {
-        if (isCompleted || !lessonId) return;
+        if (!lessonId) return;
 
         function handleVisibilityChange() {
-            if (document.visibilityState === 'hidden' && verifiedProgress > 0) {
-                // Use verified progress to estimate current time; flush to DB
-                const estimatedTime = (verifiedProgress / 100) * 600; // rough estimate
-                saveVideoProgress(lessonId!, estimatedTime, verifiedProgress).catch(() => {});
+            if (document.visibilityState === 'hidden' && maxWatchedRef.current > 0 && !completedRef.current) {
+                const dur = durationRef.current || 1;
+                const pct = Math.min(100, Math.floor((maxWatchedRef.current / dur) * 100));
+                saveVideoProgress(lessonId!, maxWatchedRef.current, pct).catch(() => {});
             }
         }
+
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, [lessonId, isCompleted, verifiedProgress]);
+    }, [lessonId]);
 
-    // ── Fullscreen → auto-rotate to landscape on mobile ───────────────────
+    // ── Fullscreen → landscape lock on mobile ───────────────────────────────
     useEffect(() => {
         function handleFullscreenChange() {
-            const isFullscreen = !!(
+            const isFS = !!(
                 document.fullscreenElement ||
                 (document as any).webkitFullscreenElement ||
                 (document as any).mozFullScreenElement
             );
-
-            if (isFullscreen) {
-                try {
+            try {
+                if (isFS) {
                     (screen.orientation as any)?.lock?.('landscape').catch?.(() => {});
-                } catch {}
-            } else {
-                try {
+                } else {
                     screen.orientation?.unlock?.();
-                } catch {}
-            }
+                }
+            } catch {}
         }
 
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
         document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-
         return () => {
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
             document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
@@ -161,6 +214,7 @@ export function CloudflareStreamPlayer({
 
     return (
         <div className={cn('w-full overflow-hidden bg-black', className)}>
+            {/* Video iframe */}
             <div className="relative aspect-video w-full">
                 <iframe
                     ref={iframeRef}
@@ -170,26 +224,59 @@ export function CloudflareStreamPlayer({
                     allowFullScreen
                     loading="lazy"
                 />
+
+                {/* Skip-blocked toast overlay */}
+                {skipBlocked && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="flex items-center gap-2 bg-slate-900/90 backdrop-blur-sm text-white px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-2xl border border-white/10">
+                            <Lock size={13} />
+                            Please watch the video in order
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* Manual completion fallback — appears after 90% watch time if the video
-                has not auto-completed (e.g. ended event was missed or player issue). */}
-            {!isCompleted && verifiedProgress >= 90 && lessonId && (
-                <div className="bg-black px-4 py-3 flex items-center justify-end">
-                    <button
-                        onClick={() => {
-                            if (!isCompleted) {
-                                setIsCompleted(true);
-                                onComplete?.(true);
-                            }
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-emerald-500/20"
-                    >
-                        <CheckCircle2 size={14} />
-                        Mark Complete
-                    </button>
+            {/* Below-video status bar */}
+            <div className="bg-slate-950 px-4 py-2.5 flex items-center justify-between gap-4">
+                {/* Progress pip */}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                            style={{ width: `${verifiedProgress}%` }}
+                        />
+                    </div>
+                    <span className="text-[10px] font-black text-slate-500 tabular-nums flex-shrink-0">
+                        {verifiedProgress}%
+                    </span>
                 </div>
-            )}
+
+                {/* No-skip hint */}
+                {!isCompleted && (
+                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1 flex-shrink-0">
+                        <Lock size={9} /> No skip
+                    </span>
+                )}
+
+                {/* Manual complete fallback (≥90% watched, auto-complete at 95% may not have fired) */}
+                {!isCompleted && verifiedProgress >= 90 && lessonId && (
+                    <button
+                        onClick={() => fireComplete()}
+                        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                    >
+                        <CheckCircle2 size={12} />
+                        Complete
+                    </button>
+                )}
+
+                {/* Completed badge */}
+                {isCompleted && (
+                    <span className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900/40 text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                        <CheckCircle2 size={12} />
+                        Done
+                    </span>
+                )}
+            </div>
         </div>
     );
 }

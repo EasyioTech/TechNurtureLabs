@@ -99,16 +99,6 @@ export type UserMetric = {
     last_activity: string | null;
 };
 
-export type CourseMetric = {
-    id: string;
-    title: string;
-    is_published: boolean;
-    lesson_count: number;
-    enrolled_count: number;
-    completion_rate: number;
-    avg_xp: number;
-    total_time_mins: number;
-};
 
 export type PromoCode = {
     id: string;
