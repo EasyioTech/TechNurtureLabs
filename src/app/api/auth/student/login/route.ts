@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { students } from '@/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, or, sql } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { rateLimitService } from '@/lib/services/rate-limit';
