@@ -38,6 +38,10 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
   const player = useRef<any>(null);
   const [isReady, setIsReady] = useState(false);
 
+  // Keep latest onComplete in a ref so fireComplete is stable (empty dep array).
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+
   // Highest legitimately-watched position — used for no-skip and DB flush
   const maxWatchedRef = useRef<number>(initialProgress?.last_position_secs || 0);
   const completedRef = useRef(!!initialProgress?.completed_at);
@@ -46,8 +50,8 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
   const fireComplete = useCallback(() => {
     if (completedRef.current) return;
     completedRef.current = true;
-    onComplete?.(true);
-  }, [onComplete]);
+    onCompleteRef.current?.(true);
+  }, []);
 
   // ── Auto-resume ───────────────────────────────────────────────────────────
   const onCanPlay = useCallback(() => {

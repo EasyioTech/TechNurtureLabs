@@ -40,6 +40,12 @@ export function CloudflareStreamPlayer({
 }: CloudflareStreamPlayerProps) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
+    // Keep latest onComplete in a ref so fireComplete never needs it as a dep.
+    // This prevents the message listener from tearing down on every parent re-render
+    // (e.g. when docPage changes in a multi-block lesson with video + PDF).
+    const onCompleteRef = useRef(onComplete);
+    useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+
     // Refs kept outside React state so they're readable inside message handlers
     // without stale-closure issues and without triggering re-renders.
     const completedRef = useRef(!!initialProgress?.completed_at);
@@ -83,11 +89,12 @@ export function CloudflareStreamPlayer({
     }, []);
 
     // ── Fire lesson completion exactly once ─────────────────────────────────
+    // Empty dep array — stable forever. onCompleteRef always holds the latest value.
     const fireComplete = useCallback(() => {
         if (completedRef.current) return;
         completedRef.current = true;
-        onComplete?.(true);
-    }, [onComplete]);
+        onCompleteRef.current?.(true);
+    }, []);
 
     // ── postMessage listener from Cloudflare iframe ─────────────────────────
     // NOTE: The listener is intentionally NOT gated on lessonId so that the

@@ -273,61 +273,64 @@ export function LessonContent({
     [lesson.content_items, lesson.content_url, lesson.content_type]
   );
 
-  // Track which blocks have completed (for multi-block: complete after last interactive block)
-  const [completedBlocks, setCompletedBlocks] = React.useState<Set<string>>(new Set());
-  // Prevent onComplete from firing more than once per lesson
-  const lessonCompletedRef = React.useRef(false);
-  // Store latest isVideo so the effect below can forward it
-  const lastBlockIsVideo = React.useRef<boolean | undefined>(undefined);
+  // Always-current reference to onComplete — avoids adding it as a dep on callbacks,
+  // which would cause handleBlockComplete to re-create and the video listener to
+  // tear down every time a parent state change (e.g. docPage) produces a new lambda.
+  const onCompleteRef = React.useRef(onComplete);
+  React.useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
-  // Interactive blocks are blocks that require user action to complete.
-  // Text blocks are purely informational — they auto-complete immediately and are excluded
-  // from the completion threshold so they can never block lesson completion.
+  // Ref-based completion tracking — no state, no useEffect timing issues.
+  // A Set<string> of block ids that have fired onComplete.
+  const completedBlockIdsRef = React.useRef<Set<string>>(new Set());
+  // Guard: prevent firing lesson completion more than once.
+  const lessonCompletedRef = React.useRef(false);
+  // Remember whether the last completing block was a video (forwarded to parent).
+  const lastIsVideoRef = React.useRef<boolean | undefined>(undefined);
+
+  // Interactive blocks = blocks that need the student to take action.
+  // Text blocks auto-complete and are excluded from the threshold.
   const interactiveBlocks = React.useMemo(
     () => (blocks ?? []).filter(b => b.type !== 'text'),
     [blocks]
   );
 
-  // Reset per-lesson state when lesson changes
+  // Reset all per-lesson refs when the lesson changes.
   React.useEffect(() => {
-    setCompletedBlocks(new Set());
+    completedBlockIdsRef.current = new Set();
     lessonCompletedRef.current = false;
-    lastBlockIsVideo.current = undefined;
+    lastIsVideoRef.current = undefined;
   }, [lesson.id]);
 
+  // Called by each content block when it finishes.
+  // Checks synchronously whether ALL interactive blocks are done, then fires
+  // onComplete exactly once — no state update cycle, no effect timing gap.
   const handleBlockComplete = React.useCallback((blockId: string, isVideo?: boolean) => {
-    if (!blocks) { onComplete(isVideo); return; }
-    // Text blocks don't participate in the completion gate — skip tracking them
-    const isTextBlock = blocks.find(b => b.id === blockId)?.type === 'text';
-    if (isTextBlock) return;
-    lastBlockIsVideo.current = isVideo;
-    // Pure updater — no side-effects inside
-    setCompletedBlocks(prev => {
-      const next = new Set(prev);
-      next.add(blockId);
-      return next;
-    });
-  }, [blocks, onComplete]);
+    // Legacy: no content_items — single-block lesson, forward directly.
+    if (!blocks) { onCompleteRef.current(isVideo); return; }
 
-  // Fire lesson completion AFTER state update — guard ref prevents repeated calls.
-  // Only interactive (non-text) blocks count toward the completion threshold.
-  React.useEffect(() => {
-    if (!blocks) return;
+    // Text blocks are informational only; they never gate lesson completion.
+    const block = blocks.find(b => b.id === blockId);
+    if (!block || block.type === 'text') return;
+
+    completedBlockIdsRef.current.add(blockId);
+    lastIsVideoRef.current = isVideo;
+
+    // All-text lesson: complete immediately (interactiveBlocks.length === 0).
     const threshold = interactiveBlocks.length;
     if (threshold === 0) {
-      // All blocks are text — complete immediately
       if (!lessonCompletedRef.current) {
         lessonCompletedRef.current = true;
-        onComplete(undefined);
+        onCompleteRef.current(undefined);
       }
       return;
     }
-    const allDone = interactiveBlocks.every(b => completedBlocks.has(b.id));
+
+    const allDone = interactiveBlocks.every(b => completedBlockIdsRef.current.has(b.id));
     if (allDone && !lessonCompletedRef.current) {
       lessonCompletedRef.current = true;
-      onComplete(lastBlockIsVideo.current);
+      onCompleteRef.current(lastIsVideoRef.current);
     }
-  }, [completedBlocks, blocks, interactiveBlocks, onComplete]);
+  }, [blocks, interactiveBlocks]);
 
   // Legacy single-content rendering
   const isStreamVideo = lesson.content_type === 'video' && lesson.content_url && isCloudflareStreamUrl(lesson.content_url);
