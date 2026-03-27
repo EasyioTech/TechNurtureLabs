@@ -69,6 +69,7 @@ export async function saveQuizAdmin(quizData: unknown) {
     }
 
     const data = quizSchema.parse(quizData);
+    let quizId = data.id;
     const passPercentage = (data.pass_percentage ?? 60).toString();
     return await db.transaction(async (tx) => {
         if (quizId) {
