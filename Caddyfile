@@ -1,0 +1,7 @@
+technurturelms.in {
+    reverse_proxy app:3000
+}
+
+www.technurturelms.in {
+    redir https://technurturelms.in{uri} permanent
+}
