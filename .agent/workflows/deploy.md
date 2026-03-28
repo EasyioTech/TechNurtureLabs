@@ -12,14 +12,14 @@ This workflow automates the process of committing local changes, pushing to both
 
 // turbo
 2. Configure VPS repository (one-time) and push directly to it:
-`git remote add vps ssh://root@187.124.98.192/root/TechNurtureLabs; git config receive.denyCurrentBranch ignore; git push vps main`
+`git remote add vps ssh://root@187.127.132.137/root/TechNurtureLabs; git config receive.denyCurrentBranch ignore; git push vps main`
 
 // turbo
 3. Remote Update: Reset VPS worktree and rebuild containers:
-`ssh root@187.124.98.192 "cd ~/TechNurtureLabs; git reset --hard; docker compose down; docker compose up -d --build"`
+`ssh root@187.127.132.137 "cd ~/TechNurtureLabs; git reset --hard; docker compose down; docker compose up -d --build"`
 
 // turbo
 4. Verify all containers are up and healthy:
-`ssh root@187.124.98.192 "docker ps"`
+`ssh root@187.127.132.137 "docker ps"`
 
 5. Observe the output and announce completion.
