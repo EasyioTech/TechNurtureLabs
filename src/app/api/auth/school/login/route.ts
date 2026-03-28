@@ -6,6 +6,7 @@ import { createSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { rateLimitService } from '@/lib/services/rate-limit';
 import { z } from 'zod';
+import { analyticsService } from '@/lib/services/analytics-service';
 
 const loginSchema = z.object({
     email: z.string().email('Invalid email').max(256),
@@ -53,6 +54,10 @@ export async function POST(request: NextRequest) {
         }
 
         await createSession({ userId: user.id, userType: 'school_admin' });
+
+        // Track login heatmap — fire-and-forget
+        const now = new Date();
+        analyticsService.trackLoginHour(now.getDay(), now.getHours()).catch(() => {});
 
         const { password_hash, ...userData } = user;
         return NextResponse.json({ success: true, user: { ...userData, role: 'school_admin' } });

@@ -77,11 +77,12 @@ export function SortableLessonItem({ lesson, index, onEdit, onDelete }: Sortable
                     </div>
                 </div>
 
-                <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? `text-slate-400 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-300 hover:text-slate-900 hover:bg-slate-100'}`} onClick={onEdit}>
+                <div className="flex gap-2 flex-shrink-0">
+                    {/* Always visible on touch/mobile, hover-reveal on pointer devices */}
+                    <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full transition-all lg:opacity-0 lg:group-hover:opacity-100 ${isDark ? `text-slate-400 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`} onClick={onEdit}>
                         <Edit size={14} />
                     </Button>
-                    <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-300 hover:text-rose-600 hover:bg-rose-100'}`} onClick={onDelete}>
+                    <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full transition-all lg:opacity-0 lg:group-hover:opacity-100 ${isDark ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-500 hover:text-rose-600 hover:bg-rose-100'}`} onClick={onDelete}>
                         <Trash2 size={14} />
                     </Button>
                 </div>

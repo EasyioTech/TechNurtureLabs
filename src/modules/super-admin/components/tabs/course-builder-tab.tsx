@@ -98,7 +98,7 @@ export function CourseBuilderTab({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Course List */}
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
-                    className={`rounded-[24px] border overflow-hidden transition-all duration-500 shadow-xl shadow-black/5 flex flex-col h-[700px] ${t.card(isDark)}`}>
+                    className={`rounded-[24px] border overflow-hidden transition-all duration-500 shadow-xl shadow-black/5 flex flex-col h-[420px] sm:h-[520px] lg:h-[700px] ${t.card(isDark)}`}>
                     <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${t.border(isDark)}`}>
                         <h3 className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>All Courses</h3>
                         <Button variant="ghost" size="sm"
@@ -179,7 +179,7 @@ export function CourseBuilderTab({
 
                 {/* Lesson Panel */}
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                    className={`lg:col-span-2 rounded-[24px] border overflow-hidden transition-all duration-500 shadow-xl shadow-black/5 flex flex-col h-[700px] ${t.card(isDark)}`}>
+                    className={`lg:col-span-2 rounded-[24px] border overflow-hidden transition-all duration-500 shadow-xl shadow-black/5 flex flex-col h-[520px] sm:h-[600px] lg:h-[700px] ${t.card(isDark)}`}>
                     <div className={`flex items-center justify-between px-6 py-5 border-b flex-shrink-0 ${t.border(isDark)}`}>
                         <div>
                             <h3 className={`font-black text-lg tracking-tight ${t.textPrimary(isDark)}`}>

@@ -8,8 +8,20 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
     LayoutGrid, BookOpen, CreditCard, Users, BarChart3,
     Building2, Bell, Search, Sun, Moon, Filter, LogOut, Plus, Palette, Check, Settings,
-    Menu, X, Save, Library, Activity, Zap, GraduationCap
+    Menu, X, Save, Library, Activity, Zap, GraduationCap, ChevronDown
 } from 'lucide-react';
+import { 
+    DropdownMenu, 
+    DropdownMenuContent, 
+    DropdownMenuItem, 
+    DropdownMenuTrigger,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
+    DropdownMenuPortal
+} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useAdminData } from '../hooks/use-admin-data';
 import { AdminThemeProvider, useAdminTheme, t, COLOR_SCHEMES, type ColorScheme } from '../theme-context';
@@ -22,19 +34,6 @@ import { SettingsTab } from './tabs/settings-tab';
 import { PromoCodesTab } from './tabs/promo-codes-tab';
 import { SystemHealthTab } from './tabs/system-health-tab';
 import { LibraryTab } from './tabs/library-tab';
-
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
-    DropdownMenuPortal,
-} from "@/components/ui/dropdown-menu";
 
 import {
     Popover,
@@ -50,7 +49,6 @@ const NAV_ITEMS = [
     { id: 'schools', label: 'SCHOOLS', icon: Building2 },
     { id: 'library', label: 'LIBRARY', icon: Library },
     { id: 'users', label: 'STUDENTS', icon: Users },
-    { id: 'system', label: 'SYSTEM', icon: LayoutGrid, iconOnly: true },
     { id: 'settings', label: 'SETTINGS', icon: Settings, iconOnly: true },
 ];
 
@@ -62,8 +60,7 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
     schools: { title: 'Schools & Partners', subtitle: 'View and manage all registered school accounts.' },
     users: { title: 'Student Management', subtitle: 'Track student progress and overall engagement.' },
     library: { title: 'Content Library', subtitle: 'Browse and reuse content across the platform.' },
-    system: { title: 'Engine Status', subtitle: 'Monitor Redis performance and infrastructure health.' },
-    settings: { title: 'Platform Settings', subtitle: 'Manage global platform configuration and hero video.' },
+    settings: { title: 'Platform Settings', subtitle: 'Manage global platform configuration and infrastructure health.' },
 };
 
 function DashboardContent() {
@@ -101,20 +98,32 @@ function DashboardContent() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const data = useAdminData();
 
-    // Trigger granular data loading based on active page
+    // Tracks which tabs have had their initial data load — prevents redundant
+    // fetches when the user navigates back to an already-loaded tab.
+    const initializedTabs = useRef<Set<string>>(new Set());
+
+    // Effect 1: tabs that need live data on every page-change or search update
     useEffect(() => {
         if (activePage === 'users') {
             data.loadStudents(data.userMetricsPage, searchQuery);
         } else if (activePage === 'schools' || activePage === 'overview') {
             data.loadSchools(data.schoolsPage, searchQuery);
-        } else if (activePage === 'courses') {
-            data.loadCourses(data.coursesPage);
-        } else if (activePage === 'library') {
-            data.loadGlobalLessons(data.globalLessonsPage, searchQuery);
-            data.loadGlobalQuizzes(data.globalQuizzesPage, searchQuery);
         }
-        // Only re-run when page indices or search query changes, NOT when 'data' or 'activePage' itself changes if they are already stable
-    }, [activePage, data.userMetricsPage, data.schoolsPage, data.coursesPage, data.globalLessonsPage, data.globalQuizzesPage, searchQuery]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activePage, data.userMetricsPage, data.schoolsPage, searchQuery]);
+
+    // Effect 2: tabs that only need a single initial load (pagination handled inside the tab)
+    useEffect(() => {
+        if (activePage === 'courses' && !initializedTabs.current.has('courses')) {
+            initializedTabs.current.add('courses');
+            data.loadCourses(0);
+        } else if (activePage === 'library' && !initializedTabs.current.has('library')) {
+            initializedTabs.current.add('library');
+            data.loadGlobalLessons(1, '');
+            data.loadGlobalQuizzes(1, '');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activePage]);
 
     if (data.loading) {
         return (
@@ -210,121 +219,89 @@ function DashboardContent() {
                         </div>
 
                         {/* Right: Actions */}
-                        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 justify-end z-10">
-                            {/* Search Popover */}
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <button className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center cursor-pointer transition-all border ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] hover:border-white/10 bg-white/[0.02]' : 'hover:bg-neutral-50 hover:shadow-md bg-neutral-100/50'}`}>
-                                        <Search size={18} className={`transition-all ${t.textSecondary(isDark)}`} />
+                        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 justify-end z-10">
+                            
+                            {/* Theme & Accent Dropdown */}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button 
+                                        title="Theme Settings"
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all border outline-none ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.06] hover:border-white/10 bg-white/[0.02] text-amber-400' : 'hover:bg-neutral-50 hover:shadow-md bg-neutral-100/50 text-amber-600'}`}
+                                    >
+                                        {isDark ? <Sun size={18} /> : <Moon size={18} />}
                                     </button>
-                                </PopoverTrigger>
-                                <PopoverContent className={`w-72 sm:w-96 rounded-[28px] p-3 border-0 shadow-2xl ${isDark ? 'bg-[#121214]/98 backdrop-blur-xl' : 'bg-white'}`} align="end" sideOffset={12}>
-                                    <div className={`flex items-center rounded-2xl px-4 py-3 gap-3 border transition-all duration-300 focus-within:ring-4 focus-within:ring-${accent.name}-400/20 focus-within:border-${accent.name}-400/30 ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-neutral-50'}`}>
-                                        <Search size={16} className={`flex-shrink-0 ${isDark ? accent.text : 'text-neutral-500'}`} />
-                                        <input
-                                            type="text"
-                                            placeholder="Search students, schools, courses..."
-                                            autoFocus
-                                            value={searchQuery}
-                                            onChange={e => setSearchQuery(e.target.value)}
-                                            className={`bg-transparent text-[13px] font-bold outline-none w-full placeholder:font-bold ${t.textPrimary(isDark)}`}
-                                        />
-                                        {searchQuery && (
-                                            <button 
-                                                onClick={() => setSearchQuery('')} 
-                                                className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/10 text-slate-400' : 'hover:bg-neutral-200 text-neutral-400'}`}
-                                            >
-                                                ✕
-                                            </button>
-                                        )}
-                                    </div>
-                                    <p className={`text-[10px] font-black tracking-widest uppercase mt-4 px-1 ${t.textMuted(isDark)}`}>Quick Search</p>
-                                </PopoverContent>
-                            </Popover>
-
-                            {/* Settings Buttons */}
-                            <div className="flex items-center gap-1.5 sm:gap-2">
-                                <button className={`hidden lg:flex w-10 h-10 rounded-full items-center justify-center cursor-pointer transition-all relative border group ${t.border(isDark)} ${isDark ? `hover:bg-white/[0.06] hover:border-white/10` : 'hover:bg-neutral-50 hover:shadow-md'}`}>
-                                    <Bell size={18} className={`transition-all group-hover:rotate-12 ${t.textSecondary(isDark)}`} />
-                                    <span className={`absolute top-2.5 right-2.5 w-2 h-2 ${accent.bg} rounded-full ring-2 ${isDark ? 'ring-[#09090b]' : 'ring-white'}`} style={{ boxShadow: `0 0 10px ${isDark ? accent.swatchDark : accent.swatchLight}80` }} />
-                                </button>
-
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full cursor-pointer border-2 transition-all p-0.5 overflow-hidden ${isDark ? `border-white/10 hover:border-white/20` : 'border-neutral-200/50 shadow-lg hover:shadow-xl'}`}>
-                                            <Avatar className="w-full h-full">
-                                                <AvatarFallback className={`text-[10px] font-black ${isDark ? `${accent.bg} text-slate-900` : 'bg-slate-900 text-white'}`}>SA</AvatarFallback>
-                                            </Avatar>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className={`w-56 p-2 rounded-2xl border shadow-2xl ${t.card(isDark)} ${t.border(isDark)}`}>
+                                    <DropdownMenuLabel className={`text-[10px] uppercase tracking-widest font-black mb-1 opacity-50 ${t.textPrimary(isDark)}`}>
+                                        Appearance
+                                    </DropdownMenuLabel>
+                                    
+                                    <DropdownMenuItem 
+                                        onClick={toggle}
+                                        className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-100'}`}
+                                    >
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? 'bg-amber-400/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+                                            {isDark ? <Sun size={16} /> : <Moon size={16} />}
                                         </div>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className={`w-64 rounded-3xl p-2 border-0 shadow-2xl ${isDark ? 'bg-[#121214]/98 backdrop-blur-xl' : 'bg-white'}`}>
-                                        <DropdownMenuLabel className={`px-4 py-3 text-[10px] font-black tracking-[0.2em] uppercase ${t.textMuted(isDark)}`}>SYSTEM SETTINGS</DropdownMenuLabel>
+                                        <div className="flex flex-col">
+                                            <span className={`text-xs font-bold ${t.textPrimary(isDark)}`}>
+                                                {isDark ? 'Light Mode' : 'Dark Mode'}
+                                            </span>
+                                            <span className={`text-[10px] ${t.textMuted(isDark)}`}>
+                                                Switch to {isDark ? 'light' : 'dark'} mode
+                                            </span>
+                                        </div>
+                                    </DropdownMenuItem>
 
-                                        <DropdownMenuItem onClick={toggle} className={`flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50'}`}>
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
-                                                {isDark ? <Sun size={16} /> : <Moon size={16} />}
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className={`text-xs font-black ${t.textPrimary(isDark)}`}>{isDark ? 'LIGHT MODE' : 'DARK MODE'}</span>
-                                                <span className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>SWITCH INTERFACE THEME</span>
-                                            </div>
-                                        </DropdownMenuItem>
+                                    <DropdownMenuSeparator className={`my-2 opacity-50 ${isDark ? 'bg-white/10' : 'bg-neutral-200'}`} />
 
-                                        <DropdownMenuSub>
-                                            <DropdownMenuSubTrigger className={`flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all mx-2 my-1 focus:bg-transparent ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50'}`}>
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-indigo-50'} ${accent.text}`}>
-                                                    <Palette size={16} />
-                                                </div>
-                                                <div className="flex flex-col text-left">
-                                                    <span className={`text-xs font-black ${t.textPrimary(isDark)}`}>ACCENT COLOR</span>
-                                                    <span className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>{accent.label} SELECTED</span>
-                                                </div>
-                                            </DropdownMenuSubTrigger>
-                                            <DropdownMenuPortal>
-                                                <DropdownMenuSubContent className={`w-48 rounded-2xl p-2 border-0 shadow-2xl ${isDark ? 'bg-[#18181b] backdrop-blur-xl' : 'bg-white'}`}>
-                                                    <div className="grid grid-cols-1 gap-1">
-                                                        {(Object.keys(COLOR_SCHEMES) as ColorScheme[]).map((key) => {
-                                                            const scheme = COLOR_SCHEMES[key];
-                                                            const isActive = colorScheme === key;
-                                                            return (
-                                                                <DropdownMenuItem
-                                                                    key={key}
-                                                                    onSelect={() => setColorScheme(key)}
-                                                                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer ${isActive ? (isDark ? 'bg-white/[0.1]' : 'bg-neutral-100') : (isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-neutral-50')}`}
-                                                                >
-                                                                    <div className="w-4 h-4 rounded-full border border-white/10" style={{ backgroundColor: isDark ? scheme.swatchDark : scheme.swatchLight }} />
-                                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? t.textPrimary(isDark) : t.textSecondary(isDark)}`}>{scheme.label}</span>
-                                                                    {isActive && <Check size={12} className="ml-auto text-emerald-500" />}
-                                                                </DropdownMenuItem>
-                                                            );
-                                                        })}
+                                    <DropdownMenuLabel className={`text-[10px] uppercase tracking-widest font-black mb-1 opacity-50 ${t.textPrimary(isDark)}`}>
+                                        Accent Color
+                                    </DropdownMenuLabel>
+
+                                    <div className="grid grid-cols-2 gap-1 px-1">
+                                        {(Object.keys(COLOR_SCHEMES) as ColorScheme[]).map((key) => {
+                                            const palette = COLOR_SCHEMES[key];
+                                            const isActive = colorScheme === key;
+                                            return (
+                                                <DropdownMenuItem
+                                                    key={key}
+                                                    onClick={() => setColorScheme(key)}
+                                                    className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-all ${isActive ? (isDark ? 'bg-white/10' : 'bg-neutral-100') : 'hover:opacity-80'}`}
+                                                >
+                                                    <div 
+                                                        className="w-4 h-4 rounded-full border border-black/10 flex items-center justify-center shrink-0"
+                                                        style={{ backgroundColor: isDark ? palette.swatchDark : palette.swatchLight }}
+                                                    >
+                                                        {isActive && <Check size={10} className="text-white drop-shadow-sm" strokeWidth={4} />}
                                                     </div>
-                                                </DropdownMenuSubContent>
-                                            </DropdownMenuPortal>
-                                        </DropdownMenuSub>
+                                                    <span className={`text-[11px] font-medium ${t.textPrimary(isDark)}`}>
+                                                        {palette.label}
+                                                    </span>
+                                                </DropdownMenuItem>
+                                            );
+                                        })}
+                                    </div>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
 
-                                        <DropdownMenuSeparator className={`my-2 ${isDark ? 'bg-white/[0.05]' : 'bg-neutral-100'}`} />
+                            {/* Sign Out Button */}
+                            <button 
+                                onClick={() => signOut()}
+                                title="Sign Out"
+                                className={`flex items-center gap-2 h-10 px-4 rounded-full transition-all border font-black text-[10px] uppercase tracking-widest ${t.accentSoft(isDark, accent)} ${isDark ? 'hover:bg-rose-500/20' : 'hover:bg-rose-100'}`}
+                            >
+                                <LogOut size={14} strokeWidth={3} />
+                                <span className="hidden sm:inline">Sign Out</span>
+                            </button>
 
-                                        <DropdownMenuItem onClick={() => signOut()} className={`flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all hover:bg-rose-500/10 text-rose-500`}>
-                                            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-rose-500/10">
-                                                <LogOut size={16} />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-xs font-black">SIGN OUT</span>
-                                                <span className="text-[9px] font-bold opacity-70">END SESSION</span>
-                                            </div>
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-
-                                <button
-                                    className={`md:hidden w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all border shadow-lg ${t.border(isDark)} ${isDark ? 'bg-white/[0.05] hover:bg-white/[0.1] text-white' : 'bg-white hover:bg-neutral-50 text-slate-900'}`}
-                                    onClick={() => setMobileMenuOpen(v => !v)}
-                                    aria-label="Toggle Mobile Menu"
-                                >
-                                    {mobileMenuOpen ? <X size={20} strokeWidth={3} /> : <Menu size={20} strokeWidth={3} />}
-                                </button>
-                            </div>
+                            <button
+                                className={`md:hidden w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all border shadow-lg ${t.border(isDark)} ${isDark ? 'bg-white/[0.05] hover:bg-white/[0.1] text-white' : 'bg-white hover:bg-neutral-50 text-slate-900'}`}
+                                onClick={() => setMobileMenuOpen(v => !v)}
+                                aria-label="Toggle Mobile Menu"
+                            >
+                                {mobileMenuOpen ? <X size={20} strokeWidth={3} /> : <Menu size={20} strokeWidth={3} />}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -432,7 +409,7 @@ function DashboardContent() {
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.3, ease: 'circOut' }}
                     >
-                        {activePage === 'overview' && <OverviewTab stats={data.stats} paymentPlans={data.paymentPlans} schoolsList={data.schoolsList} platformMetrics={data.platformMetrics} onSync={data.syncMetrics} />}
+                        {activePage === 'overview' && <OverviewTab stats={data.stats} paymentPlans={data.paymentPlans} schoolsList={data.schoolsList} platformMetrics={data.platformMetrics} loginHeatmap={data.loginHeatmap} onSync={data.syncMetrics} />}
                         {activePage === 'courses' && (
                             <CourseBuilderTab
                                 courses={data.courses} selectedCourse={data.selectedCourse}
@@ -524,7 +501,7 @@ function DashboardContent() {
                                 />
                             </div>
                         )}
-                        { activePage === 'system' && <SystemHealthTab />}
+                        
                         { activePage === 'library' && (
                             <LibraryTab 
                                 lessons={data.globalLessons} 

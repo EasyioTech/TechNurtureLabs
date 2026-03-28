@@ -243,7 +243,7 @@ export function PDFViewer({
                     onLoadSuccess={onDocumentLoadSuccess}
                     onLoadError={onDocumentLoadError}
                     loading={<PDFLoader />}
-                    className="flex flex-col items-center py-4 sm:py-8"
+                    className="w-full"
                     options={fileOptions}
                 >
                     <div

@@ -180,6 +180,39 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     // No onSuccess/onError callbacks — we await upload() directly to avoid stale closures
     const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload();
 
+    // ── Unsaved Changes Protection ────────────────────────────────
+    const [isDirty, setIsDirty] = React.useState(false);
+
+    // Initial state capture to detect changes
+    const initialDataRef = React.useRef<string>('');
+
+    React.useEffect(() => {
+        if (open && editingLesson) {
+            initialDataRef.current = JSON.stringify(editingLesson);
+            setIsDirty(false);
+        }
+    }, [open, editingLesson?.id]); // Only reset when opening or switching lessons, not on every edit
+
+    // Check if current state differs from initial
+    React.useEffect(() => {
+        if (open && editingLesson) {
+            const current = JSON.stringify(editingLesson);
+            if (current !== initialDataRef.current) {
+                setIsDirty(true);
+            }
+        }
+    }, [editingLesson, open]);
+
+    const handleClose = React.useCallback((force: boolean = false) => {
+        if (!force && isDirty) {
+            if (confirm('You have unsaved changes. Are you sure you want to close? All progress will be lost.')) {
+                onOpenChange(false);
+            }
+        } else {
+            onOpenChange(false);
+        }
+    }, [isDirty, onOpenChange]);
+
     React.useEffect(() => {
         uploadStore.updateTask(uploadId, { isLocalVisible: isUploading && open });
         return () => { uploadStore.updateTask(uploadId, { isLocalVisible: false }); };
@@ -368,11 +401,25 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     // ── Render ────────────────────────────────────────────────────
     return (
         <>
-            <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className={cn(
-                    'w-[95vw] max-w-[580px] rounded-2xl sm:rounded-3xl border-0 shadow-2xl p-0 overflow-hidden',
-                    isDark ? 'bg-[#0f1219]' : 'bg-white'
-                )}>
+            <Dialog 
+                open={open} 
+                onOpenChange={(val) => {
+                    if (!val) handleClose();
+                    else onOpenChange(true);
+                }}
+            >
+                <DialogContent 
+                    onInteractOutside={(e) => {
+                        if (isDirty) e.preventDefault();
+                    }}
+                    onEscapeKeyDown={(e) => {
+                        if (isDirty) e.preventDefault();
+                    }}
+                    className={cn(
+                        'w-[95vw] max-w-[580px] rounded-2xl sm:rounded-3xl border-0 shadow-2xl p-0 overflow-hidden outline-none',
+                        isDark ? 'bg-[#0f1219]' : 'bg-white'
+                    )}
+                >
                     {/* ── Header ───────────────────────────────── */}
                     <div className={`px-6 py-4 border-b flex items-center gap-3 ${t.border(isDark)}`}>
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${accent.bg} text-slate-900 flex-shrink-0`}>
@@ -387,8 +434,9 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                             </DialogDescription>
                         </div>
                         <button
-                            onClick={() => onOpenChange(false)}
+                            onClick={() => handleClose()}
                             className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${isDark ? 'text-slate-500 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
+                            aria-label="Close dialog"
                         >
                             <X size={16} />
                         </button>
@@ -787,16 +835,9 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                 {contentItems.some(i => i.type === 'video') ? (
                                     <div className={cn(
                                         'px-4 py-3 rounded-xl border-2',
-                                        isDark ? 'border-indigo-500/20 bg-indigo-500/[0.04]' : 'border-indigo-100 bg-indigo-50/60'
+                                        isDark ? 'border-sky-500/20 bg-sky-500/[0.04]' : 'border-sky-100 bg-sky-50/60'
                                     )}>
-                                        <div className={cn('flex items-center gap-3')}>
-                                            <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', isDark ? 'bg-indigo-400/20 text-indigo-300' : 'bg-indigo-100 text-indigo-600')}>
-                                                <Zap size={15} />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className={cn('text-[10px] font-black uppercase tracking-tight', isDark ? 'text-indigo-300' : 'text-indigo-800')}>Cloudflare Stream — Videos Only</p>
-                                            </div>
-                                        </div>
+                                      
                                     </div>
                                 ) : (
                                     <div className={cn(
@@ -963,7 +1004,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                     <div className={`px-6 py-4 border-t flex items-center justify-between gap-3 ${t.border(isDark)}`}>
                         <Button
                             variant="ghost"
-                            onClick={() => onOpenChange(false)}
+                            onClick={() => handleClose()}
                             className={`rounded-full px-6 font-black text-xs ${isDark ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500'}`}
                         >
                             Cancel

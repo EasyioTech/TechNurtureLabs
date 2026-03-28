@@ -80,6 +80,23 @@ export async function fetchAdminMetadata() {
     return result;
 }
 
+/**
+ * Fetches real-time Redis-only overview data: login heatmap.
+ * Pure RAM reads — zero DB queries, zero VPS load.
+ */
+export async function fetchAdminOverviewExtras(): Promise<{
+    loginHeatmap: number[][];
+}> {
+    const session = await verifySession();
+    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
+        redirect('/admin-portal/login');
+    }
+
+    const { analyticsService } = await import('@/lib/services/analytics-service');
+    const loginHeatmap = await analyticsService.getLoginHeatmap();
+    return { loginHeatmap };
+}
+
 const promoCodeSchema = z.object({
     id: z.string().uuid().optional(),
     code: z.string().min(3, 'Code must be at least 3 characters').max(50)
@@ -390,6 +407,16 @@ export async function syncPlatformMetrics() {
             const revenueDay = revenueByDay.find(r => r.date === dateStr);
             const activeDay = activeByDay.find(a => a.date === dateStr);
 
+            // Capture today's live PCU from Redis for the daily snapshot
+            const isToday = dateStr === format(today, 'yyyy-MM-dd');
+            let peakConcurrent = 0;
+            if (isToday) {
+                try {
+                    const { analyticsService } = await import('@/lib/services/analytics-service');
+                    peakConcurrent = await analyticsService.getPCU();
+                } catch (_) { /* best effort */ }
+            }
+
             await db.insert(platformMetricsDaily).values({
                 metric_date: dateStr,
                 total_students: runningTotalStudents,
@@ -398,6 +425,7 @@ export async function syncPlatformMetrics() {
                 revenue_total: revenueDay?.total ? revenueDay.total.toString() : '0',
                 total_schools: runningTotalSchools,
                 active_schools: runningActiveSchools,
+                ...(isToday ? { peak_concurrent: peakConcurrent } : {}),
             } as any).onConflictDoUpdate({
                 target: platformMetricsDaily.metric_date,
                 set: {
@@ -407,11 +435,12 @@ export async function syncPlatformMetrics() {
                     revenue_total: revenueDay?.total ? revenueDay.total.toString() : '0',
                     total_schools: runningTotalSchools,
                     active_schools: runningActiveSchools,
+                    ...(isToday ? { peak_concurrent: peakConcurrent } : {}),
                     updated_at: new Date()
                 }
             });
         }
-        
+
         await redis.del(SYNC_LOCK_KEY);
         await redis.del(CACHE_KEY);
         return { success: true };

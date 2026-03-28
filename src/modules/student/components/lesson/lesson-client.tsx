@@ -107,9 +107,13 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
   }, [lessonComplete, docTotal]);
 
   // ── Passive time tracking (server-side, every 10 s) ───────────────────────
+  // Skips the call when the browser tab is hidden — no point tracking time the
+  // student isn't actually spending on the lesson.
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!lessonComplete && lesson.id) updateTimeSpent(lesson.id, 10);
+      if (!lessonComplete && lesson.id && !document.hidden) {
+        updateTimeSpent(lesson.id, 10);
+      }
     }, 10000);
     return () => clearInterval(interval);
   }, [lessonComplete, lesson.id]);
@@ -342,66 +346,67 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
           )}
 
           {/* ─── Bottom lesson action bar ─── */}
-          <div className="border-t border-slate-100 bg-white px-4 sm:px-8 lg:px-12 py-4 sm:py-5 max-w-[1100px] mx-auto w-full">
-            <div className="flex items-center gap-4">
+          <div className="border-t border-slate-100 bg-white px-4 sm:px-8 lg:px-12 py-5 sm:py-6 max-w-[1100px] mx-auto w-full sticky bottom-0 z-20">
+            <div className="flex items-center gap-4 sm:gap-6">
 
-              {/* Status icon */}
-              {lessonComplete ? (
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
-                  <CheckIcon size={16} className="text-emerald-500" />
+              {/* Status & info together */}
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                {lessonComplete ? (
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-500/20">
+                    <CheckIcon size={20} strokeWidth={3} />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-600/20">
+                    <Timer size={20} className={cn(hasStarted && !timerDone && "animate-pulse")} />
+                  </div>
+                )}
+                
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">
+                    {lessonComplete ? 'Lesson Complete' : 'Your Progress'} · {currentLessonIndex + 1}/{totalLessons}
+                  </p>
+                  <h3 className="text-sm font-black text-slate-900 truncate uppercase tracking-tight leading-none">
+                    {lesson.title}
+                  </h3>
                 </div>
-              ) : (
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100/60 flex items-center justify-center flex-shrink-0">
-                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse" />
-                </div>
-              )}
-
-              {/* Lesson info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">
-                  {lessonComplete ? 'Completed' : 'In Progress'} · {currentLessonIndex + 1} of {totalLessons}
-                </p>
-                <p className="text-xs sm:text-sm font-black text-slate-800 truncate leading-tight uppercase tracking-tight">
-                  {lesson.title}
-                </p>
               </div>
 
-              {/* CTA */}
-              {lessonComplete ? (
-                nextLesson ? (
-                  <Link href={`/student/lesson/${nextLesson.id}`} className="flex-shrink-0">
-                    <span className="flex items-center gap-2 h-11 px-5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-indigo-600 transition-colors">
-                      Next Lesson <ChevronRight size={14} strokeWidth={3} />
-                    </span>
-                  </Link>
-                ) : (
-                  <Link href="/student" className="flex-shrink-0">
-                    <span className="flex items-center gap-2 h-11 px-5 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap hover:bg-emerald-600 transition-colors">
-                      <Home size={14} /> Back to Home
-                    </span>
-                  </Link>
-                )
-              ) : canMarkDone ? (
-                /* Timer done (or no timer) — Mark Done enabled */
-                <button
-                  onClick={() => handleComplete(false)}
-                  disabled={isSaving}
-                  className="flex-shrink-0 flex items-center gap-2 h-11 px-5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap disabled:opacity-60 hover:bg-indigo-700 active:scale-95 transition-all"
-                >
-                  {isSaving ? (
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              {/* Primary Action Button (CTA) */}
+              <div className="flex-shrink-0">
+                {lessonComplete ? (
+                  nextLesson ? (
+                    <Link href={`/student/lesson/${nextLesson.id}`}>
+                      <span className="flex items-center gap-2 h-12 px-6 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-900/10 hover:bg-indigo-600 transition-all active:scale-95">
+                        Next Lesson <ChevronRight size={16} strokeWidth={3} />
+                      </span>
+                    </Link>
                   ) : (
-                    <CheckIcon size={14} />
-                  )}
-                  {isSaving ? 'Saving…' : 'Mark Done'}
-                </button>
-              ) : (
-                /* Timer still running — locked state */
-                <div className="flex-shrink-0 flex items-center gap-2 h-11 px-5 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap cursor-not-allowed select-none border border-slate-200">
-                  <Timer size={14} />
-                  {hasStarted ? 'Finish timer first' : 'Start lesson'}
-                </div>
-              )}
+                    <Link href="/student">
+                      <span className="flex items-center gap-2 h-12 px-6 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95">
+                        <Home size={16} /> Dashboard
+                      </span>
+                    </Link>
+                  )
+                ) : canMarkDone ? (
+                  <button
+                    onClick={() => handleComplete(false)}
+                    disabled={isSaving}
+                    className="flex items-center gap-2 h-12 px-6 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/30 disabled:opacity-60 hover:bg-indigo-700 active:scale-95 transition-all"
+                  >
+                    {isSaving ? (
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <CheckIcon size={16} strokeWidth={3} />
+                    )}
+                    {isSaving ? 'Saving…' : 'Save Progress'}
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 h-12 px-6 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-not-allowed border border-slate-200/60 transition-all">
+                    <Timer size={16} />
+                    {hasStarted ? 'Locked' : 'Locked'}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

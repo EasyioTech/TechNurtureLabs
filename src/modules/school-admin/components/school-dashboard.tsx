@@ -151,30 +151,26 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                         {/* Right side */}
                         <div className="flex items-center gap-3 ml-auto">
                             <div className="flex items-center gap-2 pr-4 mr-4 border-r border-slate-200/60 dark:border-white/5">
-                                <button onClick={data.refreshData} title="Refresh"
-                                    className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${isDark ? 'text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'}`}>
-                                    <RefreshCw size={16} />
-                                </button>
                                 <button onClick={toggle} title="Toggle theme"
                                     className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${isDark ? 'text-slate-500 hover:text-yellow-400 hover:bg-yellow-400/10' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'}`}>
-                                    {isDark ? <Sun size={16} /> : <Moon size={16} />}
+                                    {isDark ? <Sun size={17} /> : <Moon size={17} />}
                                 </button>
                             </div>
 
-                            <div className="hidden md:flex items-center gap-3">
-                                <div className="text-right">
-                                    <p className={`text-[12px] font-black leading-tight ${ts.textPrimary(isDark)}`}>{adminName || 'Admin'}</p>
-                                    <p className={`text-[10px] font-bold ${ts.textMuted(isDark)}`}>Institution Administrator</p>
-                                </div>
+                            <div className="flex items-center gap-3">
                                 {onSignOut && (
-                                    <button onClick={onSignOut} title="Sign out"
-                                        className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'}`}>
-                                        <LogOut size={16} />
+                                    <button 
+                                        onClick={onSignOut} 
+                                        title="Sign out"
+                                        className={`flex items-center gap-2 h-10 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${isDark ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20' : 'bg-rose-50 text-rose-600 hover:bg-rose-100'}`}
+                                    >
+                                        <LogOut size={14} strokeWidth={3} />
+                                        <span className="hidden sm:inline">Sign Out</span>
                                     </button>
                                 )}
                             </div>
 
-                            {/* Mobile menu */}
+                            {/* Mobile menu toggle */}
                             <button className="lg:hidden w-10 h-10 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-white/10"
                                 onClick={() => setMobileMenuOpen(v => !v)}>
                                 {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}

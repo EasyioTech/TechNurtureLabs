@@ -96,11 +96,16 @@ async function trackActivity(userId: string) {
     const today = new Date().toISOString().split('T')[0];
     const key = `dau:${today}`;
     try {
+        // Guard against closed connection
+        if (redis.status !== 'ready') {
+            return;
+        }
         await redis.sadd(key, userId);
         // Set expiry to 30 days
         await redis.expire(key, 2592000, 'NX');
     } catch (err) {
-        console.error("Redis DAU tracking error:", err);
+        // Silently fail for analytics metrics — don't crash the user session
+        // console.error("Redis DAU tracking error:", err);
     }
 }
 

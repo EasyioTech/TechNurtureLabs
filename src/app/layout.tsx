@@ -14,9 +14,9 @@ export async function generateMetadata(): Promise<Metadata> {
     title: settings?.platform_name ? `${settings.platform_name} - Immersive Learning Platform` : "TechNurture Labs - Immersive Learning Platform",
     description: "Next-gen immersive LMS",
     icons: {
-      icon: settings?.favicon_url || "/favicon.ico",
-      shortcut: settings?.favicon_url || "/favicon.ico",
-      apple: settings?.favicon_url || "/favicon.ico",
+      icon: "/api/branding/favicon",
+      shortcut: "/api/branding/favicon",
+      apple: "/api/branding/favicon",
     }
   };
 }

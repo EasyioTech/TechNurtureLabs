@@ -222,7 +222,7 @@ function ContentBlock({
 
   if (block.type === 'pdf') {
     return (
-      <div className="w-full h-full bg-white">
+      <div className="w-full bg-white">
         <PDFViewer
           url={block.url}
           onComplete={() => onComplete()}
@@ -437,7 +437,7 @@ export function LessonContent({
       )}
 
       {!blocks && lesson.content_type === 'pdf' && (
-        <div className="w-full h-full bg-white">
+        <div className="w-full bg-white">
           <PDFViewer
             url={lesson.content_url!}
             onComplete={() => onComplete()}

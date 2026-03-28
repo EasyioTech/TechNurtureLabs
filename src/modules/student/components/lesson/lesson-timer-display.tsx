@@ -20,7 +20,6 @@ function fmt(secs: number) {
 
 const PAUSE_LABELS: Record<NonNullable<PauseReason>, string> = {
   tab_hidden:     'Timer paused — return to this tab to continue',
-  window_blurred: 'Timer paused — keep this window focused',
 };
 
 export function LessonTimerDisplay({ timeLeft, totalSecs, isComplete, isPaused, pauseReason }: Props) {

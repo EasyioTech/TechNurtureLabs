@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import { rateLimitService } from '@/lib/services/rate-limit';
 import { handleStudentEngagement } from '@/lib/gamification';
 import { z } from 'zod';
+import { analyticsService } from '@/lib/services/analytics-service';
 
 const loginSchema = z.object({
     email: z.string().min(1, 'Email or phone is required').max(256),
@@ -75,7 +76,11 @@ export async function POST(request: NextRequest) {
         }
 
         await createSession({ userId: user.id, userType: 'student' });
-        
+
+        // Track login heatmap — fire-and-forget, zero latency impact
+        const now = new Date();
+        analyticsService.trackLoginHour(now.getDay(), now.getHours()).catch(() => {});
+
         // Handle streak and login challenges
         await handleStudentEngagement(user.id);
 

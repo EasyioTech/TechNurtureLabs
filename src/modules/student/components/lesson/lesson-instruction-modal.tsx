@@ -20,11 +20,6 @@ const getRules = (durationMinutes: number) => {
       body:  'Switching to another tab pauses your timer automatically.',
     },
     {
-      icon:  MonitorOff,
-      title: 'Keep the window visible',
-      body:  'Minimising or moving focus away will pause your countdown.',
-    },
-    {
       icon:  ArrowRightLeft,
       title: 'No skipping allowed',
       body:  'You cannot fast-forward through content — watch it through.',

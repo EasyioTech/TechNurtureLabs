@@ -84,6 +84,14 @@ export type Stats = {
     activeSubscriptions: number;
     trialingSubscriptions: number;
     activePlansPercentage: number;
+    activeUsers30d: number;
+    // Financial health
+    mrr: number;   // Monthly Recurring Revenue
+    arr: number;   // Annual Run Rate (mrr * 12)
+    // Real-time engagement (from Redis)
+    pcu: number;   // Peak Concurrent Users (5-min window)
+    dau: number;   // Daily Active Users today
+    mau: number;   // Monthly Active Users this month
 };
 
 export type UserMetric = {

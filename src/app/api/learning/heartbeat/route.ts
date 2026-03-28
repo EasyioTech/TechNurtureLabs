@@ -3,6 +3,7 @@ import { verifySession } from '@/lib/auth';
 import { processHeartbeat } from '@/lib/services/learning-session';
 import crypto from 'crypto';
 import { rateLimitService } from '@/lib/services/rate-limit';
+import { analyticsService } from '@/lib/services/analytics-service';
 
 /**
  * Handles student learning heartbeats with replay and jump protection.
@@ -42,12 +43,18 @@ export async function POST(req: NextRequest) {
         });
 
         if (result.error) {
-            return NextResponse.json({ 
-                error: result.error, 
+            return NextResponse.json({
+                error: result.error,
                 code: result.code,
-                resumeTo: (result as any).resumeTo 
+                resumeTo: (result as any).resumeTo
             }, { status: 403 });
         }
+
+        // PCU must track every heartbeat (5-min sliding window).
+        // DAU/MAU only need to be recorded once per day — checked via a short-lived
+        // Redis NX key, so subsequent heartbeats skip the extra Redis pipeline entirely.
+        analyticsService.trackConcurrentUser(userId).catch(() => {});
+        analyticsService.trackActiveUserOnce(userId).catch(() => {});
 
         return NextResponse.json(result);
     } catch (error: any) {

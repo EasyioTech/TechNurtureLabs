@@ -708,6 +708,7 @@ export const platformMetricsDaily = pgTable('platform_metrics_daily', {
     revenue_total: numeric('revenue_total', { precision: 14, scale: 2 }).notNull().default('0'),
     new_subscriptions: integer('new_subscriptions').notNull().default(0),
     churned_subscriptions: integer('churned_subscriptions').notNull().default(0),
+    peak_concurrent: integer('peak_concurrent').notNull().default(0), // peak PCU recorded during this day
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -815,6 +816,8 @@ export const platformSettings = pgTable('platform_settings', {
     id: text('id').primaryKey(), // Usually 'default'
     logo_url: text('logo_url'),
     favicon_url: text('favicon_url'),
+    logo_data: text('logo_data'), // base64 data URI stored in DB
+    favicon_data: text('favicon_data'), // base64 data URI stored in DB
     platform_name: text('platform_name').notNull().default('TechNurture'),
     logo_layout: text('logo_layout').notNull().default('horizontal'), // 'horizontal', 'stacked', 'icon_only'
     show_platform_name: boolean('show_platform_name').notNull().default(true),

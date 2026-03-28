@@ -70,7 +70,6 @@ const FOLDERS = [
     { id: 'course', label: 'Courses', color: 'text-indigo-400' },
     { id: 'branding', label: 'Branding', color: 'text-amber-400' },
     { id: 'library', label: 'General', color: 'text-emerald-400' },
-    { id: 'video', label: 'Videos', color: 'text-rose-400' },
 ];
 
 export function MediaLibraryPicker({
@@ -130,13 +129,20 @@ export function MediaLibraryPicker({
     // Reset state and load assets whenever the sheet opens or the filter/folder props change
     React.useEffect(() => {
         if (!open) return;
-        const newTab = filterType ?? 'all';
+        const isVideoMode = filterType === 'video';
+        const newTab = isVideoMode ? 'cloudflare_stream' : (filterType ?? 'all');
         const newFolder = folder ?? 'all';
+        
         setActiveTab(newTab);
         setActiveFolder(newFolder);
         setSearch('');
         setPage(1);
-        loadAssets(newTab, newFolder, 1, '', false);
+        
+        if (newTab === 'cloudflare_stream') {
+            loadStreamVideos('');
+        } else {
+            loadAssets(newTab, newFolder, 1, '', false);
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, filterType, folder]);
 
@@ -358,18 +364,18 @@ export function MediaLibraryPicker({
                 side="right"
                 className={`w-full sm:max-w-[560px] p-0 flex flex-col border-0 ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}
             >
-                {/* Header */}
+                    {/* Header */}
                 <SheetHeader className={`px-6 pt-6 pb-4 border-b shrink-0 ${t.border(isDark)}`}>
                     <SheetTitle className="flex items-center gap-3">
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center ${accent.bg} text-slate-900`}>
-                            <ImageIcon size={16} />
+                            {filterType === 'video' ? <Film size={16} /> : <ImageIcon size={16} />}
                         </div>
                         <div className="text-left flex-1">
                             <h2 className={`text-lg font-[1000] tracking-tight ${t.textPrimary(isDark)}`}>
-                                Media Library
+                                {filterType === 'video' ? 'Video Stream Library' : 'Media Library'}
                             </h2>
                             <p className={`text-[10px] font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>
-                                Select a previously uploaded asset
+                                {filterType === 'video' ? 'Upload and select Cloudflare Stream videos' : 'Select a previously uploaded asset'}
                             </p>
                         </div>
 
@@ -391,85 +397,93 @@ export function MediaLibraryPicker({
                         />
                     </SheetTitle>
 
-                    {/* Storage Preference Toggle */}
-                    <div className="flex items-center gap-3 mt-4 px-1">
-                        <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
-                            Storage Destination:
-                        </p>
-                        <div className={`p-1 rounded-full flex gap-1 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-                            {[
-                                { id: 'r2', label: 'Cloud (R2)', icon: Cloud },
-                                { id: 'local', label: 'Local Server', icon: HardDrive }
-                            ].map(opt => {
-                                const isActive = storagePref === opt.id;
+                    {/* Storage Preference Toggle — Hidden for Video (Stream only) */}
+                    {filterType !== 'video' && (
+                        <div className="flex items-center gap-3 mt-4 px-1">
+                            <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
+                                Storage Destination:
+                            </p>
+                            <div className={`p-1 rounded-full flex gap-1 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
+                                {[
+                                    { id: 'r2', label: 'Cloud (R2)', icon: Cloud },
+                                    { id: 'local', label: 'Local Server', icon: HardDrive }
+                                ].map(opt => {
+                                    const isActive = storagePref === opt.id;
+                                    return (
+                                        <button
+                                            key={opt.id}
+                                            type="button"
+                                            onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all
+                                                ${isActive
+                                                    ? (isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm')
+                                                    : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
+                                        >
+                                            <opt.icon size={10} />
+                                            {opt.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Search — Hidden for Video during streamlined upload */}
+                    {filterType !== 'video' && (
+                        <div className="relative mt-4">
+                            <Search size={14} className={`absolute left-4 top-1/2 -translate-y-1/2 ${t.textMuted(isDark)}`} />
+                            <Input
+                                placeholder="Search by filename..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className={`rounded-full h-10 pl-10 pr-4 text-sm font-medium border-2 focus-visible:ring-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] text-white border-white/5' : 'bg-slate-50 border-slate-200'}`}
+                            />
+                        </div>
+                    )}
+
+                    {/* Type Tabs — Hidden for Video (Strictly Stream) */}
+                    {filterType !== 'video' && (
+                        <div className="flex gap-1 mt-3">
+                            {visibleTabs.map(tab => {
+                                const isActive = activeTab === tab.id;
                                 return (
                                     <button
-                                        key={opt.id}
-                                        type="button"
-                                        onClick={() => setStoragePref(opt.id as 'r2' | 'local')}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all
+                                        key={tab.id}
+                                        onClick={() => handleTabChange(tab.id)}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black tracking-tight transition-all border-2
                                             ${isActive
-                                                ? (isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm')
-                                                : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
+                                                ? (isDark ? `${accent.bg} text-slate-900 border-${accent.name}-400` : `${accent.bg} text-slate-900 border-${accent.name}-400`)
+                                                : (isDark ? 'bg-transparent text-slate-400 border-white/10 hover:bg-white/5' : 'bg-transparent text-slate-500 border-slate-200 hover:bg-slate-50')}`}
                                     >
-                                        <opt.icon size={10} />
-                                        {opt.label}
+                                        <tab.icon size={11} />
+                                        {tab.label}
                                     </button>
                                 );
                             })}
                         </div>
-                    </div>
+                    )}
 
-                    {/* Search */}
-                    <div className="relative mt-4">
-                        <Search size={14} className={`absolute left-4 top-1/2 -translate-y-1/2 ${t.textMuted(isDark)}`} />
-                        <Input
-                            placeholder="Search by filename..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className={`rounded-full h-10 pl-10 pr-4 text-sm font-medium border-2 focus-visible:ring-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] text-white border-white/5' : 'bg-slate-50 border-slate-200'}`}
-                        />
-                    </div>
-
-                    {/* Type Tabs */}
-                    <div className="flex gap-1 mt-3">
-                        {visibleTabs.map(tab => {
-                            const isActive = activeTab === tab.id;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => handleTabChange(tab.id)}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black tracking-tight transition-all border-2
-                                        ${isActive
-                                            ? (isDark ? `${accent.bg} text-slate-900 border-${accent.name}-400` : `${accent.bg} text-slate-900 border-${accent.name}-400`)
-                                            : (isDark ? 'bg-transparent text-slate-400 border-white/10 hover:bg-white/5' : 'bg-transparent text-slate-500 border-slate-200 hover:bg-slate-50')}`}
-                                >
-                                    <tab.icon size={11} />
-                                    {tab.label}
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Folder Tabs */}
-                    <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
-                        {FOLDERS.map(f => {
-                            const isActive = activeFolder === f.id;
-                            return (
-                                <button
-                                    key={f.id}
-                                    onClick={() => handleFolderChange(f.id)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all whitespace-nowrap border-2
-                                        ${isActive
-                                            ? (isDark ? `${accent.bg} text-slate-900 border-white shadow-lg` : `${accent.bg} text-slate-900 border-slate-900 shadow-lg`)
-                                            : (isDark ? 'bg-white/[0.03] border-white/5 text-slate-500 hover:bg-white/[0.06]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100')}`}
-                                >
-                                    <Folder size={12} className={isActive ? 'text-slate-900' : f.color} />
-                                    {f.label}
-                                </button>
-                            );
-                        })}
-                    </div>
+                    {/* Folder Tabs — Hidden for Video */}
+                    {filterType !== 'video' && (
+                        <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
+                            {FOLDERS.map(f => {
+                                const isActive = activeFolder === f.id;
+                                return (
+                                    <button
+                                        key={f.id}
+                                        onClick={() => handleFolderChange(f.id)}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all whitespace-nowrap border-2
+                                            ${isActive
+                                                ? (isDark ? `${accent.bg} text-slate-900 border-white shadow-lg` : `${accent.bg} text-slate-900 border-slate-900 shadow-lg`)
+                                                : (isDark ? 'bg-white/[0.03] border-white/5 text-slate-500 hover:bg-white/[0.06]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100')}`}
+                                    >
+                                        <Folder size={12} className={isActive ? 'text-slate-900' : f.color} />
+                                        {f.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </SheetHeader>
 
                 {/* Content */}

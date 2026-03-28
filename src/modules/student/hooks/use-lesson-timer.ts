@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-export type PauseReason = 'tab_hidden' | 'window_blurred' | null;
+export type PauseReason = 'tab_hidden' | null;
 
 const timerKey = (id: string) => `tnl_timer_${id}`;
 const doneKey  = (id: string) => `tnl_timer_done_${id}`;
@@ -112,17 +112,11 @@ export function useLessonTimer({
         ? pause('tab_hidden')
         : resume();
     };
-    const onBlur  = () => pause('window_blurred');
-    const onFocus = () => resume();
 
     document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('blur',  onBlur);
-    window.addEventListener('focus', onFocus);
 
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('blur',  onBlur);
-      window.removeEventListener('focus', onFocus);
     };
   }, [hasStarted, isComplete, durationMinutes, pause, resume]);
 

@@ -44,17 +44,23 @@ export async function POST(request: NextRequest) {
             where: eq(platformSettings.id, 'global')
         });
 
+        // If logo/favicon URL is cleared, also wipe the stored DB data
+        const clearLogoData = !logo_url ? { logo_data: null } : {};
+        const clearFaviconData = !favicon_url ? { favicon_data: null } : {};
+
         if (existingInfo) {
             await db.update(platformSettings)
                 .set({
                     hero_video_type,
                     hero_video_url,
-                    logo_url,
-                    favicon_url,
+                    logo_url: logo_url || null,
+                    favicon_url: favicon_url || null,
                     platform_name,
                     logo_layout,
                     show_platform_name,
                     logo_height,
+                    ...clearLogoData,
+                    ...clearFaviconData,
                     updated_at: new Date()
                 })
                 .where(eq(platformSettings.id, 'global'));
@@ -64,8 +70,8 @@ export async function POST(request: NextRequest) {
                     id: 'global',
                     hero_video_type,
                     hero_video_url,
-                    logo_url,
-                    favicon_url,
+                    logo_url: logo_url || null,
+                    favicon_url: favicon_url || null,
                     platform_name,
                     logo_layout,
                     show_platform_name,

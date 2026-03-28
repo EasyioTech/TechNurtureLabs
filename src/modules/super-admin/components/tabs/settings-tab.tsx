@@ -1,32 +1,35 @@
-import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAdminTheme, t } from '../../theme-context';
 import { toast } from 'sonner';
-import { Loader2, Video, Save, Link2, UploadCloud, Film, GraduationCap, Plus, Trash2, Hash } from 'lucide-react';
-import { MediaLibraryPicker } from '../media-library-picker';
-import { ImageUpload } from '@/modules/shared/components/image-upload';
+import { Loader2, Video, Save, Link2, UploadCloud, Film, GraduationCap, Plus, Trash2, Hash, X, ImageIcon, Activity } from 'lucide-react';
 import { VideoUpload } from '@/modules/shared/components/video-upload';
-import { Palette, Shield, Settings2, Smartphone, Key, AlertCircle, CheckCircle, Columns, Rows, Square, Lock } from 'lucide-react';
+import { Palette, Shield, Activity as ActivityIcon, Settings2, Smartphone, Key, AlertCircle, CheckCircle, Columns, Rows, Square, Lock } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generate2FASecret, enable2FA, disable2FA } from '@/actions/2fa';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Slider } from '@/components/ui/slider';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { fetchAllClasses, createClass, deleteClass, ensureDefaultClasses, syncPlatformMetrics } from '@/modules/super-admin/actions';
+import { SystemHealthTab } from './system-health-tab';
 
 export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref) {
     const { isDark, accent } = useAdminTheme();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [pickerOpen, setPickerOpen] = useState(false);
 
     const [videoType, setVideoType] = useState<'youtube' | 'upload' | 'vimeo' | 'link' | 'stream'>('youtube');
     const [videoUrl, setVideoUrl] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
     const [faviconUrl, setFaviconUrl] = useState('');
+    const [logoUploading, setLogoUploading] = useState(false);
+    const [faviconUploading, setFaviconUploading] = useState(false);
+    const logoInputRef = useRef<HTMLInputElement>(null);
+    const faviconInputRef = useRef<HTMLInputElement>(null);
     const [platformName, setPlatformName] = useState('TechNurture');
     const [logoLayout, setLogoLayout] = useState('landscape');
     const [showPlatformName, setShowPlatformName] = useState(true);
@@ -140,6 +143,49 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
             toast.error('Network error while saving');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleBrandingUpload = async (file: File, type: 'logo' | 'favicon') => {
+        const setUploading = type === 'logo' ? setLogoUploading : setFaviconUploading;
+        const setUrl = type === 'logo' ? setLogoUrl : setFaviconUrl;
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', type);
+            const res = await fetch('/api/branding/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) {
+                setUrl(data.url + '?v=' + Date.now()); // cache-bust preview
+                toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} uploaded successfully`);
+            } else {
+                toast.error(data.error || 'Upload failed');
+            }
+        } catch {
+            toast.error('Upload failed');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleBrandingRemove = async (type: 'logo' | 'favicon') => {
+        const setUrl = type === 'logo' ? setLogoUrl : setFaviconUrl;
+        try {
+            const res = await fetch('/api/branding/upload', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setUrl('');
+                toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} removed`);
+            } else {
+                toast.error(data.error || 'Remove failed');
+            }
+        } catch {
+            toast.error('Remove failed');
         }
     };
 
@@ -279,36 +325,155 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
 
                 <div className="space-y-10">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        {/* System Logo */}
                         <div className="space-y-4">
                             <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>System Logo</Label>
-                            <div className="max-w-xs">
-                                <ImageUpload
-                                    value={logoUrl}
-                                    onChange={setLogoUrl}
-                                    isDark={isDark}
-                                    folder="branding"
-                                />
+                            <div className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all overflow-hidden
+                                ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50'}
+                                w-full`} style={{ minHeight: 120 }}>
+                                {logoUploading ? (
+                                    <div className="flex flex-col items-center gap-2 py-8">
+                                        <Loader2 className={`animate-spin ${accent.text}`} size={28} />
+                                        <span className={`text-xs font-bold ${t.textSecondary(isDark)}`}>Uploading…</span>
+                                    </div>
+                                ) : logoUrl ? (
+                                    <div className="relative w-full flex items-center justify-center p-4 group">
+                                        <img
+                                            src={logoUrl}
+                                            alt="Platform Logo"
+                                            className="max-h-20 max-w-full object-contain"
+                                            onError={(e) => { (e.target as HTMLImageElement).src = '/api/branding/logo'; }}
+                                        />
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center gap-3">
+                                            <button
+                                                onClick={() => logoInputRef.current?.click()}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-colors"
+                                            >
+                                                <UploadCloud size={13} /> Replace
+                                            </button>
+                                            <button
+                                                onClick={() => handleBrandingRemove('logo')}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/70 hover:bg-red-500/90 text-white text-xs font-bold transition-colors"
+                                            >
+                                                <X size={13} /> Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => logoInputRef.current?.click()}
+                                        className="flex flex-col items-center gap-3 py-8 w-full hover:opacity-80 transition-opacity"
+                                    >
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                                            <UploadCloud size={22} />
+                                        </div>
+                                        <div className="text-center">
+                                            <p className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Upload Logo</p>
+                                            <p className={`text-[10px] mt-0.5 font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>PNG, JPG, SVG, WebP · Max 2MB</p>
+                                        </div>
+                                    </button>
+                                )}
                             </div>
-                            <p className={`text-[11px] ${t.textMuted(isDark)} font-medium italic mt-2 leading-relaxed`}>
+                            {logoUrl && (
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => logoInputRef.current?.click()}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${isDark ? 'bg-white/5 hover:bg-white/10 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                                    >
+                                        <UploadCloud size={12} /> Replace
+                                    </button>
+                                    <button
+                                        onClick={() => handleBrandingRemove('logo')}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
+                                    >
+                                        <Trash2 size={12} /> Remove
+                                    </button>
+                                </div>
+                            )}
+                            <input
+                                ref={logoInputRef}
+                                type="file"
+                                accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleBrandingUpload(file, 'logo');
+                                    e.target.value = '';
+                                }}
+                            />
+                            <p className={`text-[11px] ${t.textMuted(isDark)} font-medium italic leading-relaxed`}>
                                 Primary branding asset. Used in headers, dashboards, and portals.
                             </p>
                         </div>
 
+                        {/* Favicon */}
                         <div className="space-y-4">
                             <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>Favicon (Browser Icon)</Label>
-                            <div className="w-16 h-16">
-                                <ImageUpload
-                                    value={faviconUrl}
-                                    onChange={setFaviconUrl}
-                                    isDark={isDark}
-                                    aspect="square"
-                                    compact={true}
-                                    folder="branding"
-                                />
+                            <div className="flex items-start gap-4">
+                                <div className={`relative flex items-center justify-center rounded-2xl border-2 border-dashed transition-all overflow-hidden flex-shrink-0
+                                    ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50'}
+                                    w-20 h-20`}>
+                                    {faviconUploading ? (
+                                        <Loader2 className={`animate-spin ${accent.text}`} size={18} />
+                                    ) : faviconUrl ? (
+                                        <div className="relative w-full h-full flex items-center justify-center p-2 group">
+                                            <img
+                                                src={faviconUrl}
+                                                alt="Favicon"
+                                                className="w-10 h-10 object-contain"
+                                                onError={(e) => { (e.target as HTMLImageElement).src = '/api/branding/favicon'; }}
+                                            />
+                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                                                <button
+                                                    onClick={() => handleBrandingRemove('favicon')}
+                                                    className="text-white"
+                                                    title="Remove favicon"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => faviconInputRef.current?.click()}
+                                            className="flex flex-col items-center gap-1 hover:opacity-80 transition-opacity w-full h-full justify-center"
+                                        >
+                                            <ImageIcon size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex flex-col gap-2 pt-1">
+                                    <button
+                                        onClick={() => faviconInputRef.current?.click()}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${isDark ? 'bg-white/5 hover:bg-white/10 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                                    >
+                                        <UploadCloud size={12} /> {faviconUrl ? 'Replace' : 'Upload'}
+                                    </button>
+                                    {faviconUrl && (
+                                        <button
+                                            onClick={() => handleBrandingRemove('favicon')}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
+                                        >
+                                            <Trash2 size={12} /> Remove
+                                        </button>
+                                    )}
+                                    <p className={`text-[10px] ${t.textMuted(isDark)} font-medium leading-tight`}>
+                                        Square icon for browser tabs.
+                                        <br />PNG, ICO, SVG · Max 2MB
+                                    </p>
+                                </div>
                             </div>
-                            <p className={`text-[10px] ${t.textMuted(isDark)} font-medium italic mt-2 leading-tight`}>
-                                Square icon for browser tabs.
-                            </p>
+                            <input
+                                ref={faviconInputRef}
+                                type="file"
+                                accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml,image/webp"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleBrandingUpload(file, 'favicon');
+                                    e.target.value = '';
+                                }}
+                            />
                         </div>
                     </div>
 
@@ -841,6 +1006,47 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                             RUN DIAGNOSTICS (SOON)
                         </Button>
                     </div>
+                </div>
+            </div>
+
+            {/* Infrastructure Health Section */}
+            <div className="space-y-8 pt-8 border-t border-dashed border-slate-200 dark:border-white/10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
+                            <ActivityIcon className={accent.text} size={28} />
+                        </div>
+                        <div>
+                            <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Infrastructure Engine</h2>
+                            <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Real-time monitoring of Node.js, Redis, and Database health.</p>
+                        </div>
+                    </div>
+
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button 
+                                className={`h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all hover:scale-105 active:scale-95 ${t.btnPrimary(isDark, accent)}`}
+                            >
+                                <Activity className="mr-2" size={18} />
+                                Open Infrastructure Monitor
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className={`max-w-6xl w-[95vw] h-[90vh] overflow-y-auto ${isDark ? 'bg-[#09090b] border-white/10' : 'bg-white'}`}>
+                            <div className="p-2 sm:p-6 translate-y-4">
+                                <div className="mb-10 text-center sm:text-left">
+                                    <h2 className={`text-3xl font-black ${t.textPrimary(isDark)} tracking-tighter`}>Engine Intelligence</h2>
+                                    <p className={`text-sm font-medium ${t.textMuted(isDark)} mt-2`}>Deep-dive into platform infrastructure, database latency, and cache health.</p>
+                                </div>
+                                <SystemHealthTab />
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+                
+                <div className={`p-8 rounded-[2rem] border-2 border-dashed ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100'} text-center`}>
+                    <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${t.textMuted(isDark)}`}>
+                        Monitoring data is fetched on-demand to preserve server resources.
+                    </p>
                 </div>
             </div>
         </div>

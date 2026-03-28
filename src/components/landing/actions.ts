@@ -35,12 +35,22 @@ export async function getPublicPricingPlans() {
         return [];
     }
 }
+function normalizeBrandingUrls(settings: any) {
+    if (!settings) return settings;
+    return {
+        ...settings,
+        // Always use the DB-backed serve routes so branding never depends on R2
+        logo_url: settings.logo_data ? '/api/branding/logo' : (settings.logo_url || null),
+        favicon_url: settings.favicon_data ? '/api/branding/favicon' : (settings.favicon_url || null),
+    };
+}
+
 export async function getPlatformSettings() {
     const defaultSettings = {
         id: 'global',
         platform_name: 'TechNurture',
-        logo_url: null,
-        favicon_url: null,
+        logo_url: null as string | null,
+        favicon_url: null as string | null,
         logo_layout: 'landscape',
         show_platform_name: true,
         logo_height: 32,
@@ -54,20 +64,21 @@ export async function getPlatformSettings() {
             const settings = await db.query.platformSettings.findFirst({
                 where: eq(platformSettings.id, 'global')
             });
-            return settings || defaultSettings;
+            return normalizeBrandingUrls(settings) || defaultSettings;
         } catch (e) {
             return defaultSettings;
         }
     }
-    
+
     const cached = await getCachedPlatformSettings();
-    if (cached) return cached;
+    if (cached) return normalizeBrandingUrls(cached);
 
     // Fallback to direct DB if cache is empty
     try {
-        return await db.query.platformSettings.findFirst({
+        const settings = await db.query.platformSettings.findFirst({
             where: eq(platformSettings.id, 'global')
-        }) || defaultSettings;
+        });
+        return normalizeBrandingUrls(settings) || defaultSettings;
     } catch (e) {
         return defaultSettings;
     }

@@ -364,6 +364,8 @@ CREATE TABLE "platform_settings" (
 	"id" text PRIMARY KEY NOT NULL,
 	"logo_url" text,
 	"favicon_url" text,
+	"logo_data" text,
+	"favicon_data" text,
 	"platform_name" text DEFAULT 'TechNurture' NOT NULL,
 	"logo_layout" text DEFAULT 'horizontal' NOT NULL,
 	"show_platform_name" boolean DEFAULT true NOT NULL,

@@ -62,6 +62,10 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                                         <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.1} />
                                         <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
                                     </linearGradient>
+                                    <linearGradient id="grad3" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.12} />
+                                        <stop offset="95%" stopColor="#a78bfa" stopOpacity={0} />
+                                    </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
                                 <XAxis dataKey="name" stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />
@@ -72,6 +76,7 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                                 />
                                 <Area type="monotone" dataKey="students" name="Active Students" stroke={areaStroke} fill="url(#grad1)" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: isDark ? '#1e293b' : '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
                                 <Area type="monotone" dataKey="schools" name="Active Schools" stroke={isDark ? '#38bdf8' : '#0ea5e9'} fill="url(#grad2)" strokeWidth={3} dot={false} strokeDasharray="5 5" />
+                                <Area type="monotone" dataKey="peak_concurrent" name="Peak Concurrent" stroke={isDark ? '#a78bfa' : '#7c3aed'} fill="url(#grad3)" strokeWidth={2} dot={false} strokeDasharray="3 4" />
                             </AreaChart>
                         </ResponsiveContainer>}
                     </div>

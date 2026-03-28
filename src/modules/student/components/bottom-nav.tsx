@@ -108,8 +108,7 @@ export function StudentBottomNav() {
     // Show the Mark Done strip when:
     //  • we are on a lesson page
     //  • the timer has finished (markDoneReady)
-    //  • the lesson hasn't been confirmed as completed yet
-    const showMarkDone = !!lessonId && markDoneReady && !lessonCompleted;
+    const showMarkDone = !!lessonId && markDoneReady;
 
     return (
         <nav
