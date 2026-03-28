@@ -10,7 +10,7 @@ To connect securely, use the following settings in your SQL client:
 | :--- | :--- |
 | **Host** | `187.124.98.192` |
 | **Port** | `5433` (Note: We use 5433 to avoid conflict with other apps) |
-| **Database** | `orchids` |
+| **Database** | `technurturelabs` |
 | **Username** | `postgres` |
 | **Password** | `admin` |
 

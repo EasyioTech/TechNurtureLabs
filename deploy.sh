@@ -1,12 +1,23 @@
 #!/bin/bash
 # ============================================================
-# EduQuest — Automated Deployment Update Script
+# TechNurture Labs — Deployment Script
+# ============================================================
+# Fresh deployment:
+#   PostgreSQL auto-runs database/schema.sql and database/seed.sql
+#   on first start (docker-entrypoint-initdb.d). No manual migration
+#   step needed. Schema + seed are applied atomically on first init.
+#
+# Incremental schema updates (existing deployment):
+#   Run: npm run db:migrate  (applies pending drizzle migrations)
 # ============================================================
 
-# Step 1: Pull the latest code (uncomment if using Git)
+set -e
+
+# Step 1: Pull the latest code
+echo "Pulling latest code..."
 git pull origin main
 
-# Step 2: Stop existing containers and prune old builds to save space
+# Step 2: Stop existing containers and prune old images to save space
 echo "Shutting down existing containers..."
 docker compose down
 
@@ -14,34 +25,32 @@ echo "Pruning unused Docker assets..."
 docker system prune -f
 
 # Step 3: Start Core Services (DB & Redis)
+# On first start with an empty volume, PostgreSQL will automatically
+# apply 01_schema.sql then 02_seed.sql before marking itself healthy.
 echo "Starting Database and Redis..."
 docker compose up -d db redis
 
-# Step 3.5: Run Setup (Migrations + Seeding + Admin)
-# This MUST run before the app starts to avoid column missing errors
-echo "Running database setup and migrations..."
-docker compose --profile setup up migration --abort-on-container-exit
-
-# Step 4: Build and start the App
-echo "Building and starting the Application & Workers..."
+# Step 4: Build and start the App and Workers
+echo "Building and starting Application & Workers..."
 docker compose up -d --build app event-worker
 
-# Step 4: Health Check (Wait for the app to respond)
-echo "Waiting for app healthcheck to pass..."
+# Step 5: Health Check
+echo "Waiting for app to become healthy..."
 COUNT=0
-MAX_RETRIES=10
+MAX_RETRIES=18
 while [ $COUNT -lt $MAX_RETRIES ]; do
   HEALTH=$(docker inspect --format='{{.State.Health.Status}}' LMS_app 2>/dev/null)
-  
+
   if [ "$HEALTH" == "healthy" ]; then
     echo "Deployment successful! App is healthy."
     exit 0
   fi
-  
-  echo "Still waiting ($COUNT/$MAX_RETRIES)... Current Status: $HEALTH"
-  sleep 5
-  let COUNT=COUNT+1
+
+  echo "Still waiting ($COUNT/$MAX_RETRIES)... Current status: $HEALTH"
+  sleep 10
+  COUNT=$((COUNT + 1))
 done
 
-echo "Warning: Healthcheck timed out. Review logs with 'docker-compose logs app'."
+echo "Warning: Healthcheck timed out after $((MAX_RETRIES * 10))s."
+echo "Check logs: docker compose logs app"
 exit 1

@@ -39,7 +39,7 @@ services:
       - "3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:admin@db:5432/orchids}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:admin@db:5432/technurturelabs}
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET}
       - APP_ENCRYPTION_KEY=${APP_ENCRYPTION_KEY}
@@ -89,7 +89,7 @@ services:
     restart: always
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:admin@db:5432/orchids}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:admin@db:5432/technurturelabs}
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET}
     depends_on:
@@ -100,42 +100,28 @@ services:
     command: npx tsx scripts/event-worker.ts
 
   # ----------------------------
-  # Database Migration Runner
-  # Run with: docker compose --profile setup up migration
-  # ----------------------------
-  migration:
-    image: postgres:15
-    container_name: LMS_migration
-    environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:admin@db:5432/orchids}
-    volumes:
-      - ./database/schema.sql:/schema.sql:ro
-    depends_on:
-      db:
-        condition: service_healthy
-    command: psql $DATABASE_URL -f /schema.sql
-    profiles:
-      - setup
-
-  # ----------------------------
   # PostgreSQL Database
-  # seed.sql is auto-executed on first DB init
+  # On first init (empty data volume), PostgreSQL automatically runs all
+  # scripts in docker-entrypoint-initdb.d in lexicographic order:
+  #   01_schema.sql — full schema (all tables, indexes, constraints)
+  #   02_seed.sql   — seed data  (admin, classes, payment plans, settings)
   # ----------------------------
   db:
     image: postgres:15
     container_name: LMS_postgres
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: orchids
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+      POSTGRES_DB: ${POSTGRES_DB:-technurturelabs}
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d orchids" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-technurturelabs}" ]
       interval: 5s
       timeout: 5s
       retries: 5

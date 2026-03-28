@@ -421,10 +421,10 @@ function componentTagger(src, map) {
                         !shouldTag(semanticName)))
                     return;
                 const { line, column } = node.loc.start;
-                let orchidsId = `${rel}:${line}:${column}`;
+                let technurtureId = `${rel}:${line}:${column}`;
                 // Enhance the ID with context if we have map information
                 if (mapContext) {
-                    orchidsId += `@${mapContext.arrayName}`;
+                    technurtureId += `@${mapContext.arrayName}`;
                 }
                 // 🔍 Append referenced variable locations for simple identifier references in props
                 (_a = node.attributes) === null || _a === void 0 ? void 0 : _a.forEach((attr) => {
@@ -435,7 +435,7 @@ function componentTagger(src, map) {
                         const refName = attr.value.expression.name;
                         const varInfo = variables.get(refName);
                         if (varInfo) {
-                            orchidsId += `@${refName}`;
+                            technurtureId += `@${refName}`;
                         }
                     }
                 });
@@ -443,7 +443,7 @@ function componentTagger(src, map) {
                 if (mapContext === null || mapContext === void 0 ? void 0 : mapContext.indexVarName) {
                     ms.appendLeft(node.name.end, ` data-map-index={${mapContext.indexVarName}}`);
                 }
-                ms.appendLeft(node.name.end, ` data-orchids-id="${orchidsId}" data-orchids-name="${semanticName}"`);
+                ms.appendLeft(node.name.end, ` data-technurture-id="${technurtureId}" data-technurture-name="${semanticName}"`);
                 mutated = true;
             },
         });

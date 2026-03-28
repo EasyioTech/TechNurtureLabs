@@ -737,7 +737,6 @@ CREATE INDEX "idx_lp_session" ON "lesson_progress" USING btree ("session_id");
 CREATE INDEX "idx_lp_school" ON "lesson_progress" USING btree ("school_id");
 CREATE INDEX "idx_lp_content_watched" ON "lesson_progress" USING btree ("content_watched");
 CREATE INDEX "idx_sessions_user_lesson" ON "lesson_sessions" USING btree ("user_id","lesson_id");
-CREATE INDEX "idx_sessions_token" ON "lesson_sessions" USING btree ("session_token");
 CREATE INDEX "idx_sessions_active" ON "lesson_sessions" USING btree ("is_active");
 CREATE INDEX "idx_submission_user_lesson" ON "lesson_submissions" USING btree ("user_id","lesson_id");
 CREATE INDEX "idx_lessons_course" ON "lessons" USING btree ("course_id");
@@ -780,4 +779,50 @@ CREATE UNIQUE INDEX "uq_sessions_token_hash" ON "user_sessions" USING btree ("re
 CREATE INDEX "idx_xp_user" ON "xp_events" USING btree ("user_id");
 CREATE INDEX "idx_xp_school" ON "xp_events" USING btree ("school_id");
 CREATE INDEX "idx_xp_created" ON "xp_events" USING btree ("created_at");
+
+-- =============================================================================
+-- From migration 0003: Security & Performance Fixes
+-- =============================================================================
+
+-- GIN index for fast multi-topic filtering on courses.topics array
+CREATE INDEX "idx_courses_topics_gin" ON courses USING GIN (topics);
+
+-- Only one active academic session per school at a time
+CREATE UNIQUE INDEX "uq_school_one_current_session"
+    ON academic_sessions (school_id)
+    WHERE is_current = true AND deleted_at IS NULL;
+
+-- Constrain lesson_submissions.status to known values
+ALTER TABLE lesson_submissions
+    ADD CONSTRAINT chk_submission_status
+    CHECK (status IN ('submitted', 'reviewed', 'approved', 'rejected'));
+
+-- =============================================================================
+-- From migration 0004: Performance & Search Indexes
+-- =============================================================================
+
+-- Enable pg_trgm for fast case-insensitive substring search
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- GIN trigram index for ILIKE '%term%' queries on media_assets.original_name
+CREATE INDEX "idx_media_assets_name_trgm"
+    ON media_assets USING gin(original_name gin_trgm_ops);
+
+-- Composite indexes for school-admin dashboard student queries
+CREATE INDEX "idx_students_school_verified"
+    ON students (school_id, is_verified)
+    WHERE deleted_at IS NULL;
+
+CREATE INDEX "idx_students_school_last_active"
+    ON students (school_id, last_active_at)
+    WHERE deleted_at IS NULL;
+
+-- Partial indexes for completed lesson progress analytics
+CREATE INDEX "idx_lesson_progress_user_completed"
+    ON lesson_progress (user_id, completed_at)
+    WHERE completed_at IS NOT NULL;
+
+CREATE INDEX "idx_lesson_progress_school_completed"
+    ON lesson_progress (school_id, completed_at)
+    WHERE completed_at IS NOT NULL;
 CREATE INDEX "idx_xp_user_created" ON "xp_events" USING btree ("user_id","created_at");

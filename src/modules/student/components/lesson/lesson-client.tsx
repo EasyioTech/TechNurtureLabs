@@ -1,14 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { LessonHeader } from '@/modules/student/components/lesson/lesson-header';
-import { LessonContent } from '@/modules/student/components/lesson/lesson-content';
-import { LessonOverview } from '@/modules/student/components/lesson/lesson-overview';
-import { LessonSyllabus } from '@/modules/student/components/lesson/lesson-syllabus';
+import { LessonHeader }    from '@/modules/student/components/lesson/lesson-header';
+import { LessonContent }   from '@/modules/student/components/lesson/lesson-content';
+import { LessonOverview }  from '@/modules/student/components/lesson/lesson-overview';
+import { LessonSyllabus }  from '@/modules/student/components/lesson/lesson-syllabus';
+import { LessonTimerDisplay }     from '@/modules/student/components/lesson/lesson-timer-display';
+import { LessonInstructionModal } from '@/modules/student/components/lesson/lesson-instruction-modal';
+import { useLessonTimer }  from '@/modules/student/hooks/use-lesson-timer';
 import { updateTimeSpent, getCourseDetailsData, completeLessonAndReward } from '@/modules/student/actions';
 import {
   BookOpen, Trophy, Star, X, CheckCircle2 as CheckIcon,
-  ArrowRight, ChevronRight, Home,
+  ArrowRight, ChevronRight, Home, Timer,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -18,51 +21,109 @@ import { toast } from 'sonner';
 
 interface LessonClientProps {
   initialData: {
-    lesson: any;
-    courseData: any;
+    lesson:         any;
+    courseData:     any;
     lessonComplete: boolean;
-  },
+  };
   completeLesson: () => Promise<any>;
 }
 
 export function LessonClient({ initialData, completeLesson }: LessonClientProps) {
   const { lesson, courseData: initialCourseData, lessonComplete: initialComplete } = initialData;
   const router = useRouter();
-  const [lessonComplete, setLessonComplete] = useState(initialComplete);
-  const [courseData, setCourseData] = useState(initialCourseData);
-  const [isSyllabusOpen, setIsSyllabusOpen] = useState(false);
-  const [docPage, setDocPage] = useState(1);
-  const [docTotal, setDocTotal] = useState(0);
-  const [docMax, setDocMax] = useState(lessonComplete ? 9999 : 1);
+
+  const [lessonComplete,  setLessonComplete]  = useState(initialComplete);
+  const [courseData,      setCourseData]      = useState(initialCourseData);
+  const [isSyllabusOpen,  setIsSyllabusOpen]  = useState(false);
+  const [docPage,         setDocPage]         = useState(1);
+  const [docTotal,        setDocTotal]        = useState(0);
+  const [docMax,          setDocMax]          = useState(lessonComplete ? 9999 : 1);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving,        setIsSaving]        = useState(false);
 
   const isDocumentLesson = lesson.content_type === 'pdf' || lesson.content_type === 'ppt';
 
+  // ── Timer ─────────────────────────────────────────────────────────────────
+  // Only active when lesson has a duration and is not already complete
+  const durationMinutes: number = lesson.duration_minutes ?? 0;
+  const timerEnabled            = durationMinutes > 0 && !lessonComplete;
+
+  const { timeLeft, isComplete: timerDone, isPaused, pauseReason, hasStarted, start } =
+    useLessonTimer({
+      lessonId:          lesson.id,
+      durationMinutes:   timerEnabled ? durationMinutes : 0,
+      isAlreadyComplete: lessonComplete,
+    });
+
+  // Allow "Mark Done" when: no timer set  OR  timer finished
+  const canMarkDone = !timerEnabled || timerDone || lessonComplete;
+
+  // ── Accidental-navigation guard ────────────────────────────────────────────
+  // Active only while timer is running (started but not yet done)
   useEffect(() => {
-    if (lessonComplete && docTotal > 0) {
-      setDocMax(docTotal);
+    if (!timerEnabled || !hasStarted || timerDone || lessonComplete) return;
+
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    // Push a fake history entry so pressing back triggers popstate first
+    history.pushState(null, '', location.href);
+    const onPopState = () => {
+      history.pushState(null, '', location.href);
+      toast.warning('Finish the lesson before leaving — your timer is still running.', {
+        duration: 4000,
+      });
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('popstate',     onPopState);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('popstate',     onPopState);
+    };
+  }, [timerEnabled, hasStarted, timerDone, lessonComplete]);
+
+  // ── Listen for Mark Done triggered from the mobile bottom-nav ─────────────
+  useEffect(() => {
+    const handler = () => {
+      if (canMarkDone && !lessonComplete) handleComplete(false);
+    };
+    window.addEventListener('tnl:mark-done-click', handler);
+    return () => window.removeEventListener('tnl:mark-done-click', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canMarkDone, lessonComplete]);
+
+  // ── Broadcast lesson-completed so bottom-nav hides the Mark Done strip ────
+  useEffect(() => {
+    if (lessonComplete) {
+      window.dispatchEvent(new CustomEvent('tnl:lesson-completed', { detail: { lessonId: lesson.id } }));
     }
+  }, [lessonComplete, lesson.id]);
+
+  useEffect(() => {
+    if (lessonComplete && docTotal > 0) setDocMax(docTotal);
   }, [lessonComplete, docTotal]);
 
-  // Time tracking
+  // ── Passive time tracking (server-side, every 10 s) ───────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!lessonComplete && lesson.id) {
-        updateTimeSpent(lesson.id, 10);
-      }
+      if (!lessonComplete && lesson.id) updateTimeSpent(lesson.id, 10);
     }, 10000);
     return () => clearInterval(interval);
   }, [lessonComplete, lesson.id]);
 
-  const handleComplete = React.useCallback(async (isVideo?: boolean, quizPercentage?: number, isPerfect?: boolean) => {
-    if (lessonComplete && !quizPercentage) {
-      setShowCelebration(true);
-      return;
-    }
+  // ── Completion handler ────────────────────────────────────────────────────
+  const handleComplete = useCallback(async (
+    isVideo?: boolean,
+    quizPercentage?: number,
+    isPerfect?: boolean,
+  ) => {
+    if (lessonComplete && !quizPercentage) { setShowCelebration(true); return; }
     try {
       setIsSaving(true);
-      setShowCelebration(true); // show modal immediately for fast feedback
+      setShowCelebration(true);
 
       const res = await completeLessonAndReward(lesson.id, quizPercentage, isPerfect);
 
@@ -74,26 +135,21 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
           setCourseData(updatedCourse);
         }
       } else if (!isVideo) {
-        // For non-video content show error; for video, completion is best-effort
         toast.error(res?.error || 'Failed to save progress');
         setShowCelebration(false);
       } else {
-        // Video: still mark complete locally so UX is unblocked
         setLessonComplete(true);
       }
-    } catch (err) {
-      console.error('Failed to sync completion:', err);
+    } catch {
       if (!isVideo) {
         toast.error('Failed to save progress');
         setShowCelebration(false);
       } else {
-        setLessonComplete(true); // unblock navigation even on error
+        setLessonComplete(true);
       }
     } finally {
       setIsSaving(false);
     }
-  // lesson.id and lesson.course_id are stable for the lifetime of the page;
-  // lessonComplete is a guard that prevents double-saves.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessonComplete, lesson.id, lesson.course_id]);
 
@@ -102,29 +158,37 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
     if (p > docMax + 1) return;
     setDocPage(p);
     if (p > docMax) setDocMax(p);
-    const contentNode = document.querySelector('.lesson-scroll-container');
-    if (contentNode) contentNode.scrollTo({ top: 0, behavior: 'smooth' });
+    document.querySelector('.lesson-scroll-container')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const currentLessonIndex = React.useMemo(() => {
-    return courseData?.lessons?.findIndex((l: any) => l.id === lesson.id) ?? -1;
-  }, [courseData, lesson.id]);
+  const currentLessonIndex = React.useMemo(
+    () => courseData?.lessons?.findIndex((l: any) => l.id === lesson.id) ?? -1,
+    [courseData, lesson.id],
+  );
 
-  const nextLesson = React.useMemo(() => {
-    if (currentLessonIndex === -1) return null;
-    return courseData?.lessons?.[currentLessonIndex + 1];
-  }, [courseData, currentLessonIndex]);
+  const nextLesson = React.useMemo(
+    () => courseData?.lessons?.[currentLessonIndex + 1] ?? null,
+    [courseData, currentLessonIndex],
+  );
 
-  const totalLessons = courseData?.lessons?.length ?? 0;
-  const isLastLesson = currentLessonIndex === totalLessons - 1;
+  const totalLessons       = courseData?.lessons?.length ?? 0;
+  const isLastLesson       = currentLessonIndex === totalLessons - 1;
   const isCourseJustFinished = isLastLesson && lessonComplete;
-
-  // Course progress %
-  const completedCount = courseData?.lessons?.filter((l: any) => l.status === 'completed').length ?? 0;
-  const courseProgress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+  const completedCount     = courseData?.lessons?.filter((l: any) => l.status === 'completed').length ?? 0;
+  const courseProgress     = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-white text-slate-950 flex flex-col">
+
+      {/* ── Instruction modal (shown once per session when timer is set) ── */}
+      {timerEnabled && (
+        <LessonInstructionModal
+          lessonId={lesson.id}
+          durationMinutes={durationMinutes}
+          onStart={start}
+        />
+      )}
+
       <LessonHeader
         courseId={lesson.course_id}
         courseTitle={courseData?.course?.title || 'Course'}
@@ -134,24 +198,31 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
         onToggleSyllabus={() => setIsSyllabusOpen(!isSyllabusOpen)}
       />
 
-      {/* Main layout */}
-      <div className="flex flex-1 relative overflow-hidden" style={{ height: 'calc(100vh - 56px)' }}>
+      {/* ── Timer bar (visible once started) ── */}
+      {timerEnabled && hasStarted && (
+        <LessonTimerDisplay
+          timeLeft={timeLeft}
+          totalSecs={durationMinutes * 60}
+          isComplete={timerDone}
+          isPaused={isPaused}
+          pauseReason={pauseReason}
+        />
+      )}
 
-        {/* ─── Syllabus sidebar (slide from right) ─── */}
+      {/* Main layout */}
+      <div className="flex flex-1 relative overflow-hidden" style={{ height: timerEnabled && hasStarted ? 'calc(100vh - 56px - 36px)' : 'calc(100vh - 56px)' }}>
+
+        {/* ─── Syllabus sidebar ─── */}
         <AnimatePresence>
           {isSyllabusOpen && (
             <>
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 onClick={() => setIsSyllabusOpen(false)}
                 className="fixed inset-0 z-[100] bg-slate-950/30 backdrop-blur-sm"
               />
               <motion.aside
-                initial={{ x: '100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '100%' }}
+                initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 28, stiffness: 220 }}
                 className="fixed right-0 top-0 bottom-0 z-[110] w-[88vw] sm:w-[380px] bg-white border-l border-slate-100 flex flex-col shadow-[-30px_0_60px_rgba(0,0,0,0.08)]"
               >
@@ -178,7 +249,6 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
 
                 {/* Sidebar body */}
                 <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-5">
-                  {/* Progress bar */}
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Your Progress</span>
@@ -201,22 +271,17 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                       <div className="grid grid-cols-6 gap-1.5">
                         {Array.from({ length: docTotal }, (_, i) => i + 1).map(p => {
                           const isUnlocked = p <= docMax;
-                          const isCurrent = p === docPage;
+                          const isCurrent  = p === docPage;
                           return (
                             <button
                               key={p}
-                              onClick={() => {
-                                handlePageSelect(p);
-                                if (window.innerWidth < 1024) setIsSyllabusOpen(false);
-                              }}
+                              onClick={() => { handlePageSelect(p); if (window.innerWidth < 1024) setIsSyllabusOpen(false); }}
                               disabled={!isUnlocked}
                               className={cn(
                                 'aspect-square rounded-lg flex items-center justify-center text-[9px] font-black border transition-all',
-                                isCurrent
-                                  ? 'bg-indigo-600 text-white border-indigo-600'
-                                  : isUnlocked
-                                    ? 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300'
-                                    : 'bg-slate-50 text-slate-300 border-transparent opacity-50 cursor-not-allowed'
+                                isCurrent  ? 'bg-indigo-600 text-white border-indigo-600'
+                                  : isUnlocked ? 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300'
+                                    : 'bg-slate-50 text-slate-300 border-transparent opacity-50 cursor-not-allowed',
                               )}
                             >
                               {p}
@@ -232,13 +297,11 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                     lessons={courseData?.lessons || []}
                     currentLessonId={lesson.id}
                     isSidebar={true}
-                    onLessonSelect={() => {
-                      if (window.innerWidth < 1024) setIsSyllabusOpen(false);
-                    }}
+                    onLessonSelect={() => { if (window.innerWidth < 1024) setIsSyllabusOpen(false); }}
                   />
                 </div>
 
-                {/* Sidebar footer: XP reward */}
+                {/* Sidebar footer: XP */}
                 <div className="px-5 py-4 bg-slate-50 border-t border-slate-100">
                   <div className="bg-white rounded-2xl px-4 py-3 border border-slate-100 shadow-sm flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
@@ -257,7 +320,6 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
 
         {/* ─── Main content ─── */}
         <div className="lesson-scroll-container flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar">
-          {/* Content (video / pdf / quiz) */}
           <LessonContent
             lesson={lesson}
             isFocusMode={false}
@@ -269,7 +331,6 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
             onPageChange={(p: number) => handlePageSelect(p)}
           />
 
-          {/* Overview section (hide during active quiz) */}
           {!(lesson.content_type === 'quiz' && !lessonComplete) && (
             <div className="bg-white border-t border-slate-100 px-4 sm:px-8 lg:px-12 py-8 sm:py-12 lg:py-16 max-w-[1100px] mx-auto w-full">
               <LessonOverview
@@ -280,7 +341,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
             </div>
           )}
 
-          {/* ─── Bottom lesson action bar (all devices) ─── */}
+          {/* ─── Bottom lesson action bar ─── */}
           <div className="border-t border-slate-100 bg-white px-4 sm:px-8 lg:px-12 py-4 sm:py-5 max-w-[1100px] mx-auto w-full">
             <div className="flex items-center gap-4">
 
@@ -320,7 +381,8 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                     </span>
                   </Link>
                 )
-              ) : (
+              ) : canMarkDone ? (
+                /* Timer done (or no timer) — Mark Done enabled */
                 <button
                   onClick={() => handleComplete(false)}
                   disabled={isSaving}
@@ -331,13 +393,18 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                   ) : (
                     <CheckIcon size={14} />
                   )}
-                  {isSaving ? 'Saving…' : 'Mark as Complete'}
+                  {isSaving ? 'Saving…' : 'Mark Done'}
                 </button>
+              ) : (
+                /* Timer still running — locked state */
+                <div className="flex-shrink-0 flex items-center gap-2 h-11 px-5 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap cursor-not-allowed select-none border border-slate-200">
+                  <Timer size={14} />
+                  {hasStarted ? 'Finish timer first' : 'Start lesson'}
+                </div>
               )}
             </div>
           </div>
 
-          {/* Bottom spacer */}
           <div className="h-6" />
         </div>
       </div>
@@ -358,15 +425,13 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
               transition={{ type: 'spring', damping: 26, stiffness: 260 }}
               className="w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
             >
-              {/* Coloured top strip */}
               <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-pink-500" />
 
               <div className="p-6 sm:p-8 space-y-6">
-                {/* Icon — spinner while saving, check when done */}
                 <div className="flex items-center justify-center">
                   <div className={cn(
-                    "w-16 h-16 rounded-2xl flex items-center justify-center transition-colors",
-                    isSaving ? "bg-slate-100" : "bg-indigo-50"
+                    'w-16 h-16 rounded-2xl flex items-center justify-center transition-colors',
+                    isSaving ? 'bg-slate-100' : 'bg-indigo-50',
                   )}>
                     {isSaving ? (
                       <div className="w-8 h-8 border-[3px] border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
@@ -376,7 +441,6 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                   </div>
                 </div>
 
-                {/* Text */}
                 <div className="text-center space-y-1">
                   <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
                     {isSaving ? 'Saving Progress…' : isCourseJustFinished ? 'Course Complete!' : 'Lesson Complete!'}
@@ -390,7 +454,6 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                   </p>
                 </div>
 
-                {/* XP badge */}
                 <div className="flex items-center justify-between bg-amber-50 rounded-2xl px-5 py-4 border border-amber-100">
                   <div>
                     <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-0.5">XP Earned</p>
@@ -399,10 +462,8 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                   <Star className="text-amber-400 fill-amber-400" size={28} />
                 </div>
 
-                {/* Buttons — disabled/hidden while saving */}
                 <div className="space-y-2.5">
                   {isSaving ? (
-                    /* Skeleton button while save is in-flight */
                     <div className="w-full py-4 bg-slate-100 rounded-2xl animate-pulse" />
                   ) : nextLesson ? (
                     <Link

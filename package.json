@@ -9,7 +9,7 @@
         "lint": "next lint",
         "infra:up": "docker-compose up -d db redis",
         "infra:down": "docker-compose stop",
-        "db:push": "drizzle-kit push --force",
+        "db:push": "drizzle-kit push",
         "db:migrate": "drizzle-kit migrate",
         "db:seed": "npx tsx scripts/seed.ts",
         "db:studio": "drizzle-kit studio",
