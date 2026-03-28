@@ -121,10 +121,15 @@ services:
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
       - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-technurturelabs}" ]
+      # Two-stage check: first verify postgres is accepting connections,
+      # then verify the schema init scripts have finished by checking that
+      # the super_admins table exists. This prevents the app from starting
+      # while docker-entrypoint-initdb.d scripts are still running.
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-technurturelabs} && psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-technurturelabs} -c 'SELECT 1 FROM super_admins LIMIT 1' > /dev/null 2>&1" ]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 20
+      start_period: 10s
 
   # ----------------------------
   # Redis Cache
