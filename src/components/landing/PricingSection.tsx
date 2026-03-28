@@ -2,14 +2,14 @@
 
 import React from 'react';
 import { ScrollReveal } from './ScrollReveal';
-import { NeumorphicButton } from './NeumorphicButton';
+import { PrimaryButton } from './PrimaryButton';
 import { Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 import { getPublicPricingPlans } from '@/components/landing/actions';
 import { useRouter } from 'next/navigation';
 
-export const PricingHybrid = () => {
+export const PricingSection = () => {
     const isMobile = useIsMobile();
     const [plans, setPlans] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(true);
@@ -102,9 +102,9 @@ export const PricingHybrid = () => {
                                         ))}
                                         {plan.max_students && <PricingFeature text={`Up to ${plan.max_students.toLocaleString()} Students`} />}
                                     </ul>
-                                    <NeumorphicButton variant={isCenter ? "primary" : "flat"} className="w-full">
+                                    <PrimaryButton variant={isCenter ? "primary" : "flat"} className="w-full">
                                         {plan.trial_days > 0 ? `Start ${plan.trial_days}-Day Trial` : 'Get Started'}
-                                    </NeumorphicButton>
+                                    </PrimaryButton>
                                 </div>
                             </ScrollReveal>
                         );

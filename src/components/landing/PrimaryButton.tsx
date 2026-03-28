@@ -5,14 +5,14 @@ import { cn } from '@/lib/utils';
 import { motion, HTMLMotionProps } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-interface NeumorphicButtonProps extends HTMLMotionProps<"button"> {
+interface PrimaryButtonProps extends HTMLMotionProps<"button"> {
     children: React.ReactNode;
     className?: string;
     variant?: 'flat' | 'pressed' | 'primary';
     size?: 'sm' | 'md' | 'lg';
 }
 
-export const NeumorphicButton = React.forwardRef<HTMLButtonElement, NeumorphicButtonProps>(
+export const PrimaryButton = React.forwardRef<HTMLButtonElement, PrimaryButtonProps>(
     ({ children, className, variant = 'flat', size = 'md', ...props }, ref) => {
 
         const isMobile = useIsMobile();
@@ -44,4 +44,4 @@ export const NeumorphicButton = React.forwardRef<HTMLButtonElement, NeumorphicBu
         );
     }
 );
-NeumorphicButton.displayName = "NeumorphicButton";
+PrimaryButton.displayName = "PrimaryButton";

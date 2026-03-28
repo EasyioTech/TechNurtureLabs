@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/providers/auth-provider';
 import { LogIn, ArrowLeft, Loader2, GraduationCap, CheckCircle2, Eye, EyeOff, ArrowRight } from 'lucide-react';
-import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
+import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { StudentLoginSidebar } from '@/components/registration/StudentLoginSidebar';
 import { getPlatformSettings } from '@/components/landing/actions';
 import { AnimatePresence } from 'framer-motion';
@@ -170,7 +170,7 @@ export default function StudentLoginPage() {
                     {errors.email && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.email}</p>}
                   </div>
 
-                  <NeumorphicButton
+                  <PrimaryButton
                     type="button"
                     onClick={handleContinue}
                     disabled={emailCheckLoading}
@@ -183,7 +183,7 @@ export default function StudentLoginPage() {
                         <ArrowRight size={18} />
                       </>
                     )}
-                  </NeumorphicButton>
+                  </PrimaryButton>
                 </div>
               </motion.div>
             ) : (
@@ -258,7 +258,7 @@ export default function StudentLoginPage() {
                     {errors.password && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.password}</p>}
                   </div>
 
-                  <NeumorphicButton
+                  <PrimaryButton
                     type="submit"
                     disabled={loading}
                     variant="primary"
@@ -270,7 +270,7 @@ export default function StudentLoginPage() {
                         <LogIn size={20} />
                       </>
                     )}
-                  </NeumorphicButton>
+                  </PrimaryButton>
                 </form>
               </motion.div>
             )}

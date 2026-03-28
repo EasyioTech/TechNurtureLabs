@@ -7,15 +7,15 @@ import { Sparkles, ArrowUpRight, Mail, MapPin } from 'lucide-react';
 const footerLinks = {
     platform: [
         { label: 'Features', href: '#features' },
-        { label: 'Gamification', href: '#solutions' },
-        { label: 'Analytics', href: '#analytics' },
+        { label: 'Product Demo', href: '#demo' },
         { label: 'Pricing', href: '#pricing' },
+        { label: 'Reviews', href: '#testimonials' },
     ],
     company: [
-        { label: 'About Us', href: '#about' },
-        { label: 'Careers', href: '#' },
-        { label: 'Blog', href: '#' },
-        { label: 'Contact', href: '#' },
+        { label: 'Register School', href: '/register/school' },
+        { label: 'Student Login', href: '/login' },
+        { label: 'School Portal', href: '/school-portal/login' },
+        { label: 'Contact Us', href: 'mailto:hello@technurture.com' },
     ],
     legal: [
         { label: 'Privacy Policy', href: '#' },
@@ -25,7 +25,7 @@ const footerLinks = {
     ],
 };
 
-export const FooterDark = ({ settings }: { settings?: any }) => {
+export const Footer = ({ settings }: { settings?: any }) => {
     return (
         <footer className="relative z-10 bg-slate-50 text-slate-500 overflow-hidden">
 

@@ -5,13 +5,13 @@ import { cn } from '@/lib/utils';
 import { motion, HTMLMotionProps } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-interface GlassCardLightProps extends HTMLMotionProps<"div"> {
+interface SectionCardProps extends HTMLMotionProps<"div"> {
     children: React.ReactNode;
     className?: string;
 }
 
 // Glassmorphism Light: Translucent white panels, subtle blur, fine white borders
-export const GlassCardLight = React.forwardRef<HTMLDivElement, GlassCardLightProps>(
+export const SectionCard = React.forwardRef<HTMLDivElement, SectionCardProps>(
     ({ children, className, ...props }, ref) => {
         const isMobile = useIsMobile();
         return (
@@ -40,4 +40,4 @@ export const GlassCardLight = React.forwardRef<HTMLDivElement, GlassCardLightPro
         );
     }
 );
-GlassCardLight.displayName = "GlassCardLight";
+SectionCard.displayName = "SectionCard";

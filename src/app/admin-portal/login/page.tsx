@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/providers/auth-provider';
 import { ArrowLeft, Loader2, Crown, Eye, EyeOff, Shield, Sparkles, CheckCircle2, Lock } from 'lucide-react';
-import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
+import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { ScrollReveal } from '@/components/landing/ScrollReveal';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
@@ -170,7 +170,7 @@ export default function AdminLoginPage() {
                 </div>
 
                 <div className="pt-4">
-                  <NeumorphicButton
+                  <PrimaryButton
                     type="submit"
                     disabled={loading}
                     variant="primary"
@@ -187,7 +187,7 @@ export default function AdminLoginPage() {
                         <Shield size={20} className="ml-2" />
                       </>
                     )}
-                  </NeumorphicButton>
+                  </PrimaryButton>
                 </div>
               </form>
             ) : (

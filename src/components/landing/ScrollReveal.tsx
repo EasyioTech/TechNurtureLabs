@@ -25,10 +25,10 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
     const isMobile = useIsMobile();
 
     const directions = {
-        up: { y: 40, x: 0 },
-        down: { y: -40, x: 0 },
-        left: { x: 40, y: 0 },
-        right: { x: -40, y: 0 },
+        up: { y: 24, x: 0 },
+        down: { y: -24, x: 0 },
+        left: { x: 24, y: 0 },
+        right: { x: -24, y: 0 },
         none: { x: 0, y: 0 },
     };
 
@@ -37,7 +37,7 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
             opacity: isMobile ? 1 : 0,
             y: isMobile ? 0 : directions[direction].y,
             x: isMobile ? 0 : directions[direction].x,
-            filter: isMobile ? 'blur(0px)' : 'blur(10px)',
+            filter: isMobile ? 'blur(0px)' : 'blur(5px)',
         },
         visible: {
             opacity: 1,

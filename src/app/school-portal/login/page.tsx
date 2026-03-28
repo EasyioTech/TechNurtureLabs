@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/providers/auth-provider';
 import { LogIn, ArrowLeft, Loader2, School, Eye, EyeOff, Building2 } from 'lucide-react';
-import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
+import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { SchoolLoginSidebar } from '@/components/registration/SchoolLoginSidebar';
 import { getPlatformSettings } from '@/components/landing/actions';
 import { useEffect } from 'react';
@@ -141,7 +141,7 @@ export default function SchoolLoginPage() {
             </div>
 
             <div className="pt-2">
-              <NeumorphicButton
+              <PrimaryButton
                 type="submit"
                 disabled={loading}
                 variant="primary"
@@ -158,7 +158,7 @@ export default function SchoolLoginPage() {
                     <LogIn size={18} className="ml-2" />
                   </>
                 )}
-              </NeumorphicButton>
+              </PrimaryButton>
             </div>
           </form>
 

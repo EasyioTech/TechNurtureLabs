@@ -4,7 +4,7 @@ import React from 'react';
 import { Gamepad2, BarChart3, Users, Shield, BookOpen, Globe, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { GlassCardLight } from './GlassCardLight';
+import { SectionCard } from './SectionCard';
 import { ScrollReveal } from './ScrollReveal';
 
 const NeumorphicIconContainer = ({ children, className, color }: { children: React.ReactNode; className?: string; color: string }) => {
@@ -28,7 +28,7 @@ const NeumorphicIconContainer = ({ children, className, color }: { children: Rea
     );
 };
 
-export const FeaturesBentoLight = () => {
+export const FeaturesSection = () => {
     return (
         <section id="features" className="relative z-10 py-32 bg-slate-50 overflow-hidden">
 
@@ -53,14 +53,14 @@ export const FeaturesBentoLight = () => {
                     </ScrollReveal>
                 </div>
 
-                {/* CSS Custom Bento Grid with GlassCardLight. 
+                {/* CSS Custom Bento Grid with SectionCard. 
                     Uses auto rows on mobile for flexibility, and strict 280px rows on desktop for structure. */}
                 <div className="grid grid-cols-1 md:grid-cols-4 auto-rows-auto md:auto-rows-[280px] gap-6">
 
                     {/* Main Feature - Gamification (Span 2x2) */}
                     <div className="md:col-span-2 md:row-span-2 h-full">
                         <ScrollReveal delay={0.2} className="h-full">
-                            <GlassCardLight className="flex flex-col justify-between group overflow-hidden !bg-white/70 h-full relative border-slate-100 shadow-xl shadow-slate-200/20">
+                            <SectionCard className="flex flex-col justify-between group overflow-hidden !bg-white/70 h-full relative border-slate-100 shadow-xl shadow-slate-200/20">
                                 <div className="relative z-20">
                                     <NeumorphicIconContainer color="indigo" className="w-16 h-16 rounded-[24px]">
                                         <Gamepad2 size={32} />
@@ -78,14 +78,14 @@ export const FeaturesBentoLight = () => {
                                 >
                                     <img src="/illustrations/gamified-learning.svg" alt="Gamification" className="w-[200px] md:w-[350px] transform group-hover:scale-105 transition-transform duration-1000" />
                                 </motion.div>
-                            </GlassCardLight>
+                            </SectionCard>
                         </ScrollReveal>
                     </div>
 
                     {/* Feature 2 (Span 1x1) */}
                     <div className="md:col-span-1 md:row-span-1 h-full">
                         <ScrollReveal delay={0.3} className="h-full">
-                            <GlassCardLight className="flex flex-col h-full !bg-white/60 justify-center group overflow-hidden relative">
+                            <SectionCard className="flex flex-col h-full !bg-white/60 justify-center group overflow-hidden relative">
                                 <div className="relative z-10">
                                     <NeumorphicIconContainer color="blue">
                                         <BookOpen size={24} />
@@ -102,14 +102,14 @@ export const FeaturesBentoLight = () => {
                                 >
                                     <img src="/illustrations/interactive-courses.svg" alt="Books" className="w-[180px] h-auto" />
                                 </motion.div>
-                            </GlassCardLight>
+                            </SectionCard>
                         </ScrollReveal>
                     </div>
 
                     {/* Feature 3 (Span 1x2) */}
                     <div className="md:col-span-1 md:row-span-1 h-full">
                         <ScrollReveal delay={0.4} className="h-full">
-                            <GlassCardLight className="flex flex-col h-full !bg-white/60 group overflow-hidden relative">
+                            <SectionCard className="flex flex-col h-full !bg-white/60 group overflow-hidden relative">
                                 <div className="relative z-10">
                                     <NeumorphicIconContainer color="sky">
                                         <BarChart3 size={24} />
@@ -127,14 +127,14 @@ export const FeaturesBentoLight = () => {
                                 >
                                     <img src="/illustrations/charts.svg" alt="Analytics" className="w-[190px] h-auto" />
                                 </motion.div>
-                            </GlassCardLight>
+                            </SectionCard>
                         </ScrollReveal>
                     </div>
 
                     {/* Feature 4 (Span 1x1) */}
                     <div className="md:col-span-2 md:row-span-1 h-full">
                         <ScrollReveal delay={0.5} className="h-full">
-                            <GlassCardLight className="flex flex-col h-full !bg-white/60 justify-center group overflow-hidden relative">
+                            <SectionCard className="flex flex-col h-full !bg-white/60 justify-center group overflow-hidden relative">
                                 <div className="relative z-10">
                                     <NeumorphicIconContainer color="teal">
                                         <Globe size={24} />
@@ -151,14 +151,14 @@ export const FeaturesBentoLight = () => {
                                 >
                                     <img src="/illustrations/learning.svg" alt="Learning" className="w-[240px] h-auto" />
                                 </motion.div>
-                            </GlassCardLight>
+                            </SectionCard>
                         </ScrollReveal>
                     </div>
 
                     {/* Horizontal Banner (Span 3x1) */}
                     <div className="md:col-span-4 md:row-span-1 h-full">
                         <ScrollReveal delay={0.6} className="h-full">
-                            <GlassCardLight className="flex flex-col md:flex-row items-center justify-between gap-8 h-full !bg-white/60 group overflow-hidden relative">
+                            <SectionCard className="flex flex-col md:flex-row items-center justify-between gap-8 h-full !bg-white/60 group overflow-hidden relative">
                                 <div className="flex-1 relative z-10">
                                     <NeumorphicIconContainer color="slate">
                                         <Shield size={24} />
@@ -180,7 +180,7 @@ export const FeaturesBentoLight = () => {
                                     <div className="absolute inset-3 border-4 border-indigo-200 rounded-full animate-[spin_8s_linear_infinite_reverse]" />
                                     <Shield size={40} className="text-indigo-600" strokeWidth={1.5} />
                                 </div>
-                            </GlassCardLight>
+                            </SectionCard>
                         </ScrollReveal>
                     </div>
 

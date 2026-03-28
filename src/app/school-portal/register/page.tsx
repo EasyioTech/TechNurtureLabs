@@ -24,7 +24,7 @@ import {
   CreditCard, Check, Eye, EyeOff, ArrowRight,
   Building2, Landmark, BadgeCheck, X, MapPin, Map, Compass, Shield, Lock
 } from 'lucide-react';
-import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
+import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { SchoolRegistrationSidebar } from '@/components/registration/SchoolRegistrationSidebar';
 import { CheckoutOverlay } from '@/components/registration/CheckoutOverlay';
 
@@ -584,7 +584,7 @@ export default function SchoolRegistrationPage() {
                     </div>
                   </div>
                   <div className="pt-4">
-                    <NeumorphicButton
+                    <PrimaryButton
                       type="button"
                       onClick={() => handleNextStep(1)}
                       variant="primary"
@@ -592,7 +592,7 @@ export default function SchoolRegistrationPage() {
                     >
                       Continue
                       <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
-                    </NeumorphicButton>
+                    </PrimaryButton>
                   </div>
                 </motion.div>
               )}
@@ -645,7 +645,7 @@ export default function SchoolRegistrationPage() {
                     />
                   </div>
                   <div className="pt-4">
-                    <NeumorphicButton
+                    <PrimaryButton
                       type="button"
                       onClick={() => handleNextStep(2)}
                       variant="primary"
@@ -653,7 +653,7 @@ export default function SchoolRegistrationPage() {
                     >
                       Continue
                       <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
-                    </NeumorphicButton>
+                    </PrimaryButton>
                   </div>
                 </motion.div>
               )}
@@ -745,7 +745,7 @@ export default function SchoolRegistrationPage() {
 
                   <div className="pt-6">
                     {paymentPlans.length > 0 ? (
-                      <NeumorphicButton
+                      <PrimaryButton
                         type="button"
                         onClick={() => handleNextStep(3)}
                         variant="primary"
@@ -753,16 +753,16 @@ export default function SchoolRegistrationPage() {
                       >
                         Proceed to Selection
                         <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
-                      </NeumorphicButton>
+                      </PrimaryButton>
                     ) : (
-                      <NeumorphicButton
+                      <PrimaryButton
                         type="button"
                         onClick={() => handleNextStep(3)}
                         variant="primary"
                         className="w-full !h-16 !text-base !rounded-2xl !bg-slate-950 hover:!bg-slate-900 shadow-xl shadow-slate-950/10 transition-all font-black uppercase tracking-widest cursor-pointer"
                       >
                         {loading ? 'Processing...' : 'Register School'}
-                      </NeumorphicButton>
+                      </PrimaryButton>
                     )}
                   </div>
                 </motion.div>
@@ -837,7 +837,7 @@ export default function SchoolRegistrationPage() {
                   )}
 
                   <div className="pt-6">
-                    <NeumorphicButton
+                    <PrimaryButton
                       type="button"
                       onClick={handleProceedToCheckout}
                       disabled={checkoutLoading || !formData.plan_id}
@@ -849,7 +849,7 @@ export default function SchoolRegistrationPage() {
                       ) : (
                         <><CreditCard size={20} className="mr-2" /> Proceed to Checkout</>
                       )}
-                    </NeumorphicButton>
+                    </PrimaryButton>
                     <p className="text-center text-[11px] text-slate-400 font-bold mt-3 flex items-center justify-center gap-1.5">
                       <Lock size={11} /> Secured by Razorpay • You can apply promo codes on the next screen
                     </p>

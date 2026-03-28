@@ -15,13 +15,13 @@ import {
 } from "@/components/ui/dialog";
 
 const navLinks = [
-    { label: 'Curriculum', href: '#features' },
-    { label: 'Solutions', href: '#solutions' },
+    { label: 'Features', href: '#features' },
+    { label: 'Demo', href: '#demo' },
     { label: 'Pricing', href: '#pricing' },
-    { label: 'About', href: '#about' },
+    { label: 'Reviews', href: '#testimonials' },
 ];
 
-export const FlatNavigation = ({ settings }: { settings?: any }) => {
+export const Navigation = ({ settings }: { settings?: any }) => {
     const [scrolled, setScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [activeSection, setActiveSection] = useState('');

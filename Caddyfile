@@ -3,5 +3,14 @@ technurturelms.in {
 }
 
 www.technurturelms.in {
-    redir https://technurturelms.in{uri} permanent
+    # Let Caddy handle its own ACME challenge before any redirect.
+    # Without this matcher, the http-01 challenge token for the www subdomain
+    # gets redirected to https:// before Let's Encrypt can read it → 404 / auth failure.
+    @acme path /.well-known/acme-challenge/*
+    handle @acme {
+        respond 200
+    }
+    handle {
+        redir https://technurturelms.in{uri} permanent
+    }
 }

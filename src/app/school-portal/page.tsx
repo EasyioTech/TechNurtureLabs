@@ -8,7 +8,7 @@ import {
   Sparkles, Globe, Shield, Check, Building2, Landmark, Rocket
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
+import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { ScrollReveal } from '@/components/landing/ScrollReveal';
 
 import { getPlatformSettings } from '@/components/landing/actions';
@@ -52,9 +52,9 @@ export default function SchoolPortalLanding() {
             <div className="hidden md:flex items-center gap-6">
               <Link href="/school-portal/login" className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors uppercase tracking-widest">Sign In</Link>
               <Link href="/school-portal/register">
-                <NeumorphicButton variant="primary" className="!h-10 !px-6 !text-[10px] !bg-slate-900 !rounded-lg !font-black !uppercase !tracking-widest">
+                <PrimaryButton variant="primary" className="!h-10 !px-6 !text-[10px] !bg-slate-900 !rounded-lg !font-black !uppercase !tracking-widest">
                   Partner with Us
-                </NeumorphicButton>
+                </PrimaryButton>
               </Link>
             </div>
           </div>
@@ -86,10 +86,10 @@ export default function SchoolPortalLanding() {
 
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 <Link href="/school-portal/register" className="w-full sm:w-auto">
-                  <NeumorphicButton size="lg" variant="primary" className="w-full !h-14 !px-10 !text-sm !bg-slate-900 !rounded-xl !font-black !uppercase !tracking-widest shadow-2xl shadow-slate-900/20">
+                  <PrimaryButton size="lg" variant="primary" className="w-full !h-14 !px-10 !text-sm !bg-slate-900 !rounded-xl !font-black !uppercase !tracking-widest shadow-2xl shadow-slate-900/20">
                     Register Institution
                     <ArrowRight className="ml-2" size={18} />
-                  </NeumorphicButton>
+                  </PrimaryButton>
                 </Link>
                 <div className="flex items-center gap-4 px-6 py-2">
                   <div className="flex -space-x-3">
@@ -186,10 +186,10 @@ export default function SchoolPortalLanding() {
                   ))}
                 </div>
                 <Link href="/school-portal/register">
-                  <NeumorphicButton variant="primary" className="!h-14 !px-10 !bg-white !text-slate-900 !rounded-xl !font-black !uppercase !tracking-widest">
+                  <PrimaryButton variant="primary" className="!h-14 !px-10 !bg-white !text-slate-900 !rounded-xl !font-black !uppercase !tracking-widest">
                     Start Free Trial
                     <Rocket className="ml-2" size={18} />
-                  </NeumorphicButton>
+                  </PrimaryButton>
                 </Link>
               </div>
               <div className="hidden lg:block">

@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import { motion, useInView, useSpring, useTransform } from 'framer-motion';
 import { Users, BookOpen, Award, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { GlassCardLight } from './GlassCardLight';
+import { SectionCard } from './SectionCard';
 import { ScrollReveal } from './ScrollReveal';
 
 interface AnimatedCounterProps {
@@ -57,7 +57,7 @@ interface StatItemProps {
 const StatItem = ({ value, label, icon, delay = 0 }: StatItemProps) => {
     return (
         <ScrollReveal delay={delay} direction="up" className="h-full">
-            <GlassCardLight className="group relative h-full flex flex-col items-center justify-center text-center !p-6 transition-all duration-300 overflow-hidden">
+            <SectionCard className="group relative h-full flex flex-col items-center justify-center text-center !p-6 transition-all duration-300 overflow-hidden">
                 <div
                     className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 relative z-10 bg-slate-50 text-indigo-600 border border-slate-100"
                 >
@@ -72,50 +72,53 @@ const StatItem = ({ value, label, icon, delay = 0 }: StatItemProps) => {
                         {label}
                     </p>
                 </div>
-            </GlassCardLight>
+            </SectionCard>
         </ScrollReveal>
     );
 };
 
-export const StatsModern = () => {
+export const StatsSection = () => {
     return (
         <section id="stats" className="relative py-24 bg-white overflow-hidden">
             <div className="max-w-7xl mx-auto px-6 relative z-10">
                 <div className="text-center mb-16">
                     <ScrollReveal>
                         <span className="px-4 py-1.5 rounded-full bg-slate-50 text-slate-600 text-xs font-bold uppercase tracking-[0.2em] border border-slate-100 mb-6 inline-block">
-                            Track Record
+                            By the Numbers
                         </span>
                     </ScrollReveal>
                     <ScrollReveal delay={0.1}>
                         <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">
-                            Impact that speaks for itself.
+                            Real outcomes, at scale.
                         </h2>
+                        <p className="mt-3 text-slate-500 font-medium text-base max-w-sm mx-auto">
+                            Measured across every school that has gone live on TechNurture.
+                        </p>
                     </ScrollReveal>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                     <StatItem
                         value="500+"
-                        label="Institutions"
+                        label="Schools Onboarded"
                         icon={<Building2 />}
                         delay={0.1}
                     />
                     <StatItem
-                        value="1M+"
+                        value="120K+"
                         label="Active Students"
                         icon={<Users />}
                         delay={0.2}
                     />
                     <StatItem
-                        value="10K+"
-                        label="Expert Courses"
+                        value="800+"
+                        label="Course Modules"
                         icon={<BookOpen />}
                         delay={0.3}
                     />
                     <StatItem
-                        value="98.5%"
-                        label="Retention Rate"
+                        value="96%"
+                        label="Satisfaction Rate"
                         icon={<Award />}
                         delay={0.4}
                     />

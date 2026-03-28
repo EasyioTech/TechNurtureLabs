@@ -8,7 +8,7 @@ import {
   Crown, Lock, Database, ShieldCheck, Activity, Terminal
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
+import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { ScrollReveal } from '@/components/landing/ScrollReveal';
 
 import { getPlatformSettings } from '@/components/landing/actions';
@@ -59,10 +59,10 @@ export default function AdminPortalLanding() {
               </div>
             </Link>
             <Link href="/admin-portal/login">
-              <NeumorphicButton variant="primary" className="!h-10 !px-8 !text-[10px] !bg-slate-900 !rounded-lg !font-black !uppercase !tracking-widest">
+              <PrimaryButton variant="primary" className="!h-10 !px-8 !text-[10px] !bg-slate-900 !rounded-lg !font-black !uppercase !tracking-widest">
                 <Lock size={12} className="mr-2" />
                 Secure Login
-              </NeumorphicButton>
+              </PrimaryButton>
             </Link>
           </div>
         </div>
@@ -93,10 +93,10 @@ export default function AdminPortalLanding() {
 
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 <Link href="/admin-portal/login" className="w-full sm:w-auto">
-                  <NeumorphicButton size="lg" variant="primary" className="w-full !h-14 !px-10 !text-sm !bg-slate-900 !rounded-xl !font-black !uppercase !tracking-widest shadow-2xl shadow-indigo-900/10">
+                  <PrimaryButton size="lg" variant="primary" className="w-full !h-14 !px-10 !text-sm !bg-slate-900 !rounded-xl !font-black !uppercase !tracking-widest shadow-2xl shadow-indigo-900/10">
                     Initialize Console
                     <Terminal className="ml-2" size={18} />
-                  </NeumorphicButton>
+                  </PrimaryButton>
                 </Link>
                 <div className="flex items-center gap-3 px-6 py-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -183,10 +183,10 @@ export default function AdminPortalLanding() {
                 Every packet transmitted is audited and encrypted using industry standard protocols.
               </p>
               <Link href="/admin-portal/login">
-                <NeumorphicButton variant="primary" className="!h-14 !px-12 !bg-slate-900 !rounded-xl !font-black !uppercase !tracking-widest">
+                <PrimaryButton variant="primary" className="!h-14 !px-12 !bg-slate-900 !rounded-xl !font-black !uppercase !tracking-widest">
                   Enter Command Center
                   <ArrowRight size={20} className="ml-2" />
-                </NeumorphicButton>
+                </PrimaryButton>
               </Link>
             </div>
           </div>

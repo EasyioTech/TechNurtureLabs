@@ -6,7 +6,7 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export const FAQFlat = () => {
+export const FAQSection = () => {
     return (
         <section className="py-24 bg-white relative z-10">
             <div className="max-w-4xl mx-auto px-6">
@@ -18,7 +18,7 @@ export const FAQFlat = () => {
                                 Frequently Asked <br className="hidden md:block" /> Questions
                             </h2>
                             <p className="mt-4 text-lg text-slate-600 font-medium max-w-md">
-                                Everything you need to know about the TechNurture platform and our onboarding process.
+                                Everything schools ask before going live. If you have more, our team is one message away.
                             </p>
                         </ScrollReveal>
                     </div>
@@ -31,19 +31,27 @@ export const FAQFlat = () => {
                     <div className="divide-y divide-slate-200 border-t border-b border-slate-200">
                         <FAQItem
                             question="How long does it take to onboard our school?"
-                            answer="Our streamlined onboarding process usually takes less than 24 hours. Once your UDISE code is verified, you can immediately begin inviting teachers and students."
+                            answer="Our streamlined onboarding process usually takes less than 24 hours. Once your UDISE code is verified, you can immediately begin inviting teachers and students — no technical setup required."
                         />
                         <FAQItem
-                            question="Can we customize the platform to match our school colors?"
-                            answer="Absolutely. The Pro and District plans include complete white-labeling capabilities, allowing you to upload your school logo and set your exact brand colors."
+                            question="How does the gamification system work?"
+                            answer="Students earn XP points for completing lessons, quizzes, and daily streaks. Points unlock badges and push them up class leaderboards. Every element is designed to build healthy habits and intrinsic motivation — not just competition."
+                        />
+                        <FAQItem
+                            question="Does TechNurture work on mobile devices?"
+                            answer="Yes, fully. The platform is responsive on all screen sizes and we have dedicated mobile-optimised views for students. Teachers can manage classrooms, review submissions, and post announcements directly from their phones."
+                        />
+                        <FAQItem
+                            question="Can we customize the platform to match our school's branding?"
+                            answer="Absolutely. The Pro and District plans include complete white-labeling — upload your school logo, set your brand colors, and the platform looks and feels like your own. Students see your school's identity, not ours."
                         />
                         <FAQItem
                             question="Is student data secure and private?"
-                            answer="Yes. We employ enterprise-grade encryption and comply with all national and international data privacy regulations for minors. Student data is never sold or shared."
+                            answer="Yes. We use enterprise-grade encryption at rest and in transit, and comply with all national data privacy regulations for minors. Student data is never sold, shared, or used for advertising. Period."
                         />
                         <FAQItem
-                            question="Do you offer training for our teachers?"
-                            answer="We provide extensive documentation, video tutorials, and dedicated live onboarding sessions for your entire teaching staff to ensure a smooth transition."
+                            question="Do you offer support and training for teachers?"
+                            answer="We provide comprehensive documentation, video walkthroughs, and dedicated live onboarding sessions for your entire teaching staff. Our support team is reachable via chat during school hours — and critical issues are responded to within the hour."
                         />
                     </div>
                 </ScrollReveal>

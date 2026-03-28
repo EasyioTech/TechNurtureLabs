@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { ArrowLeft, Send, Sparkles, CheckCircle2 } from 'lucide-react';
-import { NeumorphicButton } from '@/components/landing/NeumorphicButton';
+import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { ScrollReveal } from '@/components/landing/ScrollReveal';
 
 export default function ForgotPasswordPage() {
@@ -74,10 +74,10 @@ export default function ForgotPasswordPage() {
                                             required
                                         />
                                     </div>
-                                    <NeumorphicButton variant="primary" type="submit" className="w-full !h-14 !bg-slate-900 !rounded-xl !font-black !uppercase !tracking-widest shadow-xl shadow-slate-900/20">
+                                    <PrimaryButton variant="primary" type="submit" className="w-full !h-14 !bg-slate-900 !rounded-xl !font-black !uppercase !tracking-widest shadow-xl shadow-slate-900/20">
                                         Send Recovery Link
                                         <Send className="ml-2" size={18} />
-                                    </NeumorphicButton>
+                                    </PrimaryButton>
                                 </form>
                             </>
                         ) : (
@@ -91,9 +91,9 @@ export default function ForgotPasswordPage() {
                                     Please check your inbox or spam folder within the next 5 minutes.
                                 </p>
                                 <Link href="/login" className="block">
-                                    <NeumorphicButton variant="flat" className="w-full !h-14 !rounded-xl !font-black !uppercase !tracking-widest">
+                                    <PrimaryButton variant="flat" className="w-full !h-14 !rounded-xl !font-black !uppercase !tracking-widest">
                                         Return to Access Point
-                                    </NeumorphicButton>
+                                    </PrimaryButton>
                                 </Link>
                             </div>
                         )}

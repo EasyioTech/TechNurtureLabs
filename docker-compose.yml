@@ -73,7 +73,7 @@ services:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     volumes:
       # Local fallback storage — used when R2 is not configured or fails
       - storage_data:/app/local_storage
@@ -96,7 +96,7 @@ services:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     command: npx tsx scripts/event-worker.ts
 
   # ----------------------------
@@ -137,6 +137,11 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 networks:
   default:

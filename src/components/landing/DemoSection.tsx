@@ -83,7 +83,7 @@ const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
     );
 };
 
-export const DemoMaterial = () => {
+export const DemoSection = () => {
     const isMobile = useIsMobile();
     const containerRef = useRef<HTMLDivElement>(null);
 
