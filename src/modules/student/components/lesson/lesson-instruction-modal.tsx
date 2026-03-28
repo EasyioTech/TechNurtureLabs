@@ -12,30 +12,33 @@ interface Props {
   onStart:         () => void;
 }
 
-const RULES = [
-  {
-    icon:  EyeOff,
-    title: 'Don\'t switch tabs',
-    body:  'Switching to another tab pauses your timer automatically.',
-  },
-  {
-    icon:  MonitorOff,
-    title: 'Keep the window visible',
-    body:  'Minimising or moving focus away will pause your countdown.',
-  },
-  {
-    icon:  ArrowRightLeft,
-    title: 'No skipping allowed',
-    body:  'You cannot fast-forward through content — watch it through.',
-  },
-  {
-    icon:  ShieldCheck,
-    title: 'Mark Done unlocks automatically',
-    body:  `The "Mark Done" button appears only after your ${durationMinutes}-minute timer finishes.`,
-  },
-];
+const getRules = (durationMinutes: number) => {
+  return [
+    {
+      icon:  EyeOff,
+      title: 'Don\'t switch tabs',
+      body:  'Switching to another tab pauses your timer automatically.',
+    },
+    {
+      icon:  MonitorOff,
+      title: 'Keep the window visible',
+      body:  'Minimising or moving focus away will pause your countdown.',
+    },
+    {
+      icon:  ArrowRightLeft,
+      title: 'No skipping allowed',
+      body:  'You cannot fast-forward through content — watch it through.',
+    },
+    {
+      icon:  ShieldCheck,
+      title: 'Mark Done unlocks automatically',
+      body:  'The "Mark Done" button appears only after your ' + durationMinutes + '-minute timer finishes.',
+    },
+  ];
+};
 
 export function LessonInstructionModal({ lessonId, durationMinutes, onStart }: Props) {
+  const RULES = getRules(durationMinutes);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
