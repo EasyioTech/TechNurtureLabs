@@ -41,7 +41,7 @@ const quizQuestionSchema = z.object({
     explanation: z.string().optional().default(''),
     points: z.number().int().min(1, 'Points must be at least 1').max(100).default(1),
     time_limit_secs: z.number().int().min(0).default(0),
-    correct_answer: z.number().or(z.string()).optional(),
+    correct_answer: z.union([z.number(), z.string()]).optional(),  // ✓ Accept number (index) or string
     options: z.array(quizOptionSchema).optional(),
 });
 
