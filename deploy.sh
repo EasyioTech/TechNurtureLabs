@@ -18,6 +18,18 @@ if [[ "$1" == "--clean" ]]; then
   echo "⚠️ CLEAN MODE ENABLED: Volumes will be destroyed and images rebuilt without cache."
 fi
 
+# Step 1.5: Port Conflict Check (Common on new VPS)
+echo "🔍 PRE-FLIGHT CHECK: Detecting port conflicts on 80/443..."
+if lsof -Pi :80 -sTCP:LISTEN -t >/dev/null ; then
+    CONFLICT=$(lsof -i :80 -t | xargs ps -o comm= -p 2>/dev/null || true)
+    # If conflict isn't obviously docker-related, warn the user
+    if [[ ! "$CONFLICT" =~ "docker" ]] && [[ ! "$CONFLICT" =~ "caddy" ]] && [ ! -z "$CONFLICT" ]; then
+        echo -e "\033[0;31m❌ ERROR: Port 80 is occupied by '$CONFLICT' on the host.\033[0m"
+        echo "💡 This is common on Hostinger/CPANEL. Run: systemctl stop $CONFLICT && systemctl disable $CONFLICT"
+        exit 1
+    fi
+fi
+
 # Step 2: Pull the latest code
 echo "Pulling latest code..."
 git pull origin main
