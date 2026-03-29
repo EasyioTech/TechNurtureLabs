@@ -68,8 +68,10 @@ export async function saveQuizAdmin(quizData: unknown) {
     } catch (validationError) {
         // Re-throw with clear message
         if (validationError instanceof z.ZodError) {
-            const firstError = validationError.errors[0];
-            throw new Error(`Validation error: ${firstError.message} (${firstError.path.join('.')})`);
+            const errorDetail = validationError.issues[0];
+            if (errorDetail) {
+                throw new Error(`Validation error: ${errorDetail.message} (${errorDetail.path.join('.')})`);
+            }
         }
         throw validationError;
     }
