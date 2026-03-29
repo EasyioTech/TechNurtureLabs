@@ -206,12 +206,9 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
 
     const handleClose = React.useCallback((force: boolean = false) => {
         if (!force && isDirty) {
-            if (confirm('You have unsaved changes. Are you sure you want to close? All progress will be lost.')) {
-                onOpenChange(false);
-            }
-        } else {
-            onOpenChange(false);
+            toast.info('Draft changes discarded');
         }
+        onOpenChange(false);
     }, [isDirty, onOpenChange]);
 
     React.useEffect(() => {
@@ -435,6 +432,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                             </DialogDescription>
                         </div>
                         <button
+                            type="button"
                             onClick={() => handleClose()}
                             className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${isDark ? 'text-slate-500 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
                             aria-label="Close dialog"
@@ -468,6 +466,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                     return (
                                         <button
                                             key={mode.id}
+                                            type="button"
                                             onClick={() => switchMode(mode.id)}
                                             className={cn(
                                                 'flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border-2 text-center transition-all cursor-pointer',
@@ -566,6 +565,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
 
                                                     {/* Delete block */}
                                                     <button
+                                                        type="button"
                                                         onClick={() => removeBlock(item.id)}
                                                         className={cn(
                                                             'w-7 h-7 rounded-lg flex items-center justify-center transition-colors flex-shrink-0',
@@ -657,6 +657,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                                                         </button>
                                                                         {getImageUrls(item).length > 1 && (
                                                                             <button
+                                                                                type="button"
                                                                                 onClick={() => {
                                                                                     const next = getImageUrls(item).filter((_, i) => i !== imgIdx);
                                                                                     applyImageUrls(item.id, next);
@@ -675,6 +676,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                                                 );
                                                             })}
                                                             <button
+                                                                type="button"
                                                                 onClick={() => applyImageUrls(item.id, [...getImageUrls(item), ''])}
                                                                 className={cn(
                                                                     'h-8 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wide transition-all',
@@ -771,6 +773,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                 {/* Add block — type picker */}
                                 {!showBlockPicker ? (
                                     <button
+                                        type="button"
                                         onClick={() => setShowBlockPicker(true)}
                                         className={cn(
                                             'w-full h-11 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wide transition-all',
@@ -791,6 +794,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                                 Choose content type
                                             </span>
                                             <button
+                                                type="button"
                                                 onClick={() => setShowBlockPicker(false)}
                                                 className={cn(
                                                     'w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
@@ -806,6 +810,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                                 return (
                                                     <button
                                                         key={bt2.id}
+                                                        type="button"
                                                         onClick={() => { addBlock(bt2.id); setShowBlockPicker(false); }}
                                                         className={cn(
                                                             'flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all group',
@@ -1004,6 +1009,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                     {/* ── Footer ───────────────────────────────── */}
                     <div className={`px-6 py-4 border-t flex items-center justify-between gap-3 ${t.border(isDark)}`}>
                         <Button
+                            type="button"
                             variant="ghost"
                             onClick={() => handleClose()}
                             className={`rounded-full px-6 font-black text-xs ${isDark ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500'}`}
@@ -1011,6 +1017,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                             Cancel
                         </Button>
                         <Button
+                            type="button"
                             onClick={handleSave}
                             className={`rounded-full px-8 font-black text-xs h-11 ${accent.bg} text-slate-900 ${accent.bgHover} shadow-lg`}
                         >

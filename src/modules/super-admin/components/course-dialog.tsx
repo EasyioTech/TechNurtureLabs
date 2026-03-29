@@ -165,6 +165,7 @@ export function CourseDialog({
                             <div className="flex items-center justify-between px-1">
                                 <Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Target Classes</Label>
                                 <Button
+                                    type="button"
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => {
@@ -216,36 +217,31 @@ export function CourseDialog({
 
                     {/* Footer Action Area */}
                     <div className={`px-6 py-5 border-t flex justify-end gap-3 ${isDark ? 'border-white/10 bg-[#0f1219]' : 'border-slate-100 bg-slate-50'}`}>
-                        <Button variant="ghost" onClick={() => onOpenChange(false)}
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}
                             className={`rounded-full h-11 px-6 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white hover:text-white' : 'hover:bg-slate-200 text-slate-700'}`}>
                             Cancel
                         </Button>
-                        <Button onClick={onSave} disabled={!editingCourse?.title?.trim() || !!(editingCourse?.thumbnail && (() => {
-                            const url = editingCourse.thumbnail;
-                            try {
-                                const parsed = new URL(url);
-                                const ext = parsed.pathname.split('.').pop()?.toLowerCase();
-                                const isImageFile = ['png', 'jpg', 'jpeg', 'svg', 'webp', 'gif'].includes(ext || '');
-                                const isR2 = url.includes('r2.cloudflarestorage.com') || url.startsWith('/api/media/');
-                                if (!isImageFile && !isR2) return true;
-                            } catch (e) {
-                                if (!url.startsWith('/') && !url.startsWith('./')) return true;
-                            }
-                            return false;
-                        })())}
-                            className={`rounded-full h-11 px-8 font-black text-sm shadow-xl transition-all border-0 ${(!editingCourse?.title?.trim() || !!(editingCourse?.thumbnail && (() => {
+                        <Button type="button" onClick={() => {
+                            if (editingCourse?.thumbnail) {
                                 const url = editingCourse.thumbnail;
+                                let isInvalid = false;
                                 try {
                                     const parsed = new URL(url);
                                     const ext = parsed.pathname.split('.').pop()?.toLowerCase();
                                     const isImageFile = ['png', 'jpg', 'jpeg', 'svg', 'webp', 'gif'].includes(ext || '');
                                     const isR2 = url.includes('r2.cloudflarestorage.com') || url.startsWith('/api/media/');
-                                    if (!isImageFile && !isR2) return true;
+                                    if (!isImageFile && !isR2) isInvalid = true;
                                 } catch (e) {
-                                    if (!url.startsWith('/') && !url.startsWith('./')) return true;
+                                    if (!url.startsWith('/') && !url.startsWith('./')) isInvalid = true;
                                 }
-                                return false;
-                            })())) ? 'opacity-50 cursor-not-allowed' : ''} ${t.btnPrimary(isDark, accent)}`}
+                                if (isInvalid) {
+                                    toast.error('Invalid image URL format. Please fix the thumbnail URL before saving.');
+                                    return;
+                                }
+                            }
+                            onSave();
+                        }} disabled={!editingCourse?.title?.trim()}
+                            className={`rounded-full h-11 px-8 font-black text-sm shadow-xl transition-all border-0 ${!editingCourse?.title?.trim() ? 'opacity-50 cursor-not-allowed' : ''} ${t.btnPrimary(isDark, accent)}`}
                             style={t.glowStyle(isDark, accent)}>
                             {isEditing ? 'Save Changes' : 'Create Course'}
                         </Button>
