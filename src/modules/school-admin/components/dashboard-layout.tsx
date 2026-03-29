@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard, Users, BookOpen, BarChart2,
     Settings, ShieldCheck, GraduationCap, Menu, X,
-    LogOut, Sun, Moon, Bell, Search,
+    LogOut, Sun, Moon,
     ChevronRight, ChevronLeft
 } from 'lucide-react';
 import { useSchoolTheme, ts } from '../theme-context';
@@ -290,35 +290,17 @@ export function SchoolDashboardLayout({ children, schoolId, schoolName: initialS
                             </div>
                         </div>
 
-                        {/* Middle Search */}
-                        <div className="hidden lg:flex items-center flex-1 max-w-md relative group px-2">
-                            <Search className="absolute left-6 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
-                            <input
-                                type="text"
-                                placeholder="Search global..."
-                                readOnly
-                                className={`w-full h-11 pl-12 pr-4 rounded-xl text-[13px] font-medium border transition-all cursor-not-allowed opacity-60 ${isDark ? 'bg-white/[0.03] border-white/[0.05]' : 'bg-slate-50 border-slate-200/60'} focus:outline-none placeholder:text-slate-500`}
-                            />
-                        </div>
-
                         {/* Top Right Actions */}
                         <div className="flex items-center gap-2 sm:gap-4 ml-auto">
                             <div className="flex items-center gap-1 sm:gap-2">
-                                <button
-                                    onClick={toggle}
-                                    aria-label="Toggle theme"
-                                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-500 hover:bg-slate-100'}`}
-                                >
-                                    {isDark ? <Sun size={18} /> : <Moon size={18} />}
-                                </button>
-                                <button
-                                    aria-label="Notifications"
-                                    className={`w-10 h-10 rounded-xl flex items-center justify-center relative transition-all ${isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-500 hover:bg-slate-100'}`}
-                                >
-                                    <Bell size={18} />
-                                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-[#0f1115]" />
-                                </button>
-                            </div>
+                                    <button
+                                        onClick={toggle}
+                                        aria-label="Toggle theme"
+                                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-500 hover:bg-slate-100'}`}
+                                    >
+                                        {isDark ? <Sun size={18} /> : <Moon size={18} />}
+                                    </button>
+                                </div>
 
                             <div className="h-8 w-px bg-slate-200 dark:bg-white/10 hidden sm:block" />
 

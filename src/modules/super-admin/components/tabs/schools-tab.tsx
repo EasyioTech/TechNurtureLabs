@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Building2, CheckCircle2, CreditCard, IndianRupee, Edit, Mail, MapPin, ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building2, CheckCircle2, CreditCard, IndianRupee, Edit, Mail, MapPin, ArrowUpRight, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Stats, SchoolInfo, PaymentPlan } from '../../types';
 import { useAdminTheme, t } from '../../theme-context';
 
@@ -107,15 +107,29 @@ export function SchoolsTab({
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
                 className={`rounded-[24px] border overflow-hidden transition-all duration-300 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
                 <div className={`px-6 py-5 border-b ${t.border(isDark)} flex items-center justify-between`}>
-                    <div className="flex items-center gap-4">
-                        <div>
-                            <h3 className={`text-lg font-black tracking-tight ${t.textPrimary(isDark)}`}>School Directory</h3>
-                            <p className={`text-[12px] font-medium ${t.textMuted(isDark)}`}>Manage all registered schools and partner organizations.</p>
+                    <div className="flex items-center justify-between flex-1">
+                        <div className="flex items-center gap-4">
+                            <div>
+                                <h3 className={`text-lg font-black tracking-tight ${t.textPrimary(isDark)}`}>School Directory</h3>
+                                <p className={`text-[12px] font-medium ${t.textMuted(isDark)}`}>Manage all registered schools and partner organizations.</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Button size="sm"
+                                onClick={() => {
+                                    setEditingSchool({ is_active: true, classIds: [] });
+                                    setShowEditDialog(true);
+                                }}
+                                className={`rounded-xl gap-2 h-9 px-4 text-[10px] font-black shadow-lg transition-all
+                                    ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
+                                style={isDark ? t.glowStyle(isDark, accent) : {}}>
+                                <Plus size={14} strokeWidth={3} /> REGISTER SCHOOL
+                            </Button>
+                            <Badge className={`text-[10px] font-black px-3 py-1 rounded-full ${isDark ? 'bg-white/[0.12] text-white shadow-lg shadow-black/20' : 'bg-slate-900 text-white shadow-md shadow-slate-200'}`}>
+                                PAGE {page + 1}{totalPages > 1 ? ` OF ${totalPages}` : ''}
+                            </Badge>
                         </div>
                     </div>
-                    <Badge className={`text-[10px] font-black px-3 py-1 rounded-full ${isDark ? 'bg-white/[0.12] text-white shadow-lg shadow-black/20' : 'bg-slate-900 text-white shadow-md shadow-slate-200'}`}>
-                        PAGE {page + 1}{totalPages > 1 ? ` OF ${totalPages}` : ''}
-                    </Badge>
                 </div>
                 <div className={t.divider(isDark)}>
                     {filteredSchools.map((school, i) => (

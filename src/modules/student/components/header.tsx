@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    Flame, Star, Crown, Bell, LogOut, Search, Menu, X,
+    Flame, Star, Crown, LogOut, Search, Menu, X,
     Settings, GraduationCap, LayoutDashboard,
     Zap, Sparkles, Compass, User, BookOpen, Target, Trophy
 } from 'lucide-react';
@@ -25,7 +25,6 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
-    const [notifOpen, setNotifOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -35,10 +34,9 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
     const logoUrl = school?.logo_url || settings?.logo_url;
     const displayName = school?.name || settings?.platform_name || 'TechNurture';
 
-    // Keyboard shortcut: ESC closes everything
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') { setSearchOpen(false); setNotifOpen(false); setMobileOpen(false); setProfileOpen(false); }
+            if (e.key === 'Escape') { setSearchOpen(false); setMobileOpen(false); setProfileOpen(false); }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
@@ -99,27 +97,7 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                     {/* ── Right: Actions ── */}
                     <div className="flex items-center gap-1.5 sm:gap-2">
 
-                        {/* Search */}
-                        <button
-                            onClick={() => setSearchOpen(true)}
-                            aria-label="Search"
-                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 active:scale-95 transition-all duration-100"
-                        >
-                            <Search size={18} />
-                        </button>
-
-                        {/* Bell */}
-                        <div className="relative">
-                            <button
-                                onClick={() => setNotifOpen(v => !v)}
-                                aria-label="Notifications"
-                                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 active:scale-95 transition-all duration-100 relative"
-                            >
-                                <Bell size={18} />
-                                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
-                            </button>
-                            <AnimatePresence>{notifOpen && <NotifPanel close={() => setNotifOpen(false)} />}</AnimatePresence>
-                        </div>
+                        {/* Bell & Search Removed per User Request */}
 
                         {/* Divider */}
                         <div className="hidden sm:block w-px h-7 bg-slate-100 mx-1" />
@@ -180,48 +158,7 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                 </div>
             </header>
 
-            {/* ════════════ SEARCH OVERLAY ════════════ */}
-            <AnimatePresence>
-                {searchOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.12 }}
-                        className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-[2px] flex items-start justify-center pt-20 sm:pt-28 px-4"
-                        onClick={() => setSearchOpen(false)}
-                    >
-                        <motion.div
-                            initial={{ y: -16, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: -16, opacity: 0 }}
-                            transition={{ duration: 0.12 }}
-                            onClick={e => e.stopPropagation()}
-                            className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden"
-                        >
-                            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
-                                <Search size={18} className="text-indigo-500 flex-shrink-0" />
-                                <input
-                                    ref={searchInputRef}
-                                    value={searchQuery || ''}
-                                    onChange={e => setSearchQuery?.(e.target.value)}
-                                    placeholder="Search courses, lessons..."
-                                    className="flex-1 text-sm sm:text-base font-medium text-slate-800 placeholder:text-slate-300 outline-none bg-transparent"
-                                />
-                                <button onClick={() => setSearchOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 transition-colors">
-                                    <X size={16} className="text-slate-400" />
-                                </button>
-                            </div>
-                            <div className="px-5 py-6 text-center">
-                                <p className="text-sm text-slate-400">Start typing to find courses &amp; lessons</p>
-                                <p className="text-xs text-slate-300 mt-1">
-                                    Press <kbd className="px-1.5 py-0.5 mx-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-mono border border-slate-200">Esc</kbd> to close
-                                </p>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* SEARCH OVERLAY REMOVED */}
 
             {/* ════════════ MOBILE DRAWER ════════════ */}
             <AnimatePresence>
@@ -349,51 +286,5 @@ function NavItem({ icon: Icon, label, href, active, close }: { icon: any; label:
             <Icon size={18} className={active ? 'text-indigo-500' : 'text-slate-400'} />
             {label}
         </Link>
-    );
-}
-
-/** Notification dropdown */
-function NotifPanel({ close }: { close: () => void }) {
-    return (
-        <>
-            <div className="fixed inset-0 z-[-1]" onClick={close} />
-            <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 6 }}
-                transition={{ duration: 0.1 }}
-                className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden z-10"
-            >
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-50">
-                    <p className="text-sm font-bold text-slate-800">Notifications</p>
-                    <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">2 new</span>
-                </div>
-                <div className="py-1">
-                    <NotifRow icon={Sparkles} title="New Badge!" text="You earned 'Early Bird'" time="2m" accent="text-sky-500 bg-sky-50" />
-                    <NotifRow icon={Zap} title="Streak Reminder" text="Keep your 5-day streak alive" time="1h" accent="text-amber-500 bg-amber-50" />
-                </div>
-                <button onClick={close} className="w-full py-2.5 text-xs font-medium text-slate-400 hover:text-indigo-500 hover:bg-slate-50 border-t border-slate-50 transition-colors duration-100">
-                    Mark all as read
-                </button>
-            </motion.div>
-        </>
-    );
-}
-
-function NotifRow({ icon: Icon, title, text, time, accent }: any) {
-    const [textCls, bgCls] = accent.split(' ');
-    return (
-        <div className="flex gap-3 px-4 py-3 hover:bg-slate-50 transition-colors duration-75 cursor-pointer">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${bgCls} ${textCls}`}>
-                <Icon size={14} />
-            </div>
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-700 truncate">{title}</p>
-                    <span className="text-[10px] text-slate-400 ml-2 flex-shrink-0">{time}</span>
-                </div>
-                <p className="text-xs text-slate-400 truncate">{text}</p>
-            </div>
-        </div>
     );
 }

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
   Flame, Star, Trophy, Zap, BookOpen, Clock, Target,
-  ChevronRight, Award, Crown, Activity, Settings, User, Bell, Search, ArrowRight, Medal, Wand2
+  ChevronRight, Award, Crown, Activity, Settings, User, ArrowRight, Medal, Wand2
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { StudentHeader } from '../header';
@@ -29,7 +29,6 @@ interface ClientDashboardProps {
   }
 }
 
-// Moved outside component — pure function, no need to recreate on every render
 function calcResetTime(): string {
   const now = new Date();
   const midnight = new Date(now);
@@ -46,7 +45,6 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
 
   if (!profile) return null;
 
-  // Memoised — hour of day doesn't change during a session
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -63,21 +61,14 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
   const levelProgress = Math.min(100, ((stats.xp % 1000) / 1000) * 100);
   const lastCourse = courses[0];
 
-  // ── Progress bar ──────────────────────────────────────────────────────────
-  // CSS transition from 0 → levelProgress driven by a single rAF after mount.
-  // Eliminates the Framer Motion JS animation loop from every render cycle.
   const [barWidth, setBarWidth] = useState(0);
   useEffect(() => {
     const raf = requestAnimationFrame(() => setBarWidth(levelProgress));
     return () => cancelAnimationFrame(raf);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [levelProgress]);
 
-  // ── SVG progress circles ──────────────────────────────────────────────────
-  // Same pattern: start at full circumference (no stroke), animate to target via
-  // CSS stroke-dashoffset transition — GPU-composited, zero JS per frame.
-  const mobileCircumference = 439.8; // 2π × 70
-  const desktopCircumference = 452.3; // 2π × 72
+  const mobileCircumference = 439.8; 
+  const desktopCircumference = 452.3;
   const courseProgress = lastCourse
     ? lastCourse.completedLessons / (lastCourse.totalLessons || 1)
     : 0;
@@ -91,63 +82,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
       setDesktopOffset(desktopCircumference - desktopCircumference * courseProgress);
     });
     return () => cancelAnimationFrame(raf);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Search ────────────────────────────────────────────────────────────────
-  // Stable refs for courses/challenges — these never change after initial render.
-  // Removing them from the effect dep array prevents the entire search from
-  // re-running whenever the parent component re-renders with a new array identity.
-  const coursesRef = useRef(courses);
-  const challengesRef = useRef(challenges);
-  // Keep refs current when props update
-  useEffect(() => { coursesRef.current = courses; }, [courses]);
-  useEffect(() => { challengesRef.current = challenges; }, [challenges]);
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<{ type: string; title: string; href: string }[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-    const timeoutId = setTimeout(() => {
-      const q = searchQuery.toLowerCase();
-      const results: { type: string; title: string; href: string }[] = [];
-
-      coursesRef.current.forEach(c => {
-        if (c.title.toLowerCase().includes(q))
-          results.push({ type: 'Course', title: c.title, href: `/student/course/${c.id}` });
-      });
-
-      challengesRef.current.forEach(ch => {
-        if (ch.title.toLowerCase().includes(q))
-          results.push({ type: 'Challenge', title: ch.title, href: '/student/challenges' });
-      });
-
-      const staticPages = [
-        { title: 'Profile Settings', keywords: ['settings', 'profile', 'password', 'email'], href: '/student/settings' },
-        { title: 'Analytics Dashboard', keywords: ['analytics', 'stats', 'progress', 'performance'], href: '/student/analytics' },
-        { title: 'Global Leaderboard', keywords: ['leaderboard', 'rank', 'top', 'players'], href: '/student/leaderboard' },
-        { title: 'My Achievements', keywords: ['achievements', 'badges', 'awards', 'trophies'], href: '/student/achievements' },
-      ];
-
-      staticPages.forEach(p => {
-        if (p.title.toLowerCase().includes(q) || p.keywords.some(k => k.includes(q)))
-          results.push({ type: 'System', title: p.title, href: p.href });
-      });
-
-      setSearchResults(results.slice(0, 5));
-      setIsSearching(false);
-    }, 400);
-
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery]); // courses/challenges accessed via stable refs — not deps
+  }, [courseProgress]);
 
   return (
     <div className="min-h-screen bg-slate-50/20 pb-24 lg:pb-10">
@@ -180,13 +115,6 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
             {lastCourse && (
               <section className="group">
                 <div className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] bg-slate-950 p-6 sm:p-8 lg:p-10 text-white shadow-2xl shadow-indigo-950/20 border border-white/5">
-                  {/*
-                    * Decorative glow — was animating on hover via `group-hover:bg-indigo-500/20
-                    * transition-all duration-[2000ms]`. A 2-second transition on a 400×400
-                    * blur-[100px] element triggers continuous composited repaints on hover.
-                    * Now static: same visual at rest, zero hover cost.
-                    * blur-3xl (48px) instead of blur-[100px] — still a soft glow, ~50% cheaper.
-                    */}
                   <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-500/10 rounded-full -mr-32 -mt-32 blur-3xl pointer-events-none" />
 
                   <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8 sm:gap-10">
@@ -196,7 +124,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                           {lastCourse.completedLessons === lastCourse.totalLessons ? 'Course Finished' : 'Resume Learning'}
                         </Badge>
 
-                        {/* Mobile circle — CSS stroke-dashoffset transition (GPU-composited) */}
+                        {/* Mobile circle */}
                         <div className="relative w-12 h-12 flex-shrink-0">
                           <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160">
                             <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="20" fill="none" className="text-white/5" />
@@ -245,7 +173,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                       </Link>
                     </div>
 
-                    {/* Desktop circle — CSS stroke-dashoffset transition (GPU-composited) */}
+                    {/* Desktop circle */}
                     <div className="hidden lg:flex relative w-36 h-36 lg:w-44 lg:h-44 flex-shrink-0">
                       <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160">
                         <circle cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="12" fill="none" className="text-white/5" />
@@ -311,73 +239,9 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
             </section>
           </div>
 
-          {/* Sidebar Area */}
           <div className="xl:col-span-4 space-y-8">
-
-            {/* Quick Intelligence Search */}
-            <div className="relative group">
-              <div className="bg-white rounded-[2rem] p-2.5 shadow-xl shadow-slate-200/40 border border-slate-100 flex items-center gap-3 transition-shadow focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-100">
-                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-focus-within:text-indigo-600 transition-colors">
-                  <Search size={18} />
-                </div>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search courses, settings..."
-                  className="flex-1 bg-transparent border-none outline-none text-sm font-bold text-slate-900 placeholder:text-slate-300 placeholder:font-bold"
-                />
-                {isSearching && (
-                  <div className="mr-3 w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-                )}
-              </div>
-
-              {/* Search Results Dropdown */}
-              <AnimatePresence>
-                {searchQuery && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 z-50 overflow-hidden"
-                  >
-                    {searchResults.length > 0 ? (
-                      <div className="p-3 space-y-1">
-                        {searchResults.map((result, idx) => (
-                          <Link key={idx} href={result.href} className="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 transition-colors group/res">
-                            <div className="flex items-center gap-4">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black uppercase
-                                ${result.type === 'Course' ? 'bg-indigo-50 text-indigo-600' :
-                                  result.type === 'Challenge' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-600'}`}>
-                                {result.type[0]}
-                              </div>
-                              <div>
-                                <p className="text-sm font-black text-slate-900 leading-tight group-hover/res:text-indigo-600 transition-colors">{result.title}</p>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{result.type}</p>
-                              </div>
-                            </div>
-                            <ChevronRight size={14} className="text-slate-300" />
-                          </Link>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-10 text-center">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No intelligence found for "{searchQuery}"</p>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
             {/* My Progress Dashboard */}
             <div className="bg-slate-950 rounded-[2rem] p-6 lg:p-7 text-white relative overflow-hidden shadow-2xl shadow-indigo-950/40 border border-white/5 group">
-              {/*
-                * Decorative glow — removed `group-hover:bg-indigo-600/20 transition-all duration-1000`.
-                * Animating a blur-[80px] element on every hover event causes continuous
-                * repaints on the composited layer. Static decoration only.
-                */}
               <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-6">
@@ -396,11 +260,6 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                     <p className="text-[9px] font-black text-indigo-500">{Math.round(levelProgress)}% Complete</p>
                   </div>
                   <div className="h-3 bg-white/5 rounded-full overflow-hidden p-1 flex border border-white/10">
-                    {/*
-                      * Replaced motion.div — the Framer JS animation loop ran on every
-                      * dashboard render. CSS transition-[width] is GPU-composited and
-                      * fires once (rAF-deferred setState in useEffect above).
-                      */}
                     <div
                       className="h-full bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.6)]"
                       style={{
@@ -502,7 +361,6 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                 })}
               </div>
             </section>
-
           </div>
         </div>
       </main>

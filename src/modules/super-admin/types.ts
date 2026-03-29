@@ -68,6 +68,7 @@ export type SchoolInfo = {
     subscription_status?: string | null;
     plan_name?: string | null;
     student_count?: number;
+    classIds?: string[];
 };
 
 export type Stats = {

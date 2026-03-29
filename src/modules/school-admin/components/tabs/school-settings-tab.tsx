@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSchoolTheme, ts } from '../../theme-context';
 import { SchoolStats } from '../../types';
-import { Settings, CreditCard, Shield, Bell, HelpCircle, CheckCircle2, GraduationCap, ChevronRight, User } from 'lucide-react';
+import { Settings, CreditCard, Shield, HelpCircle, CheckCircle2, GraduationCap, ChevronRight, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { promoteStudentsAction } from '../../actions';

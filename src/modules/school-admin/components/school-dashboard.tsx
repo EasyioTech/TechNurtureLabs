@@ -150,7 +150,7 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
 
                         {/* Right side */}
                         <div className="flex items-center gap-3 ml-auto">
-                            <div className="flex items-center gap-2 pr-4 mr-4 border-r border-slate-200/60 dark:border-white/5">
+                            <div className="flex items-center gap-2">
                                 <button onClick={toggle} title="Toggle theme"
                                     className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${isDark ? 'text-slate-500 hover:text-yellow-400 hover:bg-yellow-400/10' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'}`}>
                                     {isDark ? <Sun size={17} /> : <Moon size={17} />}
