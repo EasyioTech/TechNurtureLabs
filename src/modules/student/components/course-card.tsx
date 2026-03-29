@@ -3,7 +3,7 @@
 import React from 'react';
 import { Play, ChevronRight, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
-import { handleThumbnailError } from '@/lib/media';
+import { handleThumbnailError } from '@/lib/media-client';
 
 interface Course {
   id: string;

@@ -13,7 +13,7 @@ import {
 import { useAuth } from '@/components/providers/auth-provider';
 import { fetchSchoolAdminCourseData } from '@/modules/school-admin/actions';
 import { useSchoolTheme, ts, SchoolThemeProvider } from '@/modules/school-admin/theme-context';
-import { handleThumbnailError } from '@/lib/media';
+import { handleThumbnailError } from '@/lib/media-client';
 
 type Course = {
     id: string;

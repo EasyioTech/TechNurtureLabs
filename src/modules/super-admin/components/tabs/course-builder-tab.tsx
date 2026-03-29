@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/sortable';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { handleThumbnailError } from '@/lib/media';
+import { handleThumbnailError } from '@/lib/media-client';
 import { Plus, Save, Edit, Trash2, BookOpen, Layers, AlertOctagon } from 'lucide-react';
 import { SortableLessonItem } from '../lesson-item-sortable';
 import { CourseDialog } from '../course-dialog';

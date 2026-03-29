@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { handleThumbnailError } from '@/lib/media';
+import { handleThumbnailError } from '@/lib/media-client';
 
 interface CourseDetailsClientProps {
   initialData: {

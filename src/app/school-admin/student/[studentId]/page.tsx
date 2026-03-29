@@ -10,7 +10,7 @@ import {
     BarChart2, Star, ShieldCheck, MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { handleThumbnailError } from '@/lib/media';
+import { handleThumbnailError } from '@/lib/media-client';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { motion } from 'framer-motion';

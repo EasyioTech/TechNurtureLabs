@@ -10,7 +10,7 @@ import {
   Star, Clock, Zap, Flag, MapPin, Sparkles, ChevronRight,
   BookOpen, Award, Target
 } from 'lucide-react';
-import { handleThumbnailError } from '@/lib/media';
+import { handleThumbnailError } from '@/lib/media-client';
 import { StudentHeader } from '@/modules/student/components/header';
 import { StudentDashboardLoader } from '@/modules/student/components/dashboard-loader';
 import { getStudentProfileData } from '@/modules/student/actions/profile-actions';

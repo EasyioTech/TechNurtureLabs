@@ -8,7 +8,7 @@ import { useSchoolTheme, ts } from '../../theme-context';
 import { BookOpen, Users, Zap, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { handleThumbnailError } from '@/lib/media';
+import { handleThumbnailError } from '@/lib/media-client';
 
 interface CoursesTabProps {
     courseMetrics: SchoolCourseMetric[];

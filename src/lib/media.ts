@@ -134,25 +134,5 @@ export type MediaAssetForUrl = {
     file_url?: string | null;
 };
 
-/**
- * Client-side <img> onError handler for course thumbnails.
- */
-export function handleThumbnailError(e: { currentTarget: HTMLImageElement }) {
-    const img = e.currentTarget;
-    if (!img.dataset.proxyAttempt) {
-        img.dataset.proxyAttempt = '1';
-        try {
-            const u = new URL(img.src);
-            // Only retry if it's an external HTTPS URL, not already the internal proxy
-            if (u.protocol === 'https:' && !u.pathname.startsWith('/api/')) {
-                img.src = `/api/media/r2${u.pathname}`;
-                return;
-            }
-        } catch {
-            // img.src was relative or malformed — no retry possible
-        }
-    }
-    // Both CDN and internal proxy failed — hide the broken img element
-    img.style.display = 'none';
-}
+
 
