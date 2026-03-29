@@ -348,6 +348,8 @@ export const courses = pgTable('courses', {
     index('idx_courses_published').on(table.is_published),
     // ISSUE 9: Partial index — only index active (non-deleted) published courses
     index('idx_courses_active_published').on(table.is_published).where(sql`deleted_at IS NULL`),
+    // Quick Win #3: GIN index for efficient multi-topic filtering
+    index('idx_course_topics').using('gin', table.topics),
 ]);
 
 export const courseClassMapping = pgTable('course_class_mapping', {

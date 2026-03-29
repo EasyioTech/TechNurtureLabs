@@ -78,8 +78,8 @@ async function run() {
             console.error('[FlushWorker] Iteration failure:', err);
         }
         
-        // Sleep for 60 seconds between iterations
-        await new Promise(resolve => setTimeout(resolve, 60000));
+        // Sleep for 5 minutes (300 seconds) between flush cycles (Quick Win #5)
+        await new Promise(resolve => setTimeout(resolve, 300000));
     }
 }
 

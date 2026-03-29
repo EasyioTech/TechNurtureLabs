@@ -23,6 +23,54 @@ export async function GET(
             return new NextResponse('Unauthorized', { status: 401 });
         }
 
+        // ── 2. Authorization (BOLA Protection) ──────────────────────
+        // Quick Win #1/2: BOLA Protection for R2 assets
+        if (session.userType === 'student') {
+            const { db } = await import('@/lib/db');
+            const { lessons: lessonsTable, enrollments } = await import('@/db/schema');
+            const { eq, and } = await import('drizzle-orm');
+            const pathParts = key.split('/');
+            
+            // Pattern 1: Lessons (lessons/{lessonId}/...)
+            if (pathParts[0] === 'lessons' && pathParts[1]) {
+                const lessonId = pathParts[1];
+                const hasAccess = await db
+                    .select({ id: lessonsTable.id })
+                    .from(lessonsTable)
+                    .innerJoin(enrollments, eq(lessonsTable.course_id, enrollments.course_id))
+                    .where(
+                        and(
+                            eq(lessonsTable.id, lessonId),
+                            eq(enrollments.user_id, session.userId)
+                        )
+                    )
+                    .limit(1);
+
+                if (hasAccess.length === 0) {
+                    return new NextResponse('Forbidden: Enrollment required.', { status: 403 });
+                }
+            }
+            
+            // Pattern 2: Courses (courses/{courseId}/...)
+            else if (pathParts[0] === 'courses' && pathParts[1]) {
+                const courseId = pathParts[1];
+                const hasAccess = await db
+                    .select({ id: enrollments.id })
+                    .from(enrollments)
+                    .where(
+                        and(
+                            eq(enrollments.course_id, courseId),
+                            eq(enrollments.user_id, session.userId)
+                        )
+                    )
+                    .limit(1);
+
+                if (hasAccess.length === 0) {
+                    return new NextResponse('Forbidden: Enrollment required.', { status: 403 });
+                }
+            }
+        }
+
         // 2. Deployment Integrity Check
         if (!isCloudflareConfigured || !s3Client) {
             return new NextResponse('Cloudflare R2 not configured', { status: 501 });

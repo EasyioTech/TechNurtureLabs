@@ -41,6 +41,8 @@ function buildAllowedOrigins(): Set<string> {
 
 const ALLOWED_ORIGINS = buildAllowedOrigins();
 
+export const runtime = 'nodejs'; // Required for ioredis in middleware
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
   'Access-Control-Allow-Headers':
@@ -53,12 +55,52 @@ function isAllowedOrigin(origin: string | null): boolean {
   return ALLOWED_ORIGINS.has(origin.replace(/\/$/, ''));
 }
 
+/**
+ * Middleware: Global Scale Guards (M-9, M-8)
+ */
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.headers.get('host') || '';
   const origin = request.headers.get('origin');
   const isApi = url.pathname.startsWith('/api');
   const originAllowed = isAllowedOrigin(origin);
+
+  // ─── 0. GLOBAL RATE LIMITING (M-9) ────────────────────────────────────────
+  // Protect Next.js from flood attacks regardless of authentication status.
+  const forwarded = request.headers.get('x-forwarded-for');
+  const ip = forwarded ? forwarded.split(',')[0].trim() : (request.headers.get('x-real-ip') || '127.0.0.1');
+
+  const { rateLimitIp } = await import('@/lib/ratelimit');
+  const { success } = await rateLimitIp(ip, 300, 60); // 300 req/min limit
+  if (!success) {
+    return new NextResponse('Too Many Requests', { status: 429 });
+  }
+
+  // ─── 0.1 SESSION REVOCATION CHECK (M-8) ──────────────────────────────────
+  // Check if session is revoked/invalidated via user_sessions table (cached in Redis).
+  const sessionToken = request.cookies.get('session')?.value;
+  if (sessionToken) {
+    const { jwtVerify } = await import('jose');
+    const { redis } = await import('@/lib/redis');
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || '');
+    
+    try {
+      const { payload } = await jwtVerify(sessionToken, secret);
+      const sessionId = (payload as any).sessionId;
+      
+      const sessionExists = await redis.get(`session:${sessionId}`);
+      if (!sessionExists) {
+         // Session revoked or expired in Redis — trigger logout
+         const response = NextResponse.redirect(new URL('/login?revoked=true', request.url));
+         response.cookies.delete('session');
+         response.cookies.delete('refresh_token');
+         return response;
+      }
+    } catch (e) {
+      // JWT expired or invalid — verifySession action will handle rotation if needed, 
+      // but for mission-critical revocation we ignore and let regular flow handle it.
+    }
+  }
 
   // ─── 1. OPTIONS PREFLIGHT ─────────────────────────────────────────────────
   if (isApi && request.method === 'OPTIONS') {

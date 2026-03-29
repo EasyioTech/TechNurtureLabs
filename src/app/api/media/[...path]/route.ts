@@ -15,9 +15,33 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return new NextResponse('Unauthorized', { status: 401 });
         }
 
+        // ── 1. Security Token Validation (M-10) ───────────────────────
+        // Quick Win #1: Validate the Media Token computed by computeMediaUrl()
+        const token = request.nextUrl.searchParams.get('token');
+        const mediaSecret = process.env.MEDIA_SECRET;
+
         // Next.js 15 requires unwrapping async params
         const { path: filePathParams } = await params;
         const key = filePathParams.join('/');
+
+        if (mediaSecret) {
+            const crypto = await import('crypto');
+            // For HLS segments, we sign the parent directory
+            const isHls = key.endsWith('.m3u8') || key.endsWith('.ts');
+            const signTarget = isHls ? key.split('/').slice(0, -1).join('/') : key;
+
+            const expectedHash = crypto
+                .createHmac('sha256', mediaSecret)
+                .update(signTarget)
+                .digest('hex')
+                .slice(0, 16);
+
+            if (token !== expectedHash) {
+                return new NextResponse('Forbidden: Invalid Media Token', { status: 403 });
+            }
+        } else {
+            console.warn('[Media Proxy] MEDIA_SECRET not set. Access is loosely guarded by session only.');
+        }
 
         // ── 2. Authorization (BOLA Protection) ──────────────────────
         if (session.userType === 'student') {

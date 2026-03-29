@@ -17,6 +17,7 @@ import { redirect } from 'next/navigation';
 import { eq, and, gt, sql, count, isNotNull, asc, isNull, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getProgressCounter, isAchievementCheckNeeded, clearAchievementDirtyBit } from '@/lib/gamification';
+import { redis } from '@/lib/redis';
 
 /**
  * Idempotent achievement seeding
@@ -189,21 +190,32 @@ export async function checkAndAwardAchievements() {
  * Can be called by background workers.
  */
 export async function checkAndAwardAchievementsInternal(userId: string) {
-    // OPTIMIZATION: Check dirty bit first. If no new XP or progress event, skip heavy DB checks.
-    const needed = await isAchievementCheckNeeded(userId);
-    
-    // OPTIMIZATION: Only seed if achievements don't exist
-    const countResult = await db.select({ val: count() }).from(achievements);
-    if (Number(countResult[0]?.val || 0) === 0) {
-        await seedAchievementsData();
+    // SCALE BREAKER G: Distributed Lock (Redlock Pattern)
+    // Prevents race conditions where multiple workers award the same achievement
+    // to the same user simultaneously if two events arrive in parallel.
+    const lockKey = `lock:achv:${userId}`;
+    const acquired = await redis.set(lockKey, '1', 'EX', 10, 'NX');
+    if (!acquired) {
+        // Achievement check is already in progress for this user.
+        // We skip for now; the other process will finish it.
+        return { success: true, unlocked: [] };
     }
-    
-    if (!needed) return { success: true, unlocked: [] };
 
-    // Move role check to a student metadata fetch if needed, 
-    // but for background processing we assume validity.
+    try {
+        const needed = await isAchievementCheckNeeded(userId);
+        
+        // OPTIMIZATION: Only seed if achievements don't exist
+        const countResult = await db.select({ val: count() }).from(achievements);
+        if (Number(countResult[0]?.val || 0) === 0) {
+            await seedAchievementsData();
+        }
+        
+        if (!needed) return { success: true, unlocked: [] };
 
-    const user = await db.query.students.findFirst({
+        // Move role check to a student metadata fetch if needed, 
+        // but for background processing we assume validity.
+
+        const user = await db.query.students.findFirst({
         where: and(eq(students.id, userId), isNull(students.deleted_at)),
         columns: {
             id: true,
@@ -350,7 +362,10 @@ export async function checkAndAwardAchievementsInternal(userId: string) {
         }
         return { success: true, unlocked: newlyUnlocked };
     }
-    return { success: true, unlocked: [] };
+    } finally {
+        // ALWAYS release the lock to prevent blocking the user indefinitely if one check takes too long.
+        await redis.del(lockKey);
+    }
 }
 
 async function getStudentRankMetrics(userId: string, schoolId: string) {

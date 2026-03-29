@@ -167,19 +167,12 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
                 xp_earned: xpToAdd,
             });
         }
-    });
 
-    // 🚀 EVENT-DRIVEN OFFLOADING (Backgrounding 90% of the work)
-    try {
+        // 🚀 EVENT-DRIVEN OFFLOADING (Backgrounding 90% of the work)
+        // SCALE BREAKER C: We emit the event INSIDE the transaction to ensure 
+        // it's delivered if the DB write commits. If the event pusher fails, 
+        // the transaction rolls back, preventing "orphaned" lesson completions.
         const { eventService } = await import('@/lib/services/event-service');
-        
-        // This single event triggers:
-        // - XP Awarding
-        // - Course Completion Calculation
-        // - Achievement checks
-        // - Streak updates
-        // - Audit logging
-        // - Cache invalidation
         await eventService.emit('student.lesson_completed_full', {
             userId,
             schoolId: existingUser.school_id || undefined,
@@ -191,16 +184,15 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
             isPerfect,
             timestamp: Date.now()
         });
-
-    } catch (e) {
-        console.error('[ScaleGuard] Failed to dispatch background processing:', e);
-    }
+    });
 
     return { success: true };
 }
 
 /**
  * Save video playback progress
+ * SCALE BREAKER D: High-Performance Atomic Upsert
+ * Replaces "find then update" (2 ROUNDTRIPS) with a single atomic DB hit.
  */
 export async function saveVideoProgress(lessonId: string, seconds: number, percentage: number) {
     const session = await verifySession();
@@ -211,42 +203,46 @@ export async function saveVideoProgress(lessonId: string, seconds: number, perce
     const acquired = await redis.set(rateLimitKey, '1', 'EX', 5, 'NX');
     if (!acquired) return;
 
-    const existing = await db.query.lessonProgress.findFirst({
-        where: and(eq(lessonProgress.user_id, session.userId), eq(lessonProgress.lesson_id, lessonId))
-    });
-
-    const clampedPercentage = Math.min(100, Math.max(0, percentage));
+    const clampedPercentage = Math.min(100, Math.max(0, percentage)).toFixed(2);
     const verifiedSeconds = Math.floor(seconds);
 
-    if (existing) {
-        await db.update(lessonProgress)
-            .set({
-                progress_pct: clampedPercentage.toFixed(2),
-                last_position_secs: Math.floor(seconds),
-                // Simple verification: if they are reporting a further position, we count it as verified for now
-                // to keep the system simple and "working properly" as requested.
-                verified_watch_seconds: Math.max(existing.verified_watch_seconds || 0, verifiedSeconds),
-                updated_at: new Date()
-            })
-            .where(and(eq(lessonProgress.user_id, session.userId), eq(lessonProgress.lesson_id, lessonId)));
-    } else {
-        const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
-        if (!lesson) return;
-        const enrollment = await ensureEnrollment(session.userId, lesson.course_id);
-        if (!enrollment) return;
-
-        await db.insert(lessonProgress).values({
-            user_id: session.userId,
-            lesson_id: lessonId,
-            enrollment_id: enrollment.id,
-            session_id: enrollment.session_id,
-            school_id: enrollment.school_id,
-            progress_pct: percentage.toFixed(2),
-            last_position_secs: Math.floor(seconds),
-            verified_watch_seconds: verifiedSeconds,
-        });
+    try {
+        // Atomic Upsert: Efficient single-query execution.
+        await db.execute(sql`
+            INSERT INTO lesson_progress (
+                id, user_id, lesson_id, enrollment_id, session_id, school_id, 
+                progress_pct, last_position_secs, verified_watch_seconds, 
+                created_at, updated_at
+            )
+            SELECT
+                gen_random_uuid(),
+                ${session.userId}::uuid,
+                ${lessonId}::uuid,
+                e.id,
+                e.session_id,
+                e.school_id,
+                ${clampedPercentage}::numeric,
+                ${verifiedSeconds}::integer,
+                ${verifiedSeconds}::integer,
+                NOW(),
+                NOW()
+            FROM enrollments e
+            WHERE e.user_id = ${session.userId}::uuid
+              AND e.course_id = (SELECT course_id FROM lessons WHERE id = ${lessonId}::uuid)
+              AND e.is_active = true
+            LIMIT 1
+            ON CONFLICT (user_id, lesson_id, enrollment_id)
+            DO UPDATE SET
+                progress_pct = EXCLUDED.progress_pct,
+                last_position_secs = EXCLUDED.last_position_secs,
+                verified_watch_seconds = GREATEST(lesson_progress.verified_watch_seconds, EXCLUDED.verified_watch_seconds),
+                updated_at = NOW()
+        `);
+    } catch (err) {
+        console.error('[ProgressSave] Atomic upsert failed:', err);
     }
 }
+
 
 /**
  * Update active time spent on a lesson
