@@ -36,7 +36,9 @@ export function PaymentPlanDialog({
 }: PlanDialogProps) {
     const { isDark, accent } = useAdminTheme();
 
-    const addFeature = () => {
+    const addFeature = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         const currentFeatures = editingPlan?.features || [];
         setEditingPlan({ ...editingPlan, features: [...currentFeatures, ''] });
     };
@@ -47,9 +49,20 @@ export function PaymentPlanDialog({
         setEditingPlan({ ...editingPlan, features: currentFeatures });
     };
 
-    const removeFeature = (index: number) => {
+    const removeFeature = (e: React.MouseEvent, index: number) => {
+        e.preventDefault();
+        e.stopPropagation();
         const currentFeatures = editingPlan?.features?.filter((_, i) => i !== index) || [];
         setEditingPlan({ ...editingPlan, features: currentFeatures });
+    };
+
+    const handleSave = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!editingPlan?.name?.trim()) {
+            return;
+        }
+        onSave();
     };
 
     return (
@@ -139,7 +152,7 @@ export function PaymentPlanDialog({
                     <div className={`space-y-4 pt-4 border-t ${t.border(isDark)}`}>
                         <div className="flex items-center justify-between">
                             <Label className={`text-xs font-black uppercase tracking-wider ${t.textPrimary(isDark)}`}>Features</Label>
-                            <Button size="sm" variant="outline" className={`h-8 px-4 rounded-full text-xs font-bold border-2 ${t.btnOutline(isDark)}`} onClick={addFeature}>
+                            <Button type="button" size="sm" variant="outline" className={`h-8 px-4 rounded-full text-xs font-bold border-2 ${t.btnOutline(isDark)}`} onClick={addFeature}>
                                 <Plus size={14} className="mr-1.5" />Add Feature
                             </Button>
                         </div>
@@ -152,7 +165,7 @@ export function PaymentPlanDialog({
                                         placeholder={`Feature ${idx + 1}`}
                                         className={`rounded-full px-5 h-10 text-sm font-medium border-2 focus-visible:ring-${accent.name}-400/50 focus-visible:border-${accent.name}-400/50 ${isDark ? 'bg-white/[0.04] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                                     />
-                                    <Button variant="ghost" size="icon" className={`h-10 w-10 shrink-0 rounded-full transition-colors ${isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-100'}`} onClick={() => removeFeature(idx)}>
+                                    <Button type="button" variant="ghost" size="icon" className={`h-10 w-10 shrink-0 rounded-full transition-colors ${isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-100'}`} onClick={(e) => removeFeature(e, idx)}>
                                         <X size={16} />
                                     </Button>
                                 </div>
@@ -188,11 +201,11 @@ export function PaymentPlanDialog({
                     </div>
                 </div>
                 <DialogFooter className={`pt-6 border-t mt-6 ${t.border(isDark)}`}>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)}
+                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}
                         className={`rounded-full h-11 px-7 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white hover:text-white' : 'hover:bg-slate-200 text-slate-700'}`}>
                         ABORT
                     </Button>
-                    <Button onClick={onSave} disabled={!editingPlan?.name?.trim()}
+                    <Button type="button" onClick={handleSave} disabled={!editingPlan?.name?.trim()}
                         className={`rounded-full h-11 px-9 font-black text-sm shadow-xl transition-all border-0 ${!editingPlan?.name?.trim() ? 'opacity-50 cursor-not-allowed' : ''} ${t.btnPrimary(isDark, accent)}`}
                         style={t.glowStyle(isDark, accent)}>
                         {editingPlan?.id ? 'COMMIT UPDATE' : 'INITIALISE PLAN'}

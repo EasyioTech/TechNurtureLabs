@@ -346,13 +346,15 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                                         />
                                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center gap-3">
                                             <button
-                                                onClick={() => logoInputRef.current?.click()}
+                                                type="button"
+                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); logoInputRef.current?.click(); }}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-colors"
                                             >
                                                 <UploadCloud size={13} /> Replace
                                             </button>
                                             <button
-                                                onClick={() => handleBrandingRemove('logo')}
+                                                type="button"
+                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleBrandingRemove('logo'); }}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/70 hover:bg-red-500/90 text-white text-xs font-bold transition-colors"
                                             >
                                                 <X size={13} /> Remove
@@ -361,7 +363,8 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                                     </div>
                                 ) : (
                                     <button
-                                        onClick={() => logoInputRef.current?.click()}
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); logoInputRef.current?.click(); }}
                                         className="flex flex-col items-center gap-3 py-8 w-full hover:opacity-80 transition-opacity"
                                     >
                                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
@@ -377,13 +380,15 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                             {logoUrl && (
                                 <div className="flex gap-2">
                                     <button
-                                        onClick={() => logoInputRef.current?.click()}
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); logoInputRef.current?.click(); }}
                                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${isDark ? 'bg-white/5 hover:bg-white/10 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
                                     >
                                         <UploadCloud size={12} /> Replace
                                     </button>
                                     <button
-                                        onClick={() => handleBrandingRemove('logo')}
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleBrandingRemove('logo'); }}
                                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
                                     >
                                         <Trash2 size={12} /> Remove
@@ -425,7 +430,8 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                                             />
                                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
                                                 <button
-                                                    onClick={() => handleBrandingRemove('favicon')}
+                                                    type="button"
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleBrandingRemove('favicon'); }}
                                                     className="text-white"
                                                     title="Remove favicon"
                                                 >
@@ -435,7 +441,8 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                                         </div>
                                     ) : (
                                         <button
-                                            onClick={() => faviconInputRef.current?.click()}
+                                            type="button"
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); faviconInputRef.current?.click(); }}
                                             className="flex flex-col items-center gap-1 hover:opacity-80 transition-opacity w-full h-full justify-center"
                                         >
                                             <ImageIcon size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
@@ -444,14 +451,16 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                                 </div>
                                 <div className="flex flex-col gap-2 pt-1">
                                     <button
-                                        onClick={() => faviconInputRef.current?.click()}
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); faviconInputRef.current?.click(); }}
                                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${isDark ? 'bg-white/5 hover:bg-white/10 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
                                     >
                                         <UploadCloud size={12} /> {faviconUrl ? 'Replace' : 'Upload'}
                                     </button>
                                     {faviconUrl && (
                                         <button
-                                            onClick={() => handleBrandingRemove('favicon')}
+                                            type="button"
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleBrandingRemove('favicon'); }}
                                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
                                         >
                                             <Trash2 size={12} /> Remove
@@ -500,7 +509,8 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                                     return (
                                         <button
                                             key={layout.id}
-                                            onClick={() => setLogoLayout(layout.id)}
+                                            type="button"
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLogoLayout(layout.id); }}
                                             className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2
                                                 ${isActive
                                                     ? `border-${accent.name}-500 ${isDark ? 'bg-white/[0.04]' : 'bg-slate-50'}`
@@ -591,7 +601,8 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                             />
                         </div>
                         <Button
-                            onClick={handleCreateClass}
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCreateClass(); }}
                             disabled={classCreating || !newClassName.trim() || !newClassLevel}
                             className={`h-12 px-6 rounded-xl font-bold uppercase tracking-widest text-xs ${accent.bg} text-white hover:opacity-90 transition-all shrink-0`}
                         >
@@ -639,7 +650,8 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                                         <p className={`text-[10px] font-medium ${t.textMuted(isDark)}`}>Level {cls.level}</p>
                                     </div>
                                     <button
-                                        onClick={() => handleDeleteClass(cls.id, cls.name)}
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteClass(cls.id, cls.name); }}
                                         disabled={deletingClassId === cls.id}
                                         className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all cursor-pointer ${isDark
                                             ? 'hover:bg-rose-500/10 text-rose-400'
@@ -684,7 +696,8 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                             return (
                                 <button
                                     key={type.id}
-                                    onClick={() => { setVideoType(type.id as any); setVideoUrl(''); }}
+                                    type="button"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setVideoType(type.id as any); setVideoUrl(''); }}
                                     className={`relative p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center
                                         ${isActive
                                             ? `border-${accent.name}-500 ${isDark ? 'bg-white/[0.04]' : 'bg-slate-50'}`
@@ -751,6 +764,7 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
 
                 <div className={`mt-10 pt-8 border-t ${t.border(isDark)} flex justify-end`}>
                     <Button
+                        type="button"
                         onClick={handleSave}
                         disabled={saving}
                         className={`h-12 px-8 rounded-xl font-bold uppercase tracking-widest transition-all
@@ -795,7 +809,8 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                             placeholder="••••••••"
                         />
                     </div>
-                    <Button
+                        <Button
+                        type="button"
                         onClick={handleChangePassword}
                         disabled={changingPassword || !currentPassword || !newPassword}
                         className={`h-12 w-full rounded-xl font-bold uppercase tracking-widest ${accent.bg} text-white`}
@@ -836,12 +851,12 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                             </div>
                             <div className={`w-full md:w-auto mt-6 md:mt-0 pt-6 md:pt-0 border-t ${isDark ? 'border-white/10' : 'border-slate-200'} md:border-0 flex gap-3 shrink-0`}>
                                 {!twoFactorEnabled && !show2FASetup && (
-                                    <Button onClick={handleSetup2FA} className={`w-full md:w-auto rounded-xl font-black ${accent.bg} text-white px-8 h-12 uppercase tracking-widest text-xs shadow-lg shadow-${accent.name}-500/20 hover:scale-105 transition-all`}>
+                                    <Button type="button" onClick={handleSetup2FA} className={`w-full md:w-auto rounded-xl font-black ${accent.bg} text-white px-8 h-12 uppercase tracking-widest text-xs shadow-lg shadow-${accent.name}-500/20 hover:scale-105 transition-all`}>
                                         Secure Now
                                     </Button>
                                 )}
                                 {twoFactorEnabled && !show2FADisable && (
-                                    <Button variant="outline" onClick={() => setShow2FADisable(true)}
+                                    <Button type="button" variant="outline" onClick={() => setShow2FADisable(true)}
                                         className={`w-full md:w-auto rounded-xl font-black uppercase tracking-widest text-xs px-8 h-12 border-2 transition-all !bg-transparent
                                                 ${isDark ? 'border-white/10 hover:!bg-white/5 text-slate-300' : 'border-slate-200 hover:!bg-slate-50 text-slate-700'}
                                             `}>
@@ -873,10 +888,10 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                                         </InputOTPGroup>
                                     </InputOTP>
                                     <div className="flex gap-3 w-full">
-                                        <Button variant="outline" onClick={() => setShow2FADisable(false)} className={`flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-xs border-2 !bg-transparent transition-all ${isDark ? 'border-white/10 text-slate-400 hover:text-white hover:!bg-white/5' : 'border-slate-200 text-slate-500 hover:text-slate-900 hover:!bg-slate-50'}`}>
+                                        <Button type="button" variant="outline" onClick={() => setShow2FADisable(false)} className={`flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-xs border-2 !bg-transparent transition-all ${isDark ? 'border-white/10 text-slate-400 hover:text-white hover:!bg-white/5' : 'border-slate-200 text-slate-500 hover:text-slate-900 hover:!bg-slate-50'}`}>
                                             Cancel
                                         </Button>
-                                        <Button onClick={handleDisable2FA} disabled={disableToken.length !== 6 || disabling2FA} className="flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-xs bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20">
+                                        <Button type="button" onClick={handleDisable2FA} disabled={disableToken.length !== 6 || disabling2FA} className="flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-xs bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20">
                                             {disabling2FA ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
                                             Confirm
                                         </Button>
@@ -916,6 +931,7 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                                                 </InputOTPGroup>
                                             </InputOTP>
                                             <Button
+                                                type="button"
                                                 onClick={handleVerifyAndEnable2FA}
                                                 disabled={otpToken.length !== 6}
                                                 className={`h-12 px-10 rounded-xl font-bold uppercase tracking-widest ${accent.bg} text-white`}
@@ -975,8 +991,11 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                             </p>
                         </div>
                         <Button 
+                            type="button"
                             disabled={syncing}
-                            onClick={async () => {
+                            onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
                                 setSyncing(true);
                                 try {
                                     const res = await syncPlatformMetrics();
@@ -1025,6 +1044,7 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                     <Dialog>
                         <DialogTrigger asChild>
                             <Button 
+                                type="button"
                                 className={`h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all hover:scale-105 active:scale-95 ${t.btnPrimary(isDark, accent)}`}
                             >
                                 <Activity className="mr-2" size={18} />

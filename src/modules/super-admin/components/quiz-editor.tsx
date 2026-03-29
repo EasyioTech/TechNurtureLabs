@@ -187,7 +187,8 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
             <header className={`min-h-[72px] md:h-20 border-b ${isDark ? 'border-white/5 bg-[#0D0F14]/80' : 'border-slate-200 bg-white/80'} flex flex-col md:flex-row items-center justify-between px-4 md:px-8 py-3 md:py-0 backdrop-blur-xl gap-4 md:gap-0 shrink-0`}>
                 <div className="flex items-center gap-3 md:gap-6 w-full md:w-auto">
                     <button
-                        onClick={onClose}
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
                         className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-colors shrink-0 ${isDark ? 'hover:bg-white/5 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-500 hover:text-slate-900'}`}
                     >
                         <ChevronLeft size={20} className="md:hidden" />
@@ -209,13 +210,15 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                 <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end">
                     <div className={`flex p-0.5 md:p-1 ${isDark ? 'bg-white/[0.03] border-white/5' : 'bg-slate-100 border-slate-200 shadow-inner'} rounded-full border`}>
                         <button
-                            onClick={() => setActiveTab('questions')}
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('questions'); }}
                             className={`px-3 md:px-6 py-1.5 md:py-2 rounded-full text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'questions' ? `${accent.bg} text-slate-900 shadow-xl` : `${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-800'}`}`}
                         >
                             <span className="flex items-center gap-1.5 md:gap-2"><ListOrdered size={12} className="md:size-3.5" /> Questions</span>
                         </button>
                         <button
-                            onClick={() => setActiveTab('settings')}
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('settings'); }}
                             className={`px-3 md:px-6 py-1.5 md:py-2 rounded-full text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'settings' ? `${accent.bg} text-slate-900 shadow-xl` : `${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-800'}`}`}
                         >
                             <span className="flex items-center gap-1.5 md:gap-2"><Settings2 size={12} className="md:size-3.5" /> Settings</span>
@@ -223,6 +226,7 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                     </div>
 
                     <Button
+                        type="button"
                         disabled={saving}
                         onClick={handleSave}
                         className={`rounded-full h-9 md:h-11 px-4 md:px-8 ${accent.bg} text-slate-900 ${accent.bgHover} font-black text-[10px] md:text-xs gap-2 shadow-lg transition-all active:scale-95 shrink-0`}
@@ -286,7 +290,8 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                                         <p className={`text-[10px] md:text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'} uppercase tracking-widest mt-1`}>Design your assessment logic here.</p>
                                     </div>
                                     <Button
-                                        onClick={addQuestion}
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); addQuestion(); }}
                                         className={`w-full sm:w-auto rounded-full ${isDark ? 'bg-white text-slate-900 hover:bg-slate-200' : 'bg-slate-900 text-white hover:bg-slate-800'} font-black text-[10px] md:text-[11px] uppercase tracking-widest h-10 md:h-11 px-6 gap-2`}
                                     >
                                         <Plus size={16} strokeWidth={3} /> Add Question
@@ -313,7 +318,8 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                                             <p className={`text-[10px] md:text-sm font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'} uppercase tracking-widest mt-2 px-6`}>Add your first question to get started.</p>
                                         </div>
                                         <Button
-                                            onClick={addQuestion}
+                                            type="button"
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); addQuestion(); }}
                                             className={`rounded-full ${accent.bg} text-slate-900 ${accent.bgHover} font-black h-11 md:h-12 px-8 md:px-10 shadow-2xl`}
                                         >
                                             ADD FIRST QUESTION
@@ -357,7 +363,8 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                                             <p className={`text-[9px] md:text-[10px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'} leading-tight`}>Enable visibility of this assessment for enrolled students.</p>
                                         </div>
                                         <button
-                                            onClick={() => setQuiz({ ...quiz, is_published: !quiz.is_published })}
+                                            type="button"
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQuiz({ ...quiz, is_published: !quiz.is_published }); }}
                                             className={`w-12 h-7 md:w-14 md:h-8 rounded-full p-1 transition-all shrink-0 border ${quiz.is_published ? `${accent.bg} border-transparent` : (isDark ? 'bg-slate-800 border-white/5' : 'bg-slate-300 border-slate-300')}`}
                                             style={quiz.is_published ? t.glowStyle(isDark, accent) : {}}
                                         >
@@ -434,7 +441,8 @@ function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
                     </div>
                 </div>
                 <button
-                    onClick={onDelete}
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(); }}
                     className="w-9 h-9 md:w-10 md:h-10 rounded-full border border-red-500/20 text-red-500/40 hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-all sm:opacity-0 group-hover:opacity-100"
                 >
                     <Trash2 size={16} />
@@ -469,7 +477,8 @@ function QuestionCard({ idx, q, onUpdate, onDelete }: any) {
                                     className={`h-14 md:h-16 pl-14 md:pl-16 pr-6 rounded-full font-bold text-xs md:text-sm ${isDark ? 'bg-black/20 border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} transition-all ${q.correct_answer === oIdx ? `border-${accent.name}-400/50 ${isDark ? accent.softDark.split(' ')[0] : accent.softLight.split(' ')[0]}` : 'hover:border-white/10'}`}
                                 />
                                 <button
-                                    onClick={() => onUpdate({ correct_answer: oIdx })}
+                                    type="button"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onUpdate({ correct_answer: oIdx }); }}
                                     className={`absolute left-3.5 md:left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${q.correct_answer === oIdx ? `${accent.bg} text-slate-900 shadow-lg` : (isDark ? 'bg-white/5 border-white/10 text-transparent' : 'bg-slate-100 border-slate-200 text-transparent hover:text-slate-400')} border`}
                                 >
                                     <Check size={14} strokeWidth={4} />

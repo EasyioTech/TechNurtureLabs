@@ -115,7 +115,7 @@ export function SchoolsTab({
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Button size="sm"
+                            <Button type="button" size="sm"
                                 onClick={() => {
                                     setEditingSchool({ is_active: true, classIds: [] });
                                     setShowEditDialog(true);
@@ -174,7 +174,7 @@ export function SchoolsTab({
                                         else { setAssignSchoolId(null); }
                                     }}>
                                         <PopoverTrigger asChild>
-                                            <Button variant="ghost" size="sm" className={`rounded-full h-7 px-3 text-[9px] font-black opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-sky-400 hover:bg-sky-400/10 hover:text-sky-400' : 'text-sky-600 hover:bg-sky-50'}`}>
+                                            <Button type="button" variant="ghost" size="sm" className={`rounded-full h-7 px-3 text-[9px] font-black opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-sky-400 hover:bg-sky-400/10 hover:text-sky-400' : 'text-sky-600 hover:bg-sky-50'}`}>
                                                 <CreditCard size={11} className="mr-1" />PLAN
                                             </Button>
                                         </PopoverTrigger>
@@ -195,7 +195,7 @@ export function SchoolsTab({
                                                     ))}
                                                 </SelectContent>
                                             </Select>
-                                            <Button onClick={handleAssignPlan} disabled={!selectedPlanId}
+                                            <Button type="button" onClick={handleAssignPlan} disabled={!selectedPlanId}
                                                 className={`mt-3 w-full rounded-full h-9 text-[11px] font-black border-0 disabled:opacity-40 ${t.btnPrimary(isDark, accent)}`}>
                                                 Assign Plan
                                             </Button>
@@ -203,7 +203,7 @@ export function SchoolsTab({
                                     </Popover>
                                 )}
 
-                                <Button variant="ghost" size="icon" className={`w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? `text-slate-500 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-300 hover:text-slate-800 hover:bg-slate-100'}`}
+                                <Button type="button" variant="ghost" size="icon" className={`w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? `text-slate-500 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-300 hover:text-slate-800 hover:bg-slate-100'}`}
                                     onClick={() => openEdit(school)}>
                                     <Edit size={14} />
                                 </Button>
@@ -228,12 +228,12 @@ export function SchoolsTab({
                             Page {page + 1} of {totalPages}
                         </p>
                         <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" disabled={page === 0}
+                            <Button type="button" variant="ghost" size="sm" disabled={page === 0}
                                 onClick={() => setPage(page - 1)}
                                 className={`rounded-full h-8 px-4 text-[11px] font-black disabled:opacity-30 ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-700'}`}>
                                 <ChevronLeft size={14} className="mr-1" /> Prev
                             </Button>
-                            <Button variant="ghost" size="sm" disabled={page >= totalPages - 1}
+                            <Button type="button" variant="ghost" size="sm" disabled={page >= totalPages - 1}
                                 onClick={() => setPage(page + 1)}
                                 className={`rounded-full h-8 px-4 text-[11px] font-black disabled:opacity-30 ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-700'}`}>
                                 Next <ChevronRight size={14} className="ml-1" />
@@ -305,6 +305,7 @@ export function SchoolsTab({
                                 <div className="flex items-center justify-between px-1">
                                     <Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Offered Classes</Label>
                                     <Button
+                                        type="button"
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => {
@@ -343,8 +344,8 @@ export function SchoolsTab({
                         </div>
                     )}
                     <DialogFooter className={`pt-6 border-t mt-6 ${t.border(isDark)}`}>
-                        <Button variant="ghost" onClick={() => setShowEditDialog(false)} className={`rounded-full h-11 px-7 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white hover:text-white' : 'hover:bg-slate-200 text-slate-700'}`}>Cancel</Button>
-                        <Button className={`rounded-full h-11 px-9 font-black text-sm shadow-xl transition-all border-0 ${t.btnPrimary(isDark, accent)}`} style={t.glowStyle(isDark, accent)} onClick={handleSave}>
+                        <Button type="button" variant="ghost" onClick={() => setShowEditDialog(false)} className={`rounded-full h-11 px-7 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white hover:text-white' : 'hover:bg-slate-200 text-slate-700'}`}>Cancel</Button>
+                        <Button type="button" className={`rounded-full h-11 px-9 font-black text-sm shadow-xl transition-all border-0 ${t.btnPrimary(isDark, accent)}`} style={t.glowStyle(isDark, accent)} onClick={handleSave}>
                             {editingSchool?.id ? 'Save Changes' : 'Register School'}
                         </Button>
                     </DialogFooter>

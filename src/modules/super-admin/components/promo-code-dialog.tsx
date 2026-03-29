@@ -127,6 +127,7 @@ export function PromoCodeDialog({
                 </div>
                 <DialogFooter>
                     <Button
+                        type="button"
                         variant="outline"
                         onClick={() => onOpenChange(false)}
                         className={`h-12 border-2 rounded-xl px-8 font-bold text-xs uppercase tracking-widest ${isDark ? 'border-slate-800 hover:bg-slate-800' : 'border-slate-200 hover:bg-slate-100'} ${t.textMuted(isDark)}`}

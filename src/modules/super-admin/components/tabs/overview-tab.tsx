@@ -234,7 +234,7 @@ export function OverviewTab({ stats, paymentPlans, schoolsList, platformMetrics,
                         <p className={`text-[10px] font-bold ${t.textMuted(isDark)} uppercase tracking-widest`}>Aggregated platform performance metrics</p>
                     </div>
                 </div>
-                <Button onClick={onSync} size="sm" variant="outline"
+                <Button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSync?.(); }} size="sm" variant="outline"
                     className={`rounded-full h-9 px-5 text-[10px] font-black border-2 gap-2 ${t.btnOutline(isDark)} transition-all hover:scale-105 active:scale-95`}>
                     <RefreshCw size={14} /> SYNC DATA
                 </Button>
