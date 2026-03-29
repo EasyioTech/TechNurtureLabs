@@ -35,6 +35,22 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
   const [lessonComplete,  setLessonComplete]  = useState(initialComplete);
   const [courseData,      setCourseData]      = useState(initialCourseData);
   const [isSyllabusOpen,  setIsSyllabusOpen]  = useState(false);
+
+  // Push a history entry when the syllabus drawer opens so the device back button
+  // closes the drawer instead of navigating away from the lesson.
+  useEffect(() => {
+    if (isSyllabusOpen) history.pushState({ syllabusOpen: true }, '');
+  }, [isSyllabusOpen]);
+
+  useEffect(() => {
+    const onPopState = (e: PopStateEvent) => {
+      if (isSyllabusOpen) {
+        setIsSyllabusOpen(false);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [isSyllabusOpen]);
   const [docPage,         setDocPage]         = useState(1);
   const [docTotal,        setDocTotal]        = useState(0);
   const [docMax,          setDocMax]          = useState(lessonComplete ? 9999 : 1);

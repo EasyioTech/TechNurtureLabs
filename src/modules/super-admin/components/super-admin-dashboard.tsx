@@ -96,6 +96,26 @@ function DashboardContent() {
         }
     }, [activePage, router, searchParams]);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    // Push a history entry when the mobile menu opens so the device back button
+    // closes the drawer instead of navigating away from the dashboard.
+    useEffect(() => {
+        if (mobileMenuOpen) {
+            history.pushState({ mobileMenu: true }, '');
+        }
+    }, [mobileMenuOpen]);
+
+    useEffect(() => {
+        const onPopState = (e: PopStateEvent) => {
+            if (mobileMenuOpen) {
+                e.preventDefault?.();
+                setMobileMenuOpen(false);
+            }
+        };
+        window.addEventListener('popstate', onPopState);
+        return () => window.removeEventListener('popstate', onPopState);
+    }, [mobileMenuOpen]);
+
     const data = useAdminData();
 
     // Tracks which tabs have had their initial data load — prevents redundant

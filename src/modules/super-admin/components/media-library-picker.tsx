@@ -97,6 +97,14 @@ export function MediaLibraryPicker({
     const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+    // Always-fresh refs for use inside callbacks (avoids stale closure in useUpload.onSuccess)
+    const activeTabRef        = React.useRef(activeTab);
+    const activeFolderRef     = React.useRef(activeFolder);
+    const debouncedSearchRef  = React.useRef(debouncedSearch);
+    React.useEffect(() => { activeTabRef.current       = activeTab;       }, [activeTab]);
+    React.useEffect(() => { activeFolderRef.current    = activeFolder;    }, [activeFolder]);
+    React.useEffect(() => { debouncedSearchRef.current = debouncedSearch; }, [debouncedSearch]);
+
     // Debounce search
     React.useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(search), 500);
@@ -107,9 +115,16 @@ export function MediaLibraryPicker({
         onSuccess: () => {
             toast.success('Upload complete');
             setUploadFile(null);
-            // Reload from scratch after upload
             setPage(1);
-            loadAssets(activeTab, activeFolder, 1, debouncedSearch, false);
+            // Read the latest tab/folder/search — callbacks capture refs, not stale closures
+            const tab    = activeTabRef.current;
+            const folder = activeFolderRef.current;
+            const search = debouncedSearchRef.current;
+            if (tab === 'cloudflare_stream') {
+                loadStreamVideos(search);
+            } else {
+                loadAssets(tab, folder, 1, search, false);
+            }
         },
         onError: (err) => {
             toast.error(err || 'Failed to upload file');
@@ -549,22 +564,23 @@ export function MediaLibraryPicker({
                             <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => loadAssets(activeTab, activeFolder, 1, debouncedSearch, false)}
+                                onClick={() => activeTab === 'cloudflare_stream' ? loadStreamVideos(debouncedSearch) : loadAssets(activeTab, activeFolder, 1, debouncedSearch, false)}
                                 className="rounded-full font-bold text-xs"
                             >
                                 Retry
                             </Button>
                         </div>
-                    ) : assets.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-48 gap-3">
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
-                                <ImageIcon size={24} className={t.textMuted(isDark)} />
-                            </div>
-                            <p className={`text-sm font-bold ${t.textMuted(isDark)}`}>
-                                {search ? 'No assets match your search.' : 'No assets uploaded yet.'}
-                            </p>
-                        </div>
                     ) : activeTab === 'cloudflare_stream' ? (
+                        streamVideos.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-48 gap-3">
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
+                                    <Cloud size={24} className={t.textMuted(isDark)} />
+                                </div>
+                                <p className={`text-sm font-bold ${t.textMuted(isDark)}`}>
+                                    {search ? 'No videos match your search.' : 'No Cloudflare Stream videos yet. Upload one to get started.'}
+                                </p>
+                            </div>
+                        ) : (
                         <div className="space-y-6">
                             <div className="grid grid-cols-2 gap-3">
                                 {streamVideos.map(video => {
@@ -612,6 +628,16 @@ export function MediaLibraryPicker({
                                     );
                                 })}
                             </div>
+                        </div>
+                        )
+                    ) : assets.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-48 gap-3">
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
+                                <ImageIcon size={24} className={t.textMuted(isDark)} />
+                            </div>
+                            <p className={`text-sm font-bold ${t.textMuted(isDark)}`}>
+                                {search ? 'No assets match your search.' : 'No assets uploaded yet.'}
+                            </p>
                         </div>
                     ) : (
                         <div className="space-y-6">
