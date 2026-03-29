@@ -97,7 +97,6 @@ function MiniStat({ label, value, icon: Icon, theme = 'accent', delay = 0 }: {
 }
 
 // ─── Login Activity Heatmap (7 days × 24 hours) ──────────────────────────────
-
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOURS = Array.from({ length: 24 }, (_, i) =>
     i === 0 ? '12a' : i < 12 ? `${i}a` : i === 12 ? '12p' : `${i - 12}p`
@@ -106,69 +105,115 @@ const HOURS = Array.from({ length: 24 }, (_, i) =>
 function LoginHeatmap({ heatmap }: { heatmap: number[][] }) {
     const { isDark, accent } = useAdminTheme();
 
-    // Find max value for normalisation
+    // Find max value + peak day/hour for summary text
     const max = Math.max(1, ...heatmap.flatMap(row => row));
+    
+    const peakActivity = useMemo(() => {
+        let pVal = -1;
+        let pDay = 0;
+        let pHour = 0;
+        heatmap.forEach((row, dow) => {
+            row.forEach((count, hour) => {
+                if (count > pVal) {
+                    pVal = count;
+                    pDay = dow;
+                    pHour = hour;
+                }
+            });
+        });
+        return { value: pVal, day: DAYS[pDay], hour: HOURS[pHour] };
+    }, [heatmap]);
 
     const cellColor = (count: number) => {
         if (count === 0) return isDark ? 'bg-white/[0.04]' : 'bg-slate-100';
         const ratio = count / max;
-        if (ratio < 0.25) return isDark ? `${accent.bg}/20` : `${accent.bg}/10`;
-        if (ratio < 0.5)  return isDark ? `${accent.bg}/40` : `${accent.bg}/30`;
-        if (ratio < 0.75) return isDark ? `${accent.bg}/65` : `${accent.bg}/60`;
-        return isDark ? `${accent.bg}/90 shadow-sm` : `${accent.bg} shadow-sm`;
+        // Theme-responsive opacity mapping
+        if (ratio < 0.2) return isDark ? `${accent.bg}/20` : `${accent.bg}/10`;
+        if (ratio < 0.45) return isDark ? `${accent.bg}/40` : `${accent.bg}/30`;
+        if (ratio < 0.7) return isDark ? `${accent.bg}/65` : `${accent.bg}/60`;
+        if (ratio < 0.9) return isDark ? `${accent.bg}/85` : `${accent.bg}/80`;
+        return isDark ? `${accent.bg} shadow-sm shadow-${accent.name}-500/20` : `${accent.bg} shadow-sm shadow-${accent.name}-500/30`;
     };
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45 }}
+            transition={{ delay: 0.45, duration: 0.5 }}
             className={`rounded-[24px] border p-6 lg:p-8 shadow-xl shadow-black/5 ${t.card(isDark)}`}
         >
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-[#171717] text-white'}`}>
-                        <CalendarDays size={16} />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform hover:rotate-3 ${isDark ? 'bg-white/[0.04]' : 'bg-[#171717] text-white'}`}>
+                        <CalendarDays size={22} className={isDark ? accent.text : 'text-white'} />
                     </div>
                     <div>
-                        <h3 className={`text-xs font-black tracking-widest uppercase ${t.textPrimary(isDark)}`}>Login Activity Heatmap</h3>
-                        <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>When your learners are most active — by day of week and hour.</p>
+                        <h3 className={`text-base font-black tracking-tight ${t.textPrimary(isDark)}`}>User Peak Times</h3>
+                        <p className={`text-[11px] font-bold ${t.textMuted(isDark)} uppercase tracking-[0.15em]`}>Tracking login frequency across the platform</p>
                     </div>
                 </div>
-                {/* Legend */}
-                <div className="hidden sm:flex items-center gap-1.5">
-                    <span className={`text-[9px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Low</span>
-                    {[0.1, 0.3, 0.55, 0.8, 1].map((v, i) => (
-                        <div key={i} className={`w-3 h-3 rounded-sm ${cellColor(Math.round(v * max))}`} />
-                    ))}
-                    <span className={`text-[9px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>High</span>
+
+                {/* Plain-English summary for non-technical admins */}
+                <div className={`px-4 py-2.5 rounded-xl border ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-neutral-50'} max-w-xs`}>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)} mb-0.5`}>Peak Performance</p>
+                    <p className={`text-[11px] font-bold ${t.textPrimary(isDark)}`}>
+                        Highest activity on <span className={accent.text}>{peakActivity.day}</span> around <span className={accent.text}>{peakActivity.hour}</span> 
+                        {peakActivity.value > 0 && ` (${peakActivity.value} logins)`}
+                    </p>
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
-                <div className="min-w-[560px]">
-                    {/* Hour labels */}
-                    <div className="flex gap-0.5 mb-1 ml-8">
+            <div className="relative overflow-x-auto pb-6 -mx-2 px-2 scrollbar-thin scrollbar-thumb-neutral-300">
+                <div className="min-w-[700px]">
+                    {/* Hour labels — spread across the top */}
+                    <div className="flex gap-1 mb-2 ml-10">
                         {HOURS.map((h, i) => (
-                            <div key={i} className={`flex-1 text-center text-[8px] font-black uppercase ${t.textMuted(isDark)}`}
-                                style={{ display: i % 2 === 0 ? 'block' : 'block', opacity: i % 3 === 0 ? 1 : 0 }}>
-                                {i % 3 === 0 ? h : ''}
+                            <div key={i} className={`flex-1 text-center text-[9px] font-black uppercase tracking-tighter transition-opacity ${i % 3 === 0 ? 'opacity-100' : 'opacity-20'} ${t.textMuted(isDark)}`}>
+                                {h}
                             </div>
                         ))}
                     </div>
-                    {/* Grid rows */}
-                    {DAYS.map((day, dow) => (
-                        <div key={dow} className="flex items-center gap-0.5 mb-0.5">
-                            <div className={`w-7 flex-shrink-0 text-[9px] font-black uppercase text-right pr-1 ${t.textMuted(isDark)}`}>{day}</div>
-                            {heatmap[dow].map((count, hour) => (
-                                <div
-                                    key={hour}
-                                    title={`${day} ${HOURS[hour]}: ${count} logins`}
-                                    className={`flex-1 h-4 rounded-sm transition-all cursor-default ${cellColor(count)}`}
-                                />
-                            ))}
-                        </div>
-                    ))}
+
+                    {/* Heatmap Grid */}
+                    <div className="space-y-1">
+                        {DAYS.map((day, dow) => (
+                            <div key={dow} className="flex items-center gap-1 group/row">
+                                <div className={`w-9 flex-shrink-0 text-[10px] font-black uppercase text-right pr-2 ${t.textMuted(isDark)} group-hover/row:${t.textPrimary(isDark)} transition-colors`}>
+                                    {day}
+                                </div>
+                                <div className="flex flex-1 gap-1">
+                                    {heatmap[dow].map((count, hour) => (
+                                        <motion.div
+                                            key={hour}
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            transition={{ delay: 0.5 + (dow * 0.05) + (hour * 0.01), duration: 0.2 }}
+                                            className={`flex-1 h-6 rounded-md transition-all duration-300 cursor-help hover:scale-110 active:scale-90 hover:z-10 ${cellColor(count)} border ${isDark ? 'border-white/[0.02]' : 'border-black/[0.02]'}`}
+                                            title={`${day} ${HOURS[hour]}: ${count} logins`}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Legend + Insights */}
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-white/[0.05]">
+                <div className="flex items-center gap-3">
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Quiet</span>
+                    <div className="flex items-center gap-1">
+                        {[0, 0.2, 0.5, 0.8, 1].map((v, i) => (
+                            <div key={i} className={`w-4 h-4 rounded-md ${cellColor(Math.round(v * max))}`} />
+                        ))}
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Very Busy</span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full animate-pulse ${accent.bg}`} />
+                    <p className={`text-[10px] font-bold ${t.textMuted(isDark)} uppercase tracking-widest`}>Data updating in real-time</p>
                 </div>
             </div>
         </motion.div>
