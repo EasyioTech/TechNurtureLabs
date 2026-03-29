@@ -319,6 +319,9 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                                 pendingStudents={data.pendingStudents}
                                 onVerify={data.verifyStudent}
                                 loading={data.pendingLoading}
+                                pinRequests={data.pinRequests}
+                                onPinReset={data.handlePinReset}
+                                pinLoading={data.pinLoading}
                             />
                         )}
                         {activePage === 'courses' && <SchoolCoursesTab courseMetrics={data.courseMetrics} schoolClasses={data.classesData} />}
