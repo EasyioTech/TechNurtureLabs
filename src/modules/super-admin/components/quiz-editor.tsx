@@ -100,13 +100,47 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
 
     const handleSave = async () => {
         if (!quiz) return;
+
+        // ✓ Client-side validation before server call
+        if (!quiz.course_id) {
+            toast.error('Validation Error', {
+                description: 'Course information is missing. Please refresh the page and try again.'
+            });
+            return;
+        }
+
+        if (quiz.questions.length === 0) {
+            toast.error('Validation Error', {
+                description: 'Please add at least one question before saving.'
+            });
+            return;
+        }
+
+        // Validate all questions have required fields
+        const invalidQuestion = quiz.questions.findIndex(q => !q.question_text?.trim());
+        if (invalidQuestion !== -1) {
+            toast.error('Validation Error', {
+                description: `Question ${invalidQuestion + 1}: Please add question text.`
+            });
+            return;
+        }
+
         setSaving(true);
         try {
             const saved = await saveQuizAdmin(quiz);
             if (saved) {
                 setQuiz({
                     ...saved,
-                    pass_percentage: Number(saved.pass_percentage)
+                    pass_percentage: Number(saved.pass_percentage),
+                    questions: (saved.questions || []).map((q: any) => {
+                        const simpleOptions = (q.options || []).map((opt: any) => opt.option_text);
+                        const correctIdx = (q.options || []).findIndex((opt: any) => opt.is_correct);
+                        return {
+                            ...q,
+                            options: simpleOptions.length > 0 ? simpleOptions : ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
+                            correct_answer: correctIdx !== -1 ? correctIdx : 0
+                        };
+                    })
                 } as any);
             }
             toast.success('Assessment saved', {
@@ -114,8 +148,12 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
                 icon: <Sparkles className={accent.text} size={16} />
             });
         } catch (err) {
+            // ✓ Show detailed error message to user
+            const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
             console.error('Save failed:', err);
-            toast.error('Failed to save assessment');
+            toast.error('Failed to save assessment', {
+                description: errorMessage.length > 0 ? errorMessage : 'Please check your input and try again.'
+            });
         } finally {
             setSaving(false);
         }

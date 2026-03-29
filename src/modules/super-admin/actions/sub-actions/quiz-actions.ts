@@ -27,32 +27,33 @@ export async function fetchQuizAdmin(lessonId: string) {
 }
 
 const quizOptionSchema = z.union([
-    z.string(),
+    z.string().min(1, 'Option text is required'),
     z.object({
-        option_text: z.string(),
+        option_text: z.string().min(1, 'Option text is required'),
         is_correct: z.boolean(),
     }),
 ]);
 
 const quizQuestionSchema = z.object({
-    question_text: z.string().min(1, 'Question text is required'),
+    id: z.string().uuid().optional(),
+    question_text: z.string().min(1, 'Question text is required').max(1000),
     question_type: z.enum(['mcq', 'true_false', 'fill_blank', 'multi_select']).default('mcq'),
     explanation: z.string().optional().default(''),
-    points: z.number().int().min(0).default(1),
+    points: z.number().int().min(1, 'Points must be at least 1').max(100).default(1),
     time_limit_secs: z.number().int().min(0).default(0),
-    correct_answer: z.string().optional(),
+    correct_answer: z.number().or(z.string()).optional(),
     options: z.array(quizOptionSchema).optional(),
 });
 
 const quizSchema = z.object({
     id: z.string().uuid().optional(),
     lesson_id: z.string().uuid().optional().nullable(),
-    course_id: z.string().uuid().optional().nullable(),
+    course_id: z.string().uuid('Invalid course ID format'),  // ✓ REQUIRED - must be valid UUID
     title: z.string().min(1, 'Title is required').max(255),
     description: z.string().optional().default(''),
     time_limit_secs: z.number().int().min(0).default(0),
-    pass_percentage: z.number().min(0).max(100).optional(),
-    max_attempts: z.number().int().min(1).default(3),
+    pass_percentage: z.number().min(0, 'Pass percentage cannot be negative').max(100, 'Pass percentage cannot exceed 100').default(60),
+    max_attempts: z.number().int().min(1, 'Must allow at least 1 attempt').default(3),
     xp_reward: z.number().int().min(0).default(20),
     is_published: z.boolean().optional().default(true),
     questions: z.array(quizQuestionSchema).optional(),
@@ -61,34 +62,61 @@ const quizSchema = z.object({
 export async function saveQuizAdmin(quizData: unknown) {
     const session = await requireSuperAdmin();
 
-    const data = quizSchema.parse(quizData);
+    let data;
+    try {
+        data = quizSchema.parse(quizData);
+    } catch (validationError) {
+        // Re-throw with clear message
+        if (validationError instanceof z.ZodError) {
+            const firstError = validationError.errors[0];
+            throw new Error(`Validation error: ${firstError.message} (${firstError.path.join('.')})`);
+        }
+        throw validationError;
+    }
+
+    // ✓ Ensure course_id is always present (required by database)
+    if (!data.course_id) {
+        throw new Error('Course ID is required to save a quiz');
+    }
+
     let quizId = data.id;
-    const passPercentage = (data.pass_percentage ?? 60).toString();
+    // Convert pass_percentage to proper format (numeric(5,2) expects "XX.XX" format)
+    const passPercentage = (data.pass_percentage ?? 60).toFixed(2);
+
     return await db.transaction(async (tx) => {
-        if (quizId) {
-            await tx.update(quizzes).set({
-                title: data.title,
-                description: data.description,
-                time_limit_secs: data.time_limit_secs,
-                pass_percentage: passPercentage,
-                max_attempts: data.max_attempts,
-                xp_reward: data.xp_reward,
-                is_published: data.is_published ?? true,
-                updated_at: new Date()
-            }).where(eq(quizzes.id, quizId));
-        } else {
-            const [created] = await tx.insert(quizzes).values({
-                lesson_id: data.lesson_id ?? null,
-                course_id: data.course_id ?? null,
-                title: data.title,
-                description: data.description,
-                time_limit_secs: data.time_limit_secs,
-                pass_percentage: passPercentage,
-                max_attempts: data.max_attempts,
-                xp_reward: data.xp_reward,
-                is_published: data.is_published ?? true,
-            } as any).returning();
-            quizId = created.id;
+        try {
+            if (quizId) {
+                await tx.update(quizzes).set({
+                    title: data.title,
+                    description: data.description,
+                    time_limit_secs: data.time_limit_secs,
+                    pass_percentage: passPercentage,
+                    max_attempts: data.max_attempts,
+                    xp_reward: data.xp_reward,
+                    is_published: data.is_published ?? true,
+                    updated_at: new Date()
+                }).where(eq(quizzes.id, quizId));
+            } else {
+                const [created] = await tx.insert(quizzes).values({
+                    lesson_id: data.lesson_id || null,  // ✓ Changed from ?? to || for consistency
+                    course_id: data.course_id,  // ✓ Always has value (validated above)
+                    title: data.title,
+                    description: data.description,
+                    time_limit_secs: data.time_limit_secs,
+                    pass_percentage: passPercentage,
+                    max_attempts: data.max_attempts,
+                    xp_reward: data.xp_reward,
+                    is_published: data.is_published ?? true,
+                } as any).returning();
+                quizId = created.id;
+            }
+        } catch (dbError) {
+            // Provide clear DB error messages
+            const errorMsg = dbError instanceof Error ? dbError.message : String(dbError);
+            if (errorMsg.includes('course_id')) {
+                throw new Error('Failed to save quiz: Course information is missing or invalid');
+            }
+            throw new Error(`Failed to save quiz: ${errorMsg.slice(0, 100)}`);
         }
 
         if (data.questions && data.questions.length > 0) {
