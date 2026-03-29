@@ -24,7 +24,24 @@ const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
     };
 
     if (type === 'stream') {
-        const uid = src.replace('cf-stream://', '');
+        let uid = src.replace('cf-stream://', '');
+        
+        // If it's a full Cloudflare URL, extract the UID
+        if (uid.includes('videodelivery.net/')) {
+            const parts = uid.split('/');
+            uid = parts[parts.length - 1].split('?')[0].split('#')[0];
+        }
+
+        if (uid.length < 30) {
+            return (
+                 <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center text-slate-400 gap-4 p-8 text-center">
+                      <Video className="w-12 h-12 opacity-20" />
+                      <span className="text-xs font-bold uppercase tracking-widest opacity-60">Invalid Cloudflare UID in Platform Settings</span>
+                      <p className="text-[10px] opacity-40 max-w-[200px]">Current value: {src}</p>
+                 </div>
+            );
+        }
+
         return (
             <div className="absolute inset-0">
                 <CloudflareStreamPlayer uid={uid} />
@@ -45,7 +62,7 @@ const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
         // If it's an email or clearly not a YouTube ID, don't show the iframe
         if (!videoId || videoId.includes('@') || videoId.includes('.') || videoId.length < 5) {
             return (
-                <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center text-slate-400 gap-4 p-8 text-center">
+                <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center text-slate-400 gap-4 p-8 text-center" id="invalid-video-state">
                      <Video className="w-12 h-12 opacity-20" />
                      <span className="text-xs font-bold uppercase tracking-widest opacity-60">Invalid YouTube URL in Platform Settings</span>
                      <p className="text-[10px] opacity-40 max-w-[200px]">Current value: {src}</p>
@@ -55,9 +72,10 @@ const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
 
         return (
             <iframe
-                src={`https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`}
+                src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3`}
                 className="absolute inset-0 w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
                 allowFullScreen
                 title="Platform Demo"
             />
