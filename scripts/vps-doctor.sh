@@ -47,16 +47,17 @@ CONTAINERS=("LMS_app" "LMS_postgres" "LMS_redis" "LMS_caddy" "LMS_event_worker")
 for container in "${CONTAINERS[@]}"; do
     STATUS=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "not_found")
     if [ "$STATUS" == "running" ]; then
-        HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null || echo "none")
-        if [ "$HEALTH" == "healthy" ] || [ "$HEALTH" == "none" ]; then
-            echo -e "${GREEN}✅ $container is RUNNING (${HEALTH:-no-healthcheck})${NC}"
+        HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}no-check{{end}}' "$container" 2>/dev/null || echo "none")
+        if [ "$HEALTH" == "healthy" ] || [ "$HEALTH" == "none" ] || [ "$HEALTH" == "no-check" ]; then
+            echo -e "${GREEN}✅ $container is RUNNING (Health: $HEALTH)${NC}"
         else
             echo -e "${RED}❌ $container is UNHEALTHY! Status: $HEALTH${NC}"
-            echo "💡 Check logs: docker logs $container --tail 50"
+            echo "   💡 Check logs: docker logs $container --tail 50"
         fi
     else
         echo -e "${RED}❌ $container is NOT RUNNING! Status: $STATUS${NC}"
-        echo "💡 If not started, run: bash deploy.sh"
+        echo "   💡 Check logs: docker logs $container --tail 50"
+        echo "   💡 To start: bash deploy.sh"
     fi
 done
 
