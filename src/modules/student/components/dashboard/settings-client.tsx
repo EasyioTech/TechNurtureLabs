@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import {
     updateNotificationPreferences,
     updatePrivacySettings,
-    changeStudentPassword
+    changeStudentPin
 } from '@/modules/student/actions/settings-actions';
 import { deleteStudentAccountAction } from '@/modules/student/actions';
 
@@ -42,13 +42,13 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
 
-    // Password change state
-    const [currentPassword, setCurrentPassword] = useState('');
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [showCurrentPw, setShowCurrentPw] = useState(false);
-    const [showNewPw, setShowNewPw] = useState(false);
-    const [savingPassword, setSavingPassword] = useState(false);
+    // Security PIN change state
+    const [currentPin, setCurrentPin] = useState('');
+    const [newPin, setNewPin] = useState('');
+    const [confirmPin, setConfirmPin] = useState('');
+    const [showCurrentPin, setShowCurrentPin] = useState(false);
+    const [showNewPin, setShowNewPin] = useState(false);
+    const [savingPin, setSavingPin] = useState(false);
 
     const handleSave = async () => {
         setSaving(true);
@@ -71,34 +71,34 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
         }
     };
 
-    const handlePasswordChange = async () => {
-        if (!currentPassword || !newPassword || !confirmPassword) {
-            toast.error('Please fill in all password fields.');
+    const handlePinChange = async () => {
+        if (!currentPin || !newPin || !confirmPin) {
+            toast.error('Please fill in all PIN fields.');
             return;
         }
-        if (newPassword !== confirmPassword) {
-            toast.error('New passwords do not match.');
+        if (newPin !== confirmPin) {
+            toast.error('New PINs do not match.');
             return;
         }
-        if (newPassword.length < 8) {
-            toast.error('New password must be at least 8 characters.');
+        if (newPin.length !== 6 || !/^\d+$/.test(newPin)) {
+            toast.error('New PIN must be exactly 6 digits.');
             return;
         }
-        setSavingPassword(true);
+        setSavingPin(true);
         try {
-            const result = await changeStudentPassword(currentPassword, newPassword);
+            const result = await changeStudentPin(currentPin, newPin);
             if (result.success) {
-                toast.success('Password changed successfully.');
-                setCurrentPassword('');
-                setNewPassword('');
-                setConfirmPassword('');
+                toast.success('Security PIN changed successfully.');
+                setCurrentPin('');
+                setNewPin('');
+                setConfirmPin('');
             } else {
-                toast.error(result.error || 'Failed to change password.');
+                toast.error(result.error || 'Failed to change PIN.');
             }
         } catch (err) {
             toast.error('An error occurred. Please try again.');
         } finally {
-            setSavingPassword(false);
+            setSavingPin(false);
         }
     };
 
@@ -215,39 +215,39 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                                         </SettingsPanel>
 
                                         <SettingsPanel
-                                            title="Change Password"
-                                            description="Update your account password."
+                                            title="Change Security PIN"
+                                            description="Update your 6-digit security PIN."
                                         >
                                             <div className="space-y-4">
                                                 <PasswordInput
-                                                    label="Current Password"
-                                                    value={currentPassword}
-                                                    onChange={setCurrentPassword}
-                                                    show={showCurrentPw}
-                                                    onToggleShow={() => setShowCurrentPw(v => !v)}
+                                                    label="Current PIN"
+                                                    value={currentPin}
+                                                    onChange={setCurrentPin}
+                                                    show={showCurrentPin}
+                                                    onToggleShow={() => setShowCurrentPin(v => !v)}
                                                 />
                                                 <PasswordInput
-                                                    label="New Password"
-                                                    value={newPassword}
-                                                    onChange={setNewPassword}
-                                                    show={showNewPw}
-                                                    onToggleShow={() => setShowNewPw(v => !v)}
+                                                    label="New 6-Digit PIN"
+                                                    value={newPin}
+                                                    onChange={setNewPin}
+                                                    show={showNewPin}
+                                                    onToggleShow={() => setShowNewPin(v => !v)}
                                                 />
                                                 <PasswordInput
-                                                    label="Confirm New Password"
-                                                    value={confirmPassword}
-                                                    onChange={setConfirmPassword}
-                                                    show={showNewPw}
-                                                    onToggleShow={() => setShowNewPw(v => !v)}
+                                                    label="Confirm New PIN"
+                                                    value={confirmPin}
+                                                    onChange={setConfirmPin}
+                                                    show={showNewPin}
+                                                    onToggleShow={() => setShowNewPin(v => !v)}
                                                 />
                                                 <Button
-                                                    onClick={handlePasswordChange}
-                                                    disabled={savingPassword}
+                                                    onClick={handlePinChange}
+                                                    disabled={savingPin}
                                                     className="mt-2 h-11 px-6 bg-slate-950 text-white rounded-xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-indigo-600 transition-all flex items-center gap-2"
                                                 >
-                                                    {savingPassword
+                                                    {savingPin
                                                         ? <Loader2 size={15} className="animate-spin" />
-                                                        : <><Lock size={14} /><span>Update Password</span></>
+                                                        : <><Lock size={14} /><span>Update PIN</span></>
                                                     }
                                                 </Button>
                                             </div>
@@ -380,8 +380,11 @@ function PasswordInput({ label, value, onChange, show, onToggleShow }: {
             <div className="relative">
                 <input
                     type={show ? 'text' : 'password'}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
                     value={value}
-                    onChange={e => onChange(e.target.value)}
+                    onChange={e => onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     className="w-full h-11 px-4 pr-11 rounded-xl border-2 border-slate-100 bg-slate-50 text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-400 transition-colors"
                     autoComplete="new-password"
                 />

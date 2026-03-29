@@ -14,9 +14,19 @@ interface VideoUploadProps {
     isDark?: boolean;
     compact?: boolean;
     folder?: string;
+    useCloudflareStream?: boolean;
 }
 
-export function VideoUpload({ value, onChange, label, description, isDark = false, compact = false, folder }: VideoUploadProps) {
+export function VideoUpload({ 
+    value, 
+    onChange, 
+    label, 
+    description, 
+    isDark = false, 
+    compact = false, 
+    folder,
+    useCloudflareStream = false
+}: VideoUploadProps) {
     const { profile } = useAuth();
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -42,44 +52,91 @@ export function VideoUpload({ value, onChange, label, description, isDark = fals
 
         try {
             setIsUploading(true);
-            setUploadProgress(10);
+            setUploadProgress(5);
             
-            const formData = new FormData();
-            formData.append('file', file);
-            if (folder) formData.append('folder', folder);
-
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/api/media/upload', true);
-
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable) {
-                    const percent = Math.round((event.loaded / event.total) * 90) + 5;
-                    setUploadProgress(percent);
+            if (useCloudflareStream) {
+                // Cloudflare Stream path
+                const res = await fetch('/api/media/stream-upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fileName: file.name }),
+                });
+                
+                if (!res.ok) {
+                    const error = await res.json();
+                    throw new Error(error.error || 'Failed to initialise stream upload');
                 }
-            };
+                
+                const { uploadUrl, uid } = await res.json();
+                
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', uploadUrl, true);
+                
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const percent = Math.round((event.loaded / event.total) * 100);
+                        setUploadProgress(percent);
+                    }
+                };
+                
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        onChange(`cf-stream://${uid}`);
+                        setUploadProgress(100);
+                        toast.success('Video uploaded to Cloudflare Stream');
+                    } else {
+                        toast.error('Cloudflare upload failed');
+                    }
+                    setIsUploading(false);
+                };
 
-            xhr.onload = () => {
-                if (xhr.status === 200) {
-                    const response = JSON.parse(xhr.responseText);
-                    onChange(response.url);
-                    setUploadProgress(100);
-                    toast.success('Video uploaded successfully');
-                } else {
+                xhr.onerror = () => {
+                    toast.error('Network error during upload');
+                    setIsUploading(false);
+                };
+
+                const fd = new FormData();
+                fd.append('file', file);
+                xhr.send(fd);
+            } else {
+                // R2 path
+                const formData = new FormData();
+                formData.append('file', file);
+                if (folder) formData.append('folder', folder);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/media/upload', true);
+
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const percent = Math.round((event.loaded / event.total) * 90) + 5;
+                        setUploadProgress(percent);
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        onChange(response.url);
+                        setUploadProgress(100);
+                        toast.success('Video uploaded to R2 successfully');
+                    } else {
+                        toast.error('Upload failed');
+                    }
+                    setIsUploading(false);
+                };
+
+                xhr.onerror = () => {
                     toast.error('Upload failed');
-                }
-                setIsUploading(false);
-            };
+                    setIsUploading(false);
+                };
 
-            xhr.onerror = () => {
-                toast.error('Upload failed');
-                setIsUploading(false);
-            };
-
-            xhr.send(formData);
-        } catch (error) {
+                xhr.send(formData);
+            }
+        } catch (error: any) {
             console.error('Upload error:', error);
             setIsUploading(false);
-            toast.error('An error occurred during upload');
+            toast.error(error.message || 'An error occurred during upload');
         }
     };
 
@@ -124,10 +181,14 @@ export function VideoUpload({ value, onChange, label, description, isDark = fals
                             {!compact && (
                                 <>
                                     <p className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        {isSuperAdmin ? 'Browse R2 Library' : 'Admin Restricted'}
+                                        {isSuperAdmin 
+                                            ? useCloudflareStream ? 'Upload to Stream' : 'Browse R2 Library' 
+                                            : 'Admin Restricted'}
                                     </p>
                                     <p className={`text-[10px] mt-1 font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                        {isSuperAdmin ? 'MP4, WebM up to 50MB' : 'Managed by Super Admin'}
+                                        {isSuperAdmin 
+                                            ? useCloudflareStream ? 'High-Performance Video' : 'MP4, WebM up to 50MB' 
+                                            : 'Managed by Super Admin'}
                                     </p>
                                 </>
                             )}
@@ -146,7 +207,7 @@ export function VideoUpload({ value, onChange, label, description, isDark = fals
                             {isUploading ? (
                                 <><Loader2 size={14} className="animate-spin" /> {uploadProgress}%</>
                             ) : (
-                                <><UploadCloud size={14} /> Upload Video</>
+                                <><UploadCloud size={14} /> {useCloudflareStream ? 'Stream Upload' : 'Upload Video'}</>
                             )}
                             <input type="file" className="hidden" accept="video/*" onChange={handleFileUpload} disabled={isUploading} />
                         </label>
@@ -161,7 +222,7 @@ export function VideoUpload({ value, onChange, label, description, isDark = fals
                                     }
                                 `}
                             >
-                                Browse Library
+                                Browse {useCloudflareStream ? 'Stream' : 'R2'} Library
                             </button>
                         )}
                     </div>
@@ -188,3 +249,4 @@ export function VideoUpload({ value, onChange, label, description, isDark = fals
         </div>
     );
 }
+

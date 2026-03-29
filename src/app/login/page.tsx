@@ -256,6 +256,14 @@ export default function StudentLoginPage() {
                       </div>
                     </div>
                     {errors.password && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.password}</p>}
+                    <div className="flex justify-end pr-1 pt-1">
+                      <Link 
+                        href={`/forgot-password/student?identifier=${encodeURIComponent(email)}`} 
+                        className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-all cursor-pointer"
+                      >
+                        Help! I forgot my PIN
+                      </Link>
+                    </div>
                   </div>
 
                   <PrimaryButton

@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import {
     getSchoolStats, getSchoolStudentsPaginated, getSchoolCourseAnalytics,
     getSchoolLeaderboard, toggleStudentStatus, getGlobalClasses, fetchSchoolClasses,
-    getPendingStudents, verifyStudentAction
+    getPendingStudents, verifyStudentAction, getPendingPinRequests, resolvePinRequest
 } from '../actions';
 import { SchoolStats, SchoolStudentMetric, SchoolCourseMetric, SchoolLeaderboardEntry } from '../types';
 
@@ -13,6 +13,7 @@ export function useSchoolData(schoolId: string) {
     const [loading, setLoading] = useState(true);
     const [studentsLoading, setStudentsLoading] = useState(false);
     const [pendingLoading, setPendingLoading] = useState(false);
+    const [pinLoading, setPinLoading] = useState(false);
     
     const [stats, setStats] = useState<SchoolStats>({
         totalStudents: 0, activeStudents: 0, avgXp: 0, totalXp: 0,
@@ -22,6 +23,7 @@ export function useSchoolData(schoolId: string) {
     
     const [pagedStudents, setPagedStudents] = useState<SchoolStudentMetric[]>([]);
     const [pendingStudents, setPendingStudents] = useState<SchoolStudentMetric[]>([]);
+    const [pinRequests, setPinRequests] = useState<any[]>([]);
     const [totalStudentPages, setTotalStudentPages] = useState(0);
     const [totalStudentsCount, setTotalStudentsCount] = useState(0);
     
@@ -93,9 +95,25 @@ export function useSchoolData(schoolId: string) {
         }
     }, [schoolId]);
 
+    const loadPinRequests = useCallback(async () => {
+        if (!schoolId) return;
+        setPinLoading(true);
+        try {
+            const data = await getPendingPinRequests(schoolId);
+            if (data.success) {
+                setPinRequests(data.requests as any);
+            }
+        } catch (err) {
+            console.error('PIN requests fetch error:', err);
+        } finally {
+            setPinLoading(false);
+        }
+    }, [schoolId]);
+
     useEffect(() => { loadCoreData(); }, [loadCoreData]);
     useEffect(() => { loadStudents(); }, [loadStudents]);
     useEffect(() => { loadPending(); }, [loadPending]);
+    useEffect(() => { loadPinRequests(); }, [loadPinRequests]);
 
     async function toggleStudent(userId: string, isActive: boolean) {
         try {
@@ -138,10 +156,21 @@ export function useSchoolData(schoolId: string) {
         setStudentSearch,
         pagedStudents, 
         pendingStudents,
+        pinLoading,
+        pinRequests,
         totalStudentPages,
         totalStudentsCount,
         toggleStudent, 
         verifyStudent,
-        refreshData: () => { loadCoreData(); loadStudents(); loadPending(); },
+        handlePinReset: async (requestId: string, action: 'approved' | 'rejected', newPin?: string) => {
+            try {
+                const res = await resolvePinRequest(requestId, action, newPin);
+                if (res.success) {
+                    toast.success(action === 'approved' ? 'PIN updated successfully.' : 'Request rejected.');
+                    loadPinRequests();
+                } else { toast.error(res.error || 'Failed to process request'); }
+            } catch { toast.error('Connection error.'); }
+        },
+        refreshData: () => { loadCoreData(); loadStudents(); loadPending(); loadPinRequests(); },
     };
 }

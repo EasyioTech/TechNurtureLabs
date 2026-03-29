@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ScrollReveal } from './ScrollReveal';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,21 +12,27 @@ export const FAQSection = () => {
 
                 <div className="flex flex-col md:flex-row items-center gap-12 mb-20">
                     <div className="text-left flex-1">
-                        <ScrollReveal>
+                        <div>
                             <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
                                 Frequently Asked <br className="hidden md:block" /> Questions
                             </h2>
                             <p className="mt-4 text-lg text-slate-600 font-medium max-w-md">
                                 Everything schools ask before going live. If you have more, our team is one message away.
                             </p>
-                        </ScrollReveal>
+                        </div>
                     </div>
-                    <ScrollReveal delay={0.2} className="hidden lg:block w-full max-w-[400px]">
-                        <img src="/illustrations/faq-primary.webp" alt="FAQ Support" className="w-full h-auto pointer-events-none mix-blend-multiply" />
-                    </ScrollReveal>
+                    <div className="hidden lg:block w-full max-w-[400px]">
+                        <img 
+                            src="/illustrations/faq-primary.webp" 
+                            alt="FAQ Support" 
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-auto pointer-events-none mix-blend-multiply" 
+                        />
+                    </div>
                 </div>
 
-                <ScrollReveal delay={0.2}>
+                <div>
                     <div className="divide-y divide-slate-200 border-t border-b border-slate-200">
                         <FAQItem
                             question="How long does it take to onboard our school?"
@@ -54,7 +59,7 @@ export const FAQSection = () => {
                             answer="We provide comprehensive documentation, video walkthroughs, and dedicated live onboarding sessions for your entire teaching staff. Our support team is reachable via chat during school hours — and critical issues are responded to within the hour."
                         />
                     </div>
-                </ScrollReveal>
+                </div>
             </div>
         </section>
     );

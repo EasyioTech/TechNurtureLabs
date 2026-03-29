@@ -1052,3 +1052,19 @@ export async function upgradeSchoolPlan(schoolId: string, planId: string) {
         return { success: false, error: err.message || 'Operation failed' };
     }
 }
+// ─────────────────────────────────────────────────────────────────────────────
+// PIN RESET MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { getSchoolPinRequests as getCorePinRequests, handlePinResetAction as handleCorePinAction } from '@/modules/auth/pin-actions';
+
+export async function getPendingPinRequests(schoolId: string) {
+    await verifySchoolAdminContext(schoolId);
+    return getCorePinRequests();
+}
+
+export async function resolvePinRequest(requestId: string, action: 'approved' | 'rejected', newPin?: string) {
+    // Session check is inside handleCorePinAction, but we verify context here if possible
+    // Note: handleCorePinAction already checks if the admin belongs to the school of the request
+    return handleCorePinAction(requestId, action, newPin);
+}

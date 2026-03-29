@@ -3,13 +3,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, Calendar } from 'lucide-react';
-import { ScrollReveal } from './ScrollReveal';
 import { PrimaryButton } from './PrimaryButton';
 
 export const CTASection = () => {
     return (
         <section className="py-24 bg-white relative z-10">
-            <ScrollReveal>
+            <div>
                 <div className="max-w-7xl mx-auto px-6 relative group">
 
                     {/* Ambient glow */}
@@ -54,12 +53,14 @@ export const CTASection = () => {
                             <img
                                 src="/illustrations/cta-primary.webp"
                                 alt="Start your journey"
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-auto pointer-events-none relative z-10 mix-blend-multiply"
                             />
                         </div>
                     </div>
                 </div>
-            </ScrollReveal>
+            </div>
         </section>
     );
 };

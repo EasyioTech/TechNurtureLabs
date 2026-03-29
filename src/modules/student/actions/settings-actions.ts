@@ -58,14 +58,14 @@ export async function updatePrivacySettings(data: {
     return { success: true };
 }
 
-export async function changeStudentPassword(currentPassword: string, newPassword: string) {
+export async function changeStudentPin(currentPin: string, newPin: string) {
     const session = await verifySession();
     if (!session || session.userType !== 'student') {
         redirect('/login');
     }
 
-    if (!newPassword || newPassword.length < 8) {
-        return { success: false, error: 'New password must be at least 8 characters.' };
+    if (!newPin || newPin.length !== 6 || !/^\d+$/.test(newPin)) {
+        return { success: false, error: 'New PIN must be exactly 6 digits.' };
     }
 
     const student = await db.query.students.findFirst({
@@ -77,12 +77,12 @@ export async function changeStudentPassword(currentPassword: string, newPassword
         return { success: false, error: 'Account not found.' };
     }
 
-    const isMatch = await bcrypt.compare(currentPassword, student.password_hash);
+    const isMatch = await bcrypt.compare(currentPin, student.password_hash);
     if (!isMatch) {
-        return { success: false, error: 'Current password is incorrect.' };
+        return { success: false, error: 'Current PIN is incorrect.' };
     }
 
-    const newHash = await bcrypt.hash(newPassword, 12);
+    const newHash = await bcrypt.hash(newPin, 10);
 
     await db.update(students)
         .set({ password_hash: newHash, updated_at: new Date() })
@@ -92,10 +92,10 @@ export async function changeStudentPassword(currentPassword: string, newPassword
         user_id: session.userId,
         user_type: 'student',
         school_id: student.school_id,
-        action: 'update',
+        action: 'password_change',
         entity_type: 'student',
         entity_id: session.userId,
-        new_values: { password_changed: true }
+        new_values: { pin_changed: true }
     } as any);
 
     return { success: true };

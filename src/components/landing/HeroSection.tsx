@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Play, CheckCircle2, Sparkles } from 'lucide-react';
-import { ScrollReveal } from './ScrollReveal';
 
 export const HeroSection = ({ settings }: { settings?: any }) => {
     return (
@@ -29,7 +28,7 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                     {/* Left Column: Copy & CTAs */}
                     <div className="flex flex-col items-start text-left max-w-2xl mx-auto lg:mx-0">
 
-                        <ScrollReveal delay={0.05} direction="up" duration={0.7}>
+                        <div>
                             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white border border-slate-200 shadow-sm mb-6">
                                 {settings?.logo_url ? (
                                     <img src={settings.logo_url} alt="Logo" className="w-4 h-4 object-contain" />
@@ -38,46 +37,40 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                                 )}
                                 <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">{settings?.platform_name || 'TechNurture'} Labs</span>
                             </div>
-                        </ScrollReveal>
+                        </div>
 
-                        <ScrollReveal delay={0.15} direction="up" duration={0.75}>
+                        <div>
                             <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6 text-slate-900">
                                 The learning platform your students will{' '}
                                 <span className="text-blue-600">actually love.</span>
                             </h1>
-                        </ScrollReveal>
+                        </div>
 
-                        <ScrollReveal delay={0.25} direction="up" duration={0.75}>
+                        <div>
                             <p className="text-lg md:text-xl text-slate-600 mb-10 leading-relaxed font-medium max-w-xl">
                                 Gamified courses, real-time analytics, and school-wide management — all in one unified platform built for K-12 institutions.
                             </p>
-                        </ScrollReveal>
+                        </div>
 
-                        <ScrollReveal delay={0.35} direction="up" duration={0.75}>
+                        <div>
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                                 <Link href="/register/school">
-                                    <motion.button
-                                        whileHover={{ y: -2, boxShadow: '0 8px 24px rgba(15,23,42,0.18)' }}
-                                        whileTap={{ y: 0, scale: 0.98 }}
-                                        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                                    <button
                                         className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold px-7 py-3.5 rounded-xl shadow-lg shadow-slate-900/20 transition-colors text-base cursor-pointer whitespace-nowrap"
                                     >
                                         Register Your School
                                         <ArrowRight size={17} />
-                                    </motion.button>
+                                    </button>
                                 </Link>
                                 <Link href="#demo">
-                                    <motion.button
-                                        whileHover={{ y: -2 }}
-                                        whileTap={{ y: 0, scale: 0.98 }}
-                                        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                                    <button
                                         className="flex items-center justify-center gap-2 bg-white text-slate-700 font-semibold px-7 py-3.5 rounded-xl shadow-sm border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-base cursor-pointer whitespace-nowrap"
                                     >
                                         <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 shrink-0">
                                             <Play size={10} className="text-white ml-0.5 fill-current" />
                                         </span>
                                         Watch Demo
-                                    </motion.button>
+                                    </button>
                                 </Link>
                             </div>
 
@@ -86,7 +79,7 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                                 <div className="flex items-center gap-1.5"><CheckCircle2 size={15} className="text-emerald-500" /> 14-day free trial</div>
                                 <div className="flex items-center gap-1.5"><CheckCircle2 size={15} className="text-emerald-500" /> UDISE verified</div>
                             </div>
-                        </ScrollReveal>
+                        </div>
                     </div>
 
                     {/* Right Column: Hero Illustration */}
@@ -100,6 +93,9 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                             <img
                                 src="/assets/gaming-hero.svg"
                                 alt="TechNurture Education Platform"
+                                loading="eager"
+                                fetchPriority="high"
+                                decoding="async"
                                 className="w-full h-auto object-contain pointer-events-none mix-blend-multiply opacity-90 transition-transform duration-700 group-hover:scale-[1.02]"
                             />
                         </motion.div>

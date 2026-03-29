@@ -3,7 +3,6 @@
 import React from "react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
-import { ScrollReveal } from "./ScrollReveal";
 import { SectionCard } from "./SectionCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -136,19 +135,19 @@ export const TestimonialsSection = () => {
         <section id="testimonials" className="relative py-24 bg-white overflow-hidden border-t border-slate-50">
             <div className="max-w-7xl mx-auto px-6 relative z-10">
                 <div className="text-center mb-16">
-                    <ScrollReveal>
+                    <div>
                         <span className="px-4 py-1.5 rounded-full bg-slate-50 text-slate-600 text-xs font-bold uppercase tracking-[0.2em] border border-slate-100 mb-6 inline-block">
                             Real Stories
                         </span>
-                    </ScrollReveal>
-                    <ScrollReveal delay={0.1}>
+                    </div>
+                    <div>
                         <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">
                             Loved by schools across India.
                         </h2>
                         <p className="mt-3 text-slate-500 font-medium text-base max-w-md mx-auto">
                             Principals, teachers, and parents share what changed after switching to TechNurture.
                         </p>
-                    </ScrollReveal>
+                    </div>
                 </div>
 
                 <div className="relative flex justify-center gap-6 mt-12 max-h-[600px] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_15%,black_85%,transparent)]">

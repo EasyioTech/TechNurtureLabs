@@ -685,12 +685,10 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
 
                 <div className="space-y-8">
                     {/* Video Type Selector */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-2 gap-4 max-w-2xl">
                         {[
                             { id: 'stream', label: 'Cloudflare Stream', icon: <Video className="mb-2" size={24} /> },
-                            { id: 'upload', label: 'Cloudflare R2', icon: <UploadCloud className="mb-2" size={24} /> },
                             { id: 'youtube', label: 'YouTube', icon: <Hash className="mb-2" size={24} /> },
-                            { id: 'link', label: 'Direct Link (MP4)', icon: <Link2 className="mb-2" size={24} /> },
                         ].map((type) => {
                             const isActive = videoType === type.id;
                             return (
@@ -714,50 +712,45 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                     {/* URL Input based on Type */}
                     <div className="space-y-4">
                         <Label className={`text-xs font-bold uppercase tracking-wider ${t.textSecondary(isDark)}`}>
-                            {videoType === 'stream' ? 'Cloudflare Stream Video UID' : videoType === 'youtube' ? 'YouTube Video ID or URL' : videoType === 'upload' ? 'Upload or Select Video from R2' : 'Direct Custom MP4 or WebM URL'}
+                            {videoType === 'stream' ? 'Select or Upload to Cloudflare Stream' : 'YouTube Video ID or URL'}
                         </Label>
 
-                        {videoType === 'stream' && (
-                            <div className={`p-4 rounded-xl border flex items-start gap-4 mb-4 ${isDark ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
-                                <div className={`p-2 rounded-lg ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-100'}`}>
-                                    <Shield className="text-indigo-500" size={18} />
+                        {videoType === 'stream' ? (
+                            <div className="space-y-4">
+                                <div className={`p-4 rounded-xl border flex items-start gap-4 ${isDark ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
+                                    <div className={`p-2 rounded-lg ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-100'}`}>
+                                        <Shield className="text-indigo-500" size={18} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className={`text-xs font-bold ${t.textPrimary(isDark)} mb-1`}>Cloudflare Stream Integration Active</p>
+                                        <p className={`text-[10px] ${t.textSecondary(isDark)}`}>
+                                            Videos are optimized for global delivery. You can upload new videos or browse your existing library.
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="flex-1">
-                                    <p className={`text-xs font-bold ${t.textPrimary(isDark)} mb-1`}>Cloudflare Stream Integration Active</p>
-                                    <p className={`text-[10px] ${t.textSecondary(isDark)}`}>
-                                        Videos are optimized for global delivery. Enter the Video UID from your Cloudflare dashboard.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        {videoType === 'upload' ? (
-                            <div className="mt-2">
+                                
                                 <VideoUpload
                                     value={videoUrl}
                                     onChange={(url) => setVideoUrl(url)}
                                     isDark={isDark}
                                     folder="landing"
+                                    useCloudflareStream={true}
                                 />
                             </div>
                         ) : (
-                            <Input
-                                value={videoUrl.startsWith('cf-stream://') ? videoUrl.replace('cf-stream://', '') : videoUrl}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (videoType === 'stream') {
-                                        setVideoUrl(val ? `cf-stream://${val.replace('cf-stream://', '')}` : '');
-                                    } else {
-                                        setVideoUrl(val);
-                                    }
-                                }}
-                                placeholder={
-                                    videoType === 'stream' ? 'Enter Cloudflare Video UID (e.g. 5d5a...) '
-                                        : videoType === 'youtube' ? 'e.g., https://www.youtube.com/watch?v=...'
-                                            : 'e.g., https://example.com/video.mp4'
-                                }
-                                className={`text-base font-bold h-14 rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/10 text-white shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
-                            />
+                            <div className="space-y-4">
+                                <Input
+                                    value={videoUrl}
+                                    onChange={(e) => setVideoUrl(e.target.value)}
+                                    placeholder="e.g., https://www.youtube.com/watch?v=..."
+                                    className={`text-base font-bold h-14 rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/10 text-white shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                />
+                                {videoUrl && !videoUrl.includes('youtube.com') && !videoUrl.includes('youtu.be') && (
+                                    <p className="text-[10px] font-bold text-amber-500 ml-1">
+                                        ⚠ This doesn't look like a valid YouTube link. Please check it.
+                                    </p>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>

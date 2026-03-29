@@ -17,8 +17,6 @@ export const SectionCard = React.forwardRef<HTMLDivElement, SectionCardProps>(
         return (
             <motion.div
                 ref={ref}
-                whileHover={isMobile ? {} : { y: -6, scale: 1.01 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={cn(
                     "relative rounded-[2.5rem] overflow-hidden cursor-pointer group/card",
                     "bg-white/80 backdrop-blur-xl",

@@ -79,7 +79,7 @@ const nextConfig: NextConfig = {
       "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' https:",
       "worker-src 'self' blob:",
-      "frame-src 'self' https://iframe.videodelivery.net https://videodelivery.net https://upload.videodelivery.net",
+      "frame-src 'self' https://www.youtube.com https://youtube-nocookie.com https://youtube.com https://player.vimeo.com https://iframe.videodelivery.net https://videodelivery.net https://upload.videodelivery.net",
       "frame-ancestors 'none'",
       "object-src 'none'",
       "base-uri 'self'",

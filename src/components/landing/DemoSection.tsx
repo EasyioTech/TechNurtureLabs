@@ -38,13 +38,28 @@ const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
             videoId = src.split('v=')[1].split('&')[0];
         } else if (src.includes('youtu.be/')) {
             videoId = src.split('youtu.be/')[1].split('?')[0];
+        } else if (src.includes('embed/')) {
+            videoId = src.split('embed/')[1].split('?')[0];
         }
+        
+        // If it's an email or clearly not a YouTube ID, don't show the iframe
+        if (!videoId || videoId.includes('@') || videoId.includes('.') || videoId.length < 5) {
+            return (
+                <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center text-slate-400 gap-4 p-8 text-center">
+                     <Video className="w-12 h-12 opacity-20" />
+                     <span className="text-xs font-bold uppercase tracking-widest opacity-60">Invalid YouTube URL in Platform Settings</span>
+                     <p className="text-[10px] opacity-40 max-w-[200px]">Current value: {src}</p>
+                </div>
+            );
+        }
+
         return (
             <iframe
                 src={`https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`}
                 className="absolute inset-0 w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
+                title="Platform Demo"
             />
         );
     }
