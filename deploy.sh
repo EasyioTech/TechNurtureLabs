@@ -11,30 +11,45 @@
 #   Run: npm run db:migrate  (applies pending drizzle migrations)
 # ============================================================
 
-set -e
+# Step 1: Check for clean-slate mode
+CLEAN_MODE=false
+if [[ "$1" == "--clean" ]]; then
+  CLEAN_MODE=true
+  echo "⚠️ CLEAN MODE ENABLED: Volumes will be destroyed and images rebuilt without cache."
+fi
 
-# Step 1: Pull the latest code
+# Step 2: Pull the latest code
 echo "Pulling latest code..."
 git pull origin main
 
-# Step 2: Stop existing containers and prune old images to save space
-echo "Shutting down existing containers..."
-docker compose down
+# Step 3: Shutdown
+if [ "$CLEAN_MODE" = true ]; then
+  echo "Shutting down existing containers and REMOVING VOLUMES..."
+  docker compose down -v
+else
+  echo "Shutting down existing containers..."
+  docker compose down
+fi
 
 echo "Pruning unused Docker assets..."
 docker system prune -f
 
-# Step 3: Start Core Services (DB & Redis)
+# Step 4: Start Core Services (DB & Redis)
 # On first start with an empty volume, PostgreSQL will automatically
 # apply 01_schema.sql then 02_seed.sql before marking itself healthy.
 echo "Starting Database and Redis..."
 docker compose up -d db redis
 
-# Step 4: Build and start the App and Workers
-echo "Building and starting Application & Workers..."
+# Step 5: Build and start the App and Workers
+if [ "$CLEAN_MODE" = true ]; then
+  echo "Building images WITHOUT CACHE..."
+  docker compose build --no-cache app event-worker
+fi
+
+echo "Starting Application & Workers..."
 docker compose up -d --build app event-worker
 
-# Step 5: Health Check
+# Step 6: Health Check
 echo "Waiting for app to become healthy..."
 COUNT=0
 MAX_RETRIES=18

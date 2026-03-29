@@ -21,13 +21,17 @@ INSERT INTO classes (name, level) VALUES ('Class 10', 10) ON CONFLICT DO NOTHING
 INSERT INTO classes (name, level) VALUES ('Class 11', 11) ON CONFLICT DO NOTHING;
 INSERT INTO classes (name, level) VALUES ('Class 12', 12) ON CONFLICT DO NOTHING;
 
--- 2. Payment Plans
+-- 2. Payment Plans (Three Tiers)
 INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
-VALUES ('Basic Education', 'Foundation plan for primary classes.', 'annual', 999, 50, '{"lms":true,"analytics":false}', true, false)
+VALUES ('Starter LMS', 'Basic learning management for up to 100 students.', 'annual', 9999, 100, '{"lms":true,"analytics":false,"support":false}', true, false)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
-VALUES ('Pro Academy', 'Advanced tools for the whole school.', 'annual', 4999, 500, '{"lms":true,"analytics":true,"priority_support":true}', true, true)
+VALUES ('Standard Scholar', 'Advanced features for growing schools (Up to 500 students).', 'annual', 24999, 500, '{"lms":true,"analytics":true,"support":true}', true, true)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
+VALUES ('Elite Institutional', 'Full platform features with unlimited students and priority support.', 'annual', 49999, NULL, '{"lms":true,"analytics":true,"priority_support":true,"custom_branding":true}', true, false)
 ON CONFLICT DO NOTHING;
 
 -- 3. Platform Settings

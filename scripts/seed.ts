@@ -32,17 +32,23 @@ async function seed() {
     }
 
     // 2. Payment Plans
-    console.log('   - Seeding Payment Plans...');
+    console.log('   - Seeding Payment Plans (Three Tiers)...');
     await sql`
         INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
         VALUES
-            ('Basic Education', 'Foundation for primary classes.', 'annual', 999, 50, ${JSON.stringify({ lms: true, analytics: false })}, true, false)
+            ('Starter LMS', 'Basic learning management for up to 100 students.', 'annual', 9999, 100, ${JSON.stringify({ lms: true, analytics: false, support: false })}, true, false)
         ON CONFLICT DO NOTHING
     `;
     await sql`
         INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
         VALUES
-            ('Pro Academy', 'Advanced tools for the whole school.', 'annual', 4999, 500, ${JSON.stringify({ lms: true, analytics: true, priority_support: true })}, true, true)
+            ('Standard Scholar', 'Advanced features for growing schools (Up to 500 students).', 'annual', 24999, 500, ${JSON.stringify({ lms: true, analytics: true, support: true })}, true, true)
+        ON CONFLICT DO NOTHING
+    `;
+    await sql`
+        INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
+        VALUES
+            ('Elite Institutional', 'Full platform features with unlimited students and priority support.', 'annual', 49999, NULL, ${JSON.stringify({ lms: true, analytics: true, priority_support: true, custom_branding: true })}, true, false)
         ON CONFLICT DO NOTHING
     `;
 
