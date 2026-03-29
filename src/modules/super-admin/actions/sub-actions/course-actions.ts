@@ -52,9 +52,11 @@ export async function fetchAdminCourses(page: number = 0, limit: number = 50) {
     };
 }
 
-export async function updateCourseTotals(courseId: string) {
+export async function updateCourseTotals(courseId: string, txContext?: any) {
+    const dbClient = txContext ?? db;
+
     // Optimization: Calculate in DB without loading objects
-    const stats = await db.select({
+    const stats = await dbClient.select({
         count: count(),
         xp: sql<number>`sum(${lessons.xp_reward})`
     })
@@ -64,7 +66,7 @@ export async function updateCourseTotals(courseId: string) {
     const totalLessons = Number(stats[0].count);
     const totalXp = Number(stats[0].xp || 0);
 
-    await db.update(courses)
+    await dbClient.update(courses)
         .set({ total_lessons: totalLessons, total_xp: totalXp, updated_at: new Date() })
         .where(eq(courses.id, courseId));
     
@@ -159,7 +161,7 @@ export async function saveCourseAdmin(courseData: unknown) {
         }
 
         const updatedCourse = await tx.query.courses.findFirst({ where: eq(courses.id, courseId!) });
-        await updateCourseTotals(courseId!);
+        await updateCourseTotals(courseId!, tx);
 
         return { 
             ...updatedCourse, 
