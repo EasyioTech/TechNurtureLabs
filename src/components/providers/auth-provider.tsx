@@ -9,7 +9,7 @@ type UserProfile = {
   full_name: string;
   first_name?: string | null;
   last_name?: string | null;
-  email: string;
+  email?: string | null;
   role: 'student' | 'school_admin' | 'super_admin' | 'admin';
   school_id?: string | null;
   grade?: number | null;
@@ -25,7 +25,7 @@ type UserProfile = {
 // We mock Supabase's user shape for legacy component compatibility
 type MockUser = {
   id: string;
-  email: string;
+  email: string | null;
 };
 
 type AuthContextType = {
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setProfile(data.user);
-        setUser({ id: data.user.id, email: data.user.email });
+        setUser({ id: data.user.id, email: data.user.email || data.user.phone || '' });
         setSession({ user: { id: data.user.id } });
       } else {
         setUser(null);

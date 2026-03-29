@@ -92,7 +92,7 @@ export const schoolAdmins = pgTable('school_admins', {
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     first_name: text('first_name').notNull(),
     last_name: text('last_name').notNull(),
-    email: text('email').notNull(),
+    email: text('email'),
     password_hash: text('password_hash').notNull(),
     phone: text('phone'),
     avatar_url: text('avatar_url'),

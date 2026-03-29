@@ -223,7 +223,8 @@ export async function getSchoolStudentsPaginated(schoolId: string, page: number 
         search ? or(
             sql`${students.first_name} ILIKE ${'%' + search + '%'}`,
             sql`${students.last_name} ILIKE ${'%' + search + '%'}`,
-            sql`${students.email} ILIKE ${'%' + search + '%'}`
+            sql`${students.email} ILIKE ${'%' + search + '%'}`,
+            sql`${students.phone} ILIKE ${'%' + search + '%'}`
         ) : undefined
     );
 
@@ -622,6 +623,7 @@ export async function getSchoolLeaderboard(schoolId: string, limit = 10) {
         id: s.id,
         full_name: `${s.first_name} ${s.last_name}`,
         email: s.email,
+        phone: s.phone,
         total_xp: Number(s.cumulative_xp),
         level: Math.floor(Number(s.cumulative_xp) / 1000) + 1,
         current_streak: calculateTrueStreak(s),
@@ -900,13 +902,13 @@ export async function updateSchoolClasses(schoolId: string, classIds: string[]) 
     });
 }
 
-export async function updateSchoolAdminPassword(schoolId: string, adminEmail: string, currentPass: string, newPass: string) {
+export async function updateSchoolAdminPassword(schoolId: string, adminId: string, currentPass: string, newPass: string) {
     await verifySchoolAdminContext(schoolId);
 
     const admin = await db.query.schoolAdmins.findFirst({
         where: and(
             eq(schoolAdmins.school_id, schoolId),
-            eq(schoolAdmins.email, adminEmail)
+            eq(schoolAdmins.id, adminId)
         )
     });
 

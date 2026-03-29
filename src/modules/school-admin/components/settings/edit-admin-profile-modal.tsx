@@ -14,7 +14,8 @@ interface EditAdminProfileModalProps {
         id: string;
         first_name: string;
         last_name: string;
-        email: string;
+        email?: string | null;
+        phone?: string | null;
     };
     isOpen: boolean;
     onClose: () => void;
@@ -115,11 +116,11 @@ export function EditAdminProfileModal({ schoolId, adminProfile, isOpen, onClose,
                         </div>
 
                         <div className="space-y-2 opacity-60">
-                            <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${ts.textMuted(isDark)}`}>Email (Primary)</label>
+                            <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${ts.textMuted(isDark)}`}>Primary Identifier ({adminProfile.email ? 'Email' : 'Phone'})</label>
                             <input
-                                type="email"
+                                type="text"
                                 disabled
-                                value={adminProfile.email}
+                                value={adminProfile.email || adminProfile.phone || ''}
                                 className={`w-full h-12 px-5 rounded-2xl border bg-transparent text-sm font-bold outline-none cursor-not-allowed ${isDark ? 'border-white/5' : 'border-slate-200'}`}
                             />
                         </div>

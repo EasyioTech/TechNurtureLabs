@@ -10,12 +10,12 @@ import { updateSchoolAdminPassword } from '../../actions';
 
 interface ChangePasswordModalProps {
     schoolId: string;
-    adminEmail: string;
+    adminId: string;
     isOpen: boolean;
     onClose: () => void;
 }
 
-export function ChangePasswordModal({ schoolId, adminEmail, isOpen, onClose }: ChangePasswordModalProps) {
+export function ChangePasswordModal({ schoolId, adminId, isOpen, onClose }: ChangePasswordModalProps) {
     const { isDark } = useSchoolTheme();
     const [loading, setLoading] = useState(false);
     const [showPass, setShowPass] = useState(false);
@@ -38,7 +38,7 @@ export function ChangePasswordModal({ schoolId, adminEmail, isOpen, onClose }: C
 
         setLoading(true);
         try {
-            const res = await updateSchoolAdminPassword(schoolId, adminEmail, formData.current, formData.new);
+            const res = await updateSchoolAdminPassword(schoolId, adminId, formData.current, formData.new);
             if (res.success) {
                 toast.success(res.message);
                 setFormData({ current: '', new: '', confirm: '' });

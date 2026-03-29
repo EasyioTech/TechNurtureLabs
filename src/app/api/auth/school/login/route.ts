@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { schoolAdmins } from '@/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, or, sql } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { rateLimitService } from '@/lib/services/rate-limit';
@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { analyticsService } from '@/lib/services/analytics-service';
 
 const loginSchema = z.object({
-    email: z.string().email('Invalid email').max(256),
+    email: z.string().min(1, 'Email or phone is required').max(256),
     password: z.string().min(1, 'Password is required').max(128),
 });
 
@@ -38,9 +38,21 @@ export async function POST(request: NextRequest) {
         }
         const { email, password } = body.data;
 
+        const identifier = email.trim();
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+        const digitsOnly = identifier.replace(/\D/g, '');
+        const last10 = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
+
         const user = await db.query.schoolAdmins.findFirst({
             where: and(
-                eq(schoolAdmins.email, email.toLowerCase().trim()),
+                isEmail
+                    ? eq(schoolAdmins.email, identifier.toLowerCase())
+                    : or(
+                        eq(schoolAdmins.phone, digitsOnly),
+                        eq(schoolAdmins.phone, identifier),
+                        eq(schoolAdmins.phone, last10),
+                        sql`${schoolAdmins.phone} LIKE ${'%' + last10}`
+                    ),
                 eq(schoolAdmins.is_active, true),
                 isNull(schoolAdmins.deleted_at)
             )

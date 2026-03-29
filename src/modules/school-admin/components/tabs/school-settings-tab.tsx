@@ -241,7 +241,7 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
 
             <ChangePasswordModal
                 schoolId={schoolId}
-                adminEmail={profile?.email || ''}
+                adminId={profile?.id || ''}
                 isOpen={isPasswordModalOpen}
                 onClose={() => setIsPasswordModalOpen(false)}
             />
@@ -252,7 +252,8 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
                     id: profile?.id || '',
                     first_name: profile?.first_name || '',
                     last_name: profile?.last_name || '',
-                    email: profile?.email || ''
+                    email: profile?.email || '',
+                    phone: profile?.phone || ''
                 }}
                 isOpen={isAdminProfileModalOpen}
                 onClose={() => setIsAdminProfileModalOpen(false)}

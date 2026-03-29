@@ -72,7 +72,9 @@ export function SchoolVerificationTab({ pendingStudents, onVerify, loading = fal
                                                      <h4 className={`font-black text-xl tracking-tight leading-none mb-1.5 ${ts.textPrimary(isDark)}`}>{student.full_name}</h4>
                                                      <div className="flex items-center gap-2">
                                                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                                         <span className={`text-[11px] font-black tracking-widest uppercase opacity-40 ${ts.textPrimary(isDark)}`}>{student.email}</span>
+                                                         <span className={`text-[11px] font-black tracking-widest uppercase opacity-40 ${ts.textPrimary(isDark)}`}>
+                                                             {student.email || student.phone || 'No contact provided'}
+                                                         </span>
                                                      </div>
                                                  </div>
                                              </div>

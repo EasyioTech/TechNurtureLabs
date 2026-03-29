@@ -134,7 +134,9 @@ export function SchoolStudentsTab({
                                             </div>
                                             <div className="min-w-0">
                                                 <p className={`font-black text-[15px] tracking-tight truncate leading-none mb-1.5 ${ts.textPrimary(isDark)}`}>{s.full_name}</p>
-                                                <p className={`text-[11px] font-bold truncate opacity-50 ${ts.textPrimary(isDark)}`}>{s.email}</p>
+                                                <p className={`text-[11px] font-bold truncate opacity-50 ${ts.textPrimary(isDark)}`}>
+                                                    {s.email || s.phone || 'No contact'}
+                                                </p>
                                             </div>
                                         </div>
                                     </td>

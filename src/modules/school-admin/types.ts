@@ -18,7 +18,8 @@ export type SchoolStats = {
 export type SchoolStudentMetric = {
     id: string;
     full_name: string;
-    email: string;
+    email: string | null;
+    phone: string | null;
     total_xp: number;
     level: number;
     current_streak: number;
@@ -47,7 +48,8 @@ export type SchoolLeaderboardEntry = {
     rank: number;
     id: string;
     full_name: string;
-    email: string;
+    email: string | null;
+    phone: string | null;
     total_xp: number;
     level: number;
     current_streak: number;
