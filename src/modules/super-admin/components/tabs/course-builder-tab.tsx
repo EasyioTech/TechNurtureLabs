@@ -103,10 +103,11 @@ export function CourseBuilderTab({
                         <h3 className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>All Courses</h3>
                         <Button variant="ghost" size="sm"
                             onClick={() => {
+                                console.log('[CourseBuilderTab] CREATE COURSE clicked');
                                 setEditingCourse({ published: true, all_classes: true });
                                 setShowCourseDialog(true);
                             }}
-                            className={`h-8 px-3 rounded-xl text-[10px] font-black border-2 ${t.btnOutline(isDark)}`}>
+                            className={`h-8 px-3 rounded-xl text-[10px] font-black border-2 ${t.border(isDark)} ${t.btnOutline(isDark)}`}>
                             <Plus size={14} className="mr-1" /> CREATE
                         </Button>
                     </div>
@@ -161,7 +162,12 @@ export function CourseBuilderTab({
                                         {isSelected && (
                                             <div className="flex gap-2 mt-4 ml-14">
                                                 <Button variant="ghost" size="sm" className={`h-7 px-3 text-[10px] font-black rounded-lg transition-colors ${isDark ? `${accent.text} hover:bg-white/[0.1]` : (isSelected && !isDark ? 'text-white hover:bg-white/10' : 'text-slate-600 hover:bg-slate-100')}`}
-                                                    onClick={(e) => { e.stopPropagation(); setEditingCourse(course); setShowCourseDialog(true); }}>
+                                                    onClick={(e) => { 
+                                                        e.stopPropagation(); 
+                                                        console.log('[CourseBuilderTab] UPDATE COURSE clicked', course.id);
+                                                        setEditingCourse(course); 
+                                                        setShowCourseDialog(true); 
+                                                    }}>
                                                     <Edit size={12} className="mr-1.5" />EDIT
                                                 </Button>
                                                 <Button variant="ghost" size="sm" className={`h-7 px-3 text-[10px] font-black rounded-lg ${isSelected && !isDark ? 'text-rose-300 hover:bg-rose-500/20' : 'text-rose-500 hover:bg-rose-500/10'}`}
@@ -198,6 +204,7 @@ export function CourseBuilderTab({
                                 <Button size="sm"
                                     disabled={!selectedCourse}
                                     onClick={() => {
+                                        console.log('[CourseBuilderTab] NEW LESSON clicked', selectedCourse?.id);
                                         if (selectedCourse) {
                                             setEditingLesson({
                                                 course_id: selectedCourse.id,

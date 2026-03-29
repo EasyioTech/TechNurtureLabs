@@ -134,6 +134,7 @@ function autoCalcXp(items: ContentItem[], mode: 'content' | 'quiz'): number {
 }
 
 export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLesson, onSave }: LessonDialogProps) {
+    console.log('[LessonDialog] Rendered with open:', open);
     const { isDark, accent } = useAdminTheme();
     const isEditing = !!editingLesson?.id;
     const router = useRouter();
