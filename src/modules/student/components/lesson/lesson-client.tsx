@@ -226,6 +226,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
           isComplete={timerDone}
           isPaused={isPaused}
           pauseReason={pauseReason}
+          lessonId={lesson.id}
         />
       )}
 
