@@ -4,22 +4,23 @@ description: Automatically deploy the latest changes to the VPS
 
 # VPS Deployment Workflow
 
-This workflow automates the process of committing local changes, pushing to both GitHub and the VPS repo, and updating the application.
+This workflow automates the process of committing local changes, pushing to GitHub and the VPS repo, and performing a clean rebuild on the production server.
 
 // turbo
-1. Commit all local changes to the current branch:
-`git add . && git commit -m "Deployment update" && git push origin main`
+1. Commit and push local changes:
+`git add .; git commit -m "Deployment update"; git push origin main`
 
 // turbo
-2. Configure VPS repository (one-time) and push directly to it:
-`git remote add vps ssh://root@187.127.132.137/root/TechNurtureLabs; git config receive.denyCurrentBranch ignore; git push vps main`
+2. Push directly to the VPS repository:
+`git remote add vps ssh://root@187.127.132.137/root/TechNurtureLabs; git push vps main`
 
 // turbo
-3. Remote Update: Reset VPS worktree and rebuild containers:
-`ssh root@187.127.132.137 "cd ~/TechNurtureLabs; git reset --hard; docker compose down; docker compose up -d --build"`
+3. Remote Rebuild: Sync worktree, rebuild images, and restart containers:
+`ssh root@187.127.132.137 "cd ~/TechNurtureLabs; git checkout main; git reset --hard; docker compose down; docker compose up -d --build"`
 
 // turbo
-4. Verify all containers are up and healthy:
-`ssh root@187.127.132.137 "docker ps"`
+4. Verify System Status (Wait 15s for stability):
+`ssh root@187.127.132.137 "sleep 15; docker ps; docker compose logs --tail=50 app"`
 
-5. Observe the output and announce completion.
+5. Monitor logs if errors occur:
+`ssh root@187.127.132.137 "docker compose logs -f app"`
