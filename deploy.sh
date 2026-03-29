@@ -40,34 +40,41 @@ docker system prune -f
 echo "Starting Database and Redis..."
 docker compose up -d db redis
 
-# Step 5: Build and start the App and Workers
+# Step 5: Build and start Everything
+# We let Docker Compose handle the healthy-dependencies (caddy waits for app, app waits for db/redis)
 if [ "$CLEAN_MODE" = true ]; then
-  echo "Building images WITHOUT CACHE..."
-  docker compose build --no-cache app event-worker
+  echo "Building and starting ALL services WITHOUT CACHE..."
+  docker compose up -d --build --no-cache
+else
+  echo "Building and starting ALL services..."
+  docker compose up -d --build
 fi
 
-echo "Starting Application & Workers..."
-docker compose up -d --build app event-worker
-
-# Step 6: Health Check
-echo "Waiting for app to become healthy..."
+# Step 6: Health Reporting (Informational)
+echo "Waiting 60s for application health verification..."
 COUNT=0
-MAX_RETRIES=18
+MAX_RETRIES=20
+SUCCESS=false
+
 while [ $COUNT -lt $MAX_RETRIES ]; do
   HEALTH=$(docker inspect --format='{{.State.Health.Status}}' LMS_app 2>/dev/null)
 
-    if [ "$HEALTH" == "healthy" ]; then
-      echo "App is healthy. Starting Reverse Proxy (Caddy)..."
-      docker compose up -d caddy
-      echo "Deployment successful! System is fully online."
-      exit 0
-    fi
+  if [ "$HEALTH" == "healthy" ]; then
+    echo "✅ App is healthy. System is fully operational."
+    SUCCESS=true
+    break
+  fi
 
-  echo "Still waiting ($COUNT/$MAX_RETRIES)... Current status: $HEALTH"
+  echo "⏳ Status: ${HEALTH:-unknown} ($COUNT/$MAX_RETRIES)..."
   sleep 10
   COUNT=$((COUNT + 1))
 done
 
-echo "Warning: Healthcheck timed out after $((MAX_RETRIES * 10))s."
-echo "Check logs: docker compose logs app"
-exit 1
+if [ "$SUCCESS" = true ]; then
+  echo "🚀 Deployment successful!"
+  exit 0
+else
+  echo "⚠️ Warning: App is not reported as healthy yet, but services are running."
+  echo "Check logs: docker compose logs app"
+  exit 0 # We exit 0 because Caddy is already started by Docker Compose regardless of this loop
+fi

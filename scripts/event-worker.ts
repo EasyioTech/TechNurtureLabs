@@ -15,6 +15,17 @@ import { markAchievementCheckNeeded } from '../src/lib/gamification';
 
 async function run() {
     console.log('--- Platform Event Worker Started ---');
+
+    // Wait for Redis connection to be fully established since offline queue is disabled
+    if (redis.status !== 'ready') {
+        console.log('[EventWorker] Waiting for Redis connection status: ready...');
+        await new Promise(resolve => {
+            redis.once('ready', resolve);
+            // Timeout after 10s to not block forever, the loop will handle failures
+            setTimeout(resolve, 10000);
+        });
+    }
+
     console.log('Monitoring queue: queue:platform_events');
 
     while (true) {
