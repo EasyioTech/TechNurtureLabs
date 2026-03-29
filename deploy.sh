@@ -56,10 +56,12 @@ MAX_RETRIES=18
 while [ $COUNT -lt $MAX_RETRIES ]; do
   HEALTH=$(docker inspect --format='{{.State.Health.Status}}' LMS_app 2>/dev/null)
 
-  if [ "$HEALTH" == "healthy" ]; then
-    echo "Deployment successful! App is healthy."
-    exit 0
-  fi
+    if [ "$HEALTH" == "healthy" ]; then
+      echo "App is healthy. Starting Reverse Proxy (Caddy)..."
+      docker compose up -d caddy
+      echo "Deployment successful! System is fully online."
+      exit 0
+    fi
 
   echo "Still waiting ($COUNT/$MAX_RETRIES)... Current status: $HEALTH"
   sleep 10
