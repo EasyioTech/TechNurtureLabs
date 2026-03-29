@@ -16,6 +16,13 @@ import {
 } from '../actions';
 import { Course, Lesson } from '../types';
 
+function isUnauthorized(err: unknown) {
+    return (err as any)?.message === 'UNAUTHORIZED';
+}
+function handleUnauthorized() {
+    window.location.href = '/admin-portal/login';
+}
+
 export function useAdminCourses() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -36,13 +43,21 @@ export function useAdminCourses() {
             setCourses(res.data as any);
             setCoursesPage(page);
             setTotalCoursesPages(res.pages);
-        } catch { toast.error('Failed to load courses'); }
+        } catch (err) {
+            if (isUnauthorized(err)) { handleUnauthorized(); return; }
+            toast.error('Failed to load courses');
+        }
     }
 
     async function selectCourse(course: Course) {
         setSelectedCourse(course);
-        const data = await fetchCourseLessons(course.id);
-        setLessons(data as any || []);
+        try {
+            const data = await fetchCourseLessons(course.id);
+            setLessons(data as any || []);
+        } catch (err) {
+            if (isUnauthorized(err)) { handleUnauthorized(); return; }
+            toast.error('Failed to load lessons');
+        }
     }
 
     async function saveCourse() {
@@ -50,10 +65,13 @@ export function useAdminCourses() {
         try {
             await saveCourseAdmin(editingCourse);
             toast.success(editingCourse.id ? 'Course updated' : 'Course created');
-        } catch { toast.error('Failed to save course'); return; }
+        } catch (err: any) {
+            if (isUnauthorized(err)) { handleUnauthorized(); return; }
+            toast.error(err?.message || 'Failed to save course'); return;
+        }
         setShowCourseDialog(false);
         setEditingCourse(null);
-        await loadCourses(coursesPage); // surgical — only reload courses list
+        await loadCourses(coursesPage);
     }
 
     async function deleteCourse(id: string) {
@@ -61,8 +79,11 @@ export function useAdminCourses() {
             await deleteCourseAdmin(id);
             toast.success('Course deleted');
             if (selectedCourse?.id === id) { setSelectedCourse(null); setLessons([]); }
-            await loadCourses(coursesPage); // surgical — only reload courses list
-        } catch { toast.error('Failed to delete course'); }
+            await loadCourses(coursesPage);
+        } catch (err) {
+            if (isUnauthorized(err)) { handleUnauthorized(); return; }
+            toast.error('Failed to delete course');
+        }
     }
 
     async function saveLesson() {
@@ -75,10 +96,13 @@ export function useAdminCourses() {
                 sequence_index: editingLesson.sequence_index ?? lessons.length,
             });
             toast.success(editingLesson.id ? 'Lesson updated' : 'Lesson created');
-        } catch { toast.error('Failed to save lesson'); return; }
+        } catch (err: any) {
+            if (isUnauthorized(err)) { handleUnauthorized(); return; }
+            toast.error(err?.message || 'Failed to save lesson'); return;
+        }
         setShowLessonDialog(false);
         setEditingLesson(null);
-        await selectCourse(courseSnapshot); // only reload lessons for this course
+        await selectCourse(courseSnapshot);
     }
 
     async function deleteLesson(id: string) {
@@ -86,7 +110,10 @@ export function useAdminCourses() {
             await deleteLessonAdmin(id);
             toast.success('Lesson deleted');
             if (selectedCourse) await selectCourse(selectedCourse);
-        } catch { toast.error('Failed to delete lesson'); }
+        } catch (err) {
+            if (isUnauthorized(err)) { handleUnauthorized(); return; }
+            toast.error('Failed to delete lesson');
+        }
     }
 
     async function saveLessonOrder(customLessons?: Lesson[], silent = false) {
@@ -109,7 +136,10 @@ export function useAdminCourses() {
             await deleteQuizAdmin(quizId);
             toast.success('Quiz deleted');
             if (selectedCourse) await selectCourse(selectedCourse);
-        } catch { toast.error('Failed to delete quiz'); }
+        } catch (err) {
+            if (isUnauthorized(err)) { handleUnauthorized(); return; }
+            toast.error('Failed to delete quiz');
+        }
     }
 
     async function cloneLesson(lessonId: string, targetCourseId: string) {
@@ -117,7 +147,10 @@ export function useAdminCourses() {
             await cloneLessonAction(lessonId, targetCourseId);
             toast.success('Lesson cloned successfully');
             if (selectedCourse?.id === targetCourseId) await selectCourse(selectedCourse);
-        } catch { toast.error('Failed to clone lesson'); }
+        } catch (err) {
+            if (isUnauthorized(err)) { handleUnauthorized(); return; }
+            toast.error('Failed to clone lesson');
+        }
     }
 
     async function cloneQuiz(quizId: string, targetCourseId: string) {

@@ -20,7 +20,10 @@ export function useAdminLibrary() {
             setGlobalLessons(res.data);
             setGlobalLessonsPage(page);
             setTotalGlobalLessonsPages(res.pages);
-        } catch { toast.error('Failed to load global lessons'); }
+        } catch (err: any) {
+            if (err?.message === 'UNAUTHORIZED') { window.location.href = '/admin-portal/login'; return; }
+            toast.error('Failed to load global lessons');
+        }
         finally { setGlobalLoading(false); }
     }
 
@@ -31,7 +34,10 @@ export function useAdminLibrary() {
             setGlobalQuizzes(res.data);
             setGlobalQuizzesPage(page);
             setTotalGlobalQuizzesPages(res.pages);
-        } catch { toast.error('Failed to load global quizzes'); }
+        } catch (err: any) {
+            if (err?.message === 'UNAUTHORIZED') { window.location.href = '/admin-portal/login'; return; }
+            toast.error('Failed to load global quizzes');
+        }
         finally { setGlobalLoading(false); }
     }
 

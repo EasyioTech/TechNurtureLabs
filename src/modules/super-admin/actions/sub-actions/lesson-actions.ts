@@ -6,16 +6,12 @@ import {
 } from '@/db/schema';
 import { eq, asc, desc, sql, count, ilike, and } from 'drizzle-orm';
 import { z } from 'zod';
-import { verifySession } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireSuperAdmin } from '@/lib/admin-guard';
 import { updateCourseTotals } from './course-actions';
 import { invalidateCourseCaches } from '@/lib/services/cache-service';
 
 export async function fetchCourseLessons(courseId: string) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     const data = await db.query.lessons.findMany({
         where: eq(lessons.course_id, courseId),
         orderBy: [asc(lessons.sequence_order)]
@@ -28,10 +24,7 @@ export async function fetchCourseLessons(courseId: string) {
 }
 
 export async function fetchLessonAdmin(id: string) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     return await db.query.lessons.findFirst({ where: eq(lessons.id, id) });
 }
 
@@ -51,10 +44,7 @@ const lessonSchema = z.object({
 });
 
 export async function saveLessonAdmin(lessonData: unknown) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     const data = lessonSchema.parse(lessonData);
     const durationMinutes = data.duration ?? data.duration_minutes ?? 10;
@@ -101,10 +91,7 @@ export async function saveLessonAdmin(lessonData: unknown) {
 }
 
 export async function deleteLessonAdmin(id: string) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, id) });
     await db.delete(lessons).where(eq(lessons.id, id));
     if (lesson) {
@@ -124,10 +111,7 @@ export async function deleteLessonAdmin(id: string) {
 }
 
 export async function saveLessonOrderAdmin(updates: any[]) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     if (updates.length === 0) return;
 
     // Validate all IDs are proper UUIDs before using in raw SQL
@@ -159,10 +143,7 @@ export async function saveLessonOrderAdmin(updates: any[]) {
 }
 
 export async function cloneLessonAction(lessonId: string, targetCourseId: string) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     
     const sourceLesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
     if (!sourceLesson) throw new Error("Source lesson not found");
@@ -193,10 +174,7 @@ export async function fetchGlobalLessons({
     limit = 50,
     search = '',
 }: { page?: number; limit?: number; search?: string } = {}) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(200, Math.max(1, limit));

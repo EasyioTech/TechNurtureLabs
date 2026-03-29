@@ -42,7 +42,10 @@ export function useAdminSchools() {
             })));
             setTotalStudentsCount(data.total);
             setTotalStudentPages(data.pages);
-        } catch { toast.error('Failed to load students'); }
+        } catch (err: any) {
+            if (err?.message === 'UNAUTHORIZED') { window.location.href = '/admin-portal/login'; return; }
+            toast.error('Failed to load students');
+        }
         finally { setStudentsLoading(false); }
     }
 
@@ -52,7 +55,10 @@ export function useAdminSchools() {
             setSchoolsList(res.data as any);
             setSchoolsPage(page);
             setTotalSchoolsPages(res.pages);
-        } catch { toast.error('Failed to load schools'); }
+        } catch (err: any) {
+            if (err?.message === 'UNAUTHORIZED') { window.location.href = '/admin-portal/login'; return; }
+            toast.error('Failed to load schools');
+        }
     }
 
     async function toggleSchoolStatus(schoolId: string, isActive: boolean) {
@@ -83,8 +89,11 @@ export function useAdminSchools() {
             toast.success(schoolData.id ? 'Institution updated' : 'Institution created');
             setShowSchoolDialog(false);
             setEditingSchoolItem(null);
-            await loadSchools(schoolsPage); // only reload schools
-        } catch { toast.error('Failed to save institution'); }
+            await loadSchools(schoolsPage);
+        } catch (err: any) {
+            if (err?.message === 'UNAUTHORIZED') { window.location.href = '/admin-portal/login'; return; }
+            toast.error(err?.message || 'Failed to save institution');
+        }
     }
 
     return {

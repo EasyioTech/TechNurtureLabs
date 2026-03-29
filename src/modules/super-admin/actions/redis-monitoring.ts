@@ -1,18 +1,14 @@
 'use server';
 
 import { redis } from '@/lib/redis';
-import { verifySession } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireSuperAdmin } from '@/lib/admin-guard';
 import { RedisHealthMetrics, SystemHealthData, ServerHealthMetrics, DatabaseHealthMetrics } from '../types';
 import os from 'os';
 import { db } from '@/lib/db';
 import { sql } from 'drizzle-orm';
 
 export async function getSystemHealth(): Promise<SystemHealthData> {
-    const session = await verifySession();
-    if (!session || session.userType !== 'super_admin') {
-        redirect('/admin-portal/login');
-    }
+    await requireSuperAdmin();
 
     try {
         const info = await redis.info();

@@ -8,18 +8,14 @@ import {
 } from '@/db/schema';
 import { eq, asc, desc, count, sql, and, lte, inArray, not, isNull } from 'drizzle-orm';
 import { z } from 'zod';
-import { verifySession } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireSuperAdmin } from '@/lib/admin-guard';
 import { redis } from '@/lib/redis';
 import { format, subDays, endOfDay } from 'date-fns';
 
 const CACHE_KEY = 'cache:admin:meta';
 
 export async function fetchAdminMetadata() {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     // 1. Try to serve from cache
     try {
@@ -87,10 +83,7 @@ export async function fetchAdminMetadata() {
 export async function fetchAdminOverviewExtras(): Promise<{
     loginHeatmap: number[][];
 }> {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     const { analyticsService } = await import('@/lib/services/analytics-service');
     const loginHeatmap = await analyticsService.getLoginHeatmap();
@@ -102,8 +95,9 @@ const promoCodeSchema = z.object({
     code: z.string().min(3, 'Code must be at least 3 characters').max(50)
         .regex(/^[A-Z0-9_-]+$/i, 'Code may only contain letters, digits, hyphens, and underscores'),
     discount_type: z.enum(['percentage', 'fixed']),
-    discount_value: z.number().min(0),
-    max_uses: z.number().int().min(1).optional().nullable(),
+    // coerce handles HTML input values that arrive as strings (e.g. "10" → 10)
+    discount_value: z.coerce.number().min(0),
+    max_uses: z.coerce.number().int().min(1).optional().nullable(),
     valid_from: z.string().optional().nullable(),
     valid_until: z.string().optional().nullable(),
     is_active: z.boolean().optional().default(true),
@@ -113,10 +107,7 @@ const promoCodeSchema = z.object({
 );
 
 export async function savePromoCode(promoData: unknown) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     const data = promoCodeSchema.parse(promoData);
     const code = data.code.toUpperCase();
@@ -182,10 +173,7 @@ export async function savePromoCode(promoData: unknown) {
 }
 
 export async function deletePromoCode(id: string) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     const [promo] = await db.select({
         id: promoCodes.id, code: promoCodes.code, is_active: promoCodes.is_active,
         discount_type: promoCodes.discount_type, discount_value: promoCodes.discount_value,
@@ -229,10 +217,7 @@ const planSchema = z.object({
 });
 
 export async function savePlanAdmin(planData: unknown) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     const data = planSchema.parse(planData);
 
@@ -293,10 +278,7 @@ export async function savePlanAdmin(planData: unknown) {
 }
 
 export async function deletePlanAdmin(id: string) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     const activeSubs = await db.select().from(schoolSubscriptions).where(eq(schoolSubscriptions.plan_id, id));
     // Soft deletion allows keeping the record for historical sub-relation integrity, 
     // but we block it if there are active users for UI cleanliness.
@@ -329,10 +311,7 @@ export async function syncPlatformMetrics() {
     const SYNC_LOCK_KEY = 'lock:sync-metrics';
     const LOCK_EXPIRY = 600; // 10 minutes limit for safety
 
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     try {
         // M-10: Prevention of parallel metrics scan
@@ -473,18 +452,12 @@ export async function ensureDefaultClasses() {
 }
 
 export async function fetchAllClasses() {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     return await db.select().from(classes).orderBy(asc(classes.level));
 }
 
 export async function createClass(name: string, level: number) {
-    const session = await verifySession();
-    if (!session || (session.role !== 'super_admin' && session.userType !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    await requireSuperAdmin();
     try {
         if (!name || !name.trim()) return { success: false, error: 'Class name is required' };
         
@@ -503,10 +476,7 @@ export async function createClass(name: string, level: number) {
 }
 
 export async function deleteClass(classId: string) {
-    const session = await verifySession();
-    if (!session || (session.role !== 'super_admin' && session.userType !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    await requireSuperAdmin();
     try {
         const mappings = await db.select({ id: schools.id }).from(schools)
             .where(sql`${schools.id} IN (SELECT school_id FROM school_class_mapping WHERE class_id = ${classId})`);

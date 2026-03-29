@@ -3,15 +3,11 @@
 import { db } from '@/lib/db';
 import { students, schools, lessonProgress } from '@/db/schema';
 import { desc, count, sql, and, isNull, eq } from 'drizzle-orm';
-import { verifySession } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireSuperAdmin } from '@/lib/admin-guard';
 import { redis } from '@/lib/redis';
 
 export async function fetchAdminStudents(page: number = 0, limit: number = 25, search?: string) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    await requireSuperAdmin();
 
     const filters = [isNull(students.deleted_at)];
     if (search) {

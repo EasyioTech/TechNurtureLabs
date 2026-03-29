@@ -7,8 +7,7 @@ import {
     schoolAdmins, promoCodes
 } from '@/db/schema';
 import { eq, count, sql, and, not, desc, asc, inArray, ilike, isNull } from 'drizzle-orm';
-import { verifySession } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireSuperAdmin } from '@/lib/admin-guard';
 import { redis } from '@/lib/redis';
 import { z } from 'zod';
 import { addMonths } from 'date-fns';
@@ -18,24 +17,39 @@ import { analyticsService } from '@/lib/services/analytics-service';
 const CACHE_KEY = 'cache:admin:schools';
 
 export async function fetchAdminSchools(page: number = 0, limit: number = 50, search?: string) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     let query = db.select({
         id: schools.id,
         name: schools.name,
         email: schools.email,
         slug: schools.slug,
+        phone: schools.phone,
+        address: schools.address,
+        city: schools.city,
+        state: schools.state,
+        country: schools.country,
+        pincode: schools.pincode,
+        logo_url: schools.logo_url,
+        website: schools.website,
         is_active: schools.is_active,
+        data_processing_consent: schools.data_processing_consent,
+        minor_data_guardian_consent: schools.minor_data_guardian_consent,
         created_at: schools.created_at,
         plan_name: paymentPlans.name,
         subscription_status: schoolSubscriptions.status,
         student_count: sql<number>`(SELECT count(*) FROM ${students} WHERE ${students.school_id} = ${schools.id} AND ${students.deleted_at} IS NULL)`
     })
     .from(schools)
-    .leftJoin(schoolSubscriptions, eq(schools.id, schoolSubscriptions.school_id))
+    // Join only the ACTIVE subscription — prevents duplicate rows when a school
+    // has historical subscription records (cancelled, expired, etc.)
+    .leftJoin(
+        schoolSubscriptions,
+        and(
+            eq(schools.id, schoolSubscriptions.school_id),
+            eq(schoolSubscriptions.status, 'active')
+        )
+    )
     .leftJoin(paymentPlans, eq(schoolSubscriptions.plan_id, paymentPlans.id))
     .$dynamic();
 
@@ -73,10 +87,7 @@ export async function fetchAdminSchools(page: number = 0, limit: number = 50, se
 }
 
 export async function toggleSchoolStatus(schoolId: string, isActive: boolean) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     
     const [oldSchool] = await db.select().from(schools).where(eq(schools.id, schoolId));
     const [updated] = await db.update(schools)
@@ -120,10 +131,7 @@ const schoolAdminSchema = z.object({
 });
 
 export async function saveSchoolAdmin(schoolData: any) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     const validatedData = schoolAdminSchema.parse(schoolData);
     const email = validatedData.email.toLowerCase().trim();
@@ -233,10 +241,7 @@ export async function saveSchoolAdmin(schoolData: any) {
 }
 
 export async function assignPlanToSchool(schoolId: string, planId: string, billingMonths: number = 12, promoCodeId?: string | null) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     
     const safeBillingMonths = Math.max(1, Math.min(120, Math.floor(billingMonths || 12)));
     const now = new Date();

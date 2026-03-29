@@ -7,8 +7,7 @@ import {
     lessonProgress, paymentPlans
 } from '@/db/schema';
 import { eq, count, sql, isNull, isNotNull, and, gte } from 'drizzle-orm';
-import { verifySession } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireSuperAdmin } from '@/lib/admin-guard';
 import { Stats } from '../../types';
 import { analyticsService } from '@/lib/services/analytics-service';
 
@@ -23,10 +22,7 @@ function billingCycleMonths(cycle: string): number {
 }
 
 export async function fetchAdminStats(): Promise<Stats> {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    await requireSuperAdmin();
 
     // PCU, DAU, MAU are always real-time reads from Redis regardless of cache state
     const [pcu, dau, mau] = await Promise.all([

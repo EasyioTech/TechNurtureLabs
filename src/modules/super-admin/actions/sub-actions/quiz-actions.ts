@@ -6,14 +6,10 @@ import {
 } from '@/db/schema';
 import { eq, asc, desc, sql, count, ilike, and } from 'drizzle-orm';
 import { z } from 'zod';
-import { verifySession } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireSuperAdmin } from '@/lib/admin-guard';
 
 export async function fetchQuizAdmin(lessonId: string) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     const quiz = await db.query.quizzes.findFirst({
         where: eq(quizzes.lesson_id, lessonId),
         with: {
@@ -63,10 +59,7 @@ const quizSchema = z.object({
 });
 
 export async function saveQuizAdmin(quizData: unknown) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     const data = quizSchema.parse(quizData);
     let quizId = data.id;
@@ -170,18 +163,12 @@ export async function saveQuizAdmin(quizData: unknown) {
 }
 
 export async function deleteQuizAdmin(quizId: string) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     await db.delete(quizzes).where(eq(quizzes.id, quizId));
 }
 
 export async function cloneQuizAction(quizId: string, targetLessonId: string | null | undefined, targetCourseId?: string | null) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     try {
         return await db.transaction(async (tx) => {
@@ -270,10 +257,7 @@ export async function fetchGlobalQuizzes({
     limit = 50,
     search = '',
 }: { page?: number; limit?: number; search?: string } = {}) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(200, Math.max(1, limit));

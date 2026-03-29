@@ -74,9 +74,7 @@ CREATE TABLE "classes" (
 	"name" text NOT NULL,
 	"level" integer NOT NULL,
 	"deleted_at" timestamp with time zone,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "classes_name_unique" UNIQUE("name"),
-	CONSTRAINT "classes_level_unique" UNIQUE("level")
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE "course_class_mapping" (
@@ -274,6 +272,7 @@ CREATE TABLE "lessons" (
 	"description" text,
 	"content_type" "lesson_content_type" NOT NULL,
 	"content_url" text,
+	"content_items" text,
 	"sequence_order" integer NOT NULL,
 	"duration_minutes" integer,
 	"xp_reward" integer DEFAULT 10 NOT NULL,
@@ -320,8 +319,7 @@ CREATE TABLE "payment_plans" (
 	"trial_days" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"deleted_at" timestamp with time zone,
-	CONSTRAINT "payment_plans_name_unique" UNIQUE("name")
+	"deleted_at" timestamp with time zone
 );
 
 CREATE TABLE "payment_transactions" (
@@ -355,6 +353,7 @@ CREATE TABLE "platform_metrics_daily" (
 	"revenue_total" numeric(14, 2) DEFAULT '0' NOT NULL,
 	"new_subscriptions" integer DEFAULT 0 NOT NULL,
 	"churned_subscriptions" integer DEFAULT 0 NOT NULL,
+	"peak_concurrent" integer DEFAULT 0 NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "platform_metrics_daily_metric_date_unique" UNIQUE("metric_date")
@@ -389,7 +388,7 @@ CREATE TABLE "promo_codes" (
 	"is_active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "promo_codes_code_unique" UNIQUE("code")
+	"deleted_at" timestamp with time zone
 );
 
 CREATE TABLE "quiz_attempt_answers" (
@@ -782,6 +781,25 @@ CREATE UNIQUE INDEX "uq_sessions_token_hash" ON "user_sessions" USING btree ("re
 CREATE INDEX "idx_xp_user" ON "xp_events" USING btree ("user_id");
 CREATE INDEX "idx_xp_school" ON "xp_events" USING btree ("school_id");
 CREATE INDEX "idx_xp_created" ON "xp_events" USING btree ("created_at");
+
+-- =============================================================================
+-- From migration 0003_fix_analytics_schema: Partial unique indexes + check constraints
+-- =============================================================================
+
+-- Replace hard UNIQUE constraints with partial indexes (soft-delete safe)
+CREATE UNIQUE INDEX "uq_classes_name" ON "classes" USING btree ("name") WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX "uq_classes_level" ON "classes" USING btree ("level") WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX "uq_payment_plans_name" ON "payment_plans" USING btree ("name") WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX "uq_promo_codes_code" ON "promo_codes" USING btree ("code") WHERE deleted_at IS NULL;
+
+-- Audit log composite indexes for admin dashboard queries
+CREATE INDEX "idx_audit_user_created" ON "audit_logs" USING btree ("user_id","created_at");
+CREATE INDEX "idx_audit_school_created" ON "audit_logs" USING btree ("school_id","created_at");
+
+-- Check constraints for data integrity
+ALTER TABLE "certificates" ADD CONSTRAINT "cert_min_progress_range" CHECK ("certificates"."min_progress_pct" >= 0 AND "certificates"."min_progress_pct" <= 100);
+ALTER TABLE "certificates" ADD CONSTRAINT "cert_min_quiz_score_range" CHECK ("certificates"."min_quiz_score" >= 0 AND "certificates"."min_quiz_score" <= 100);
+ALTER TABLE "course_progress" ADD CONSTRAINT "cp_progress_pct_range" CHECK ("course_progress"."progress_pct" >= 0 AND "course_progress"."progress_pct" <= 100);
 
 -- =============================================================================
 -- From migration 0003: Security & Performance Fixes

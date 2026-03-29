@@ -7,17 +7,13 @@ import {
 } from '@/db/schema';
 import { eq, count, sql, and, desc, asc, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
-import { verifySession } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireSuperAdmin } from '@/lib/admin-guard';
 import { redis } from '@/lib/redis';
 
 const CACHE_KEY = 'cache:admin:courses';
 
 export async function fetchAdminCourses(page: number = 0, limit: number = 50) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     const safeLimit = Math.min(100, Math.max(1, limit));
     const offset = Math.max(0, page) * safeLimit;
@@ -94,10 +90,7 @@ const courseSchema = z.object({
 });
 
 export async function saveCourseAdmin(courseData: unknown) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
 
     const data = courseSchema.parse(courseData);
     let slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -177,10 +170,7 @@ export async function saveCourseAdmin(courseData: unknown) {
 }
 
 export async function deleteCourseAdmin(id: string) {
-    const session = await verifySession();
-    if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        redirect('/admin-portal/login');
-    }
+    const session = await requireSuperAdmin();
     const course = await db.query.courses.findFirst({ where: eq(courses.id, id) });
     await db.update(courses).set({ deleted_at: new Date(), updated_at: new Date() }).where(eq(courses.id, id));
 

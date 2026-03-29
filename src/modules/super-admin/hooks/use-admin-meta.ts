@@ -57,7 +57,11 @@ export function useAdminMeta() {
             setPlatformSettings(metaData.platformSettings);
             setPlatformMetrics(metaData.platformMetrics);
             setLoginHeatmap(extras.loginHeatmap);
-        } catch {
+        } catch (err: any) {
+            if (err?.message === 'UNAUTHORIZED') {
+                window.location.href = '/admin-portal/login';
+                return;
+            }
             toast.error('Failed to load dashboard stats');
         } finally {
             setLoading(false);
@@ -88,7 +92,10 @@ export function useAdminMeta() {
                 is_active: editingPlan.is_active ?? true,
             });
             toast.success(editingPlan.id ? 'Plan updated' : 'Plan created');
-        } catch { toast.error('Failed to save plan'); return; }
+        } catch (err: any) {
+            if (err?.message === 'UNAUTHORIZED') { window.location.href = '/admin-portal/login'; return; }
+            toast.error(err?.message || 'Failed to save plan'); return;
+        }
         setShowPlanDialog(false);
         setEditingPlan(null);
         await refreshPlansAndPromos();
@@ -119,7 +126,10 @@ export function useAdminMeta() {
                 is_active: editingPromoCode.is_active ?? true,
             });
             toast.success(editingPromoCode.id ? 'Promo Code updated' : 'Promo Code created');
-        } catch { toast.error('Failed to save promo code'); return; }
+        } catch (err: any) {
+            if (err?.message === 'UNAUTHORIZED') { window.location.href = '/admin-portal/login'; return; }
+            toast.error(err?.message || 'Failed to save promo code'); return;
+        }
         setShowPromoCodeDialog(false);
         setEditingPromoCode(null);
         await refreshPlansAndPromos();
