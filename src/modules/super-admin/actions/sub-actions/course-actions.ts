@@ -77,18 +77,18 @@ export async function updateCourseTotals(courseId: string, txContext?: any) {
 import { analyticsService } from '@/lib/services/analytics-service';
 
 const courseSchema = z.object({
-    id: z.string().uuid().optional(),
+    id: z.string().uuid().optional().nullable(),
     title: z.string().min(1, 'Title is required').max(255),
-    description: z.string().optional().default(''),
+    description: z.string().optional().nullable().default(''),
     // Accept either field name used by the frontend
-    thumbnail: z.string().optional(),
-    thumbnail_url: z.string().optional(),
-    published: z.boolean().optional(),
-    is_published: z.boolean().optional(),
-    all_classes: z.boolean().optional().default(false),
-    classIds: z.array(z.string().uuid()).optional(),
-    created_by: z.string().uuid().optional(),
-    userId: z.string().uuid().optional(),
+    thumbnail: z.string().optional().nullable(),
+    thumbnail_url: z.string().optional().nullable(),
+    published: z.boolean().optional().nullable(),
+    is_published: z.boolean().optional().nullable(),
+    all_classes: z.boolean().optional().nullable().default(false),
+    classIds: z.array(z.string().uuid()).optional().nullable(),
+    created_by: z.string().uuid().optional().nullable(),
+    userId: z.string().uuid().optional().nullable(),
 });
 
 export async function saveCourseAdmin(courseData: unknown) {
@@ -103,32 +103,32 @@ export async function saveCourseAdmin(courseData: unknown) {
     let isNew = false;
 
     return await db.transaction(async (tx) => {
+        // M-1: Collision-resistant Slugs for Production scaling (Handles Both Creation & Update)
+        const existing = await tx.query.courses.findFirst({
+            where: and(eq(courses.slug, slug), isNull(courses.deleted_at))
+        });
+        if (existing && existing.id !== courseId) {
+            slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+        }
+
         if (courseId) {
             await tx.update(courses).set({
                 title: data.title,
                 slug,
-                description: data.description,
+                description: data.description || '',
                 thumbnail_url: thumbnailUrl,
                 is_published: isPublished,
                 all_classes: data.all_classes ?? false,
                 updated_at: new Date()
             }).where(eq(courses.id, courseId));
         } else {
-            // M-1: Collision-resistant Slugs for Production scaling
-            const existing = await tx.query.courses.findFirst({
-                where: and(eq(courses.slug, slug), isNull(courses.deleted_at))
-            });
-            if (existing) {
-                slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
-            }
-
             const createdBy = data.created_by ?? data.userId ?? session.userId;
             if (!createdBy) throw new Error("Unauthorized: Cannot create course without user ID.");
 
             const [created] = await tx.insert(courses).values({
                 title: data.title,
                 slug,
-                description: data.description,
+                description: data.description || '',
                 thumbnail_url: thumbnailUrl,
                 is_published: isPublished,
                 all_classes: data.all_classes ?? false,

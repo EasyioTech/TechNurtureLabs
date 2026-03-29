@@ -29,18 +29,18 @@ export async function fetchLessonAdmin(id: string) {
 }
 
 const lessonSchema = z.object({
-    id: z.string().uuid().optional(),
-    course_id: z.string().uuid().optional(),
+    id: z.string().uuid().optional().nullable(),
+    course_id: z.string().uuid().optional().nullable(),
     title: z.string().min(1, 'Title is required').max(255),
-    description: z.string().optional().default(''),
+    description: z.string().optional().nullable().default(''),
     content_type: z.enum(['video', 'ppt', 'pdf', 'quiz', 'assignment']),
-    content_url: z.string().optional().default(''),
+    content_url: z.string().optional().nullable().default(''),
     content_items: z.any().optional().nullable(),
     asset_id: z.string().uuid().optional().nullable(),
-    xp_reward: z.number().int().min(0).default(10),
-    duration: z.number().int().min(0).optional(),
-    duration_minutes: z.number().int().min(0).optional(),
-    is_published: z.boolean().optional().default(true),
+    xp_reward: z.number().int().min(0).nullable().default(10),
+    duration: z.number().int().min(0).optional().nullable(),
+    duration_minutes: z.number().int().min(0).optional().nullable(),
+    is_published: z.boolean().optional().nullable().default(true),
 });
 
 export async function saveLessonAdmin(lessonData: unknown) {
@@ -52,12 +52,12 @@ export async function saveLessonAdmin(lessonData: unknown) {
     if (data.id) {
         const [updated] = await db.update(lessons).set({
             title: data.title,
-            description: data.description,
+            description: data.description || '',
             content_type: data.content_type,
-            content_url: data.content_url,
+            content_url: data.content_url || '',
             content_items: data.content_items ?? null,
             asset_id: data.asset_id ?? null,
-            xp_reward: data.xp_reward,
+            xp_reward: data.xp_reward || 10,
             duration_minutes: durationMinutes,
             is_published: data.is_published ?? true,
             updated_at: new Date()
@@ -72,12 +72,12 @@ export async function saveLessonAdmin(lessonData: unknown) {
         const [created] = await db.insert(lessons).values({
             course_id: data.course_id,
             title: data.title,
-            description: data.description,
+            description: data.description || '',
             content_type: data.content_type,
-            content_url: data.content_url,
+            content_url: data.content_url || '',
             content_items: data.content_items ?? null,
             asset_id: data.asset_id ?? null,
-            xp_reward: data.xp_reward,
+            xp_reward: data.xp_reward || 10,
             duration_minutes: durationMinutes,
             // H-5: Atomic subquery to prevent sequence order race conditions
             sequence_order: sql`(SELECT COALESCE(MAX(sequence_order), 0) + 1 FROM lessons WHERE course_id = ${data.course_id})`,
