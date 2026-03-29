@@ -15,6 +15,7 @@
  *                      and remove it from the schema.
  */
 
+
 import crypto from 'crypto';
 
 export function computeMediaUrl(asset: {
@@ -85,6 +86,45 @@ export function computeMediaUrl(asset: {
 }
 
 /**
+ * SECURE SOLUTION FOR PRODUCTION:
+ * Asynchronous version of computeMediaUrl that generates direct, short-lived 
+ * signed URLs for R2 assets. This avoids proxying large files through the
+ * Next.js server and enforces strict access control.
+ */
+export async function getSecureMediaUrl(asset: {
+    storage_type: string;
+    file_path: string;
+    file_url?: string | null;
+}, variant: 'original' | 'hls' = 'original'): Promise<string> {
+    const isVideo = asset.file_path.toLowerCase().match(/\.(mp4|mov|avi|mkv)$/);
+    
+    // 1. If it's R2, we prefer a direct Signed URL for binary,
+    // and our Smart Gateway for HLS.
+    if (asset.storage_type === 'r2') {
+        let path = asset.file_path;
+        
+        if (variant === 'hls' && isVideo) {
+            // M-10: SMART GATEWAY Strategy
+            // We use the local HLS rewriter route which generates direct segment 
+            // signed URLs. This offloads 99% of bandwidth to Cloudflare.
+            const hlsPath = path.replace(/\.[^/.]+$/, "") + '/master.m3u8';
+            return `/api/media/hls/${hlsPath}`;
+        }
+
+        try {
+            const { getSignedDownloadUrl } = await import('./storage');
+            // Signed URLs for images/docs are valid for 1 hour
+            return await getSignedDownloadUrl(path, 3600);
+        } catch (err) {
+            console.error('[Media] Failed to generate signed URL, falling back:', err);
+        }
+    }
+
+    // 2. Fallback to the standard (potentially proxied) URL computation
+    return computeMediaUrl(asset, variant);
+}
+
+/**
  * Type representing a media asset with the minimal fields needed for URL computation.
  * Use this instead of the full MediaAsset type when you only need the URL.
  */
@@ -96,18 +136,6 @@ export type MediaAssetForUrl = {
 
 /**
  * Client-side <img> onError handler for course thumbnails.
- *
- * Two-stage fallback:
- *   1. CDN → proxy: if assets.technurture.io (or any external CDN) is
- *      unreachable, retry via the internal authenticated R2 proxy
- *      at /api/media/r2/<key>. This keeps thumbnails visible even when
- *      the Cloudflare custom domain is not yet configured / temporarily down.
- *   2. Proxy → hide: if the proxy also fails (file missing in R2), hide the
- *      img so the parent container's gradient placeholder shows through.
- *
- * Usage:
- *   import { handleThumbnailError } from '@/lib/media';
- *   <img src={url} onError={handleThumbnailError} ... />
  */
 export function handleThumbnailError(e: { currentTarget: HTMLImageElement }) {
     const img = e.currentTarget;
@@ -127,3 +155,4 @@ export function handleThumbnailError(e: { currentTarget: HTMLImageElement }) {
     // Both CDN and internal proxy failed — hide the broken img element
     img.style.display = 'none';
 }
+

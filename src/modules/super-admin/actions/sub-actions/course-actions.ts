@@ -18,7 +18,8 @@ export async function fetchAdminCourses(page: number = 0, limit: number = 50) {
     const safeLimit = Math.min(100, Math.max(1, limit));
     const offset = Math.max(0, page) * safeLimit;
 
-    // M-8: Optimized course fetch with enrollment counts via SQL and proper pagination
+    // SCALE BREAKER A: Optimized course fetch using LEFT JOIN instead of correlated subqueries.
+    // This allows the database to perform a single scan instead of N sub-lookups.
     const coursesData = await db.select({
         id: courses.id,
         title: courses.title,
@@ -30,14 +31,17 @@ export async function fetchAdminCourses(page: number = 0, limit: number = 50) {
         total_lessons: courses.total_lessons,
         total_xp: courses.total_xp,
         created_at: courses.created_at,
-        enrolled_count: sql<number>`(SELECT count(*) FROM ${enrollments} WHERE ${enrollments.course_id} = ${courses.id})`
+        enrolled_count: count(enrollments.id)
     })
     .from(courses)
+    .leftJoin(enrollments, eq(enrollments.course_id, courses.id))
     .where(isNull(courses.deleted_at))
+    .groupBy(courses.id)
     .orderBy(desc(courses.created_at))
     .limit(safeLimit)
     .offset(offset);
 
+    // Get total count for pagination (already optimized in previous edits)
     const [{ total }] = await db.select({ total: count() }).from(courses).where(isNull(courses.deleted_at));
 
     return {

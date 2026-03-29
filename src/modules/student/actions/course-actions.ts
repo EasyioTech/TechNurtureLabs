@@ -12,14 +12,15 @@ import {
 } from '@/db/schema';
 import { eq, and, inArray, asc, desc, isNotNull, isNull, sql, count } from 'drizzle-orm';
 import { redis } from '@/lib/redis';
+import { cacheService } from '@/lib/cache';
 
 /**
- * Invalidate student dashboard cache
+ * SCALE BREAKER C: Invalidate student dashboard cache using tagging strategy
  */
 export const invalidateStudentDashboardCache = async (userId: string) => {
     try {
-        await redis.del(`cache:student:${userId}:dashboard`);
-    } catch (_) { /* non-critical — cache will expire naturally */ }
+        await cacheService.invalidateUser(userId);
+    } catch (_) { /* non-critical */ }
 };
 
 /**
@@ -224,30 +225,41 @@ export async function getCourseDetailsData(courseId: string, bypassCache = false
     };
 
     try {
-        await redis.set(cacheKey, JSON.stringify({
+        await cacheService.set(cacheKey, {
             v: course.updated_at?.getTime() || 0,
             result: result
-        }), 'EX', 600);
+        }, [`user:${userId}`, `course:${courseId}`], 600);
     } catch (err) {
-        console.error("Redis cache write error (course details):", err);
+        console.error("Cache write error (course details):", err);
     }
 
     return result;
 }
 
 /**
- * Fetch courses for student dashboard with progress
+ * Fetch courses for student dashboard with progress summary
+ * SCALE BREAKER C: Tag-based caching for dashboard summary
  */
-export async function getStudentDashboardCourses() {
+export async function getStudentDashboardCourses(bypassCache = false) {
     const session = await verifySession();
     if (!session || session.role !== 'student') redirect('/login');
     const userId = session.userId;
+
+    const cacheKey = `cache:student:${userId}:dashboard`;
+    if (!bypassCache) {
+        try {
+            const cached = await redis.get(cacheKey);
+            if (cached) return JSON.parse(cached);
+        } catch (_) {}
+    }
 
     const currentRecord = await db.query.studentAcademicRecords.findFirst({
         where: eq(studentAcademicRecords.user_id, userId),
         orderBy: [desc(studentAcademicRecords.created_at)]
     });
     const classId = currentRecord?.class_id;
+
+    // ... (rest of logic)
 
     const [enrolled, global, classMapped] = await Promise.all([
         db.query.enrollments.findMany({ 
@@ -296,7 +308,7 @@ export async function getStudentDashboardCourses() {
         return (a.completedLessons === a.totalLessons) ? 1 : -1;
     });
 
-    return {
+    const result = {
         courses: coursesWithProgress,
         categories: Array.from(new Set(coursesWithProgress.map(c => c.category))).filter(Boolean).map(cat => ({
             name: cat,
@@ -309,6 +321,11 @@ export async function getStudentDashboardCourses() {
             return [];
         }))).filter(Boolean) as string[]
     };
+
+    // Cache the result for 1 hour, tagged by user
+    await cacheService.set(cacheKey, result, [`user:${userId}`], 3600);
+
+    return result;
 }
 
 

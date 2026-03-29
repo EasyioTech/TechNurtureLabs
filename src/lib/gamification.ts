@@ -12,7 +12,13 @@ const LB_CACHE_TTL = 604800;    // 7 days (Leaderboards are lazy-synced on fetch
  * Handles XP updates, Leaderboards (ZSET), and Progress Counters
  */
 
-export async function awardXP(userId: string, xp: number, schoolId?: string | null, userType: 'student' | 'school_admin' | 'super_admin' = 'student') {
+export async function awardXP(
+    userId: string, 
+    xp: number, 
+    schoolId?: string | null, 
+    userType: 'student' | 'school_admin' | 'super_admin' = 'student',
+    options?: { skipEmit?: boolean }
+) {
     try {
         // 1. Update database based on user type
         let table: any = students;
@@ -55,9 +61,9 @@ export async function awardXP(userId: string, xp: number, schoolId?: string | nu
             await invalidateStudentDashboardCache(userId);
         }
 
-        // Emit event for background queue processing (achievement checks, leveling, etc.)
+        // 3. Emit event for background queue processing (achievement checks, leveling, etc.)
         // Fire-and-forget — event emission is non-critical and must never block XP writes.
-        if (userType === 'student') {
+        if (userType === 'student' && !options?.skipEmit) {
             import('./services/event-service').then(({ eventService }) =>
                 eventService.emit('student.xp_gained', {
                     userId,

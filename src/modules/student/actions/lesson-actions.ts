@@ -11,7 +11,7 @@ import { eq, and, asc, isNotNull, sql } from 'drizzle-orm';
 import { awardXP, incrementProgressCounter, handleStudentEngagement } from '@/lib/gamification';
 import { redis } from '@/lib/redis';
 import { ensureEnrollment, invalidateStudentDashboardCache } from './course-actions';
-import { computeMediaUrl } from '@/lib/media';
+import { computeMediaUrl, getSecureMediaUrl } from '@/lib/media';
 
 /**
  * Fetch detailed lesson data including quiz and user progress
@@ -21,52 +21,54 @@ export async function getLessonData(lessonId: string) {
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
 
+    // SCALE BREAKER A: Optimized lesson fetch using deep Drizzle relations.
+    // This replaces 5 sequential queries (lesson, asset, progress, quiz, questions, options)
+    // with a single optimized fetch, drastically reducing TTFB for students.
     const lesson = await db.query.lessons.findFirst({
         where: eq(lessons.id, lessonId),
         with: {
-            asset: true
+            asset: true,
+            quiz: {
+                with: {
+                    questions: {
+                        orderBy: [asc(quizQuestions.sequence_order)],
+                        with: {
+                            options: {
+                                orderBy: [asc(quizOptions.sequence_order)]
+                            }
+                        }
+                    }
+                }
+            },
+            progress: {
+                where: eq(lessonProgress.user_id, userId),
+                limit: 1
+            }
         }
     });
 
     if (!lesson) return null;
 
+    // 1. Enrollment check (remains as is for logic isolation)
+    const enrollment = await ensureEnrollment(userId, lesson.course_id);
+    if (!enrollment) return null;
+
+    // 2. Media Logic
     const useHls = lesson.content_type === 'video' && 
                    lesson.asset && 
                    (lesson.asset as any).processing_status === 'completed';
     
-    const contentUrl = useHls
-        ? computeMediaUrl(lesson.asset as any, 'hls')
-        : (lesson.asset ? computeMediaUrl(lesson.asset as any) : lesson.content_url);
+    // M-10: Secure Media Redirect flow
+    const contentUrl = await getSecureMediaUrl(
+        lesson.asset ? (lesson.asset as any) : { storage_type: 'local', file_path: lesson.content_url || '' },
+        useHls ? 'hls' : 'original'
+    );
 
-    const enrollment = await ensureEnrollment(userId, lesson.course_id);
-    if (!enrollment) return null;
-
-    const progress = await db.query.lessonProgress.findFirst({
-        where: and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId))
-    });
-
-    let isQuizLocked = false;
-    let lockReason = "";
-
-    if (lesson.content_type === 'video') {
-        // Threshold removed as per user request
-    }
-
+    // 3. Optimized Quiz Logic Mapping
     let quizData: any = null;
-    const quiz = await db.query.quizzes.findFirst({
-        where: eq(quizzes.lesson_id, lessonId),
-    });
+    const quiz = lesson.quiz;
     
     if (quiz) {
-        const questions = await db.query.quizQuestions.findMany({
-            where: eq(quizQuestions.quiz_id, quiz.id),
-            orderBy: [asc(quizQuestions.sequence_order)],
-            with: {
-                options: {
-                    orderBy: [asc(quizOptions.sequence_order)]
-                }
-            }
-        });
         quizData = {
             quiz: {
                 id: quiz.id,
@@ -75,22 +77,21 @@ export async function getLessonData(lessonId: string) {
                 pass_percentage: Number(quiz.pass_percentage),
                 max_attempts: quiz.max_attempts,
                 xp_reward: quiz.xp_reward,
-                is_locked: isQuizLocked,
-                lock_reason: lockReason
+                is_locked: false,
+                lock_reason: ""
             },
-            questions: isQuizLocked ? [] : questions.map(q => {
-                return {
-                    id: q.id,
-                    text: q.question_text,
-                    question_type: q.question_type,
-                    options: q.options.map(opt => ({ id: opt.id, option_text: opt.option_text })),
-                    // Security: Hide correct_answer and explanation from student payload
-                    points: q.points,
-                    time_limit_secs: q.time_limit_secs,
-                };
-            })
+            questions: quiz.questions.map(q => ({
+                id: q.id,
+                text: q.question_text,
+                question_type: q.question_type,
+                options: q.options.map(opt => ({ id: opt.id, option_text: opt.option_text })),
+                points: q.points,
+                time_limit_secs: q.time_limit_secs,
+            }))
         };
     }
+
+    const firstProgress = lesson.progress[0];
 
     return {
         ...lesson,
@@ -99,11 +100,11 @@ export async function getLessonData(lessonId: string) {
         duration: lesson.duration_minutes || 10,
         quiz_data: quizData,
         processing_status: (lesson as any).asset?.processing_status || 'completed',
-        user_progress: progress ? {
-            completed_at: progress.completed_at,
-            progress_pct: Number(progress.progress_pct) || 0,
-            last_position_secs: progress.last_position_secs || 0,
-            verified_watch_seconds: progress.verified_watch_seconds
+        user_progress: firstProgress ? {
+            completed_at: firstProgress.completed_at,
+            progress_pct: Number(firstProgress.progress_pct) || 0,
+            last_position_secs: firstProgress.last_position_secs || 0,
+            verified_watch_seconds: firstProgress.verified_watch_seconds
         } : null
     };
 }
@@ -151,6 +152,7 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
 
     const xpToAdd = lesson.xp_reward || 10;
 
+    // SCALE BREAKER C: Core Completion Write (The only synchronous DB hit)
     await db.transaction(async (tx) => {
         const existing = await tx.query.lessonProgress.findFirst({
             where: and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId))
@@ -161,6 +163,7 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
                 completed_at: new Date(),
                 progress_pct: '100',
                 xp_earned: xpToAdd,
+                updated_at: new Date()
             }).where(and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId)));
         } else {
             await tx.insert(lessonProgress).values({
@@ -174,96 +177,33 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
                 xp_earned: xpToAdd,
             });
         }
-
-        if (existingUser.school_id) {
-            await tx.insert(xpEvents).values({
-                user_id: userId,
-                school_id: existingUser.school_id,
-                source: 'lesson_completion',
-                xp_amount: xpToAdd,
-                reference_type: 'lesson',
-                reference_id: lessonId,
-            });
-        }
-
-        // Course Completion Check
-        const allCourseLessons = await tx.select({ id: lessons.id }).from(lessons).where(eq(lessons.course_id, lesson.course_id));
-        const completedCourseLessons = await tx.select({ id: lessonProgress.id })
-            .from(lessonProgress)
-            .where(and(
-                eq(lessonProgress.user_id, userId),
-                eq(lessonProgress.enrollment_id, enrollment.id),
-                isNotNull(lessonProgress.completed_at)
-            ));
-        
-        const courseProgressPct = (completedCourseLessons.length / allCourseLessons.length) * 100;
-        
-        if (courseProgressPct === 100) {
-            await tx.update(enrollments)
-                .set({ completed_at: new Date(), updated_at: new Date() })
-                .where(eq(enrollments.id, enrollment.id));
-        }
     });
 
-    // Award XP and update stats
-    const typeMap: any = { student: 'student', school_admin: 'school_admin', super_admin: 'super_admin' };
-    await awardXP(userId, xpToAdd, existingUser.school_id, typeMap[role] || 'student');
-
-    if (role === 'student') {
-        await incrementProgressCounter(userId, 'lessons');
-        if (quizScore !== undefined) {
-            await incrementProgressCounter(userId, 'quizzes');
-            if (isPerfect) await incrementProgressCounter(userId, 'perfect_quizzes');
-        }
-        await handleStudentEngagement(userId);
-    }
-
-    // 🚀 EVENT-DRIVEN SECONDARY TRIGGERS
-    // We emit events to Redis. The EventWorker handles the heavy lifting (achievements, streaks, challenges).
+    // 🚀 EVENT-DRIVEN OFFLOADING (Backgrounding 90% of the work)
     try {
         const { eventService } = await import('@/lib/services/event-service');
         
-        // 1. Core Completion Event
-        await eventService.emit('student.lesson_completed', {
+        // This single event triggers:
+        // - XP Awarding
+        // - Course Completion Calculation
+        // - Achievement checks
+        // - Streak updates
+        // - Audit logging
+        // - Cache invalidation
+        await eventService.emit('student.lesson_completed_full', {
             userId,
             schoolId: existingUser.school_id || undefined,
             courseId: lesson.course_id,
-            lessonId: lessonId,
-            amount: xpToAdd,
+            lessonId,
+            xpAmount: xpToAdd,
+            role,
+            quizScore,
+            isPerfect,
             timestamp: Date.now()
         });
 
-        // 2. XP Gain Event (triggers level checks & xp challenges)
-        await eventService.emit('student.xp_gained', {
-            userId,
-            schoolId: existingUser.school_id || undefined,
-            amount: xpToAdd,
-            timestamp: Date.now()
-        });
-
-        // 3. Perfect Quiz Event if applicable
-        if (quizScore !== undefined && isPerfect) {
-            await eventService.emit('student.quiz_perfect', {
-                userId,
-                schoolId: existingUser.school_id || undefined,
-                timestamp: Date.now()
-            });
-        }
-
-        // 4. Maintenance / Metadata
-        await db.insert(auditLogs).values({
-            user_id: userId,
-            school_id: existingUser.school_id,
-            action: 'create',
-            entity_type: 'lesson_progress',
-            entity_id: lessonId,
-            new_values: { lesson_title: lesson.title, xp_earned: xpToAdd }
-        } as any);
-
-        await redis.del(`cache:student:${userId}:course:${lesson.course_id}`);
-        await invalidateStudentDashboardCache(userId);
     } catch (e) {
-        console.error('Failed to dispatch platform events:', e);
+        console.error('[ScaleGuard] Failed to dispatch background processing:', e);
     }
 
     return { success: true };
@@ -320,22 +260,32 @@ export async function saveVideoProgress(lessonId: string, seconds: number, perce
 
 /**
  * Update active time spent on a lesson
+ * M-11: High-Performance Time Tracking via Redis to avoid DB write thrashing.
+ * Instead of writing to PostgreSQL every 10s, we accumulate time in Redis
+ * and a background worker flushes it to the DB every few minutes.
  */
 export async function updateTimeSpent(lessonId: string, seconds: number) {
     const session = await verifySession();
     if (!session) return;
 
-    // Rate-limit: allow at most one DB write per 15 seconds per user+lesson
-    const rateLimitKey = `rl:time_spent:${session.userId}:${lessonId}`;
-    const acquired = await redis.set(rateLimitKey, '1', 'EX', 15, 'NX');
-    if (!acquired) return;
+    const userId = session.userId;
+    const statsKey = `stats:time_spent:user:${userId}`;
+    const flushKey = `stats:needs_flush:time_spent`;
 
-    await db.update(lessonProgress)
-        .set({
-            time_spent_secs: sql`${lessonProgress.time_spent_secs} + ${seconds}`,
-            updated_at: new Date()
-        })
-        .where(and(eq(lessonProgress.user_id, session.userId), eq(lessonProgress.lesson_id, lessonId)));
+    try {
+        // 1. Increment the counter in Redis (O(1))
+        await redis.hincrby(statsKey, lessonId, seconds);
+        
+        // 2. Track that this user+lesson needs a flush
+        // We use a set of keys that need flushing to avoid scanning all user keys
+        await redis.sadd(flushKey, `${userId}:${lessonId}`);
+        
+        // 3. Set expiry on the stats key to avoid memory leaks (48h should be safe)
+        await redis.expire(statsKey, 172800, 'NX');
+    } catch (e) {
+        console.error('[TimeTracking] Redis error:', e);
+        // Fallback or ignore non-critical metric failure
+    }
 }
 
 /**

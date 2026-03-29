@@ -1,7 +1,7 @@
 import {
     pgTable, pgEnum,
     text, timestamp, boolean, integer, bigint, numeric, jsonb, uuid, date, inet,
-    uniqueIndex, index, check
+    uniqueIndex, index, check, primaryKey
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
@@ -748,7 +748,7 @@ export const courseMetricsDaily = pgTable('course_metrics_daily', {
 // ============================================================================
 
 export const auditLogs = pgTable('audit_logs', {
-    id: uuid('id').defaultRandom().primaryKey(),
+    id: uuid('id').defaultRandom(),
     user_id: uuid('user_id'),
     user_type: userTypeEnum('user_type'),
     school_id: uuid('school_id').references(() => schools.id, { onDelete: 'set null' }),
@@ -762,6 +762,7 @@ export const auditLogs = pgTable('audit_logs', {
     user_agent: text('user_agent'),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
+    primaryKey({ columns: [table.id, table.created_at] }),
     index('idx_audit_user').on(table.user_id),
     index('idx_audit_created').on(table.created_at),
     index('idx_audit_user_created').on(table.user_id, table.created_at),

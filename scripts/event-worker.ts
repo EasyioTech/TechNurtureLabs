@@ -1,105 +1,149 @@
-
-/**
- * TECH NURTURE - Platform Event Worker
- * 
- * This worker processes asynchronous gamification and logging tasks.
- * It handles achievement checks, daily challenges, and real-time streams.
- */
-
-import { redis } from '../src/lib/redis';
-import { eventService, PlatformEvent, EventPayload } from '../src/lib/services/event-service';
-import { gamificationService } from '../src/lib/services/gamification-service';
+import Redis from 'ioredis';
+import { PlatformEvent } from '../src/lib/services/event-service';
 import { updateDailyChallengeProgress } from '../src/modules/student/actions/challenge-actions';
 import { checkAndAwardAchievementsInternal } from '../src/modules/student/actions/achievement-actions';
-import { markAchievementCheckNeeded } from '../src/lib/gamification';
+import { awardXP, handleStudentEngagement, markAchievementCheckNeeded, incrementProgressCounter } from '../src/lib/gamification';
+import { Worker, Job } from 'bullmq';
+import { db } from '../src/lib/db';
+import { redis } from '../src/lib/redis';
+import { xpEvents, lessons, lessonProgress, enrollments, auditLogs } from '../src/db/schema';
+import { eq, and, isNotNull, inArray } from 'drizzle-orm';
+import dotenv from 'dotenv';
 
-async function run() {
-    console.log('--- Platform Event Worker Started ---');
+dotenv.config();
 
-    // Wait for Redis connection to be fully established since offline queue is disabled
-    if (redis.status !== 'ready') {
-        console.log('[EventWorker] Waiting for Redis connection status: ready...');
-        await new Promise(resolve => {
-            redis.once('ready', resolve);
-            // Timeout after 10s to not block forever, the loop will handle failures
-            setTimeout(resolve, 10000);
-        });
+console.log('--- Platform Event Worker (BullMQ) Started ---');
+
+// SCALE BREAKER B: Dedicated Connection for BULLMQ
+const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    maxRetriesPerRequest: null,
+});
+
+const worker = new Worker('platform_events', async (job: Job) => {
+    try {
+        await handleEvent(job.data, job.id);
+    } catch (e: any) {
+        console.error(`[EventWorker] Job ${job.id} CRITICAL FAILURE:`, e.stack);
+        throw e; // Standard retry mechanism
     }
-
-    console.log('Monitoring queue: queue:platform_events');
-
-    while (true) {
-        try {
-            // BRPOP waits up to 60s for a new item
-            const res = await redis.brpop('queue:platform_events', 60);
-            
-            if (res) {
-                const [_, rawJob] = res;
-                const job = JSON.parse(rawJob);
-                await handleEvent(job);
-            }
-        } catch (err) {
-            console.error('[EventWorker] Iteration failure:', err);
-            // Wait a bit before retrying to avoid spinning on persistent errors
-            await new Promise(resolve => setTimeout(resolve, 5000));
-        }
+}, {
+    connection,
+    concurrency: 10, // Max concurrent jobs per worker thread
+    limiter: {
+        max: 50, // Rate limit: max 50 jobs per second (safety cap)
+        duration: 1000
     }
-}
+});
 
-async function handleEvent(job: any) {
-    const { type, userId, schoolId, amount, lessonId, timestamp } = job;
+worker.on('completed', (job) => {
+    console.log(`[EventWorker] Success: Job ${job.id} (${job.name})`);
+});
+
+worker.on('failed', (job, err) => {
+    console.error(`[EventWorker] Job ${job?.id} failed after retries:`, err.message);
+});
+
+async function handleEvent(data: any, jobId?: string) {
+    const { type, userId, schoolId, courseId, lessonId, xpAmount, role, quizScore, isPerfect, amount } = data;
     const eventType = type as PlatformEvent;
 
-    console.log(`[EventWorker] Processing ${eventType} for ${userId || 'system'}`);
+    console.log(`[EventWorker] Processing ${eventType} (ID: ${jobId}) for user: ${userId || 'guest'}`);
 
-    try {
-        switch (eventType) {
-            case 'student.lesson_completed':
-                // 1. Award Achievement Check Needed
-                if (userId) await markAchievementCheckNeeded(userId);
+    switch (eventType) {
+        case 'student.lesson_completed_full': {
+            if (!userId || !courseId || !lessonId) break;
+
+            // 1. Log XP Event
+            if (schoolId) {
+                await db.insert(xpEvents).values({
+                    user_id: userId,
+                    school_id: schoolId,
+                    source: 'lesson_completion',
+                    xp_amount: xpAmount || 0,
+                    reference_type: 'lesson',
+                    reference_id: lessonId,
+                    created_at: new Date()
+                });
+            }
+
+            // 2. Course Completion State Machine
+            const allCourseLessons = await db.select({ id: lessons.id })
+                .from(lessons)
+                .where(eq(lessons.course_id, courseId));
+            
+            const completedCourseLessons = await db.select({ id: lessonProgress.id })
+                .from(lessonProgress)
+                .where(and(
+                    eq(lessonProgress.user_id, userId),
+                    isNotNull(lessonProgress.completed_at),
+                    inArray(lessonProgress.lesson_id, allCourseLessons.map(l => l.id))
+                ));
+            
+            if (completedCourseLessons.length === allCourseLessons.length) {
+                await db.update(enrollments)
+                    .set({ completed_at: new Date(), updated_at: new Date() })
+                    .where(and(eq(enrollments.user_id, userId), eq(enrollments.course_id, courseId)));
+                console.log(`[EventWorker] User ${userId} COMPLETED course ${courseId}`);
+            }
+
+            // 3. XP & Engagement Processing (LOOP SAFETY: skipEmit=true)
+            const typeMap: any = { student: 'student', school_admin: 'school_admin', super_admin: 'super_admin' };
+            await awardXP(userId, xpAmount || 0, schoolId, typeMap[role] || 'student', { skipEmit: true });
+
+            if (role === 'student' || !role) {
+                await incrementProgressCounter(userId, 'lessons');
+                if (quizScore !== undefined) {
+                    await incrementProgressCounter(userId, 'quizzes');
+                    if (isPerfect) await incrementProgressCounter(userId, 'perfect_quizzes');
+                }
+                await handleStudentEngagement(userId);
                 
-                // 2. Update Daily Challenges
-                if (userId) {
-                    await updateDailyChallengeProgress(userId, 'quiz_complete', 1);
-                }
-                
-                // 3. Trigger Achievement Check
-                if (userId) await checkAndAwardAchievementsInternal(userId);
-                break;
+                // Achievement Logic
+                await markAchievementCheckNeeded(userId);
+                await updateDailyChallengeProgress(userId, 'lesson_complete', 1);
+                await checkAndAwardAchievementsInternal(userId);
+            }
 
-            case 'student.xp_gained':
-                if (userId && amount) {
-                    // Update daily challenge for XP gain
-                    await updateDailyChallengeProgress(userId, 'xp_gain', amount);
-                    
-                    // Mark as needed for XP-based achievements
-                    await markAchievementCheckNeeded(userId);
-                    await checkAndAwardAchievementsInternal(userId);
-                }
-                break;
+            // 4. Audit Trail (Scale-Hardened Partition Schema)
+            await db.insert(auditLogs).values({
+                user_id: userId,
+                school_id: schoolId,
+                action: 'create',
+                entity_type: 'lesson_progress',
+                entity_id: lessonId,
+                new_values: { xp_earned: xpAmount, course_id: courseId },
+                created_at: new Date()
+            } as any);
 
-            case 'student.quiz_perfect':
-                if (userId) {
-                    await updateDailyChallengeProgress(userId, 'perfect_quiz', 1);
-                    await markAchievementCheckNeeded(userId);
-                    await checkAndAwardAchievementsInternal(userId);
-                }
-                break;
-
-            case 'system.maintenance_run':
-                console.log('[EventWorker] System maintenance heart-beat received.');
-                break;
-
-            default:
-                console.log(`[EventWorker] Unhandled event type: ${eventType}`);
+            // 5. Cache Invalidation
+            // USING SHARED LIB/REDIS (M-11)
+            await redis.del(`cache:student:${userId}:course:${courseId}`);
+            break;
         }
-    } catch (err) {
-        console.error(`[EventWorker] Failed to process ${eventType}:`, err);
+
+        case 'student.lesson_completed':
+            if (userId) await markAchievementCheckNeeded(userId);
+            if (userId) await updateDailyChallengeProgress(userId, 'quiz_complete', 1);
+            if (userId) await checkAndAwardAchievementsInternal(userId);
+            break;
+
+        case 'student.xp_gained':
+            if (userId && amount) {
+                await updateDailyChallengeProgress(userId, 'xp_gain', amount);
+                await markAchievementCheckNeeded(userId);
+                await checkAndAwardAchievementsInternal(userId);
+            }
+            break;
+
+        case 'student.quiz_perfect':
+            if (userId) {
+                await updateDailyChallengeProgress(userId, 'perfect_quiz', 1);
+                await markAchievementCheckNeeded(userId);
+                await checkAndAwardAchievementsInternal(userId);
+            }
+            break;
+
+        default:
+            console.log(`[EventWorker] Unknown event: ${eventType} - Skipping.`);
     }
 }
-
-// Start the worker
-run().catch(err => {
-    console.error('[EventWorker] Critical Startup Failure:', err);
-    process.exit(1);
-});

@@ -8,6 +8,8 @@ import { eq, and, gt } from 'drizzle-orm';
 import { serverEnv } from '@/lib/env.server';
 import crypto from 'crypto';
 import { cache } from 'react';
+import { headers } from 'next/headers';
+import { rateLimitIp } from './ratelimit';
 
 const jwtSecretEnv = serverEnv.JWT_SECRET;
 const isBuild = process.env.NEXT_SKIP_TYPECHECK === '1' || process.env.npm_lifecycle_event === 'build';
@@ -113,6 +115,18 @@ async function trackActivity(userId: string) {
  * Verifies session and performs automatic rotation if access token is expired but refresh token is valid.
  */
 async function verifySessionInternal(): Promise<SessionPayload | null> {
+    const h = await headers();
+    const forwarded = h.get('x-forwarded-for');
+    const ip = forwarded ? forwarded.split(',')[0].trim() : (h.get('x-real-ip') || 'unknown-ip');
+
+    // M-12: GLOBAL RATE LIMITING
+    // Before any expensive JWT/DB/Redis check, we protect our server from spam.
+    const { success } = await rateLimitIp(ip, 200, 60);
+    if (!success) {
+        console.warn(`[Blocked] Rate limit exceeded for IP: ${ip} at verifySession`);
+        return null; // Return null so the request is treated as unauthorized/blocked
+    }
+
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('session')?.value;
     const refreshToken = cookieStore.get('refresh_token')?.value;

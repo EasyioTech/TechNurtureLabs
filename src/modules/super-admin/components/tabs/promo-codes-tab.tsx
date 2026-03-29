@@ -29,79 +29,122 @@ export function PromoCodesTab({
     const { isDark, accent } = useAdminTheme();
 
     return (
-        <div className="space-y-6">
-            <div className={`p-6 sm:p-8 rounded-[2.5rem] ${t.card(isDark)} ${t.border(isDark)} shadow-xl ${isDark ? '' : 'shadow-slate-200/50'}`}>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                    <div>
-                        <h2 className={`text-2xl font-black tracking-tight ${t.textPrimary(isDark)}`}>Discount Codes</h2>
-                        <p className={`text-sm font-bold uppercase tracking-widest mt-1 ${t.textMuted(isDark)}`}>Manage platform level promo codes</p>
-                    </div>
+        <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 className={`text-3xl font-black tracking-tighter ${t.textPrimary(isDark)}`}>Growth Incentives</h2>
+                    <p className={`text-xs font-bold uppercase tracking-[0.2em] mt-1 ${t.textMuted(isDark)}`}>Manage and track platform discount codes</p>
                 </div>
+                <Button 
+                    onClick={() => { setEditingCode({}); setShowDialog(true); }}
+                    className={`h-12 rounded-2xl px-6 font-black text-xs uppercase tracking-widest shadow-xl transition-all ${t.btnPrimary(isDark, accent)}`}
+                >
+                    <Plus className="mr-2 h-4 w-4" strokeWidth={3} /> Create Promo
+                </Button>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {promoCodes.map((code) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {promoCodes.map((code) => {
+                    const isPercentage = code.discount_type === 'percentage';
+                    const usagePercent = code.max_uses ? Math.min(100, (code.current_uses / code.max_uses) * 100) : 0;
+                    
+                    return (
                         <motion.div
                             key={code.id}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            whileHover={{ y: -4 }}
-                            className={`p-6 rounded-3xl ${t.border(isDark)} transition-all group flex flex-col justify-between
-                                ${isDark ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-slate-50 hover:bg-slate-100 hover:shadow-lg'}`}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            whileHover={{ scale: 1.02 }}
+                            className={`relative rounded-[2rem] overflow-hidden border-2 transition-all duration-500 group
+                                ${isDark ? 'bg-slate-900 border-white/[0.05] hover:border-white/10' : 'bg-white border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl'}`}
                         >
-                            <div>
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className={`p-3 rounded-xl border-2 ${code.is_active ? (isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-100 border-emerald-200 text-emerald-600') : (isDark ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-slate-200 border-slate-300 text-slate-500')}`}>
-                                        <Tag size={20} strokeWidth={2.5} />
+                            {/* Ticket Notch Effect */}
+                            <div className={`absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full ${isDark ? 'bg-slate-950' : 'bg-slate-50'} border-r-2 ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`} />
+                            <div className={`absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full ${isDark ? 'bg-slate-950' : 'bg-slate-50'} border-l-2 ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`} />
+                            
+                            <div className="p-8">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className={`p-4 rounded-2xl transition-transform group-hover:rotate-6 ${t.accentSoft(isDark, accent)}`}>
+                                        <Tag size={24} strokeWidth={2.5} />
                                     </div>
-                                    <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${code.is_active ? (isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-100') : (isDark ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-700 border-rose-100')}`}>
-                                        {code.is_active ? 'ACTIVE' : 'INACTIVE'}
-                                    </span>
+                                    <div className="flex flex-col items-end gap-2">
+                                        <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border
+                                            ${code.is_active ? 
+                                                'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                                                'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>
+                                            {code.is_active ? 'Active' : 'Expired'}
+                                        </span>
+                                    </div>
                                 </div>
-                                <h3 className={`text-xl font-black mb-1 font-mono uppercase tracking-widest ${t.textPrimary(isDark)}`}>{code.code}</h3>
-                                <p className={`text-sm font-bold mb-4 flex items-center gap-1.5 ${t.textMuted(isDark)}`}>
-                                    <Percent size={14} />
-                                    {code.discount_type === 'percentage' ? `${code.discount_value}% OFF` : `₹${code.discount_value} OFF`}
-                                </p>
 
-                                <div className="space-y-2 mt-4">
-                                    <div className="flex justify-between items-center text-xs font-medium">
-                                        <span className={t.textMuted(isDark)}>Usage</span>
-                                        <span className={t.textPrimary(isDark)}>{code.current_uses} / {code.max_uses || '∞'}</span>
+                                <div className="space-y-1 mb-6">
+                                    <h3 className={`text-4xl font-black tracking-tighter ${t.textPrimary(isDark)}`}>
+                                        {isPercentage ? `${code.discount_value}%` : `₹${code.discount_value}`} <span className={`text-sm tracking-widest uppercase opacity-40 ml-1`}>OFF</span>
+                                    </h3>
+                                    <p className={`text-lg font-mono font-black uppercase tracking-[0.2em] ${accent.text}`}>
+                                        {code.code}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4 pt-6 border-t border-dashed border-white/10">
+                                    <div className="flex justify-between items-center">
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Redeemed</span>
+                                        <span className={`text-[10px] font-black ${t.textPrimary(isDark)}`}>
+                                            {code.current_uses} / {code.max_uses || '∞'}
+                                        </span>
                                     </div>
+                                    {code.max_uses && (
+                                        <div className={`h-1.5 w-full rounded-full overflow-hidden ${isDark ? 'bg-white/[0.05]' : 'bg-slate-100'}`}>
+                                            <motion.div 
+                                                initial={{ width: 0 }} 
+                                                animate={{ width: `${usagePercent}%` }} 
+                                                className={`h-full ${usagePercent > 90 ? 'bg-rose-500' : accent.bg}`} 
+                                            />
+                                        </div>
+                                    )}
+                                    
                                     {(code.valid_from || code.valid_until) && (
-                                        <div className="flex flex-col gap-1 text-[10px] font-bold uppercase tracking-widest mt-3 pt-3 border-t border-slate-200/50 dark:border-slate-700/50">
-                                            {code.valid_from && <span className="flex items-center gap-1.5 text-emerald-500"><Calendar size={12} /> From: {format(new Date(code.valid_from), 'PP')}</span>}
-                                            {code.valid_until && <span className="flex items-center gap-1.5 text-rose-500"><Calendar size={12} /> Until: {format(new Date(code.valid_until), 'PP')}</span>}
+                                        <div className="flex flex-wrap gap-x-4 gap-y-2 pt-2">
+                                            {code.valid_until && (
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar size={12} className="text-rose-500" />
+                                                    <span className={`text-[9px] font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>
+                                                        Expires {format(new Date(code.valid_until), 'MMM d, yyyy')}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
-                                <Button
-                                    variant="outline" size="sm"
-                                    className={`flex-1 rounded-xl text-xs font-bold border-2 ${t.btnOutline(isDark)}`}
+                            <div className={`flex border-t ${isDark ? 'border-white/[0.05] bg-white/[0.02]' : 'border-slate-100 bg-slate-50/50'}`}>
+                                <button
                                     onClick={() => { setEditingCode(code); setShowDialog(true); }}
+                                    className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-black/5 transition-colors ${t.textPrimary(isDark)}`}
                                 >
-                                    EDIT CODE
-                                </Button>
-                                <Button
-                                    variant="outline" size="sm"
-                                    className={`flex-none rounded-xl text-xs font-bold border-2 text-rose-500 hover:text-rose-600 hover:bg-rose-50 ${isDark ? 'border-rose-500/20 hover:border-rose-500/30 dark:hover:bg-rose-500/10' : 'border-rose-200'}`}
+                                    Review
+                                </button>
+                                <div className={`w-[1px] ${isDark ? 'bg-white/[0.05]' : 'bg-slate-100'}`} />
+                                <button
                                     onClick={() => onDeletePromoCode(code.id)}
+                                    className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-500/5 transition-colors"
                                 >
-                                    DELETE
-                                </Button>
+                                    Dissolve
+                                </button>
                             </div>
                         </motion.div>
-                    ))}
-                    {promoCodes.length === 0 && (
-                        <div className={`col-span-full py-16 text-center border-2 border-dashed rounded-[2rem] ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-                            <AlertCircle className={`mx-auto mb-4 ${t.textMuted(isDark)}`} size={32} />
-                            <p className={`text-lg font-bold ${t.textMuted(isDark)}`}>No Promo Codes Created Yet</p>
+                    );
+                })}
+                
+                {promoCodes.length === 0 && (
+                    <div className={`col-span-full py-24 text-center border-4 border-dashed rounded-[3rem] ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`}>
+                        <div className={`w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center ${isDark ? 'bg-white/[0.02]' : 'bg-slate-50'}`}>
+                            <AlertCircle className={t.textMuted(isDark)} size={32} />
                         </div>
-                    )}
-                </div>
+                        <p className={`text-xl font-black ${t.textPrimary(isDark)}`}>No Active Promotions</p>
+                        <p className={`text-sm font-bold mt-1 ${t.textMuted(isDark)}`}>Create your first discount code to boost engagement.</p>
+                    </div>
+                )}
             </div>
 
             <PromoCodeDialog

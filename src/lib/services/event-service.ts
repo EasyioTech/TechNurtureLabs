@@ -14,6 +14,7 @@ import { queueService } from './queue-service';
 
 export type PlatformEvent = 
     | 'student.lesson_completed'
+    | 'student.lesson_completed_full'
     | 'student.quiz_perfect'
     | 'student.xp_gained'
     | 'student.achievement_unlocked'
@@ -27,14 +28,20 @@ export interface EventPayload {
     courseId?: string;
     lessonId?: string;
     amount?: number;
+    xpAmount?: number;
+    role?: string;
+    quizScore?: number;
+    isPerfect?: boolean;
     metadata?: Record<string, any>;
     timestamp: number;
 }
 
+import { platformQueue } from '../queue/platform-queue';
+
 export const eventService = {
     /**
      * Emits an event to the platform.
-     * Uses Redis for decoupling triggers from the main request thread.
+     * Uses BullMQ for persistent, retryable background processing (SCALE BREAKER B).
      */
     emit: async (event: PlatformEvent, payload: EventPayload) => {
         try {
@@ -44,17 +51,22 @@ export const eventService = {
                 timestamp: payload.timestamp || Date.now()
             };
 
-            // 1. Log to High-Frequency Activity Stream (Redis)
-            // This builds the real-time admin dashboard feed
+            // 1. Log to High-Frequency Activity Stream (Redis LPush/LTrim)
+            // Still uses simple direct Redis for zero-latency dashboard feeds
             const streamKey = payload.schoolId ? `stream:school:${payload.schoolId}` : 'stream:global';
             await redis.lpush(streamKey, JSON.stringify(fullPayload));
-            await redis.ltrim(streamKey, 0, 99); // Keep latest 100 events
+            await redis.ltrim(streamKey, 0, 99); 
 
-            // 2. Enqueue for background processing (Achievements, Leveling, etc.)
-            // We reuse the queueService logic for reliability
-            await redis.lpush('queue:platform_events', JSON.stringify(fullPayload));
+            // 2. Enqueue for background processing (BullMQ)
+            // SCALE BREAKER B: We move from volatile LPUSH to persistent BullMQ.
+            // This ensures XP, badges, and metrics are never lost even if the worker fails.
+            await platformQueue.add(event, fullPayload, {
+                removeOnComplete: true,
+                attempts: 5,
+                backoff: { type: 'exponential', delay: 2000 }
+            });
 
-            console.log(`[EventHub] Emitted: ${event} for user ${payload.userId || 'system'}`);
+            console.log(`[EventHub] Queued: ${event} for user ${payload.userId || 'system'}`);
             return true;
         } catch (err) {
             console.error('[EventHub] Failed to emit event:', err);
