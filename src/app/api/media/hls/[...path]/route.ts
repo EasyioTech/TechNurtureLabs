@@ -4,17 +4,24 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { serverEnv } from '@/lib/env.server';
 import { verifySession } from '@/lib/auth';
 import { redis } from '@/lib/redis';
+import { db } from '@/lib/db';
+import { lessons as lessonsTable, enrollments } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 /**
- * PRODUCTION-GRADE HLS GATEWAY (M-10 REFINED)
- * 
- * SCALE HARDENING:
- * 1. Path Sanitization: Prevents directory traversal attacks.
- * 2. Manifest Caching (High Concurrency): Rewritten manifests are cached in Redis 
- *    for 5 minutes. If 500 students hit the same lesson, we fetch/rewrite ONCE.
+ * PRODUCTION-GRADE HLS GATEWAY
+ *
+ * SECURITY: Path sanitization prevents directory traversal.
+ * SCALE: Redis manifest cache (5min TTL) prevents redundant R2 fetches.
+ * THUNDERING HERD: Redis mutex (singleflight) ensures only ONE cold-fetch
+ *   happens per manifest. Concurrent requests wait on the lock, then read
+ *   from cache. Eliminates concurrent R2 spikes under heavy load.
  */
 
-const MANIFEST_CACHE_TTL = 300; // 5 minutes
+const MANIFEST_CACHE_TTL = 300;  // 5 minutes — signed URLs valid for 2hr, safe margin
+const FETCH_LOCK_TTL = 15;        // Lock auto-expires after 15s (deadlock prevention)
+const LOCK_POLL_MS = 200;         // How often waiting requests poll for cache
+const LOCK_MAX_WAIT_MS = 10000;   // Max time a request waits behind a lock
 
 export async function GET(
     request: NextRequest,
@@ -22,89 +29,183 @@ export async function GET(
 ) {
     try {
         const { path: filePathParams } = await params;
-        
-        // 1. Path Sanitization (Security Hardening)
+
+        // ── 1. Path Sanitization ──────────────────────────────────────────────
         const key = filePathParams
             .filter(p => p !== '..' && p !== '.')
             .join('/')
-            .replace(/^\/+/, ''); // Strip leading slashes
+            .replace(/^\/+/, '');
 
-        // Reject obvious attacks
-        if (key.includes('..') || key.startsWith('/')) {
+        if (!key || key.includes('..') || key.startsWith('/')) {
             return new NextResponse('Invalid Path', { status: 400 });
         }
 
-        // 2. Auth Check (Always required)
+        // ── 2. Auth & Authorization (BOLA Protection) ──────────────────────
         const session = await verifySession();
         if (!session) return new NextResponse('Unauthorized', { status: 401 });
+
+        // If student, verify enrollment in the course owning this lesson/asset.
+        if (session.userType === 'student') {
+            const pathParts = key.split('/');
+            
+            // Pattern 1: Lessons (lessons/{lessonId}/...)
+            if (pathParts[0] === 'lessons' && pathParts[1]) {
+                const lessonId = pathParts[1];
+                
+                // Optimized Join: Check if student has an enrollment for the course that owns this lesson
+                const hasAccess = await db
+                    .select({ id: lessonsTable.id })
+                    .from(lessonsTable)
+                    .innerJoin(enrollments, eq(lessonsTable.course_id, enrollments.course_id))
+                    .where(
+                        and(
+                            eq(lessonsTable.id, lessonId),
+                            eq(enrollments.user_id, session.userId)
+                        )
+                    )
+                    .limit(1);
+
+                if (hasAccess.length === 0) {
+                    return new NextResponse('Forbidden: Access to this course content is restricted to enrolled students.', { status: 403 });
+                }
+            }
+            
+            // Pattern 2: Courses (courses/{courseId}/...)
+            else if (pathParts[0] === 'courses' && pathParts[1]) {
+                const courseId = pathParts[1];
+                const hasAccess = await db
+                    .select({ id: enrollments.id })
+                    .from(enrollments)
+                    .where(
+                        and(
+                            eq(enrollments.course_id, courseId),
+                            eq(enrollments.user_id, session.userId)
+                        )
+                    )
+                    .limit(1);
+
+                if (hasAccess.length === 0) {
+                    return new NextResponse('Forbidden: Access to this course content is restricted to enrolled students.', { status: 403 });
+                }
+            }
+            
+            // Note: branding/, library/, and avatars/ are allowed for any logged-in student.
+        }
 
         if (!isCloudflareConfigured || !s3Client) {
             return new NextResponse('Cloudflare R2 not configured', { status: 501 });
         }
 
-        // 3. CACHE LAYER (M-11: Preventing Server Spikes)
         const cacheKey = `hls:manifest:${key}`;
+        const lockKey  = `hls:lock:${key}`;
+
+        // ── 3. Cache Lookup (Hot Path — serves majority of requests) ─────────
         try {
-            const cachedManifest = await redis.get(cacheKey);
-            if (cachedManifest) {
-                console.log(`[HLS Gateway] Cache Hit: ${key}`);
-                return new Response(cachedManifest, { 
-                    status: 200, 
-                    headers: { 'Content-Type': 'application/x-mpegURL', 'X-Cache': 'HIT' } 
+            const cached = await redis.get(cacheKey);
+            if (cached) {
+                return new Response(cached, {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/x-mpegURL', 'X-Cache': 'HIT' }
                 });
             }
-        } catch (e) { /* Redis down - skip cache */ }
+        } catch (_) { /* Redis unavailable — fall through to cold fetch */ }
 
-        // 4. Fetch the Manifest (Cold Start)
-        console.log(`[HLS Gateway] Cold Fetch: ${key}`);
-        const command = new GetObjectCommand({
-            Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
-            Key: key,
-        });
-        const response = await s3Client.send(command);
+        // ── 4. Singleflight Lock (Thundering Herd Prevention) ─────────────────
+        // When 200 students open the same lesson simultaneously on a cache miss:
+        // - ONE request acquires the lock and fetches from R2
+        // - The other 199 wait here, then serve from cache once populated
+        const lockAcquired = await redis.set(lockKey, '1', 'EX', FETCH_LOCK_TTL, 'NX').catch(() => null);
 
-        if (!response.Body) return new NextResponse('Manifest not found', { status: 404 });
-
-        const manifestText = await response.Body.transformToString();
-        const lines = manifestText.split('\n');
-        const parentFolder = key.split('/').slice(0, -1).join('/');
-
-        // 5. REWRITE Logic: Generate Direct Signed URLs for Segments
-        const rewrittenLines = await Promise.all(lines.map(async (line) => {
-            const trimmed = line.trim();
-            // Match segment files (.ts) or child playlists (.m3u8)
-            if (trimmed && !trimmed.startsWith('#')) {
-                const segmentKey = parentFolder ? `${parentFolder}/${trimmed}` : trimmed;
-                try {
-                    // Sign with 1-hour expiration. Direct to R2/CDN.
-                    return await getSignedDownloadUrl(segmentKey, 3600);
-                } catch (err) {
-                    console.error('[HLS Rewriter] FAILED to sign segment:', segmentKey);
-                    return line;
-                }
+        if (!lockAcquired) {
+            // Another worker is already fetching — wait for it to populate cache
+            const fromCache = await waitForCache(cacheKey, LOCK_POLL_MS, LOCK_MAX_WAIT_MS);
+            if (fromCache) {
+                return new Response(fromCache, {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/x-mpegURL', 'X-Cache': 'WAIT-HIT' }
+                });
             }
-            return line;
-        }));
+            // Lock expired before cache was populated — fall through and fetch ourselves
+        }
 
-        const finalManifest = rewrittenLines.join('\n');
-
-        // 6. POPULATE CACHE
+        // ── 5. Cold Fetch from R2 (runs for at most 1 concurrent request per key)
         try {
-            await redis.setex(cacheKey, MANIFEST_CACHE_TTL, finalManifest);
-        } catch (e) { /* non-critical */ }
+            console.log(`[HLS Gateway] Cold Fetch: ${key}`);
 
-        // 7. Success Response
-        return new Response(finalManifest, { 
-            status: 200, 
-            headers: { 
-                'Content-Type': 'application/x-mpegURL',
-                'Cache-Control': 'private, max-age=60',
-                'X-Cache': 'MISS'
-            } 
-        });
+            const r2Response = await s3Client.send(new GetObjectCommand({
+                Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+                Key: key,
+            }));
+
+            if (!r2Response.Body) {
+                await redis.del(lockKey).catch(() => {});
+                return new NextResponse('Manifest not found', { status: 404 });
+            }
+
+            const manifestText = await r2Response.Body.transformToString();
+            const lines = manifestText.split('\n');
+            const parentFolder = key.split('/').slice(0, -1).join('/');
+
+            // ── 6. Rewrite Segments → Signed CDN URLs ─────────────────────────
+            // 2-hour signed URL expiry:
+            // - Manifest cache TTL is 5 min, so it's always re-signed before the URL expires
+            // - Gives a 2hr buffer for very long lesson sessions
+            const rewrittenLines = await Promise.all(lines.map(async (line) => {
+                const trimmed = line.trim();
+                if (trimmed && !trimmed.startsWith('#')) {
+                    const segmentKey = parentFolder ? `${parentFolder}/${trimmed}` : trimmed;
+                    try {
+                        return await getSignedDownloadUrl(segmentKey, 7200);
+                    } catch {
+                        console.error('[HLS Gateway] Failed to sign segment:', segmentKey);
+                        return line; // Fallback — player will get 403 for this segment only
+                    }
+                }
+                return line;
+            }));
+
+            const finalManifest = rewrittenLines.join('\n');
+
+            // ── 7. Cache + Release Lock ───────────────────────────────────────
+            await redis.setex(cacheKey, MANIFEST_CACHE_TTL, finalManifest).catch(() => {});
+            await redis.del(lockKey).catch(() => {});
+
+            return new Response(finalManifest, {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/x-mpegURL',
+                    'Cache-Control': 'private, max-age=60',
+                    'X-Cache': 'MISS'
+                }
+            });
+
+        } catch (fetchErr: any) {
+            await redis.del(lockKey).catch(() => {}); // Always release lock on error
+            throw fetchErr;
+        }
 
     } catch (error: any) {
         console.error('[HLS Gateway] CRITICAL Error:', error.message);
         return new NextResponse('Internal Server Error', { status: 500 });
     }
+}
+
+/**
+ * Poll Redis for a cache key until populated or timeout reached.
+ * Used by requests waiting behind the singleflight lock.
+ */
+async function waitForCache(
+    cacheKey: string,
+    pollMs: number,
+    maxWaitMs: number
+): Promise<string | null> {
+    const deadline = Date.now() + maxWaitMs;
+    while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, pollMs));
+        try {
+            const val = await redis.get(cacheKey);
+            if (val) return val;
+        } catch (_) { /* Redis error — keep polling */ }
+    }
+    return null; // Timed out — caller will do its own fetch
 }

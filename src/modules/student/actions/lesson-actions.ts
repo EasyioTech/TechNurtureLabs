@@ -12,6 +12,7 @@ import { awardXP, incrementProgressCounter, handleStudentEngagement } from '@/li
 import { redis } from '@/lib/redis';
 import { ensureEnrollment, invalidateStudentDashboardCache } from './course-actions';
 import { computeMediaUrl, getSecureMediaUrl } from '@/lib/media';
+import { QuizData, Question } from '../types';
 
 /**
  * Fetch detailed lesson data including quiz and user progress
@@ -31,12 +32,7 @@ export async function getLessonData(lessonId: string) {
             quiz: {
                 with: {
                     questions: {
-                        orderBy: [asc(quizQuestions.sequence_order)],
-                        with: {
-                            options: {
-                                orderBy: [asc(quizOptions.sequence_order)]
-                            }
-                        }
+                        columns: { id: true }
                     }
                 }
             },
@@ -78,16 +74,10 @@ export async function getLessonData(lessonId: string) {
                 max_attempts: quiz.max_attempts,
                 xp_reward: quiz.xp_reward,
                 is_locked: false,
-                lock_reason: ""
+                lock_reason: "",
+                question_count: quiz.questions?.length ?? 0
             },
-            questions: quiz.questions.map(q => ({
-                id: q.id,
-                text: q.question_text,
-                question_type: q.question_type,
-                options: q.options.map(opt => ({ id: opt.id, option_text: opt.option_text })),
-                points: q.points,
-                time_limit_secs: q.time_limit_secs,
-            }))
+            questions: [] // EMPTY: to be fetched on-demand
         };
     }
 
@@ -441,5 +431,54 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
         passed,
         xp_earned: xpEarned,
         feedback
+    };
+}
+
+/**
+ * Fetch full quiz questions and options on-demand
+ * SCALE: This avoids loading massive JSON blobs for every student just scrolling through a syllabus.
+ */
+export async function getQuizData(quizId: string): Promise<QuizData> {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+    const userId = session.userId;
+
+    const quiz = await db.query.quizzes.findFirst({
+        where: eq(quizzes.id, quizId),
+        with: {
+            questions: {
+                orderBy: [asc(quizQuestions.sequence_order)],
+                with: {
+                    options: {
+                        orderBy: [asc(quizOptions.sequence_order)]
+                    }
+                }
+            }
+        }
+    });
+
+    if (!quiz) throw new Error('Quiz not found');
+
+    // SECURITY: Verify enrollment before leaking questions
+    const enrollment = await ensureEnrollment(userId, quiz.course_id);
+    if (!enrollment) throw new Error('Enrollment required to access assessment content.');
+
+    return {
+        quiz: {
+            id: quiz.id,
+            title: quiz.title,
+            time_limit_secs: quiz.time_limit_secs as number | null,
+            pass_percentage: Number(quiz.pass_percentage),
+            max_attempts: quiz.max_attempts,
+            xp_reward: quiz.xp_reward,
+        },
+        questions: quiz.questions.map(q => ({
+            id: q.id,
+            text: q.question_text,
+            question_type: q.question_type as string,
+            options: q.options.map(opt => ({ id: opt.id, option_text: opt.option_text })),
+            points: q.points,
+            time_limit_secs: q.time_limit_secs as number | null,
+        })) as Question[]
     };
 }

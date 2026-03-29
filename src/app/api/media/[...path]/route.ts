@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 import { verifySession } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { lessons as lessonsTable, enrollments } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'local_storage');
 
@@ -14,13 +17,58 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         // Next.js 15 requires unwrapping async params
         const { path: filePathParams } = await params;
+        const key = filePathParams.join('/');
+
+        // ── 2. Authorization (BOLA Protection) ──────────────────────
+        if (session.userType === 'student') {
+            const pathParts = key.split('/');
+            
+            // Pattern 1: Lessons (lessons/{lessonId}/...)
+            if (pathParts[0] === 'lessons' && pathParts[1]) {
+                const lessonId = pathParts[1];
+                const hasAccess = await db
+                    .select({ id: lessonsTable.id })
+                    .from(lessonsTable)
+                    .innerJoin(enrollments, eq(lessonsTable.course_id, enrollments.course_id))
+                    .where(
+                        and(
+                            eq(lessonsTable.id, lessonId),
+                            eq(enrollments.user_id, session.userId)
+                        )
+                    )
+                    .limit(1);
+
+                if (hasAccess.length === 0) {
+                    return new NextResponse('Forbidden: Enrollment required.', { status: 403 });
+                }
+            }
+            
+            // Pattern 2: Courses (courses/{courseId}/...)
+            else if (pathParts[0] === 'courses' && pathParts[1]) {
+                const courseId = pathParts[1];
+                const hasAccess = await db
+                    .select({ id: enrollments.id })
+                    .from(enrollments)
+                    .where(
+                        and(
+                            eq(enrollments.course_id, courseId),
+                            eq(enrollments.user_id, session.userId)
+                        )
+                    )
+                    .limit(1);
+
+                if (hasAccess.length === 0) {
+                    return new NextResponse('Forbidden: Enrollment required.', { status: 403 });
+                }
+            }
+        }
 
         if (!filePathParams || filePathParams.length === 0) {
             return new NextResponse('File path not provided', { status: 400 });
         }
 
         // Supports both flat (filename) and subfolder (folder/filename) paths
-        const fileName = filePathParams.join('/');
+        const fileName = key;
         const filePath = path.join(LOCAL_STORAGE_DIR, fileName);
 
         // Prevent path traversal attacks

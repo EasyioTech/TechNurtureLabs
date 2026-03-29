@@ -26,6 +26,18 @@ const ACCESS_TOKEN_EXPIRY = '15m'; // Short-lived access
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
 const REFRESH_TOKEN_EXPIRY_SECONDS = 60 * 60 * 24 * REFRESH_TOKEN_EXPIRY_DAYS;
 
+/**
+ * M-13: ROLE-BASED SESSION HARDENING
+ * Different roles have different risk profiles. Admins get shorter TTLs to reduce hijacking window.
+ */
+function getSessionExpirySeconds(userType: string): number {
+    switch (userType) {
+        case 'super_admin': return 60 * 60 * 2;   // 2 Hours
+        case 'school_admin': return 60 * 60 * 8;  // 8 Hours (Workday)
+        default: return 60 * 60 * 24 * 7;         // 7 Days (Student)
+    }
+}
+
 export type SessionPayload = {
     userId: string;
     userType: 'super_admin' | 'school_admin' | 'student';
@@ -44,18 +56,19 @@ export async function createSession(payload: Omit<SessionPayload, 'sessionId' | 
     const refreshToken = crypto.randomBytes(32).toString('hex');
     const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
 
+    const roleExpiry = getSessionExpirySeconds(payload.userType);
+
     // Store session in DB (Persistence + Rotation context)
     await db.insert(userSessions).values({
         id: sessionId,
         user_id: payload.userId,
         user_type: payload.userType,
         refresh_token_hash: refreshTokenHash,
-        expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_SECONDS * 1000),
+        expires_at: new Date(Date.now() + roleExpiry * 1000),
     });
 
-    // Mirror in Redis for fast verification (best-effort — DB is the source of truth;
-    // verifySession has a DB fallback so a Redis miss doesn't log users out).
-    redis.set(`session:${sessionId}`, JSON.stringify(sessionData), 'EX', REFRESH_TOKEN_EXPIRY_SECONDS)
+    // Mirror in Redis for fast verification (best-effort)
+    redis.set(`session:${sessionId}`, JSON.stringify(sessionData), 'EX', roleExpiry)
         .catch((e) => console.warn('[Auth] Redis cache miss on createSession — DB-only session:', e.message));
 
     // Create Access Token (JWT)
@@ -85,7 +98,7 @@ export async function createSession(payload: Omit<SessionPayload, 'sessionId' | 
         secure: isProduction && !isHttp,
         sameSite: 'strict', // Stricter for refresh tokens
         path: '/',
-        maxAge: REFRESH_TOKEN_EXPIRY_SECONDS,
+        maxAge: roleExpiry,
     });
 
     return sessionData;
@@ -158,13 +171,14 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
                     )
                 });
                 sessionValid = !!(dbSession && !dbSession.revoked_at);
-                // Best-effort cache restore so the next request is fast again
+                // Best-effort cache restore
                 if (sessionValid) {
+                    const roleExpiry = getSessionExpirySeconds(sessionData.userType);
                     redis.set(
                         `session:${sessionData.sessionId}`,
                         JSON.stringify(sessionData),
                         'EX',
-                        REFRESH_TOKEN_EXPIRY_SECONDS
+                        roleExpiry
                     ).catch(() => {});
                 }
             }
@@ -243,6 +257,8 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
         const isHttp = appUrl.startsWith('http://') || !isProduction;
 
         try {
+            const roleExpiry = getSessionExpirySeconds(sessionRow.user_type);
+
             cookieStore.set('session', newAccessToken, {
                 httpOnly: true,
                 secure: isProduction && !isHttp,
@@ -256,7 +272,7 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
                 secure: isProduction && !isHttp,
                 sameSite: 'strict',
                 path: '/',
-                maxAge: REFRESH_TOKEN_EXPIRY_SECONDS,
+                maxAge: roleExpiry,
             });
 
             // Update Database
@@ -267,7 +283,7 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
                 })
                 .where(eq(userSessions.id, sessionId));
             
-            await redis.expire(`session:${sessionId}`, REFRESH_TOKEN_EXPIRY_SECONDS);
+            await redis.expire(`session:${sessionId}`, roleExpiry);
 
             // --- GRACE PERIOD: Prevent parallel request failures ---
             // Store only the new access token and session data — NOT the refresh token.

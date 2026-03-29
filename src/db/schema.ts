@@ -560,6 +560,9 @@ export const quizAttempts = pgTable('quiz_attempts', {
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
     index('idx_qattempts_user').on(table.user_id),
+    // COMPOUND INDEX: Speeds up max-attempts check (WHERE user_id = ? AND quiz_id = ?)
+    // without this, high quiz traffic causes a partial index scan on user_id alone.
+    index('idx_qattempts_user_quiz').on(table.user_id, table.quiz_id),
 ]);
 
 export const quizAttemptAnswers = pgTable('quiz_attempt_answers', {
@@ -605,8 +608,11 @@ export const xpEvents = pgTable('xp_events', {
     index('idx_xp_user').on(table.user_id),
     index('idx_xp_school').on(table.school_id),
     index('idx_xp_created').on(table.created_at),
-    // ISSUE 11: Composite index for "XP events for a user in a date range" — the core leaderboard query
+    // Composite for leaderboard queries ("XP events for a user in a date range")
     index('idx_xp_user_created').on(table.user_id, table.created_at),
+    // IDEMPOTENCY INDEX: Required for duplicate XP award prevention in background workers.
+    // Query: WHERE user_id = ? AND reference_id = ? AND source = ?
+    index('idx_xp_user_ref_source').on(table.user_id, table.reference_id, table.source),
 ]);
 
 export const achievements = pgTable('achievements', {

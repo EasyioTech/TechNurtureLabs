@@ -31,7 +31,8 @@ import {
     submitAssignment, 
     getSubmissionStatus,
     updateTimeSpent,
-    submitQuizAttempt
+    submitQuizAttempt,
+    getQuizData
 } from './lesson-actions';
 
 import { 
@@ -76,6 +77,7 @@ export {
     getSubmissionStatus,
     updateTimeSpent,
     submitQuizAttempt,
+    getQuizData,
 
     // Challenges
     getOrGenerateDailyChallenges,

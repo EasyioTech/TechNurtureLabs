@@ -71,7 +71,7 @@ export type Question = {
     question_type: string;
     options: { id: string; option_text: string; }[];
     points: number;
-    time_limit_secs: number;
+    time_limit_secs: number | null;
     correct_answer?: any;
     explanation?: string;
 };
@@ -80,12 +80,13 @@ export type QuizData = {
     quiz: {
       id: string;
       title: string;
-      time_limit_secs: number;
+      time_limit_secs: number | null;
       pass_percentage: number;
       max_attempts: number;
       xp_reward: number;
       is_locked?: boolean;
       lock_reason?: string;
+      question_count?: number;
     };
     questions: Question[];
 };

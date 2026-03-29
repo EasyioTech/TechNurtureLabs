@@ -11,7 +11,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { QuizData, Question } from '@/modules/student/types';
-import { submitQuizAttempt } from '@/modules/student/actions';
+import { submitQuizAttempt, getQuizData } from '@/modules/student/actions';
 import { toast } from 'sonner';
 
 // ─── Types ────────────────────────────────────────────────────
@@ -151,10 +151,11 @@ export function QuizEngine({
         return 'idle';
     });
 
-    // Shuffle questions ONCE on mount — prevents memorising order across attempts
-    const [questions] = useState<Question[]>(() =>
+    // Shuffle questions ONCE on mount — is initially empty from the metadata fetch
+    const [questions, setQuestions] = useState<Question[]>(() =>
         fisherYatesShuffle(quizData?.questions ?? [])
     );
+    const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
 
     const [currentIdx, setCurrentIdx] = useState(0);
     const [responses, setResponses] = useState<Record<string, string>>({});
@@ -176,7 +177,7 @@ export function QuizEngine({
 
     const isActive = phase === 'active';
     const q = questions[currentIdx];
-    const totalQ = questions.length;
+    const totalQ = questions.length > 0 ? questions.length : (quizData?.quiz?.question_count ?? 0);
 
     // ── Effect 1: Prevent refresh / tab-close / back during quiz ──
     useEffect(() => {
@@ -300,7 +301,22 @@ export function QuizEngine({
         setTimeout(() => advanceRef.current(snap), 900);
     }, [chosen, q, responses, isSubmitting]);
 
-    const startQuiz = useCallback(() => {
+    const startQuiz = useCallback(async () => {
+        if (questions.length === 0) {
+            setIsLoadingQuestions(true);
+            try {
+                const fullData = await getQuizData(quizData.quiz.id);
+                if (fullData?.questions) {
+                    setQuestions(fisherYatesShuffle(fullData.questions));
+                }
+            } catch (e) {
+                toast.error("Failed to load questions. Please check your connection.");
+                return;
+            } finally {
+                setIsLoadingQuestions(false);
+            }
+        }
+
         submittedRef.current = false;
         responsesRef.current = {};
         setCurrentIdx(0);
@@ -311,7 +327,7 @@ export function QuizEngine({
         setResults(null);
         setIsSubmitting(false);
         setPhase('active');
-    }, []);
+    }, [quizData.quiz.id, questions]);
 
     // ── Render ───────────────────────────────────────────────
 
@@ -406,10 +422,23 @@ export function QuizEngine({
                         <div className="space-y-4">
                             <button
                                 onClick={startQuiz}
-                                className="w-full h-14 sm:h-20 bg-slate-950 text-white rounded-2xl sm:rounded-[2rem] font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-4 hover:bg-indigo-600 transition-all shadow-2xl shadow-indigo-200 active:scale-95 group"
+                                disabled={isLoadingQuestions}
+                                className={cn(
+                                    "w-full h-14 sm:h-20 bg-slate-950 text-white rounded-2xl sm:rounded-[2rem] font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-4 transition-all shadow-2xl shadow-indigo-200 active:scale-95 group",
+                                    isLoadingQuestions ? "opacity-75 cursor-wait" : "hover:bg-indigo-600"
+                                )}
                             >
-                                Launch Assessment
-                                <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />
+                                {isLoadingQuestions ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                        Preparing Assessment…
+                                    </>
+                                ) : (
+                                    <>
+                                        Launch Assessment
+                                        <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />
+                                    </>
+                                )}
                             </button>
                             <div className="flex items-center justify-center gap-2 opacity-40">
                                 <ShieldAlert size={12} />

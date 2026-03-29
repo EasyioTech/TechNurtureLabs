@@ -122,18 +122,17 @@ export async function saveLessonOrderAdmin(updates: any[]) {
         if (!Number.isInteger(order) || order < 0) throw new Error('Invalid sequence order');
     }
 
-    // Single bulk UPDATE using CASE WHEN — avoids N+1 round trips
-    const ids = updates.map(u => u.id);
-    const caseWhen = updates
-        .map(u => `WHEN id = '${u.id}' THEN ${u.sequence_index ?? u.sequence_order}`)
-        .join(' ');
-
-    await db.execute(sql`
-        UPDATE lessons
-        SET sequence_order = CASE ${sql.raw(caseWhen)} ELSE sequence_order END,
-            updated_at = NOW()
-        WHERE id = ANY(${sql.raw(`ARRAY[${ids.map(id => `'${id}'`).join(',')}]::uuid[]`)})
-    `);
+    // Single transaction for all updates to ensure atomicity
+    await db.transaction(async (tx) => {
+        for (const u of updates) {
+            await tx.update(lessons)
+                .set({ 
+                    sequence_order: u.sequence_index ?? u.sequence_order,
+                    updated_at: new Date()
+                })
+                .where(eq(lessons.id, u.id));
+        }
+    });
 
     const first = await db.query.lessons.findFirst({ where: eq(lessons.id, updates[0].id) });
     if (first) {
