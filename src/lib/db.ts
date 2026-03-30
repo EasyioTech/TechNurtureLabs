@@ -52,16 +52,19 @@ export const db = drizzle(conn, { schema });
 if (serverEnv.NODE_ENV === 'production') {
     setInterval(() => {
         try {
-            // Access the internal pool object (postgres.js exposes this)
-            const poolSize = (conn as any).pool?.length || 0;
-            const waitQueue = (conn as any).pool?._queue?.length || 0;
+            const pool = (conn as any).pool;
+            if (pool) {
+                const total = pool.connections?.length || 0;
+                const idle = pool.available?.length || 0;
+                const waiting = pool._queue?.length || 0;
+                const inUse = total - idle;
 
-            // Alert if pool is getting full (>40 of 50 in use)
-            const inUse = 50 - poolSize;
-            if (inUse > 40 || waitQueue > 0) {
-                console.warn(
-                    `[DB Pool Alert] In Use: ${inUse}/50 | Idle: ${poolSize} | Waiting: ${waitQueue}`
-                );
+                // Alert if we are hitting the ceiling AND have people waiting
+                if (inUse > 45 || waiting > 0) {
+                    console.warn(
+                        `[DB Pool Alert] In Use: ${inUse}/${total} | Idle: ${idle} | Waiting: ${waiting} | Limit: 50`
+                    );
+                }
             }
         } catch (err) {
             // Silently ignore if pool stats unavailable
