@@ -34,10 +34,18 @@ interface LibraryTabProps {
     courses: Course[];
     onCloneLesson: (lessonId: string, targetCourseId: string) => Promise<void>;
     onCloneQuiz: (quizId: string, targetCourseId: string) => Promise<void>;
+    lessonsPage?: number;
+    totalLessonsPages?: number;
+    onLessonsPageChange?: (page: number) => void;
+    quizzesPage?: number;
+    totalQuizzesPages?: number;
+    onQuizzesPageChange?: (page: number) => void;
 }
 
 export function LibraryTab({
-    lessons, quizzes, loading, courses, onCloneLesson, onCloneQuiz
+    lessons, quizzes, loading, courses, onCloneLesson, onCloneQuiz,
+    lessonsPage = 1, totalLessonsPages = 1, onLessonsPageChange,
+    quizzesPage = 1, totalQuizzesPages = 1, onQuizzesPageChange
 }: LibraryTabProps) {
     const { isDark, accent } = useAdminTheme();
     const [view, setView] = useState<'lessons' | 'quizzes'>('lessons');
@@ -137,6 +145,66 @@ export function LibraryTab({
                     </>
                 )}
             </div>
+
+            {/* ── Pagination Footer ── */}
+            {!loading && (
+                <>
+                    {view === 'lessons' && totalLessonsPages > 1 && (
+                        <div className={`p-6 rounded-[24px] border ${t.border(isDark)} flex items-center justify-between mt-4 ${isDark ? 'bg-white/[0.01]' : 'bg-white'}`}>
+                            <p className={`text-[11px] font-black tracking-widest ${t.textMuted(isDark)}`}>
+                                PAGE <span className={t.textPrimary(isDark)}>{lessonsPage}</span> OF {totalLessonsPages}
+                            </p>
+                            <div className="flex items-center gap-3">
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    disabled={lessonsPage === 1}
+                                    onClick={() => onLessonsPageChange?.(lessonsPage - 1)}
+                                    className={`rounded-full px-4 h-9 text-[10px] font-black border ${t.border(isDark)}`}
+                                >
+                                    PREV
+                                </Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    disabled={lessonsPage >= totalLessonsPages}
+                                    onClick={() => onLessonsPageChange?.(lessonsPage + 1)}
+                                    className={`rounded-full px-4 h-9 text-[10px] font-black border ${t.border(isDark)}`}
+                                >
+                                    NEXT
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                    {view === 'quizzes' && totalQuizzesPages > 1 && (
+                        <div className={`p-6 rounded-[24px] border ${t.border(isDark)} flex items-center justify-between mt-4 ${isDark ? 'bg-white/[0.01]' : 'bg-white'}`}>
+                            <p className={`text-[11px] font-black tracking-widest ${t.textMuted(isDark)}`}>
+                                PAGE <span className={t.textPrimary(isDark)}>{quizzesPage}</span> OF {totalQuizzesPages}
+                            </p>
+                            <div className="flex items-center gap-3">
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    disabled={quizzesPage === 1}
+                                    onClick={() => onQuizzesPageChange?.(quizzesPage - 1)}
+                                    className={`rounded-full px-4 h-9 text-[10px] font-black border ${t.border(isDark)}`}
+                                >
+                                    PREV
+                                </Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    disabled={quizzesPage >= totalQuizzesPages}
+                                    onClick={() => onQuizzesPageChange?.(quizzesPage + 1)}
+                                    className={`rounded-full px-4 h-9 text-[10px] font-black border ${t.border(isDark)}`}
+                                >
+                                    NEXT
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
 
             {/* ── Clone Dialog ── */}
             <Dialog open={!!cloneItem} onOpenChange={(open) => !open && setCloneItem(null)}>

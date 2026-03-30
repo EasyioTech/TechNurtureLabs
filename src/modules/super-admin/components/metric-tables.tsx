@@ -44,7 +44,9 @@ export function MetricTables({ userMetrics, page = 0, setPage, totalPages = 1 }:
 
     const localTotalPages = Math.ceil(filteredAndSortedUsers.length / USER_METRICS_PAGE_SIZE);
     const serverTotalPages = totalPages || localTotalPages;
-    const pagedMetrics = filteredAndSortedUsers.slice(page * USER_METRICS_PAGE_SIZE, (page + 1) * USER_METRICS_PAGE_SIZE);
+    // Fix: Remove double-slicing. The server already returns exactly one page of data.
+    // Slicing locally for page 1+ resulted in an empty array because index 25+ doesn't exist in a 25-item array.
+    const pagedMetrics = filteredAndSortedUsers;
 
     const toggleUserSort = (field: UserSortField) => {
         setUserSort(prev => ({ field, direction: prev.field === field && prev.direction === 'desc' ? 'asc' : 'desc' }));
@@ -81,7 +83,8 @@ export function MetricTables({ userMetrics, page = 0, setPage, totalPages = 1 }:
                     </div>
                     <div className={t.divider(isDark)}>
                         {pagedMetrics.map((u, i) => {
-                            const globalRank = page * USER_METRICS_PAGE_SIZE + i;
+                            // Fix: The global rank should account for the server page index
+                            const globalRank = (page * USER_METRICS_PAGE_SIZE) + i;
                             const isTop3 = !studentSearch && globalRank < 3;
                             return (
                                 <motion.div key={u.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
@@ -89,7 +92,7 @@ export function MetricTables({ userMetrics, page = 0, setPage, totalPages = 1 }:
                                     <div className="relative">
                                         <div className={`w-12 h-12 rounded-full flex items-center justify-center text-[12px] font-black flex-shrink-0
                                             ${isTop3 ? (isDark ? `${accent.bg} text-slate-900 ${accent.ring.replace('ring-', 'ring-4 ring-')}` : 'bg-slate-900 text-white shadow-lg shadow-slate-900/20') : isDark ? 'bg-white/[0.12] text-slate-200 border border-white/10 shadow-inner' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-                                            {u.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                            {globalRank + 1}
                                         </div>
                                         {isTop3 && (
                                             <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center border-2 border-white dark:border-[#0f1219]">
@@ -124,7 +127,7 @@ export function MetricTables({ userMetrics, page = 0, setPage, totalPages = 1 }:
                     {serverTotalPages > 1 && setPage && (
                         <div className={`px-6 py-4 border-t ${t.border(isDark)} flex items-center justify-between`}>
                             <p className={`text-[11px] font-bold ${t.textMuted(isDark)}`}>
-                                Showing {page * USER_METRICS_PAGE_SIZE + 1}–{Math.min((page + 1) * USER_METRICS_PAGE_SIZE, filteredAndSortedUsers.length)} of {filteredAndSortedUsers.length} students
+                                Page {page + 1} of {serverTotalPages}
                             </p>
                             <div className="flex items-center gap-2">
                                 <Button variant="ghost" size="sm" disabled={page === 0}

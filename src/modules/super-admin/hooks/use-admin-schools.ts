@@ -42,6 +42,7 @@ export function useAdminSchools() {
             })));
             setTotalStudentsCount(data.total);
             setTotalStudentPages(data.pages);
+            setUserMetricsPage(page);
         } catch (err: any) {
             if (err?.message === 'UNAUTHORIZED') { window.location.href = '/admin-portal/login'; return; }
             toast.error('Failed to load students');

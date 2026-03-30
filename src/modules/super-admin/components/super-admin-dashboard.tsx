@@ -128,19 +128,18 @@ function DashboardContent() {
             data.loadStudents(data.userMetricsPage, searchQuery);
         } else if (activePage === 'schools' || activePage === 'overview') {
             data.loadSchools(data.schoolsPage, searchQuery);
+        } else if (activePage === 'library') {
+            data.loadGlobalLessons(data.globalLessonsPage, searchQuery);
+            data.loadGlobalQuizzes(data.globalQuizzesPage, searchQuery);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activePage, data.userMetricsPage, data.schoolsPage, searchQuery]);
+    }, [activePage, data.userMetricsPage, data.schoolsPage, data.globalLessonsPage, data.globalQuizzesPage, searchQuery]);
 
     // Effect 2: tabs that only need a single initial load (pagination handled inside the tab)
     useEffect(() => {
         if (activePage === 'courses' && !initializedTabs.current.has('courses')) {
             initializedTabs.current.add('courses');
             data.loadCourses(0);
-        } else if (activePage === 'library' && !initializedTabs.current.has('library')) {
-            initializedTabs.current.add('library');
-            data.loadGlobalLessons(1, '');
-            data.loadGlobalQuizzes(1, '');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activePage]);
@@ -530,6 +529,12 @@ function DashboardContent() {
                                 courses={data.courses}
                                 onCloneLesson={data.cloneLesson}
                                 onCloneQuiz={data.cloneQuiz}
+                                lessonsPage={data.globalLessonsPage}
+                                onLessonsPageChange={data.loadGlobalLessons}
+                                totalLessonsPages={data.totalGlobalLessonsPages}
+                                quizzesPage={data.globalQuizzesPage}
+                                onQuizzesPageChange={data.loadGlobalQuizzes}
+                                totalQuizzesPages={data.totalGlobalQuizzesPages}
                             />
                         )}
                         { activePage === 'settings' && <SettingsTab ref={settingsRef} />}
