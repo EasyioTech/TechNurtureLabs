@@ -1,16 +1,21 @@
 import React from 'react';
+import dynamicFn from 'next/dynamic';
+
 export const dynamic = 'force-dynamic';
+
 import { Navigation } from '@/components/landing/Navigation';
 import { HeroSection } from '@/components/landing/HeroSection';
-import { FeaturesSection } from '@/components/landing/FeaturesSection';
-import { DemoSection } from '@/components/landing/DemoSection';
-import { TestimonialsSection } from '@/components/landing/TestimonialsSection';
-import { StatsSection } from '@/components/landing/StatsSection';
-import { PricingSection } from '@/components/landing/PricingSection';
-import { FAQSection } from '@/components/landing/FAQSection';
-import { CTASection } from '@/components/landing/CTASection';
-import { Footer } from '@/components/landing/Footer';
 import { getPlatformSettings } from '@/components/landing/actions';
+
+// Lazy load sections below the fold
+const FeaturesSection = dynamicFn(() => import('@/components/landing/FeaturesSection').then(mod => mod.FeaturesSection), { ssr: true });
+const DemoSection = dynamicFn(() => import('@/components/landing/DemoSection').then(mod => mod.DemoSection), { ssr: true });
+const StatsSection = dynamicFn(() => import('@/components/landing/StatsSection').then(mod => mod.StatsSection), { ssr: true });
+const TestimonialsSection = dynamicFn(() => import('@/components/landing/TestimonialsSection').then(mod => mod.TestimonialsSection), { ssr: true });
+const PricingSection = dynamicFn(() => import('@/components/landing/PricingSection').then(mod => mod.PricingSection), { ssr: true });
+const FAQSection = dynamicFn(() => import('@/components/landing/FAQSection').then(mod => mod.FAQSection), { ssr: true });
+const CTASection = dynamicFn(() => import('@/components/landing/CTASection').then(mod => mod.CTASection), { ssr: true });
+const Footer = dynamicFn(() => import('@/components/landing/Footer').then(mod => mod.Footer), { ssr: true });
 
 export default async function Home() {
   const settings = await getPlatformSettings();
@@ -29,7 +34,7 @@ export default async function Home() {
       <FeaturesSection />
 
       {/* 4. Product Demo Section - Material Design */}
-      <DemoSection />
+      <DemoSection settings={settings} />
 
       {/* 5. Statistics Section - Modern Impact */}
       <StatsSection />

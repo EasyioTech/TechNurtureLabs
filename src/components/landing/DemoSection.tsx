@@ -116,7 +116,7 @@ const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
     );
 };
 
-export const DemoSection = () => {
+export const DemoSection = ({ settings }: { settings?: any }) => {
     const isMobile = useIsMobile();
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -137,22 +137,9 @@ export const DemoSection = () => {
     const textOpacity = isMobile ? 1 : textOpacityTransform;
     const textY = isMobile ? 0 : textYTransform;
 
-    const [videoUrl, setVideoUrl] = React.useState('');
-    const [videoType, setVideoType] = React.useState('youtube');
-    const [loading, setLoading] = React.useState(true);
-
-    React.useEffect(() => {
-        fetch('/api/admin/settings')
-            .then(res => res.json())
-            .then(data => {
-                if (data.settings?.hero_video_url) {
-                    setVideoUrl(data.settings.hero_video_url);
-                    setVideoType(data.settings.hero_video_type || 'youtube');
-                }
-            })
-            .catch(console.error)
-            .finally(() => setLoading(false));
-    }, []);
+    const videoUrl = settings?.hero_video_url || '';
+    const videoType = settings?.hero_video_type || 'youtube';
+    const loading = false;
 
     return (
         <section ref={containerRef} id="demo" className={`relative z-10 bg-slate-50 ${isMobile ? 'h-auto py-20 overflow-hidden' : 'h-[250vh]'}`}>

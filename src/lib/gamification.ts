@@ -63,15 +63,24 @@ export async function awardXP(
 
         // 3. Emit event for background queue processing (achievement checks, leveling, etc.)
         // Fire-and-forget — event emission is non-critical and must never block XP writes.
+        // CRITICAL FIX #8: Add proper error handling to async event emission
         if (userType === 'student' && !options?.skipEmit) {
-            import('./services/event-service').then(({ eventService }) =>
-                eventService.emit('student.xp_gained', {
-                    userId,
-                    schoolId: schoolId ?? undefined,
-                    amount: xp,
-                    timestamp: Date.now(),
-                }).catch(() => { /* non-critical */ })
-            );
+            import('./services/event-service')
+                .then(({ eventService }) =>
+                    eventService.emit('student.xp_gained', {
+                        userId,
+                        schoolId: schoolId ?? undefined,
+                        amount: xp,
+                        timestamp: Date.now(),
+                    }).catch(err => {
+                        console.warn('[XP Event] Emission failed:', (err as any).message);
+                        // Non-critical: XP award succeeded in DB, event delivery is best-effort
+                    })
+                )
+                .catch(err => {
+                    console.error('[XP Event] Dynamic import failed:', (err as any).message);
+                    // Non-critical: Event service unavailable, but XP was awarded
+                });
         }
     } catch (err) {
         console.error("Error awarding XP:", err);

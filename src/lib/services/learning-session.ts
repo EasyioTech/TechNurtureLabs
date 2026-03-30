@@ -382,22 +382,39 @@ export async function finalizeAndCompleteLesson(lessonId: string, token: string)
         // the student gets immediate feedback instead of waiting for the check.
         // The dirty-bit set by awardXP guarantees the check runs before the next
         // dashboard load — no achievement will be silently skipped.
+        // CRITICAL FIX #8: Add outer .catch() to handle dynamic import failures
         import('@/modules/student/actions/achievement-actions')
             .then(({ checkAndAwardAchievementsInternal }) =>
                 checkAndAwardAchievementsInternal(userId).catch(e =>
                     console.error('[Achievement] Background check failed after lesson completion:', e)
                 )
-            );
+            )
+            .catch(err => {
+                console.error('[Achievement] Failed to load achievement module:', (err as any).message);
+                // Non-fatal: Dirty-bit flag will trigger check on next dashboard load
+            });
     } catch (e) {
         console.error("Post-completion gamification failed:", e);
     }
 
-    // 7. Multi-Level Cache Invalidation
+    // 7. CRITICAL FIX #4: Multi-Level Cache Invalidation
+    // Use centralized cacheService to invalidate tags (more reliable than raw redis.del)
     try {
-        await redis.del(`cache:student:${userId}:course:${lesson.course_id}`);
-        await redis.del(`cache:student:${userId}:dashboard`);
+        const { cacheService } = await import('@/lib/cache');
+
+        // Invalidate all user-specific caches affected by lesson completion
+        await cacheService.invalidateTag(`user:${userId}:progress`);
+        await cacheService.invalidateTag(`user:${userId}:leaderboard`);
+        await cacheService.invalidateTag(`user:${userId}:achievements`);
+        await cacheService.invalidateTag(`user:${userId}:xp`);
+        await cacheService.invalidateTag(`user:${userId}:stats`);
+        await cacheService.invalidateTag(`user:${userId}:dashboard`);
+
+        // Invalidate course-level leaderboard
+        await cacheService.invalidateTag(`course:${lesson.course_id}:leaderboard`);
     } catch (err) {
-        console.error("Cache invalidation error:", err);
+        console.error("[Learning Complete] Cache invalidation error:", err);
+        // Non-fatal: Stale cache is better than failed completion
     }
 
     // 8. Invalidate secure session

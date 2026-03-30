@@ -18,6 +18,7 @@ import { eq, and, gt, sql, count, isNotNull, asc, isNull, inArray } from 'drizzl
 import { revalidatePath } from 'next/cache';
 import { getProgressCounter, isAchievementCheckNeeded, clearAchievementDirtyBit } from '@/lib/gamification';
 import { redis } from '@/lib/redis';
+import { cacheService } from '@/lib/cache';
 
 /**
  * Idempotent achievement seeding
@@ -351,6 +352,15 @@ export async function checkAndAwardAchievementsInternal(userId: string) {
     await clearAchievementDirtyBit(userId);
 
     if (newlyUnlocked.length > 0) {
+        // CRITICAL FIX #4: Invalidate achievement cache after unlocking new badges
+        try {
+            await cacheService.invalidateTag(`user:${userId}:achievements`);
+            await cacheService.invalidateTag(`user:${userId}:profile`);
+            await cacheService.invalidateTag(`user:${userId}:dashboard`);
+        } catch (err) {
+            console.warn('[Achievements] Cache invalidation error:', (err as any).message);
+        }
+
         try {
             const { revalidatePath } = await import('next/cache');
             revalidatePath('/student/achievements');
@@ -371,25 +381,36 @@ export async function checkAndAwardAchievementsInternal(userId: string) {
 async function getStudentRankMetrics(userId: string, schoolId: string) {
     if (!schoolId) return { rank: 1, rankPercentage: 100 };
 
-    const totalSchoolStudents = await db.select({ count: count() })
-        .from(students)
-        .where(eq(students.school_id, schoolId));
-
+    // CRITICAL FIX #7: Verify student belongs to requested school before calculating rank
     const currentUser = await db.query.students.findFirst({
-        where: eq(students.id, userId)
+        where: and(
+            eq(students.id, userId),
+            eq(students.school_id, schoolId)  // ← Verify school ownership
+        )
     });
 
     if (!currentUser) return { rank: 1, rankPercentage: 100 };
+
+    // CRITICAL FIX #7: Count only verified, active students in the same school
+    const totalSchoolStudents = await db.select({ count: count() })
+        .from(students)
+        .where(and(
+            eq(students.school_id, schoolId),
+            eq(students.is_verified, true),
+            isNull(students.deleted_at)
+        ));
 
     const usersWithMoreXp = await db.select({ count: count() })
         .from(students)
         .where(and(
             eq(students.school_id, schoolId),
-            gt(students.cumulative_xp, currentUser.cumulative_xp)
+            gt(students.cumulative_xp, currentUser.cumulative_xp),
+            eq(students.is_verified, true),
+            isNull(students.deleted_at)
         ));
 
-    const rank = usersWithMoreXp[0].count + 1;
-    const totalCount = totalSchoolStudents[0].count || 1;
+    const rank = (usersWithMoreXp[0]?.count || 0) + 1;
+    const totalCount = totalSchoolStudents[0]?.count || 1;
     const rankPercentage = Math.min(100, Math.max(1, Math.round((rank / totalCount) * 100)));
 
     return { rank, rankPercentage };

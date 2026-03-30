@@ -1,33 +1,49 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { superAdmins, schoolAdmins, students, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts, auditLogs, userSessions, invoices, paymentTransactions } from '@/db/schema';
+import { superAdmins, schoolAdmins, students, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts, quizzes, auditLogs, userSessions, invoices, paymentTransactions } from '@/db/schema';
 import { eq, asc, desc, inArray, and, sql, or, count, isNull, isNotNull, gt, avg, sum } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { verifySession } from '@/lib/auth';
+import { requireSchoolAdmin } from '@/lib/admin-guard';
 import { redirect } from 'next/navigation';
 import { redis } from '@/lib/redis';
+import { cacheService } from '@/lib/cache';
 import { z } from 'zod';
 
 /**
- * MIddleware Guard: Throws if the current session does not have access to targetSchoolId
+ * CENTRALIZED SECURITY: Use requireSchoolAdmin from /src/lib/admin-guard.ts instead.
+ *
+ * Migration note: All calls to the old verifySchoolAdminContext(schoolId) should be
+ * replaced with: const { admin } = await requireSchoolAdmin(schoolId);
+ *
+ * This centralizes security logic and ensures consistent multi-tenant verification.
+ */
+
+/**
+ * CRITICAL FIX #2: Wrapper for school admin verification with redirect fallback
+ * Uses centralized requireSchoolAdmin() from /src/lib/admin-guard.ts
+ *
+ * This maintains backward compatibility while using the secure centralized guard.
  */
 async function verifySchoolAdminContext(targetSchoolId: string) {
-    const session = await verifySession();
-    if (!session) {
-        redirect('/school-portal/login');
-    }
-    if (session.userType === 'super_admin') return;
-
-    // School Admins can only view/edit their own school
-    const currentUser = await db.query.schoolAdmins.findFirst({ where: eq(schoolAdmins.id, session.userId) });
-    if (!currentUser || currentUser.school_id !== targetSchoolId) {
-        throw new Error('Forbidden: Privilege Escalation Attempt Detected.');
+    try {
+        // Use the centralized security guard
+        await requireSchoolAdmin(targetSchoolId);
+    } catch (err) {
+        // Maintain existing error handling behavior
+        const session = await verifySession();
+        if (!session) {
+            redirect('/school-portal/login');
+        }
+        // Re-throw for other errors
+        throw err;
     }
 }
 
 /**
- * Middleware Guard: Throws if current session doesn't belong to the same school as targetUserId
+ * Helper: Verify student belongs to requesting admin's school
+ * CRITICAL FIX #2: Must verify admin first, then student
  */
 async function verifyStudentContext(targetUserId: string) {
     const session = await verifySession();
@@ -36,11 +52,14 @@ async function verifyStudentContext(targetUserId: string) {
     }
     if (session.userType === 'super_admin') return;
 
+    // Step 1: Get the requesting admin
     const currentUser = await db.query.schoolAdmins.findFirst({ where: eq(schoolAdmins.id, session.userId) });
     if (!currentUser) throw new Error('Unauthorized');
 
+    // Step 2: Get target student
     const targetStudent = await db.query.students.findFirst({ where: eq(students.id, targetUserId) });
 
+    // Step 3: Verify they belong to same school
     if (!targetStudent || currentUser.school_id !== targetStudent.school_id) {
         throw new Error('Forbidden: Privatized Learner Record.');
     }
@@ -138,20 +157,30 @@ export async function updateSchoolProfile(schoolId: string, data: any) {
             updated_at: new Date(),
         } as any).where(eq(schools.id, schoolId));
 
-        // Clear both Redis cache and Next.js Data Cache
+        // CRITICAL FIX #4: Clear both Redis cache and centralized tag-based cache invalidation
         await invalidateSchoolCache(schoolId);
-        
+
+        // Invalidate all school-related caches
+        try {
+            await cacheService.invalidateTag(`school:${schoolId}:profile`);
+            await cacheService.invalidateTag(`school:${schoolId}:settings`);
+            // Also invalidate all student caches for this school (they see school branding)
+            await cacheService.invalidateTag(`school:${schoolId}:dashboard`);
+        } catch (err) {
+            console.warn('[Update School Profile] Cache invalidation error:', (err as any).message);
+        }
+
         // Proactive revalidation to ensure students and admins see fresh data
         const { revalidatePath } = await import('next/cache');
         revalidatePath('/school-admin', 'layout');
         revalidatePath('/student', 'layout');
-        
+
         return { success: true };
     } catch (err: any) {
         console.error('[Update School Profile Error]:', err);
-        return { 
-            success: false, 
-            error: err.message || 'Operation failed' 
+        return {
+            success: false,
+            error: err.message || 'Operation failed'
         };
     }
 }
@@ -288,7 +317,7 @@ export async function verifyStudentAction(userId: string, isVerified: boolean) {
         redirect('/school-portal/login');
     }
     await verifyStudentContext(userId);
-    
+
     const student = await db.query.students.findFirst({ where: eq(students.id, userId) });
     if (!student) throw new Error('Student not found');
 
@@ -312,10 +341,10 @@ export async function verifyStudentAction(userId: string, isVerified: boolean) {
     } else {
         // Rejection - Soft delete the student
         await db.update(students)
-            .set({ 
-                deleted_at: new Date(), 
+            .set({
+                deleted_at: new Date(),
                 is_active: false,
-                updated_at: new Date() 
+                updated_at: new Date()
             })
             .where(eq(students.id, userId));
 
@@ -328,6 +357,17 @@ export async function verifyStudentAction(userId: string, isVerified: boolean) {
             entity_id: userId,
             metadata: { reason: 'verification_rejected' }
         } as any);
+    }
+
+    // CRITICAL FIX #4: Invalidate student-specific caches after verification change
+    try {
+        // Invalidate student's own caches
+        await cacheService.invalidateTag(`user:${userId}:profile`);
+        await cacheService.invalidateTag(`user:${userId}:dashboard`);
+        await cacheService.invalidateTag(`user:${userId}:progress`);
+        await cacheService.invalidateTag(`user:${userId}:leaderboard`);
+    } catch (err) {
+        console.warn('[Student Verification] Cache invalidation error:', (err as any).message);
     }
 
     invalidateSchoolCache(student.school_id);
@@ -387,26 +427,72 @@ export async function getSchoolStudentDetails(userId: string) {
     });
     if (!student) return null;
 
-    const [lessonsDoneResult] = await db
-        .select({ count: count() })
-        .from(lessonProgress)
-        .where(and(
-            eq(lessonProgress.user_id, userId),
-            isNotNull(lessonProgress.completed_at)
-        ));
-    const lessonsDone = Number(lessonsDoneResult?.count ?? 0);
+    // CRITICAL FIX #7: Multi-Tenant Isolation - Verify student's school
+    const schoolId = student.school_id;
+    if (!schoolId) return null;
 
-    const courseProgressData = await db.select().from(courseProgress).where(eq(courseProgress.user_id, userId));
+    // CRITICAL FIX #7: Get school's class IDs (courses are scoped via class mappings)
+    const schoolClassIds = await db.select({ class_id: schoolClassMapping.class_id })
+        .from(schoolClassMapping)
+        .where(eq(schoolClassMapping.school_id, schoolId))
+        .then(results => results.map(r => r.class_id));
+
+    // Get courses available to this school
+    let validCourseIds: string[] = [];
+    if (schoolClassIds.length > 0) {
+        const mappings = await db.select({ course_id: courseClassMapping.course_id })
+            .from(courseClassMapping)
+            .where(inArray(courseClassMapping.class_id, schoolClassIds));
+        validCourseIds = Array.from(new Set(mappings.map(m => m.course_id)));
+    }
+
+    // CRITICAL FIX #7: Only fetch lessons from courses available to this school
+    let lessonsDone = 0;
+    if (validCourseIds.length > 0) {
+        const [lessonsDoneResult] = await db
+            .select({ count: count() })
+            .from(lessonProgress)
+            .innerJoin(lessons, eq(lessonProgress.lesson_id, lessons.id))
+            .where(and(
+                eq(lessonProgress.user_id, userId),
+                inArray(lessons.course_id, validCourseIds),
+                isNotNull(lessonProgress.completed_at)
+            ));
+        lessonsDone = Number(lessonsDoneResult?.count ?? 0);
+    }
+
+    // CRITICAL FIX #7: Only fetch course progress for school-scoped courses
+    const courseProgressData = validCourseIds.length > 0
+        ? await db.select().from(courseProgress)
+            .where(and(
+                eq(courseProgress.user_id, userId),
+                inArray(courseProgress.course_id, validCourseIds)
+            ))
+        : [];
+
     const courseIds = courseProgressData.map(cp => cp.course_id);
 
     const enrolledCourses = courseIds.length > 0
-        ? await db.query.courses.findMany({ where: inArray(courses.id, courseIds) })
+        ? await db.query.courses.findMany({
+            where: inArray(courses.id, courseIds)
+        })
         : [];
 
-    const attempts = await db.query.quizAttempts.findMany({ 
-        where: eq(quizAttempts.user_id, userId),
-        orderBy: [desc(quizAttempts.completed_at)]
-    });
+    // CRITICAL FIX #7: Only fetch quiz attempts from school-scoped courses
+    let attempts: typeof quizAttempts.$inferSelect[] = [];
+    if (validCourseIds.length > 0) {
+        attempts = await db.query.quizAttempts.findMany({
+            where: and(
+                eq(quizAttempts.user_id, userId),
+                sql`${quizAttempts.quiz_id} IN (
+                    SELECT q.id FROM quizzes q
+                    INNER JOIN lessons l ON q.lesson_id = l.id
+                    WHERE l.course_id IN (${sql.raw(validCourseIds.map(id => `'${id}'`).join(','))})
+                )`
+            ),
+            orderBy: [desc(quizAttempts.completed_at)]
+        });
+    }
     
     const avgScore = attempts.length > 0
         ? Math.round(attempts.reduce((a, at) => {

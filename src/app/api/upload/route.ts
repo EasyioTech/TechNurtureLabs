@@ -15,7 +15,7 @@ const ALLOWED_MIME_TYPES = new Set([
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     'application/vnd.ms-powerpoint',
-    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/heic', 'image/heif',
     'audio/mpeg', 'audio/ogg', 'audio/wav',
 ]);
 
@@ -24,15 +24,18 @@ export async function POST(request: NextRequest) {
         // ─── STEP 1: AUTH FIRST — before touching the body ──────────────────────
         let uploadedBy: string;
         const session = await verifySession();
-        const allowedRoles = ['super_admin', 'school_admin', 'admin'];
+        const adminRoles = ['super_admin', 'school_admin', 'admin'];
+        const isStudent = session?.userType === 'student';
+        const isAdmin = session && adminRoles.includes(session.role as string || session.userType as string);
 
-        if (!session || !session.userId || (
-            !allowedRoles.includes(session.role as string) &&
-            !allowedRoles.includes(session.userType as string)
-        )) {
+        if (!session || (!isAdmin && !isStudent)) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
         uploadedBy = session.userId;
+
+        // Dynamic Cap based on role
+        const maxSizeBytes = isAdmin ? 2048 * 1024 * 1024 : 20 * 1024 * 1024; // 2GB vs 20MB
+        const limitDisplay = isAdmin ? '2 GB' : '20 MB';
 
         // ─── STEP 1b: RATE LIMIT — 20 uploads per 5 minutes per user ────────────
         const { allowed: uploadAllowed, reset: uploadReset } = await rateLimitService.checkUserLimit(
@@ -47,8 +50,8 @@ export async function POST(request: NextRequest) {
 
         // ─── STEP 2: CONTENT-LENGTH PRE-CHECK ───────────────────────────────────
         const contentLength = request.headers.get('content-length');
-        if (contentLength && parseInt(contentLength, 10) > MAX_FILE_SIZE_BYTES) {
-            return NextResponse.json({ error: 'File too large' }, { status: 413 });
+        if (contentLength && parseInt(contentLength, 10) > maxSizeBytes) {
+            return NextResponse.json({ error: `File too large (max ${limitDisplay})` }, { status: 413 });
         }
 
         // ─── STEP 3: PARSE FORM DATA ─────────────────────────────────────────────
@@ -60,8 +63,8 @@ export async function POST(request: NextRequest) {
         }
 
         // ─── STEP 4: FILE SIZE CHECK (actual) ───────────────────────────────────
-        if (file.size > MAX_FILE_SIZE_BYTES) {
-            return NextResponse.json({ error: 'File too large (max 2 GB)' }, { status: 413 });
+        if (file.size > maxSizeBytes) {
+            return NextResponse.json({ error: `File too large (max ${limitDisplay})` }, { status: 413 });
         }
 
         // ─── STEP 5: MIME TYPE ALLOWLIST ─────────────────────────────────────────

@@ -5,12 +5,27 @@ import { eq, and } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { redis } from '@/lib/redis';
 import bcrypt from 'bcryptjs';
+import { rateLimitService } from '@/lib/services/rate-limit';
 
 export async function POST(request: NextRequest) {
     try {
         const session = await verifySession();
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // CRITICAL FIX #10: Add rate limiting to password change (prevents password spray attacks)
+        const { allowed, reset } = await rateLimitService.check({
+            key: `password-change:${session.userId}`,
+            limit: 5,  // Max 5 password changes per user per hour
+            windowSeconds: 3600
+        });
+
+        if (!allowed) {
+            return NextResponse.json(
+                { error: 'Too many password change attempts. Please try again later.' },
+                { status: 429, headers: { 'Retry-After': reset.toString() } }
+            );
         }
 
         const { currentPassword, newPassword } = await request.json();

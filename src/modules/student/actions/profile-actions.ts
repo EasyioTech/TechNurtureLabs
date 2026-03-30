@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { students, schools, achievements, userAchievements, lessonProgress, quizAttempts, studentAcademicRecords, xpEvents } from '@/db/schema';
 import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { cacheService } from '@/lib/cache';
 
 export async function getStudentProfileData() {
     const session = await verifySession();
@@ -137,6 +138,15 @@ export async function updateStudentBio(bio: string) {
         redirect('/login');
     }
     await db.update(students).set({ bio }).where(eq(students.id, session.userId));
+
+    // CRITICAL FIX #4: Invalidate profile cache after update
+    try {
+        await cacheService.invalidateTag(`user:${session.userId}:profile`);
+        await cacheService.invalidateTag(`user:${session.userId}:dashboard`);
+    } catch (err) {
+        console.warn('[Profile] Cache invalidation error:', (err as any).message);
+    }
+
     revalidatePath('/student/profile');
 }
 
@@ -162,6 +172,15 @@ export async function updateStudentProfile(data: {
         await checkAndAwardAchievements();
     } catch (e) { }
 
+    // CRITICAL FIX #4: Invalidate profile cache after update
+    try {
+        await cacheService.invalidateTag(`user:${session.userId}:profile`);
+        await cacheService.invalidateTag(`user:${session.userId}:dashboard`);
+        await cacheService.invalidateTag(`user:${session.userId}:stats`);
+    } catch (err) {
+        console.warn('[Profile] Cache invalidation error:', (err as any).message);
+    }
+
     revalidatePath('/student/profile');
 }
 
@@ -171,6 +190,15 @@ export async function updateStudentAvatar(avatarStyle: string) {
         redirect('/login');
     }
     await db.update(students).set({ avatar_url: avatarStyle }).where(eq(students.id, session.userId));
+
+    // CRITICAL FIX #4: Invalidate profile cache after update
+    try {
+        await cacheService.invalidateTag(`user:${session.userId}:profile`);
+        await cacheService.invalidateTag(`user:${session.userId}:dashboard`);
+    } catch (err) {
+        console.warn('[Profile] Cache invalidation error:', (err as any).message);
+    }
+
     revalidatePath('/student/profile');
     revalidatePath('/student');
 }

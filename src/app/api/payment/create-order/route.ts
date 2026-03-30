@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { db } from '@/lib/db';
-import { paymentPlans, promoCodes } from '@/db/schema';
-import { eq, and, isNull, lte, gte, or, sql } from 'drizzle-orm';
+import { paymentPlans, promoCodes, schoolSubscriptions } from '@/db/schema';
+import { eq, and, isNull, lte, gte, or, sql, inArray } from 'drizzle-orm';
 import { rateLimitService } from '@/lib/services/rate-limit';
 import { serverEnv } from '@/lib/env.server';
 import { z } from 'zod';
@@ -51,13 +51,14 @@ export async function POST(req: NextRequest) {
         let discountAmount = 0;
         let promoData = null;
 
-        // Apply promo code if provided — uses an atomic UPDATE to check + increment
-        // in a single DB round-trip, preventing concurrent over-use.
+        // Apply promo code if provided — with strong atomicity via atomic UPDATE
         if (promo_code_id) {
             const now = new Date();
 
-            // Atomic: only increment if the code is valid right now.
-            // Returns the updated row if successful, empty array if constraints failed.
+            // CRITICAL FIX #9: Atomic check + increment prevents race conditions
+            // The WHERE clause is evaluated atomically with the UPDATE, ensuring
+            // that if current_uses reaches max_uses, subsequent requests will fail
+            // (WHERE condition will be false for future requests)
             const [updatedPromo] = await db
                 .update(promoCodes)
                 .set({ current_uses: sql`${promoCodes.current_uses} + 1` })

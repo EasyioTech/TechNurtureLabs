@@ -253,17 +253,32 @@ export async function getStudentDashboardCourses(bypassCache = false) {
         } catch (_) {}
     }
 
+    const currentSession = await db.query.academicSessions.findFirst({
+        where: and(
+            eq(academicSessions.school_id, sql`${db.select({ school_id: students.school_id }).from(students).where(eq(students.id, userId)).limit(1)}`),
+            eq(academicSessions.is_current, true)
+        )
+    });
+
     const currentRecord = await db.query.studentAcademicRecords.findFirst({
-        where: eq(studentAcademicRecords.user_id, userId),
+        where: and(
+            eq(studentAcademicRecords.user_id, userId),
+            currentSession ? eq(studentAcademicRecords.session_id, currentSession.id) : isNotNull(studentAcademicRecords.id)
+        ),
         orderBy: [desc(studentAcademicRecords.created_at)]
     });
     const classId = currentRecord?.class_id;
+    const sessionId = currentSession?.id;
 
     // ... (rest of logic)
 
     const [enrolled, global, classMapped] = await Promise.all([
         db.query.enrollments.findMany({ 
-            where: and(eq(enrollments.user_id, userId), eq(enrollments.is_active, true)), 
+            where: and(
+                eq(enrollments.user_id, userId), 
+                eq(enrollments.is_active, true),
+                sessionId ? eq(enrollments.session_id, sessionId) : isNotNull(enrollments.id)
+            ), 
             with: { course: true } 
         }),
         db.query.courses.findMany({ 
@@ -285,7 +300,13 @@ export async function getStudentDashboardCourses(bypassCache = false) {
 
     const [allLessons, userProgress] = await Promise.all([
         courseIds.length > 0 ? db.query.lessons.findMany({ where: inArray(lessons.course_id, courseIds) }) : Promise.resolve([]),
-        courseIds.length > 0 ? db.select().from(lessonProgress).where(and(eq(lessonProgress.user_id, userId), isNotNull(lessonProgress.completed_at))) : Promise.resolve([])
+        courseIds.length > 0 ? db.select().from(lessonProgress).where(
+            and(
+                eq(lessonProgress.user_id, userId), 
+                isNotNull(lessonProgress.completed_at),
+                sessionId ? eq(lessonProgress.session_id, sessionId) : isNotNull(lessonProgress.id)
+            )
+        ) : Promise.resolve([])
     ]);
 
     const progressSet = new Set(userProgress.map(p => p.lesson_id));

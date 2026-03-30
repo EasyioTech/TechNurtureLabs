@@ -37,7 +37,10 @@ export async function getLessonData(lessonId: string) {
                 }
             },
             progress: {
-                where: eq(lessonProgress.user_id, userId),
+                where: and(
+                    eq(lessonProgress.user_id, userId),
+                    eq(lessonProgress.session_id, sql`(SELECT id FROM academic_sessions WHERE school_id = (SELECT school_id FROM students WHERE id = ${userId}::uuid) AND is_current = true LIMIT 1)`)
+                ),
                 limit: 1
             }
         }
@@ -230,6 +233,7 @@ export async function saveVideoProgress(lessonId: string, seconds: number, perce
             WHERE e.user_id = ${session.userId}::uuid
               AND e.course_id = (SELECT course_id FROM lessons WHERE id = ${lessonId}::uuid)
               AND e.is_active = true
+              AND e.session_id = (SELECT id FROM academic_sessions WHERE school_id = e.school_id AND is_current = true LIMIT 1)
             LIMIT 1
             ON CONFLICT (user_id, lesson_id, enrollment_id)
             DO UPDATE SET
@@ -328,6 +332,7 @@ export async function getSubmissionStatus(lessonId: string) {
 
 /**
  * Server-side Quiz Grading & Recording (High Integrity)
+ * CRITICAL FIX #4: Cache invalidation after quiz submission
  */
 export async function submitQuizAttempt(quizId: string, responses: Record<string, string>) {
     const session = await verifySession();
@@ -362,7 +367,7 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
         const studentOptionId = responses[q.id];
         const correctOption = q.options.find(opt => opt.is_correct);
         const isCorrect = studentOptionId === correctOption?.id;
-        
+
         if (isCorrect) earnedScore += q.points;
 
         answerRecords.push({
@@ -414,6 +419,27 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
 
         return attempt.id;
     });
+
+    // CRITICAL FIX #4: Invalidate cache after quiz submission
+    try {
+        const { cacheService } = await import('@/lib/cache');
+
+        // Invalidate all user-specific caches affected by quiz submission
+        await cacheService.invalidateTag(`user:${userId}:progress`);
+        await cacheService.invalidateTag(`user:${userId}:leaderboard`);
+        await cacheService.invalidateTag(`user:${userId}:stats`);
+        await cacheService.invalidateTag(`user:${userId}:dashboard`);
+
+        // If passed, also invalidate achievement cache (quiz pass might unlock badges)
+        if (passed) {
+            await cacheService.invalidateTag(`user:${userId}:achievements`);
+            // Invalidate course leaderboard since XP was earned
+            await cacheService.invalidateTag(`course:${quiz.course_id}:leaderboard`);
+        }
+    } catch (err) {
+        console.warn('[Quiz Submit] Cache invalidation error:', (err as any).message);
+        // Non-fatal: Cache invalidation failure doesn't block quiz submission
+    }
 
     if (passed && quiz.lesson_id) {
         await completeLessonAndReward(quiz.lesson_id, percentage, percentage === 100);

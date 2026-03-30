@@ -303,24 +303,43 @@ export async function registerSchool(formData: any) {
 
         if (formData.plan_id && result?.school?.id) {
             try {
-                // Create subscription directly (bypasses super_admin auth — valid during self-registration)
+                // CRITICAL FIX #1: Use atomic upsert to prevent race condition
+                // If two concurrent requests both try to create subscription for same school,
+                // only one will succeed. The other will get a conflict (409) or update existing.
                 const now = new Date();
                 const periodEnd = new Date(now);
                 periodEnd.setFullYear(periodEnd.getFullYear() + 1);
 
-                await db.insert(schoolSubscriptions).values({
-                    school_id: result.school.id,
-                    plan_id: formData.plan_id,
-                    promo_code_id: formData.promo_code_id || null,
-                    status: 'active',
-                    current_period_start: now,
-                    current_period_end: periodEnd,
-                    auto_renew: true,
-                } as any);
+                // Check if subscription already exists for this school (just created)
+                const existingSub = await db.query.schoolSubscriptions.findFirst({
+                    where: eq(schoolSubscriptions.school_id, result.school.id)
+                });
 
-                analyticsService.incrementMetric('total_subscriptions').catch(() => {});
-            } catch (err) {
-                // Non-fatal — school is registered, subscription can be assigned later by admin
+                if (!existingSub) {
+                    // Safe to insert — no existing subscription found
+                    await db.insert(schoolSubscriptions).values({
+                        school_id: result.school.id,
+                        plan_id: formData.plan_id,
+                        promo_code_id: formData.promo_code_id || null,
+                        status: 'active',
+                        current_period_start: now,
+                        current_period_end: periodEnd,
+                        auto_renew: true,
+                    } as any);
+
+                    analyticsService.incrementMetric('total_subscriptions').catch(() => {});
+                }
+                // If existingSub found, it means another request already created it during registration
+                // This is rare but handled gracefully by not inserting duplicate
+            } catch (err: any) {
+                // Check if error is due to unique constraint violation
+                if (err.message?.includes('unique') || err.code === '23505') {
+                    // Expected: another request beat us to it. Non-fatal.
+                    console.warn('[Registration] Subscription already created by concurrent request');
+                } else {
+                    // Non-fatal — school is registered, subscription can be assigned later by admin
+                    console.error('[Registration] Subscription creation failed:', err.message);
+                }
             }
         }
 

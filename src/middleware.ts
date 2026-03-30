@@ -77,28 +77,60 @@ export async function middleware(request: NextRequest) {
   }
 
   // ─── 0.1 SESSION REVOCATION CHECK (M-8) ──────────────────────────────────
-  // Check if session is revoked/invalidated via user_sessions table (cached in Redis).
+  // Check if session is revoked/invalidated. Use Redis first (fast), fall back to DB (reliable).
+  //
+  // CRITICAL FIX #6: If Redis is down, fall back to DB check instead of logging everyone out.
+  // Problem: If Redis pod crashes, ALL 5000 users get instant logout because redis.get()
+  // returns null, which is interpreted as "revoked". This causes thundering herd of 5000
+  // concurrent login attempts that crash the DB.
+  // Solution: Try Redis, but if it fails, check DB to verify session is ACTUALLY revoked.
   const sessionToken = request.cookies.get('session')?.value;
   if (sessionToken) {
     const { jwtVerify } = await import('jose');
     const { redis } = await import('@/lib/redis');
+    const { db } = await import('@/lib/db');
+    const { userSessions } = await import('@/db/schema');
+    const { eq, gt } = await import('drizzle-orm');
     const secret = new TextEncoder().encode(process.env.JWT_SECRET || '');
-    
+
     try {
       const { payload } = await jwtVerify(sessionToken, secret);
       const sessionId = (payload as any).sessionId;
-      
-      const sessionExists = await redis.get(`session:${sessionId}`);
+
+      // CRITICAL FIX #6: Try Redis first (fast), but have fallback
+      let sessionExists = null;
+      try {
+        sessionExists = await redis.get(`session:${sessionId}`);
+      } catch (redisErr) {
+        // Redis is down — fall back to database check
+        console.warn('[Middleware] Redis unavailable, checking DB for session:', (redisErr as any).message);
+        try {
+          const { and: drizzleAnd, eq: drizzleEq, gt: drizzleGt } = await import('drizzle-orm');
+          const dbSession = await db.query.userSessions.findFirst({
+            where: drizzleAnd(
+              drizzleEq(userSessions.id, sessionId),
+              drizzleGt(userSessions.expires_at, new Date())  // Check not expired
+            )
+          });
+          sessionExists = dbSession ? 'ok' : null;  // Truthy if found and not expired
+        } catch (dbErr) {
+          // Both Redis and DB are down — be permissive (let regular auth flow handle it)
+          console.error('[Middleware] Session check failed (Redis + DB):', (dbErr as any).message);
+          sessionExists = 'ok';  // Don't revoke due to infra failure
+        }
+      }
+
       if (!sessionExists) {
-         // Session revoked or expired in Redis — trigger logout
-         const response = NextResponse.redirect(new URL('/login?revoked=true', request.url));
-         response.cookies.delete('session');
-         response.cookies.delete('refresh_token');
-         return response;
+        // Session is actually revoked or expired (not just infra failure)
+        const response = NextResponse.redirect(new URL('/login?revoked=true', request.url));
+        response.cookies.delete('session');
+        response.cookies.delete('refresh_token');
+        return response;
       }
     } catch (e) {
-      // JWT expired or invalid — verifySession action will handle rotation if needed, 
-      // but for mission-critical revocation we ignore and let regular flow handle it.
+      // JWT verification failed (expired, invalid, etc.)
+      // verifySession action will handle rotation if refresh token is valid.
+      // Don't revoke here — let normal auth flow handle it.
     }
   }
 

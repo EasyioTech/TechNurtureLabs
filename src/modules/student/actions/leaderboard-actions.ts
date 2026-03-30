@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { students, studentAcademicRecords, quizAttempts, lessonProgress } from '@/db/schema';
+import { students, studentAcademicRecords, quizAttempts, lessonProgress, quizzes, lessons, courses, schoolClassMapping, courseClassMapping } from '@/db/schema';
 import { eq, and, desc, inArray, sql, isNotNull, isNull, count, sum } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -93,25 +93,58 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
         return { scope, data: [], title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard' };
     }
 
+    // CRITICAL FIX #7: Get school's valid course IDs via class mappings
+    // (courses are scoped to schools via schoolClassMapping → courseClassMapping)
+    let scopedCourseIds: string[] = [];
+    if (scope === 'school' && schoolId) {
+        const schoolClassIds = await db.select({ class_id: schoolClassMapping.class_id })
+            .from(schoolClassMapping)
+            .where(eq(schoolClassMapping.school_id, schoolId))
+            .then(results => results.map(r => r.class_id));
+
+        if (schoolClassIds.length > 0) {
+            const mappings = await db.select({ course_id: courseClassMapping.course_id })
+                .from(courseClassMapping)
+                .where(inArray(courseClassMapping.class_id, schoolClassIds));
+            scopedCourseIds = Array.from(new Set(mappings.map(m => m.course_id)));
+        }
+    }
+
     // Fetch accuracy and progress stats in parallel using Drizzle query builder
-    // (avoids raw ANY($1) parameterization issues with JS arrays)
+    // CRITICAL FIX #7: Verify quizzes and lessons belong to school-scoped courses
     const [accuracyStats, progressStats] = await Promise.all([
+        // Accuracy: avg quiz score, but ONLY for quizzes in this school's courses
+        scopedCourseIds.length > 0 ?
         db.select({
             user_id: quizAttempts.user_id,
             avg_accuracy: sql<number>`AVG(${quizAttempts.score}::float / NULLIF(${quizAttempts.max_score}::float, 0) * 100)`
         })
         .from(quizAttempts)
-        .where(inArray(quizAttempts.user_id, leaderIds))
-        .groupBy(quizAttempts.user_id),
+        .innerJoin(quizzes, eq(quizAttempts.quiz_id, quizzes.id))
+        .innerJoin(lessons, eq(quizzes.lesson_id, lessons.id))
+        .where(and(
+            inArray(quizAttempts.user_id, leaderIds),
+            inArray(lessons.course_id, scopedCourseIds)
+        ))
+        .groupBy(quizAttempts.user_id)
+        : Promise.resolve([]),
 
+        // Progress: lessons completed, but ONLY for lessons in this school's courses
+        scopedCourseIds.length > 0 ?
         db.select({
             user_id: lessonProgress.user_id,
             lessons_completed: count(),
             total_time: sum(lessonProgress.time_spent_secs)
         })
         .from(lessonProgress)
-        .where(and(inArray(lessonProgress.user_id, leaderIds), isNotNull(lessonProgress.completed_at)))
+        .innerJoin(lessons, eq(lessonProgress.lesson_id, lessons.id))
+        .where(and(
+            inArray(lessonProgress.user_id, leaderIds),
+            inArray(lessons.course_id, scopedCourseIds),
+            isNotNull(lessonProgress.completed_at)
+        ))
         .groupBy(lessonProgress.user_id)
+        : Promise.resolve([])
     ]);
 
     const accuracyMap = new Map<string, number>(

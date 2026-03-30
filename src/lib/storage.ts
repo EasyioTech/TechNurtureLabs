@@ -253,6 +253,23 @@ function isValidSignature(buffer: Buffer, mimeType: string, originalFilename: st
         // ICO signature: 00 00 01 00 (icon) or 00 00 02 00 (cursor)
         return buffer[0] === 0x00 && buffer[1] === 0x00 && (buffer[2] === 0x01 || buffer[2] === 0x02) && buffer[3] === 0x00;
     }
+    if (mimeType === 'image/heic' || mimeType === 'image/heif') {
+        // HEIC/HEIF signature: [offset 4] 66 74 79 70 68 65 69 63 (ftypheic)
+        const brand = buffer.subarray(4, 12).toString('ascii');
+        return brand.startsWith('ftypheic') || brand.startsWith('ftypheif') || brand.startsWith('ftypmif1');
+    }
+    if (mimeType === 'audio/mpeg') {
+        // MP3 can start with ID3 (49 44 33) or Frame Sync (FF FB / FF F3)
+        return (buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33) || (buffer[0] === 0xFF && (buffer[1] & 0xE0) === 0xE0);
+    }
+    if (mimeType === 'audio/wav' || mimeType === 'audio/x-wav') {
+        const riff = buffer.subarray(0, 4).toString('ascii');
+        const wave = buffer.subarray(8, 12).toString('ascii');
+        return riff === 'RIFF' && wave === 'WAVE';
+    }
+    if (mimeType === 'audio/ogg' || mimeType === 'video/ogg' || mimeType === 'application/ogg') {
+        return buffer[0] === 0x4F && buffer[1] === 0x67 && buffer[2] === 0x67 && buffer[3] === 0x53; // OggS
+    }
 
     // Explicit rejection for unmapped or potentially malicious types
     return false;

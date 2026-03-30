@@ -15,12 +15,8 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                 style={{ backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '40px 40px' }}
             />
 
-            {/* Ambient glow */}
-            <motion.div
-                animate={{ opacity: [0.4, 0.65, 0.4] }}
-                transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-                className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-blue-100/60 rounded-full blur-[130px] pointer-events-none -z-10"
-            />
+            {/* Ambient glow - CSS Optimized for Mobile CPU */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-blue-100/60 rounded-full blur-[130px] pointer-events-none -z-10 animate-pulse-subtle" />
 
             <div className="max-w-7xl mx-auto px-6 relative z-10">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
