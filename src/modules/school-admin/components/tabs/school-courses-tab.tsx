@@ -1,12 +1,8 @@
-'use client';
-
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { SchoolCourseMetric } from '../../types';
 import { useSchoolTheme, ts } from '../../theme-context';
-import { BookOpen, Users, Zap, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { BookOpen, BarChart3, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { handleThumbnailError } from '@/lib/media-client';
 
@@ -34,6 +30,15 @@ export function SchoolCoursesTab({ courseMetrics, schoolClasses = [] }: CoursesT
             c.mapped_classes?.includes('All Classes')
         );
 
+    // Calculate course counts per class for badges
+    const courseCountPerClass = classTabs.reduce((acc, cls) => {
+        acc[cls] = courseMetrics.filter(c =>
+            c.mapped_classes?.includes(cls) ||
+            c.mapped_classes?.includes('All Classes')
+        ).length;
+        return acc;
+    }, {} as Record<string, number>);
+
     if (courseMetrics.length === 0) {
         return (
             <div className={`rounded-[32px] border py-24 text-center ${ts.card(isDark)}`}>
@@ -48,48 +53,64 @@ export function SchoolCoursesTab({ courseMetrics, schoolClasses = [] }: CoursesT
 
     return (
         <div className="space-y-8">
-            <div className="flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide">
-                <Button
-                    variant="ghost"
+            {/* ─── Page Header Banner ─── */}
+            <div className={`rounded-[28px] border p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${ts.card(isDark)}`}>
+                <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center text-white flex-shrink-0 shadow-lg shadow-indigo-600/20">
+                        <BookOpen size={28} strokeWidth={2} />
+                    </div>
+                    <div className="flex-1">
+                        <h2 className={`text-2xl sm:text-3xl font-black tracking-tight leading-tight ${ts.textPrimary(isDark)}`}>
+                            Courses
+                        </h2>
+                        <p className={`text-[13px] font-semibold mt-2 ${ts.textSecondary(isDark)}`}>
+                            Manage and track all courses assigned to your school
+                        </p>
+                    </div>
+                </div>
+                <div className={`rounded-full px-4 py-2.5 flex items-center gap-2 flex-shrink-0 ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                    <BarChart3 size={16} className="text-indigo-500" />
+                    <span className={`text-[12px] font-black tracking-widest uppercase ${ts.textPrimary(isDark)}`}>
+                        {courseMetrics.length} Total
+                    </span>
+                </div>
+            </div>
+
+            {/* ─── Class Filter Chips ─── */}
+            <div className={`flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0`}>
+                <FilterChip
+                    label="All Courses"
+                    count={courseMetrics.length}
+                    isActive={selectedTab === 'all'}
                     onClick={() => setSelectedTab('all')}
-                    className={`rounded-2xl h-12 px-8 text-[12px] font-black tracking-widest uppercase transition-all whitespace-nowrap border-2 ${selectedTab === 'all'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20'
-                        : `border-transparent ${isDark ? 'text-slate-400 hover:text-indigo-400 hover:bg-white/5' : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-50'}`
-                        }`}
-                >
-                    All Courses
-                </Button>
+                    isDark={isDark}
+                />
 
                 {classTabs.length > 0 && (
-                    <div className={`w-px h-8 mx-2 ${ts.divider(isDark)}`} />
+                    <div className={`w-px h-6 flex-shrink-0 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
                 )}
 
                 {classTabs.map(cls => (
-                    <Button
+                    <FilterChip
                         key={cls}
-                        variant="ghost"
+                        label={cls}
+                        count={courseCountPerClass[cls]}
+                        isActive={selectedTab === cls}
                         onClick={() => setSelectedTab(cls)}
-                        className={`rounded-2xl h-12 px-7 text-[12px] font-black tracking-widest uppercase transition-all whitespace-nowrap border-2 ${selectedTab === cls
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20'
-                            : `border-transparent ${isDark ? 'text-slate-400 hover:text-indigo-400 hover:bg-white/5' : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-50'}`
-                            }`}
-                    >
-                        {cls}
-                    </Button>
+                        isDark={isDark}
+                    />
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                {displayedCourses.map((course, i) => (
-                    <motion.div
+            {/* ─── Courses Grid ─── */}
+            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5 md:gap-6 xl:gap-8">
+                {displayedCourses.map((course) => (
+                    <div
                         key={course.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className={`group relative rounded-[40px] overflow-hidden border transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/10 flex flex-col ${ts.card(isDark)}`}>
+                        className={`group relative rounded-[28px] overflow-hidden border transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/10 flex flex-col ${ts.card(isDark)}`}>
 
                         {/* Course Image */}
-                        <div className="aspect-[16/10] relative overflow-hidden flex-shrink-0">
+                        <div className="aspect-[16/9] relative overflow-hidden flex-shrink-0 sm:aspect-[16/10]">
                             <div className="absolute inset-0 bg-gradient-to-t from-[#0c0f1a]/80 to-transparent z-10 opacity-60" />
                             {course.thumbnail_url ? (
                                 <img src={course.thumbnail_url} alt={course.title} decoding="async" onError={handleThumbnailError} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
@@ -98,75 +119,115 @@ export function SchoolCoursesTab({ courseMetrics, schoolClasses = [] }: CoursesT
                                     <BookOpen size={48} className="text-indigo-500/30" strokeWidth={1.5} />
                                 </div>
                             )}
-                            <Badge className={`absolute top-5 right-5 z-20 px-3.5 py-1 rounded-lg border-0 text-[10px] font-black tracking-widest ${course.is_published ? ts.live(isDark) : ts.draft(isDark)
+                            <Badge className={`absolute top-4 right-4 z-20 px-3 py-1 rounded-lg border-0 text-[10px] font-black tracking-widest ${course.is_published ? ts.live(isDark) : ts.draft(isDark)
                                 }`}>
                                 {course.is_published ? '● PUBLISHED' : 'DRAFT'}
                             </Badge>
                         </div>
 
                         {/* Content */}
-                        <div className="p-8 flex flex-col flex-1">
+                        <div className="p-6 flex flex-col flex-1">
+                            {/* Class Badges */}
                             {course.mapped_classes && course.mapped_classes.length > 0 && (
-                                <div className="flex flex-wrap items-center gap-2 mb-5">
-                                    {course.mapped_classes.slice(0, 3).map(cls => (
+                                <div className="flex flex-wrap items-center gap-2 mb-4">
+                                    {course.mapped_classes.slice(0, 2).map(cls => (
                                         <Badge key={cls} className={`px-2.5 py-0.5 rounded-full border-0 text-[9px] font-black tracking-widest uppercase ${ts.accentSoft(isDark)}`}>
                                             {cls}
                                         </Badge>
                                     ))}
-                                    {course.mapped_classes.length > 3 && (
+                                    {course.mapped_classes.length > 2 && (
                                         <Badge className={`px-2.5 py-0.5 rounded-full border-0 text-[9px] font-black tracking-widest uppercase ${ts.accentSoft(isDark)}`}>
-                                            +{course.mapped_classes.length - 3} MORE
+                                            +{course.mapped_classes.length - 2}
                                         </Badge>
                                     )}
                                 </div>
                             )}
 
-                            <h3 className={`text-[19px] font-black tracking-tight mb-3 group-hover:text-indigo-500 transition-colors line-clamp-2 leading-tight ${ts.textPrimary(isDark)}`}>
+                            {/* Title */}
+                            <h3 className={`text-[18px] sm:text-[19px] font-black tracking-tight mb-2 group-hover:text-indigo-500 transition-colors line-clamp-2 leading-tight ${ts.textPrimary(isDark)}`}>
                                 {course.title}
                             </h3>
 
+                            {/* Description */}
                             {course.description && (
-                                <p className={`text-[13px] font-medium leading-relaxed mb-8 line-clamp-3 ${ts.textMuted(isDark)}`}>
+                                <p className={`text-[13px] font-medium leading-relaxed mb-6 line-clamp-2 ${ts.textMuted(isDark)}`}>
                                     {course.description}
                                 </p>
                             )}
 
-                            <div className={`p-6 rounded-[24px] mt-auto grid grid-cols-3 gap-4 ${isDark ? 'bg-white/5 border border-white/5' : 'bg-slate-50 border border-slate-200/50'}`}>
-                                <div className="space-y-1">
+                            {/* Stats Grid */}
+                            <div className={`p-5 rounded-[20px] mt-auto grid grid-cols-3 gap-3 ${isDark ? 'bg-white/5 border border-white/5' : 'bg-slate-50 border border-slate-200/50'}`}>
+                                <div className="space-y-1.5">
                                     <p className={`text-[10px] font-black uppercase tracking-widest opacity-50 ${ts.textPrimary(isDark)}`}>Users</p>
-                                    <p className={`text-[15px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.enrolled_count.toLocaleString()}</p>
+                                    <p className={`text-[15px] sm:text-[16px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.enrolled_count.toLocaleString()}</p>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-50 ${ts.textPrimary(isDark)}`}>Status</p>
-                                    <p className={`text-[15px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.lesson_count} Mod</p>
+                                <div className="space-y-1.5">
+                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-50 ${ts.textPrimary(isDark)}`}>Lessons</p>
+                                    <p className={`text-[15px] sm:text-[16px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.lesson_count}</p>
                                 </div>
-                                <div className="space-y-2">
-                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-50 ${ts.textPrimary(isDark)}`}>Comp.</p>
-                                    <div className="flex items-center gap-2">
-                                        <p className={`text-[15px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.completion_rate}%</p>
-                                    </div>
-                                    <div className={`h-1 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-200'}`}>
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${course.completion_rate}%` }}
-                                            transition={{ delay: 0.5 + i * 0.1, duration: 1 }}
-                                            className="h-full bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]"
-                                        />
+                                <div className="space-y-1.5">
+                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-50 ${ts.textPrimary(isDark)}`}>Done</p>
+                                    <div className="space-y-1">
+                                        <p className={`text-[15px] sm:text-[16px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.completion_rate}%</p>
+                                        <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-200'}`}>
+                                            <div
+                                                className="h-full bg-indigo-500 rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(99,102,241,0.5)]"
+                                                style={{ width: `${course.completion_rate}%` }}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
+                            {/* View Insights Button */}
                             <button
                                 onClick={() => router.push(`/school-admin/course/${course.id}`)}
-                                className={`w-full mt-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-[13px] font-black transition-all border ${isDark ? 'bg-white/5 border-white/5 text-indigo-400 hover:bg-indigo-500 hover:text-white' : 'bg-indigo-50 border-indigo-100 text-indigo-600 hover:bg-indigo-600 hover:text-white'}`}
+                                className={`w-full mt-6 py-3 rounded-[20px] flex items-center justify-center gap-2 text-[13px] font-black transition-all border ${isDark ? 'bg-white/5 border-white/5 text-indigo-400 hover:bg-indigo-500 hover:text-white' : 'bg-indigo-50 border-indigo-100 text-indigo-600 hover:bg-indigo-600 hover:text-white'}`}
                             >
                                 VIEW INSIGHTS
-                                <ChevronRight size={16} strokeWidth={3} />
+                                <ChevronRight size={16} strokeWidth={2.5} />
                             </button>
                         </div>
-                    </motion.div>
+                    </div>
                 ))}
             </div>
         </div>
+    );
+}
+
+/**
+ * FilterChip component — a reusable pill/chip for class filtering
+ */
+function FilterChip({
+    label,
+    count,
+    isActive,
+    onClick,
+    isDark,
+}: {
+    label: string;
+    count: number;
+    isActive: boolean;
+    onClick: () => void;
+    isDark: boolean;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap transition-all border text-[11px] sm:text-[12px] font-black tracking-widest uppercase flex-shrink-0 ${
+                isActive
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
+                    : `border-transparent ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'} ${ts.card(isDark)}`
+            }`}
+        >
+            {label}
+            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ml-1 ${
+                isActive
+                    ? 'bg-white/20 text-white'
+                    : `${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`
+            }`}>
+                {count}
+            </span>
+        </button>
     );
 }

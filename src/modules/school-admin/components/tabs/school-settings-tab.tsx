@@ -1,7 +1,4 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useSchoolTheme, ts } from '../../theme-context';
 import { SchoolStats } from '../../types';
 import { Settings, CreditCard, Shield, HelpCircle, CheckCircle2, GraduationCap, ChevronRight, User } from 'lucide-react';
@@ -200,13 +197,13 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
     ];
 
     return (
-        <div className="max-w-4xl mx-auto pb-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-0 pb-20">
             <div className="mb-12">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
                         <Settings size={24} />
                     </div>
-                    <h2 className={`text-3xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>Institution Settings</h2>
+                    <h2 className={`text-2xl sm:text-3xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>Institution Settings</h2>
                 </div>
                 <p className={`text-[13px] font-bold max-w-xl ${ts.textSecondary(isDark)}`}>
                     Manage your institution's digital footprint, security policies, and administrative lifecycle from one centralized hub.
@@ -214,19 +211,14 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
             </div>
 
             <div className="space-y-12">
-                {sections.map((section, idx) => (
-                    <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, y: 15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.05, duration: 0.4 }}
-                    >
+                {sections.map((section) => (
+                    <div key={section.title}>
                         <div className="flex items-center gap-3 mb-6">
                             <h3 className={`text-[10px] font-black uppercase tracking-[0.25em] ${ts.textMuted(isDark)}`}>{section.title}</h3>
                             <div className={`flex-1 h-px ${ts.divider(isDark)}`} />
                         </div>
                         {section.content}
-                    </motion.div>
+                    </div>
                 ))}
             </div>
 
@@ -276,24 +268,20 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
             />
 
             {isMounted && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="mt-20 flex flex-col sm:flex-row items-center justify-between gap-6 p-8 rounded-[32px] border dashed border-slate-200 dark:border-white/10"
-                >
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                        <CheckCircle2 size={20} />
+                <div className="mt-20 flex flex-col sm:flex-row sm:items-center justify-between gap-6 p-6 sm:p-8 rounded-[32px] border dashed border-slate-200 dark:border-white/10">
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 flex-shrink-0">
+                            <CheckCircle2 size={20} />
+                        </div>
+                        <div className="min-w-0">
+                            <p className={`text-sm font-black ${ts.textPrimary(isDark)}`}>System Status: Operational</p>
+                            <p className={`text-[12px] font-bold ${ts.textMuted(isDark)}`}>All school management services are running smoothly.</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className={`text-sm font-black ${ts.textPrimary(isDark)}`}>System Status: Operational</p>
-                        <p className={`text-[12px] font-bold ${ts.textMuted(isDark)}`}>All school management services are running smoothly.</p>
-                    </div>
+                    <Button variant="ghost" className="text-slate-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-2xl px-6 font-black h-11 flex items-center justify-center gap-2 w-full sm:w-auto">
+                        <HelpCircle size={18} /> Support Center
+                    </Button>
                 </div>
-                <Button variant="ghost" className="text-slate-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-2xl px-6 font-black h-11 flex items-center gap-2">
-                    <HelpCircle size={18} /> Support Center
-                </Button>
-            </motion.div>
             )}
         </div>
     );

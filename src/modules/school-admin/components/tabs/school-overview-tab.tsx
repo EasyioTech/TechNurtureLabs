@@ -1,7 +1,4 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { SchoolStats, SchoolLeaderboardEntry, SchoolCourseMetric } from '../../types';
 import { useSchoolTheme, ts } from '../../theme-context';
@@ -51,34 +48,31 @@ function StatCard({ config, value, sub, index }: {
     const Icon = config.icon;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05, duration: 0.4 }}
-            className={`relative rounded-3xl p-6 border transition-all duration-300 group hover:-translate-y-1 ${ts.card(isDark)}`}>
-
-            <div className="flex items-start justify-between mb-6">
-                <div className={`w-12 h-12 rounded-[18px] flex items-center justify-center transition-transform group-hover:scale-110 ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
-                    }`}>
+        <div
+            className={`relative rounded-2xl sm:rounded-3xl p-5 sm:p-6 border transition-all duration-300 group hover:-translate-y-1 ${ts.card(isDark)} animate-in fade-in slide-in-from-bottom-2`}
+            style={{ animationDelay: `${index * 50}ms` }}
+        >
+            <div className="flex items-start justify-between mb-4 sm:mb-6">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-[18px] flex items-center justify-center transition-transform group-hover:scale-110 ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}>
                     <Icon size={20} strokeWidth={2.5} />
                 </div>
                 {sub && (
-                    <Badge className={`text-[9px] font-black border-0 tracking-wider ${ts.accentSoft(isDark)}`}>
+                    <Badge className={`text-[8px] sm:text-[9px] font-black border-0 tracking-wider ${ts.accentSoft(isDark)}`}>
                         {sub.split(' ')[0]} NEW
                     </Badge>
                 )}
             </div>
 
-            <p className={`text-[11px] font-black uppercase tracking-widest leading-none mb-2 ${ts.textMuted(isDark)}`}>
+            <p className={`text-[10px] sm:text-[11px] font-black uppercase tracking-widest leading-none mb-1 sm:mb-2 ${ts.textMuted(isDark)}`}>
                 {config.label}
             </p>
             <div className="flex items-baseline gap-2">
-                <p className={`text-3xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>
+                <p className={`text-2xl sm:text-3xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>
                     {value}
                 </p>
-                {config.key === 'xp' && <span className={`text-[10px] font-black opacity-40 ${ts.textPrimary(isDark)}`}>XP</span>}
+                {config.key === 'xp' && <span className={`text-[9px] sm:text-[10px] font-black opacity-40 ${ts.textPrimary(isDark)}`}>XP</span>}
             </div>
-        </motion.div>
+        </div>
     );
 }
 
@@ -176,40 +170,40 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
 
             {/* ── Subscription Banner ── */}
             {stats.planName && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                    className={`rounded-[32px] p-6 flex items-center gap-6 border transition-all ${isDark
-                        ? 'bg-gradient-to-br from-[#161b26] to-[#0f1115] border-white/[0.03] shadow-xl shadow-black/10'
+                <div 
+                    className={`rounded-2xl sm:rounded-[32px] p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 border transition-all ${isDark
+                        ? 'bg-gradient-to-br from-[#161b26] to-[#0f1115] border-white/[0.03]'
                         : 'bg-white border-slate-200/60 shadow-sm'
+                        } animate-in fade-in duration-500`}>
+                    <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'
                         }`}>
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
-                        }`}>
-                        <CreditCard size={24} strokeWidth={2} />
+                        <CreditCard size={24} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-1">
-                            <span className={`text-[16px] font-black tracking-tight ${ts.textPrimary(isDark)}`}>{stats.planName} Plan</span>
-                            <Badge className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-md border-0 ${ts.live(isDark)}`}>
+                    <div className="flex-1 min-w-0 text-center sm:text-left">
+                        <div className="flex items-center justify-center sm:justify-start gap-3 mb-1">
+                            <span className={`text-[15px] sm:text-[16px] font-black tracking-tight ${ts.textPrimary(isDark)}`}>{stats.planName} Plan</span>
+                            <Badge className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border-0 ${ts.live(isDark)}`}>
                                 {stats.subscriptionStatus === 'active' ? '● ONLINE' : stats.subscriptionStatus?.toUpperCase()}
                             </Badge>
                         </div>
-                        <p className={`text-[12px] font-bold tracking-tight ${ts.textSecondary(isDark)} opacity-60`}>
+                        <p className={`text-[11px] sm:text-[12px] font-bold tracking-tight ${ts.textSecondary(isDark)} opacity-60`}>
                             Next billing cycle on <span className="text-indigo-500 font-black">{stats.planExpiry ? new Date(stats.planExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}</span>
                         </p>
                     </div>
                     <button 
                         onClick={() => router.push('/school-admin/settings?tab=subscription')}
-                        className={`hidden sm:flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-black transition-all ${isDark ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/10' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-600/10'}`}
+                        className={`w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-[11px] sm:text-[12px] font-black transition-all ${isDark ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
                     >
                         MANAGE PLAN
                     </button>
-                </motion.div>
+                </div>
             )}
 
             {/* ── Charts Row ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
                 {/* Weekly Activity */}
-                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
-                    className={`p-8 ${ts.card(isDark)} rounded-[32px]`}>
+                <div 
+                    className={`p-5 sm:p-8 ${ts.card(isDark)} rounded-2xl sm:rounded-[32px] animate-in fade-in duration-500`}>
                     <SectionHeader title="Learning Activity" sub="Student login and interaction frequency" icon={Activity} />
                     <div className="h-[260px] w-full">
                         {isMounted && (
@@ -238,11 +232,11 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                             </ResponsiveContainer>
                         )}
                     </div>
-                </motion.div>
+                </div>
 
                 {/* Student Activity Distribution */}
-                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
-                    className={`p-8 ${ts.card(isDark)} rounded-[32px] flex flex-col`}>
+                <div 
+                    className={`p-5 sm:p-8 ${ts.card(isDark)} rounded-2xl sm:rounded-[32px] flex flex-col animate-in fade-in duration-500`}>
                     <SectionHeader title="Student Engagement" sub="Active vs Inactive students overview" icon={BarChart3} />
                     <div className="flex-1 flex flex-col sm:flex-row items-center gap-8">
                         <div className="w-full sm:w-1/2 h-[200px]">
@@ -271,15 +265,15 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                             ))}
                         </div>
                     </div>
-                </motion.div>
+                </div>
             </div>
 
             {/* ── Leaderboard & Top Courses ── */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8">
                 {/* Leaderboard */}
                 {leaderboard.length > 0 && (
-                    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                        className={`${ts.card(isDark)} rounded-[32px] overflow-hidden`}>
+                    <div 
+                        className={`${ts.card(isDark)} rounded-2xl sm:rounded-[32px] overflow-hidden animate-in fade-in duration-500`}>
                         <div className={`p-8 border-b ${ts.border(isDark)}`}>
                             <SectionHeader title="Top Student Performers" sub="Leading by XP and weekly consistency" icon={Trophy} />
                         </div>
@@ -289,8 +283,8 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                                 return (
                                     <div key={entry.id}
                                         onClick={() => router.push(`/school-admin/student/${entry.id}`)}
-                                        className={`px-8 py-5 flex items-center gap-5 transition-all cursor-pointer hover:scale-[1.01] ${ts.cardHover(isDark)}`}>
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[15px] font-black flex-shrink-0 ${medal ? 'bg-amber-400/10 text-amber-500 border border-amber-400/20 shadow-lg shadow-amber-400/5' : ts.accentSoft(isDark)
+                                        className={`px-5 py-4 sm:px-8 sm:py-5 flex items-center gap-4 sm:gap-5 transition-all cursor-pointer hover:bg-slate-500/5 ${ts.divider(isDark)}`}>
+                                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center text-sm sm:text-[15px] font-black flex-shrink-0 ${medal ? 'bg-amber-400/10 text-amber-500' : ts.accentSoft(isDark)
                                             }`}>
                                             {medal || i + 1}
                                         </div>
@@ -309,13 +303,13 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                                 );
                             })}
                         </div>
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* Top Courses */}
                 {topCourses.length > 0 && (
-                    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-                        className={`${ts.card(isDark)} rounded-[32px] overflow-hidden`}>
+                    <div 
+                        className={`${ts.card(isDark)} rounded-2xl sm:rounded-[32px] overflow-hidden animate-in fade-in duration-500`}>
                         <div className={`p-8 border-b ${ts.border(isDark)}`}>
                             <SectionHeader title="High Engagement Courses" sub="Most popular content by enrollment" icon={TrendingUp} />
                         </div>
@@ -329,26 +323,23 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                                             <p className={`text-[14px] font-black tracking-tight ${ts.textPrimary(isDark)}`}>{c.name}</p>
                                             <Badge className={`text-[10px] font-black border-0 ${ts.accentSoft(isDark)}`}>{c.enrolled} Enrolled</Badge>
                                         </div>
-                                        <div className={`h-3 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${stats.totalStudents > 0 ? (c.enrolled / stats.totalStudents) * 100 : 0}%` }}
-                                                transition={{ delay: 0.5 + i * 0.1, duration: 1 }}
-                                                className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-full"
+                                        <div className={`h-2.5 sm:h-3 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
+                                            <div
+                                                className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-full transition-all duration-1000"
+                                                style={{ width: `${stats.totalStudents > 0 ? (c.enrolled / stats.totalStudents) * 100 : 0}%` }}
                                             />
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
                 )}
             </div>
 
-            {/* ── Empty State ── */}
             {leaderboard.length === 0 && courseMetrics.length === 0 && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                    className={`rounded-2xl p-12 text-center ${isDark ? 'bg-[#111827] border border-white/[0.06]' : 'bg-white border border-slate-200'}`}>
+                <div 
+                    className={`rounded-2xl p-12 text-center ${isDark ? 'bg-[#111827] border border-white/[0.06]' : 'bg-white border border-slate-200'} animate-in fade-in duration-500`}>
                     <div className={`w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}>
                         <Star size={28} strokeWidth={1.5} />
                     </div>
@@ -358,7 +349,7 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                     <p className={`text-sm max-w-sm mx-auto ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                         Once students start enrolling and completing courses, your analytics will appear here.
                     </p>
-                </motion.div>
+                </div>
             )}
         </div>
     );

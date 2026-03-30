@@ -830,6 +830,7 @@ export const mediaAssets = pgTable('media_assets', {
     processing_status: text('processing_status').notNull().default('completed'), // 'pending', 'processing', 'completed', 'failed'
     error_message: text('error_message'),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
     index('idx_media_asset_type').on(table.asset_type),
     index('idx_media_uploaded_by').on(table.uploaded_by),

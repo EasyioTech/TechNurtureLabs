@@ -1,7 +1,4 @@
-'use client';
-
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { SchoolCourseMetric } from '../../types';
 import { useSchoolTheme, ts } from '../../theme-context';
@@ -62,12 +59,10 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                     { label: 'Avg Completion', value: `${totals.avgCompletion}%`, sub: 'Engagement rate', icon: Target, color: 'emerald' },
                     { label: 'Learning Time', value: `${totals.totalTime.toLocaleString()}m`, sub: 'Total minutes logged', icon: Clock, color: 'amber' },
                 ].map((stat, i) => (
-                    <motion.div
+                    <div
                         key={stat.label}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        className={`p-8 rounded-[32px] border ${ts.card(isDark)} relative overflow-hidden group hover:-translate-y-1.5 transition-all duration-500`}
+                        style={{ animationDelay: `${i * 100}ms` }}
+                        className={`p-8 rounded-[32px] border ${ts.card(isDark)} relative overflow-hidden group hover:-translate-y-1.5 transition-all duration-500 animate-in fade-in slide-in-from-bottom-2 fill-mode-forwards opacity-0`}
                     >
                         <div className={`absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 bg-gradient-to-br from-indigo-500/5 to-transparent rounded-full blur-2xl group-hover:scale-125 transition-transform duration-700`} />
                         <div className="flex flex-col gap-6 relative">
@@ -82,7 +77,7 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                                 <p className={`text-[12px] font-bold mt-2 ${ts.textSecondary(isDark)} opacity-60`}>{stat.sub}</p>
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
                 ))}
             </div>
 
@@ -104,12 +99,10 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
 
                 <div className="grid grid-cols-1 gap-4">
                     {courseMetrics.map((c, i) => (
-                        <motion.div
+                        <div
                             key={c.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.2 + i * 0.05 }}
-                            className={`group relative p-8 rounded-[40px] border transition-all duration-700 ${ts.card(isDark)} hover:shadow-[0_32px_64px_-16px_rgba(79,70,229,0.12)] hover:border-indigo-500/30 hover:-translate-y-1.5`}
+                            style={{ animationDelay: `${200 + i * 50}ms` }}
+                            className={`group relative p-8 rounded-[40px] border transition-all duration-700 ${ts.card(isDark)} hover:shadow-[0_32px_64px_-16px_rgba(79,70,229,0.12)] hover:border-indigo-500/30 hover:-translate-y-1.5 animate-in fade-in slide-in-from-left-2 fill-mode-forwards opacity-0`}
                         >
                             <div className="flex flex-col lg:flex-row lg:items-center gap-10">
                                 {/* Course Info */}
@@ -145,11 +138,9 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                                         <div className="flex items-center gap-3">
                                             <p className={`text-2xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>{c.completion_rate}%</p>
                                             <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-100 shadow-inner'}`}>
-                                                <motion.div 
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${c.completion_rate}%` }}
-                                                    transition={{ duration: 1.5, ease: "circOut" }}
-                                                    className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 shadow-[0_0_8px_rgba(79,70,229,0.3)]" 
+                                                <div 
+                                                    className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 shadow-[0_0_8px_rgba(79,70,229,0.3)] transition-all duration-1000" 
+                                                    style={{ width: `${c.completion_rate}%` }}
                                                 />
                                             </div>
                                         </div>
@@ -184,7 +175,7 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                                     </Button>
                                 </div>
                             </div>
-                        </motion.div>
+                        </div>
                     ))}
                 </div>
             </div>

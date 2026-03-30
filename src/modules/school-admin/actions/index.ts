@@ -896,28 +896,30 @@ export async function fetchSchoolAdminCourseData(schoolId: string, courseId: str
     const course = await db.query.courses.findFirst({
         where: and(eq(courses.id, courseId), eq(courses.is_published, true))
     });
-    if (!course) return { course: null, lessonsData: [], studentsData: [], progressData: [] };
+    if (!course) return { course: null, lessonsData: [], studentsData: [], progressData: [], activeSessions: [] };
 
-    // Validate course belongs to school
-    const schoolEnrollments = await db.query.enrollments.findFirst({
-        where: and(eq(enrollments.school_id, schoolId), eq(enrollments.course_id, courseId))
-    });
-
+    // CRITICAL FIX: Validate course is accessible to this school (same logic as getSchoolCourseAnalytics)
+    // This fixes the "Course not found" bug that occurred when a course was visible in the dashboard
+    // but the details page showed "Course not found" because enrollment validation was too strict
     const classMapping = await db.query.schoolClassMapping.findMany({
         where: eq(schoolClassMapping.school_id, schoolId)
     });
     const schoolClassIds = classMapping.map(gm => gm.class_id);
 
-    let isMappedToSchool = course.all_classes === true;
-    if (!isMappedToSchool && schoolClassIds.length > 0) {
-        const mappings = await db.query.courseClassMapping.findFirst({
+    // Course is accessible if:
+    // 1. It's marked as "all_classes" (universal), OR
+    // 2. It's mapped to at least one class that the school offers
+    let isAccessibleToSchool = course.all_classes === true;
+    if (!isAccessibleToSchool && schoolClassIds.length > 0) {
+        const courseClassMappings = await db.query.courseClassMapping.findFirst({
             where: and(inArray(courseClassMapping.class_id, schoolClassIds), eq(courseClassMapping.course_id, courseId))
         });
-        if (mappings) isMappedToSchool = true;
+        if (courseClassMappings) isAccessibleToSchool = true;
     }
 
-    if (!schoolEnrollments && !isMappedToSchool) {
-        return { course: null, lessonsData: [], studentsData: [], progressData: [] };
+    // If course is not accessible to school, return null (only valid "not found" case)
+    if (!isAccessibleToSchool) {
+        return { course: null, lessonsData: [], studentsData: [], progressData: [], activeSessions: [] };
     }
 
     const lessonsData = await db.query.lessons.findMany({ where: eq(lessons.course_id, courseId), orderBy: [asc(lessons.sequence_order)] });

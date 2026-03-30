@@ -57,10 +57,11 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
         totalXpEarned: 0
     });
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     async function fetchCourseData() {
-        if (!schoolId || !courseId) return;
         setLoading(true);
+        setError(null);
 
         try {
             const data = await fetchSchoolAdminCourseData(schoolId, courseId as string);
@@ -83,11 +84,11 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
                     if (p.completed_at != null) entry.completed++;
                     const score = p.xp_earned != null ? Number(p.xp_earned) : null;
                     if (score != null) entry.scores.push(score);
-                    
+
                     const updatedStr = p.updated_at instanceof Date
                         ? p.updated_at.toISOString()
                         : (p.updated_at as string | null);
-                        
+
                     if (!entry.lastActivity || (updatedStr && updatedStr > entry.lastActivity)) {
                         entry.lastActivity = updatedStr;
                     }
@@ -130,13 +131,18 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
             }
         } catch (e) {
             console.error(e);
+            setError((e as any).message || 'Failed to load course data');
         } finally {
             setLoading(false);
         }
     }
 
     useEffect(() => {
-        fetchCourseData();
+        if (schoolId && courseId) {
+            fetchCourseData();
+        } else {
+            setLoading(false);
+        }
     }, [courseId, schoolId]);
 
     const getLessonIcon = (type: string) => {
@@ -160,6 +166,19 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
         </div>
     );
 
+    if (error) return (
+        <div className={`min-h-screen flex flex-col items-center justify-center p-6 text-center ${ts.pageBg(isDark)}`}>
+            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 ${isDark ? 'bg-rose-500/10' : 'bg-rose-50'}`}>
+                <BookOpen size={40} className="text-rose-500" />
+            </div>
+            <h2 className={`text-2xl font-black mb-2 ${ts.textPrimary(isDark)}`}>Error Loading Course</h2>
+            <p className={`max-w-xs mb-8 ${ts.textSecondary(isDark)}`}>{error}</p>
+            <Button onClick={() => router.back()} className={`rounded-2xl px-8 h-12 font-bold ${ts.btnPrimary(isDark)}`}>
+                Return to Courses
+            </Button>
+        </div>
+    );
+
     if (!course) return (
         <div className={`min-h-screen flex flex-col items-center justify-center p-6 text-center ${ts.pageBg(isDark)}`}>
             <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
@@ -168,7 +187,7 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
             <h2 className={`text-2xl font-black mb-2 ${ts.textPrimary(isDark)}`}>Course Not Found</h2>
             <p className={`max-w-xs mb-8 ${ts.textSecondary(isDark)}`}>The curriculum module you're looking for might have been deprecated or moved.</p>
             <Button onClick={() => router.back()} className={`rounded-2xl px-8 h-12 font-bold ${ts.btnPrimary(isDark)}`}>
-                Return to Dashboard
+                Return to Courses
             </Button>
         </div>
     );
@@ -293,7 +312,11 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
                                     );
                                 }) : (
                                     <div className="py-12 px-6 text-center">
-                                        <p className={`text-sm font-black ${ts.textMuted(isDark)}`}>No Modules Listed</p>
+                                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                                            <BookOpen size={32} className={ts.textMuted(isDark)} />
+                                        </div>
+                                        <p className={`text-sm font-black mb-1 ${ts.textPrimary(isDark)}`}>No Modules Created</p>
+                                        <p className={`text-[12px] ${ts.textSecondary(isDark)}`}>Add lessons to this course to get started</p>
                                     </div>
                                 )}
                             </div>
@@ -330,8 +353,8 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
                                                 ? Math.round((student.lessons_completed / lessons.length) * 100)
                                                 : 0;
                                             return (
-                                                <tr 
-                                                    key={student.student_id} 
+                                                <tr
+                                                    key={student.student_id}
                                                     onClick={() => router.push(`/school-admin/student/${student.student_id}`)}
                                                     className={`group cursor-pointer transition-colors ${ts.cardHover(isDark)}`}
                                                 >
@@ -354,10 +377,10 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
                                                     <td className="p-6">
                                                         <div className="flex items-center gap-3">
                                                             <div className={`flex-1 min-w-[80px] h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-                                                                <motion.div 
-                                                                    initial={{ width: 0 }} 
-                                                                    animate={{ width: `${progressPercent}%` }} 
-                                                                    className={`h-full rounded-full bg-indigo-500`} 
+                                                                <motion.div
+                                                                    initial={{ width: 0 }}
+                                                                    animate={{ width: `${progressPercent}%` }}
+                                                                    className={`h-full rounded-full bg-indigo-500`}
                                                                 />
                                                             </div>
                                                             <span className={`text-[11px] font-black ${ts.textPrimary(isDark)}`}>{progressPercent}%</span>
@@ -383,7 +406,15 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
                                             );
                                         }) : (
                                             <tr>
-                                                <td colSpan={5} className="p-12 text-center text-sm font-bold opacity-40">No interactive activity tracked yet</td>
+                                                <td colSpan={5} className="p-12">
+                                                    <div className="flex flex-col items-center justify-center text-center">
+                                                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                                                            <Users size={32} className={ts.textMuted(isDark)} />
+                                                        </div>
+                                                        <p className={`font-black text-sm ${ts.textPrimary(isDark)} mb-1`}>No Enrolled Students Yet</p>
+                                                        <p className={`text-[12px] ${ts.textSecondary(isDark)}`}>Students will appear here once they enroll in this course</p>
+                                                    </div>
+                                                </td>
                                             </tr>
                                         )}
                                     </tbody>

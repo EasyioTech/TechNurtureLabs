@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+
 import { SchoolThemeProvider, useSchoolTheme, ts } from '../theme-context';
 import { useSchoolData } from '../hooks/use-school-data';
 import { getSchoolProfile } from '../actions';
@@ -179,32 +179,26 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
                     </div>
 
                     {/* Mobile Nav Drawer */}
-                    <AnimatePresence>
-                        {mobileMenuOpen && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="lg:hidden overflow-hidden pb-6">
-                                <div className="grid grid-cols-2 gap-3 pt-2">
-                                    {NAV.map(item => {
-                                        const isActive = activePage === item.id;
-                                        return (
-                                            <button key={item.id}
-                                                onClick={() => { setActivePage(item.id); setMobileMenuOpen(false); }}
-                                                className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl text-[13px] font-black transition-all ${isActive
-                                                    ? ts.navActive(isDark)
-                                                    : ts.navInactive(isDark)
-                                                    }`}>
-                                                <item.icon size={16} />
-                                                {item.label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {mobileMenuOpen && (
+                        <div className="lg:hidden overflow-hidden pb-6 transition-all duration-300">
+                            <div className="grid grid-cols-2 gap-3 pt-2">
+                                {NAV.map(item => {
+                                    const isActive = activePage === item.id;
+                                    return (
+                                        <button key={item.id}
+                                            onClick={() => { setActivePage(item.id); setMobileMenuOpen(false); }}
+                                            className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-[12px] font-black transition-all ${isActive
+                                                ? ts.navActive(isDark)
+                                                : ts.navInactive(isDark)
+                                                }`}>
+                                            <item.icon size={16} />
+                                            {item.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </header>
 
@@ -290,45 +284,38 @@ function DashboardInner({ schoolId, adminName, onSignOut }: {
             />
 
             {/* ─── Page content ─── */}
-            <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
-                <AnimatePresence mode="wait">
-                    <motion.div key={activePage}
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}>
-
-                        {activePage === 'overview' && (
-                            <SchoolOverviewTab stats={data.stats} leaderboard={data.leaderboard} courseMetrics={data.courseMetrics} />
-                        )}
-                        {activePage === 'students' && (
-                            <SchoolStudentsTab
-                                pagedStudents={data.pagedStudents}
-                                totalStudentsCount={data.totalStudentsCount}
-                                totalStudentPages={data.totalStudentPages}
-                                studentsPage={data.studentsPage}
-                                setStudentsPage={data.setStudentsPage}
-                                studentSearch={data.studentSearch}
-                                setStudentSearch={data.setStudentSearch}
-                                onToggleStudent={data.toggleStudent}
-                                studentsLoading={data.studentsLoading}
-                            />
-                        )}
-                        {activePage === 'verification' && (
-                            <SchoolVerificationTab 
-                                pendingStudents={data.pendingStudents}
-                                onVerify={data.verifyStudent}
-                                loading={data.pendingLoading}
-                                pinRequests={data.pinRequests}
-                                onPinReset={data.handlePinReset}
-                                pinLoading={data.pinLoading}
-                            />
-                        )}
-                        {activePage === 'courses' && <SchoolCoursesTab courseMetrics={data.courseMetrics} schoolClasses={data.classesData} />}
-                        {activePage === 'reports' && <SchoolReportsTab courseMetrics={data.courseMetrics} />}
-                        {activePage === 'settings' && <SchoolSettingsTab stats={data.stats} schoolId={schoolId} classesData={data.classesData} globalClasses={data.globalClasses} onRefresh={data.refreshData} onOpenSchoolProfile={() => setIsProfileModalOpen(true)} />}
-                    </motion.div>
-                </AnimatePresence>
+            <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+                <div key={activePage} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    {activePage === 'overview' && (
+                        <SchoolOverviewTab stats={data.stats} leaderboard={data.leaderboard} courseMetrics={data.courseMetrics} />
+                    )}
+                    {activePage === 'students' && (
+                        <SchoolStudentsTab
+                            pagedStudents={data.pagedStudents}
+                            totalStudentsCount={data.totalStudentsCount}
+                            totalStudentPages={data.totalStudentPages}
+                            studentsPage={data.studentsPage}
+                            setStudentsPage={data.setStudentsPage}
+                            studentSearch={data.studentSearch}
+                            setStudentSearch={data.setStudentSearch}
+                            onToggleStudent={data.toggleStudent}
+                            studentsLoading={data.studentsLoading}
+                        />
+                    )}
+                    {activePage === 'verification' && (
+                        <SchoolVerificationTab 
+                            pendingStudents={data.pendingStudents}
+                            onVerify={data.verifyStudent}
+                            loading={data.pendingLoading}
+                            pinRequests={data.pinRequests}
+                            onPinReset={data.handlePinReset}
+                            pinLoading={data.pinLoading}
+                        />
+                    )}
+                    {activePage === 'courses' && <SchoolCoursesTab courseMetrics={data.courseMetrics} schoolClasses={data.classesData} />}
+                    {activePage === 'reports' && <SchoolReportsTab courseMetrics={data.courseMetrics} />}
+                    {activePage === 'settings' && <SchoolSettingsTab stats={data.stats} schoolId={schoolId} classesData={data.classesData} globalClasses={data.globalClasses} onRefresh={data.refreshData} onOpenSchoolProfile={() => setIsProfileModalOpen(true)} />}
+                </div>
             </main>
         </div>
     );
