@@ -15,10 +15,10 @@ import {
 } from "@/components/ui/dialog";
 
 const navLinks = [
-    { label: 'Features', href: '#features' },
-    { label: 'Demo', href: '#demo' },
-    { label: 'Pricing', href: '#pricing' },
-    { label: 'Reviews', href: '#testimonials' },
+    { label: 'Features', href: '/#features' },
+    { label: 'Demo', href: '/#demo' },
+    { label: 'Pricing', href: '/pricing' },
+    { label: 'Reviews', href: '/#testimonials' },
 ];
 
 export const Navigation = ({ settings }: { settings?: any }) => {
