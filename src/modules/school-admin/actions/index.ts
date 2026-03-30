@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { superAdmins, schoolAdmins, students, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts, quizzes, auditLogs, userSessions, invoices, paymentTransactions } from '@/db/schema';
+import { superAdmins, schoolAdmins, students, courses, classes, schoolClassMapping, courseClassMapping, lessons, lessonProgress, schools, enrollments, studentAcademicRecords, academicSessions, schoolSubscriptions, paymentPlans, courseProgress, quizAttempts, quizzes, auditLogs, userSessions, invoices, paymentTransactions, lessonSessions } from '@/db/schema';
 import { eq, asc, desc, inArray, and, sql, or, count, isNull, isNotNull, gt, avg, sum } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { verifySession } from '@/lib/auth';
@@ -921,15 +921,55 @@ export async function fetchSchoolAdminCourseData(schoolId: string, courseId: str
     }
 
     const lessonsData = await db.query.lessons.findMany({ where: eq(lessons.course_id, courseId), orderBy: [asc(lessons.sequence_order)] });
-    const studentsData = await db.query.students.findMany({ where: eq(students.school_id, schoolId) });
     const lessonIds = lessonsData.map(l => l.id);
-    const progressData = lessonIds.length > 0 ? await db.select().from(lessonProgress).where(inArray(lessonProgress.lesson_id, lessonIds)) : [];
+
+    // CRITICAL FIX: Fetch only students of this school who are enrolled in this course
+    // If you want to show ALL school students and their enrollment status, use a Left Join
+    // But for "Course Insights", typically we care about enrolled students.
+    const enrolledStudents = await db
+        .select({
+            id: students.id,
+            first_name: students.first_name,
+            last_name: students.last_name,
+            email: students.email,
+            phone: students.phone,
+            cumulative_xp: students.cumulative_xp,
+            last_active_at: students.last_active_at,
+            is_active: students.is_active
+        })
+        .from(enrollments)
+        .innerJoin(students, eq(enrollments.user_id, students.id))
+        .where(and(
+            eq(enrollments.course_id, courseId),
+            eq(enrollments.school_id, schoolId),
+            isNull(enrollments.deleted_at),
+            isNull(students.deleted_at)
+        ));
+
+    // CRITICAL FIX: Scope progress data to school students to prevent data leaks and performance hang
+    const progressData = lessonIds.length > 0 
+        ? await db.select().from(lessonProgress).where(and(
+            inArray(lessonProgress.lesson_id, lessonIds),
+            eq(lessonProgress.school_id, schoolId)
+          )) 
+        : [];
+
+    // Fetch currently active sessions for these lessons
+    const activeSessions = lessonIds.length > 0
+        ? await db.select({ user_id: lessonSessions.user_id })
+            .from(lessonSessions)
+            .where(and(
+                inArray(lessonSessions.lesson_id, lessonIds),
+                eq(lessonSessions.is_active, true)
+            ))
+        : [];
 
     return {
         course: { ...course, thumbnail: course.thumbnail_url, published: course.is_published },
         lessonsData: lessonsData.map(l => ({ ...l, sequence_index: l.sequence_order, duration: l.duration_minutes || 10 })),
-        studentsData: studentsData.map(s => ({ ...s, full_name: `${s.first_name} ${s.last_name}`, total_xp: Number(s.cumulative_xp) })),
-        progressData
+        studentsData: enrolledStudents.map(s => ({ ...s, full_name: `${s.first_name} ${s.last_name}`, total_xp: Number(s.cumulative_xp) })),
+        progressData,
+        activeSessions: activeSessions.map(s => s.user_id)
     };
 }
 

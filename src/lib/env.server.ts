@@ -18,6 +18,7 @@ const serverSchema = z.object({
     CLOUDFLARE_STREAM_API_TOKEN: z.string().optional().default(''),
     RAZORPAY_KEY_ID: z.string().optional().default(''),
     RAZORPAY_KEY_SECRET: z.string().optional().default(''),
+    NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().optional().default(''),
     NEXT_PUBLIC_APP_URL: z.string().url().optional().default('http://localhost:3000'),
 });
 

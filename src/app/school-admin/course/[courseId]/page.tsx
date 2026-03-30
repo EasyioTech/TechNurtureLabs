@@ -41,6 +41,7 @@ type StudentProgress = {
     total_xp: number;
     avg_score: number;
     last_activity: string | null;
+    is_watching?: boolean;
 };
 
 function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; courseId: string }) {
@@ -72,6 +73,7 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
 
             if (studentsData && data.lessonsData) {
                 const progressByStudent = new Map<string, { completed: number; scores: number[]; lastActivity: string | null }>();
+                const activeSessionUserIds = new Set((data as any).activeSessions || []);
 
                 (progressData || []).forEach((p: any) => {
                     if (!progressByStudent.has(p.user_id)) {
@@ -81,37 +83,42 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
                     if (p.completed_at != null) entry.completed++;
                     const score = p.xp_earned != null ? Number(p.xp_earned) : null;
                     if (score != null) entry.scores.push(score);
+                    
                     const updatedStr = p.updated_at instanceof Date
                         ? p.updated_at.toISOString()
                         : (p.updated_at as string | null);
+                        
                     if (!entry.lastActivity || (updatedStr && updatedStr > entry.lastActivity)) {
                         entry.lastActivity = updatedStr;
                     }
                 });
 
-                const studentProgressList: StudentProgress[] = studentsData
-                    .filter(s => progressByStudent.has(s.id))
-                    .map(s => {
-                        const prog = progressByStudent.get(s.id)!;
-                        return {
-                            student_id: s.id,
-                            student_name: s.full_name,
-                            lessons_completed: prog.completed,
-                            total_xp: s.total_xp || 0,
-                            avg_score: prog.scores.length > 0
-                                ? Math.round(prog.scores.reduce((a: number, b: number) => a + b, 0) / prog.scores.length)
-                                : 0,
-                            last_activity: prog.lastActivity
-                        };
-                    })
-                    .sort((a, b) => (b.lessons_completed || 0) - (a.lessons_completed || 0));
+                const studentProgressList: StudentProgress[] = studentsData.map(s => {
+                    const prog = progressByStudent.get(s.id);
+                    return {
+                        student_id: s.id,
+                        student_name: s.full_name,
+                        lessons_completed: prog?.completed || 0,
+                        total_xp: s.total_xp || 0,
+                        avg_score: (prog?.scores.length || 0) > 0
+                            ? Math.round(prog!.scores.reduce((a: number, b: number) => a + b, 0) / prog!.scores.length)
+                            : 0,
+                        last_activity: prog?.lastActivity || (s.last_active_at ? (typeof s.last_active_at === 'string' ? s.last_active_at : new Date(s.last_active_at).toISOString()) : null),
+                        is_watching: activeSessionUserIds.has(s.id)
+                    };
+                }).sort((a, b) => {
+                    // Sort by watching first, then by progress
+                    if (a.is_watching && !b.is_watching) return -1;
+                    if (!a.is_watching && b.is_watching) return 1;
+                    return (b.lessons_completed || 0) - (a.lessons_completed || 0);
+                });
 
                 setStudentProgress(studentProgressList);
 
-                const totalEnrolled = studentProgressList.length;
+                const totalEnrolledCount = studentsData.length;
                 const totalLessonsCount = (data.lessonsData as any[]).length;
-                const avgCompletion = totalEnrolled > 0 && totalLessonsCount > 0
-                    ? Math.round((studentProgressList.reduce((a, s) => a + s.lessons_completed, 0) / (totalEnrolled * totalLessonsCount)) * 100)
+                const avgCompletion = totalEnrolledCount > 0 && totalLessonsCount > 0
+                    ? Math.round((studentProgressList.reduce((a, s) => a + s.lessons_completed, 0) / (totalEnrolledCount * totalLessonsCount)) * 100)
                     : 0;
                 const allScores = studentProgressList.flatMap(s => s.avg_score > 0 ? [s.avg_score] : []);
                 const avgScore = allScores.length > 0
@@ -119,7 +126,7 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
                     : 0;
                 const totalXpEarned = studentProgressList.reduce((a, s) => a + s.total_xp, 0);
 
-                setStats({ totalEnrolled, avgCompletion, avgScore, totalXpEarned });
+                setStats({ totalEnrolled: totalEnrolledCount, avgCompletion, avgScore, totalXpEarned });
             }
         } catch (e) {
             console.error(e);
@@ -333,7 +340,15 @@ function CourseDetailsContent({ schoolId, courseId }: { schoolId: string; course
                                                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-[11px] shadow-sm transition-transform group-hover:scale-110 ${isDark ? 'bg-white/5 border border-white/5 text-indigo-400' : 'bg-slate-100 border border-slate-200 text-indigo-600'}`}>
                                                                 {student.student_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                                             </div>
-                                                            <span className={`text-[13px] font-black tracking-tight ${ts.textPrimary(isDark)}`}>{student.student_name}</span>
+                                                            <div className="flex flex-col">
+                                                                <span className={`text-[13px] font-black tracking-tight ${ts.textPrimary(isDark)}`}>{student.student_name}</span>
+                                                                {student.is_watching && (
+                                                                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-1 animate-pulse">
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                                        Live Watching
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </td>
                                                     <td className="p-6">

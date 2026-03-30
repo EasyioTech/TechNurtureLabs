@@ -8,20 +8,20 @@ const footerLinks = {
     platform: [
         { label: 'Features', href: '#features' },
         { label: 'Product Demo', href: '#demo' },
-        { label: 'Pricing', href: '#pricing' },
+        { label: 'Pricing', href: '/pricing' },
         { label: 'Reviews', href: '#testimonials' },
     ],
     company: [
         { label: 'Register School', href: '/register/school' },
         { label: 'Student Login', href: '/login' },
         { label: 'School Portal', href: '/school-portal/login' },
-        { label: 'Contact Us', href: 'mailto:hello@technurture.com' },
+        { label: 'Contact Us', href: '/contact-us' },
     ],
     legal: [
-        { label: 'Privacy Policy', href: '#' },
-        { label: 'Terms of Service', href: '#' },
-        { label: 'Data Processing', href: '#' },
-        { label: 'Cookie Policy', href: '#' },
+        { label: 'Privacy Policy', href: '/privacy-policy' },
+        { label: 'Terms of Service', href: '/terms' },
+        { label: 'Refund Policy', href: '/refund-policy' },
+        { label: 'Shipping Policy', href: '/shipping-policy' },
     ],
 };
 
