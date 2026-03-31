@@ -2,16 +2,14 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { SchoolCourseMetric } from '../../types';
 import { useSchoolTheme, ts } from '../../theme-context';
-import { BarChart3, TrendingUp, Clock, Target, Zap, ChevronRight, FileText, FileDown, ExternalLink, Users } from 'lucide-react';
+import { BarChart3, TrendingUp, Clock, Target, Zap, FileText, FileDown, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 interface ReportsTabProps { courseMetrics: SchoolCourseMetric[]; }
 
 export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
     const { isDark } = useSchoolTheme();
-    const router = useRouter();
 
     const totals = {
         enrollment: courseMetrics.reduce((acc, c) => acc + c.enrolled_count, 0),
@@ -102,31 +100,32 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                         <div
                             key={c.id}
                             style={{ animationDelay: `${200 + i * 50}ms` }}
-                            className={`group relative p-8 rounded-[40px] border transition-all duration-700 ${ts.card(isDark)} hover:shadow-[0_32px_64px_-16px_rgba(79,70,229,0.12)] hover:border-indigo-500/30 hover:-translate-y-1.5 animate-in fade-in slide-in-from-left-2 fill-mode-forwards opacity-0`}
+                            className={`group relative p-8 rounded-[40px] border transition-all duration-700 ${ts.card(isDark)} hover:shadow-[0_32px_64px_-16px_rgba(79,70,229,0.12)] hover:border-indigo-500/30 animate-in fade-in slide-in-from-left-2 fill-mode-forwards opacity-0`}
                         >
                             <div className="flex flex-col lg:flex-row lg:items-center gap-10">
                                 {/* Course Info */}
                                 <div className="flex items-center gap-6 lg:w-[35%] min-w-0">
-                                    <div className={`w-16 h-16 rounded-[22px] flex items-center justify-center text-indigo-500 font-black flex-shrink-0 border-2 shadow-2xl transition-transform group-hover:scale-110 duration-500 ${isDark ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
+                                    <div className={`w-16 h-16 rounded-[22px] flex items-center justify-center text-indigo-500 font-black flex-shrink-0 border-2 shadow-2xl transition-transform group-hover:scale-105 duration-500 ${isDark ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
                                         <div className="relative">
                                             <BarChart3 size={28} strokeWidth={2.5} />
                                             <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-emerald-500 rounded-full border-[3px] border-white dark:border-[#161921] shadow-xl" />
                                         </div>
                                     </div>
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-3 mb-2 flex-wrap">
                                             <h4 className={`font-black text-xl tracking-tighter truncate leading-none ${ts.textPrimary(isDark)}`}>{c.title}</h4>
-                                            <Badge className={`px-2.5 py-0.5 rounded-lg border-0 text-[9px] font-black tracking-[0.2em] shadow-sm ${c.is_published ? ts.live(isDark) : ts.draft(isDark)}`}>
+                                            <Badge className={`px-2.5 py-0.5 rounded-lg border-0 text-[10px] font-black tracking-[0.2em] shadow-sm ${c.is_published ? ts.live(isDark) : ts.draft(isDark)}`}>
                                                 {c.is_published ? 'LIVE' : 'DRAFT'}
                                             </Badge>
                                         </div>
-                                        <p className={`text-[11px] font-black uppercase tracking-widest ${ts.textMuted(isDark)} opacity-60`}>Curriculum Analytics • Last Synced 1h ago</p>
+                                        <p className={`text-[12px] font-black uppercase tracking-widest ${ts.textMuted(isDark)} opacity-60`}>Curriculum Analytics • Last Synced 1h ago</p>
                                     </div>
                                 </div>
+
                                 {/* Metrics Row */}
-                                <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-10 items-center border-t lg:border-t-0 lg:border-l lg:pl-10 pt-8 lg:pt-0 dark:border-white/5 border-slate-100">
+                                <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-10 items-center lg:pl-10 dark:border-white/5 border-slate-100">
                                     <div className="space-y-2">
-                                        <p className={`text-[10px] font-black uppercase tracking-[0.2em] leading-none ${ts.textMuted(isDark)}`}>Enrollment</p>
+                                        <p className={`text-[10px] font-black uppercase tracking-[0.2em] leading-none ${ts.textMuted(isDark)}`}>Enrolled Students</p>
                                         <div className="flex items-baseline gap-2">
                                             <p className={`text-2xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>{c.enrolled_count.toLocaleString()}</p>
                                             <TrendingUp size={14} className="text-emerald-500 mb-0.5" />
@@ -158,21 +157,12 @@ export function SchoolReportsTab({ courseMetrics }: ReportsTabProps) {
                                     </div>
 
                                     <div className="space-y-2 text-right lg:text-left">
-                                        <p className={`text-[10px] font-black uppercase tracking-[0.2em] leading-none ${ts.textMuted(isDark)}`}>Interaction</p>
+                                        <p className={`text-[10px] font-black uppercase tracking-[0.2em] leading-none ${ts.textMuted(isDark)}`}>Learning Time</p>
                                         <div className="flex items-center gap-2 justify-end lg:justify-start">
                                             <p className={`text-2xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>{Math.round(c.total_time_mins / 60)}h</p>
                                             <Clock size={16} className="text-slate-400 opacity-60" />
                                         </div>
                                     </div>
-                                </div>
-                                {/* Action */}
-                                <div className="flex items-center justify-end">
-                                    <Button
-                                        onClick={() => router.push(`/school-admin/course/${c.id}`)}
-                                        className={`w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300 ${isDark ? 'bg-white/5 border-white/5 text-slate-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 hover:shadow-2xl hover:shadow-indigo-600/20' : 'bg-white border-slate-200 text-slate-500 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 shadow-sm'}`}
-                                    >
-                                        <ChevronRight size={20} strokeWidth={2.5} className="group-hover:translate-x-0.5 transition-transform" />
-                                    </Button>
                                 </div>
                             </div>
                         </div>

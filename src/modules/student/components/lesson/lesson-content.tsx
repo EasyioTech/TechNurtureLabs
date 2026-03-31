@@ -437,16 +437,18 @@ export function LessonContent({
       )}
 
       {!blocks && lesson.content_type === 'pdf' && (
-        <div className="w-full bg-white">
-          <PDFViewer
-            url={lesson.content_url!}
-            onComplete={() => onComplete()}
-            lessonComplete={lessonComplete}
-            pageNumber={pageNumber}
-            docMax={docMax}
-            onLoadTotalPages={(total) => onDocStateChange?.(total)}
-            onPageChange={onPageChange}
-          />
+        <div className="w-full bg-white px-4 sm:px-8 lg:px-12 py-10 lg:py-16">
+          <div className="max-w-[1100px] mx-auto">
+            <PDFViewer
+              url={lesson.content_url!}
+              onComplete={() => onComplete()}
+              lessonComplete={lessonComplete}
+              pageNumber={pageNumber}
+              docMax={docMax}
+              onLoadTotalPages={(total) => onDocStateChange?.(total)}
+              onPageChange={onPageChange}
+            />
+          </div>
         </div>
       )}
 

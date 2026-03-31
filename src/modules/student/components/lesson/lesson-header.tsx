@@ -26,11 +26,12 @@ export function LessonHeader({
     <header className="sticky top-0 z-[120] bg-white/95 backdrop-blur-2xl border-b border-slate-100 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 lg:px-12 gap-2 shadow-sm">
       {/* Left: back + title */}
       <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
-        <Link href={`/student/course/${courseId}`} className="flex-shrink-0">
-          <button className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl border border-slate-100 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-200 flex items-center justify-center transition-all active:scale-90 shadow-sm">
-            <ArrowLeft size={18} strokeWidth={2.5} />
-          </button>
-        </Link>
+        <button 
+          onClick={() => window.history.back()}
+          className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-xl border border-slate-100 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-200 flex items-center justify-center transition-all active:scale-90 shadow-sm"
+        >
+          <ArrowLeft size={18} strokeWidth={2.5} />
+        </button>
 
         <div className="min-w-0 flex-1">
           <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-indigo-500 truncate leading-none mb-0.5">

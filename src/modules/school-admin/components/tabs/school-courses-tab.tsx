@@ -129,56 +129,53 @@ export function SchoolCoursesTab({ courseMetrics, schoolClasses = [] }: CoursesT
                             {course.mapped_classes && course.mapped_classes.length > 0 && (
                                 <div className="flex flex-wrap items-center gap-2 mb-3">
                                     {course.mapped_classes.slice(0, 2).map(cls => (
-                                        <Badge key={cls} className={`px-3 py-1 rounded-lg border-0 text-[9px] font-black tracking-widest uppercase ${ts.accentSoft(isDark)}`}>
+                                        <Badge key={cls} className={`px-3 py-1 rounded-lg border-0 text-[10px] font-black tracking-widest uppercase ${ts.accentSoft(isDark)}`}>
                                             {cls}
                                         </Badge>
                                     ))}
                                     {course.mapped_classes.length > 2 && (
-                                        <Badge className={`px-3 py-1 rounded-lg border-0 text-[9px] font-black tracking-widest uppercase ${ts.accentSoft(isDark)}`}>
-                                            +{course.mapped_classes.length - 2}
+                                        <Badge className={`px-3 py-1 rounded-lg border-0 text-[10px] font-black tracking-widest uppercase ${ts.accentSoft(isDark)}`}>
+                                            +{course.mapped_classes.length - 2} Class
                                         </Badge>
                                     )}
                                 </div>
                             )}
 
                             {/* Title - Larger and More Prominent */}
-                            <h3 className={`text-[19px] sm:text-[20px] font-black tracking-tight mb-3 group-hover:text-indigo-500 transition-colors line-clamp-2 leading-snug ${ts.textPrimary(isDark)}`}>
+                            <h3 className={`text-[20px] sm:text-[22px] font-black tracking-tight mb-3 transition-colors line-clamp-2 leading-snug ${ts.textPrimary(isDark)}`}>
                                 {course.title}
                             </h3>
 
                             {/* Description */}
                             {course.description && (
-                                <p className={`text-[13px] font-medium leading-relaxed mb-4 line-clamp-2 ${ts.textSecondary(isDark)}`}>
+                                <p className={`text-[13px] font-medium leading-relaxed mb-6 line-clamp-3 ${ts.textSecondary(isDark)}`}>
                                     {course.description}
                                 </p>
                             )}
 
-                            {/* Stats Grid */}
-                            <div className={`p-5 rounded-[20px] mt-auto grid grid-cols-3 gap-3 ${isDark ? 'bg-white/5 border border-white/5' : 'bg-slate-50 border border-slate-200/50'}`}>
-                                <div className="space-y-2">
-                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-60 ${ts.textPrimary(isDark)}`}>Enrolled</p>
-                                    <div className="flex items-baseline gap-1">
-                                        <p className={`text-[16px] sm:text-[18px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.enrolled_count}</p>
-                                        <p className={`text-[10px] opacity-60 ${ts.textPrimary(isDark)}`}>users</p>
+                            {/* Stats Grid - Enhanced */}
+                            <div className={`p-6 rounded-[24px] mt-auto grid grid-cols-1 gap-4 ${isDark ? 'bg-white/5 border border-white/5' : 'bg-slate-50 border border-slate-200/50'}`}>
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <p className={`text-[10px] font-black uppercase tracking-widest opacity-60 ${ts.textPrimary(isDark)}`}>Enrollment</p>
+                                        <p className={`text-[18px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.enrolled_count.toLocaleString()} students</p>
+                                    </div>
+                                    <div className="text-right space-y-1">
+                                        <p className={`text-[10px] font-black uppercase tracking-widest opacity-60 ${ts.textPrimary(isDark)}`}>Content</p>
+                                        <p className={`text-[18px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.lesson_count} lessons</p>
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-60 ${ts.textPrimary(isDark)}`}>Content</p>
-                                    <div className="flex items-baseline gap-1">
-                                        <p className={`text-[16px] sm:text-[18px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.lesson_count}</p>
-                                        <p className={`text-[10px] opacity-60 ${ts.textPrimary(isDark)}`}>lessons</p>
+                                
+                                <div className="pt-3 border-t border-slate-200/40 dark:border-white/5">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <p className={`text-[10px] font-black uppercase tracking-widest opacity-60 ${ts.textPrimary(isDark)}`}>Average Progress</p>
+                                        <p className={`text-[14px] font-black text-indigo-500`}>{course.completion_rate}%</p>
                                     </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-60 ${ts.textPrimary(isDark)}`}>Progress</p>
-                                    <div className="space-y-1.5">
-                                        <p className={`text-[16px] sm:text-[18px] font-black leading-none text-indigo-500`}>{course.completion_rate}%</p>
-                                        <div className={`h-1 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-200'}`}>
-                                            <div
-                                                className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(99,102,241,0.5)]"
-                                                style={{ width: `${course.completion_rate}%` }}
-                                            />
-                                        </div>
+                                    <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-200/50'}`}>
+                                        <div
+                                            className="h-full bg-indigo-500 rounded-full transition-all duration-1000"
+                                            style={{ width: `${course.completion_rate}%` }}
+                                        />
                                     </div>
                                 </div>
                             </div>

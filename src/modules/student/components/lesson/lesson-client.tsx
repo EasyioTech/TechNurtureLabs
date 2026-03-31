@@ -36,20 +36,9 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
   const [courseData,      setCourseData]      = useState(initialCourseData);
   const [isSyllabusOpen,  setIsSyllabusOpen]  = useState(false);
 
-  // Push a history entry when the syllabus drawer opens so the device back button
-  // closes the drawer instead of navigating away from the lesson.
   useEffect(() => {
-    if (isSyllabusOpen) history.pushState({ syllabusOpen: true }, '');
-  }, [isSyllabusOpen]);
-
-  useEffect(() => {
-    const onPopState = (e: PopStateEvent) => {
-      if (isSyllabusOpen) {
-        setIsSyllabusOpen(false);
-      }
-    };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
+    // We no longer manipulate browser history for simple UI toggles.
+    // This allows the browser back button to work naturally.
   }, [isSyllabusOpen]);
   const [docPage,         setDocPage]         = useState(1);
   const [docTotal,        setDocTotal]        = useState(0);
@@ -76,6 +65,8 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
 
   // ── Accidental-navigation guard ────────────────────────────────────────────
   // Active only while timer is running (started but not yet done)
+  // Removed forced pushState guard that trapped users.
+  // Standard beforeunload is kept for data safety, but history is NOT hijacked.
   useEffect(() => {
     if (!timerEnabled || !hasStarted || timerDone || lessonComplete) return;
 
@@ -84,20 +75,9 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
       e.returnValue = '';
     };
 
-    // Push a fake history entry so pressing back triggers popstate first
-    history.pushState(null, '', location.href);
-    const onPopState = () => {
-      history.pushState(null, '', location.href);
-      toast.warning('Finish the lesson before leaving — your timer is still running.', {
-        duration: 4000,
-      });
-    };
-
     window.addEventListener('beforeunload', onBeforeUnload);
-    window.addEventListener('popstate',     onPopState);
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
-      window.removeEventListener('popstate',     onPopState);
     };
   }, [timerEnabled, hasStarted, timerDone, lessonComplete]);
 
@@ -175,10 +155,8 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
 
   const handlePageSelect = (p: number) => {
     if (p > docTotal || p < 1) return;
-    if (p > docMax + 1) return;
     setDocPage(p);
     if (p > docMax) setDocMax(p);
-    document.querySelector('.lesson-scroll-container')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const currentLessonIndex = React.useMemo(
@@ -352,7 +330,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
             onPageChange={(p: number) => handlePageSelect(p)}
           />
 
-          {!(lesson.content_type === 'quiz' && !lessonComplete) && (
+      {!(lesson.content_type === 'quiz' && !lessonComplete) && (
             <div className="bg-white border-t border-slate-100 px-4 sm:px-8 lg:px-12 py-8 sm:py-12 lg:py-16 max-w-[1100px] mx-auto w-full">
               <LessonOverview
                 lesson={lesson}

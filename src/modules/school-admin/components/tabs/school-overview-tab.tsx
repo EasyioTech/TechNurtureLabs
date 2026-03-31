@@ -317,8 +317,7 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                             <div className="space-y-6">
                                 {topCourses.map((c, i) => (
                                     <div key={c.id}
-                                        onClick={() => router.push(`/school-admin/course/${c.id}`)}
-                                        className="space-y-2 cursor-pointer group hover:scale-[1.01] transition-all">
+                                        className="space-y-2 transition-all">
                                         <div className="flex justify-between items-center">
                                             <p className={`text-[14px] font-black tracking-tight ${ts.textPrimary(isDark)}`}>{c.name}</p>
                                             <Badge className={`text-[10px] font-black border-0 ${ts.accentSoft(isDark)}`}>{c.enrolled} Enrolled</Badge>
