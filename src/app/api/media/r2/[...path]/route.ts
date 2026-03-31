@@ -95,7 +95,9 @@ export async function GET(
         const token = request.nextUrl.searchParams.get('token');
         const mediaSecret = process.env.MEDIA_SECRET;
 
-        if (mediaSecret) {
+        // Secure Fix: Only enforce HMAC for HLS (.m3u8/ .ts). 
+        // Other files like PDFs use Proxy-based BOLA above (Session + Enrollment check).
+        if (isHls && mediaSecret) {
             const signTarget = key.split('/').slice(0, -1).join('/'); // Check the parent folder signature
             const expectedHash = crypto
                 .createHmac('sha256', mediaSecret)
@@ -106,8 +108,8 @@ export async function GET(
             if (token !== expectedHash) {
                 return new NextResponse('Forbidden: Invalid Media Token', { status: 403 });
             }
-        } else {
-            console.warn('[R2 Proxy] MEDIA_SECRET not set. Access is loosely guarded by session only.');
+        } else if (isHls && !mediaSecret) {
+            console.warn('[R2 Proxy] MEDIA_SECRET not set for HLS. Access is loosely guarded by session only.');
         }
 
         // Continue proxying for HLS segments (so relative paths in .m3u8 work)

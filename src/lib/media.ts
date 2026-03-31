@@ -66,9 +66,10 @@ export function computeMediaUrl(asset: {
 
     // 4. Security: Add temporary access token (sign the path or prefix)
     const mediaSecret = process.env.MEDIA_SECRET;
-    if (mediaSecret && (asset.storage_type === 'r2' || isVideo)) {
+    if (mediaSecret) {
         // For HLS, we sign the parent directory so segments (.ts) are also authorized
-        const signTarget = (variant === 'hls' || path.endsWith('.m3u8') || path.endsWith('.ts'))
+        const isHlsRelated = variant === 'hls' || path.endsWith('.m3u8') || path.endsWith('.ts');
+        const signTarget = isHlsRelated
             ? path.split('/').slice(0, -1).join('/') // Sign the folder
             : path; // Sign the file
 
