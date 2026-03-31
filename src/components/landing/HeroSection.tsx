@@ -37,14 +37,14 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
 
                         <div>
                             <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6 text-slate-900">
-                                The learning platform your students will{' '}
-                                <span className="text-blue-600">actually love.</span>
+                                The online learning platform{' '}
+                                <span className="text-blue-600">students actually love.</span>
                             </h1>
                         </div>
 
                         <div>
                             <p className="text-lg md:text-xl text-slate-600 mb-10 leading-relaxed font-medium max-w-xl">
-                                Gamified courses, real-time analytics, and school-wide management — all in one unified platform built for K-12 institutions.
+                                Gamified LMS for K-12 schools across India — courses in IoT, embedded systems, full-stack development, and skill-based programming, with real-time analytics and school-wide student management.
                             </p>
                         </div>
 

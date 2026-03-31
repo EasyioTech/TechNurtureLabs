@@ -4,6 +4,62 @@ import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import Script from 'next/script';
+
+const FAQ_LD_JSON = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "How long does it take to onboard our school?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Our streamlined onboarding process usually takes less than 24 hours. Once your UDISE code is verified, you can immediately begin inviting teachers and students — no technical setup required.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How does the gamification system work?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Students earn XP points for completing lessons, quizzes, and daily streaks. Points unlock badges and push them up class leaderboards. Every element is designed to build healthy habits and intrinsic motivation — not just competition.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Does TechNurture work on mobile devices?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Yes, fully. The platform is responsive on all screen sizes and we have dedicated mobile-optimised views for students. Teachers can manage classrooms, review submissions, and post announcements directly from their phones.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Can we customize the platform to match our school's branding?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Absolutely. The Pro and District plans include complete white-labeling — upload your school logo, set your brand colors, and the platform looks and feels like your own. Students see your school's identity, not ours.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Is student data secure and private?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Yes. We use enterprise-grade encryption at rest and in transit, and comply with all national data privacy regulations for minors. Student data is never sold, shared, or used for advertising. Period.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Do you offer support and training for teachers?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "We provide comprehensive documentation, video walkthroughs, and dedicated live onboarding sessions for your entire teaching staff. Our support team is reachable via chat during school hours — and critical issues are responded to within the hour.",
+      },
+    },
+  ],
+};
 
 export const FAQSection = () => {
     return (
@@ -61,6 +117,13 @@ export const FAQSection = () => {
                     </div>
                 </div>
             </div>
+
+            <Script
+              id="ld-faq"
+              type="application/ld+json"
+              strategy="beforeInteractive"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_LD_JSON) }}
+            />
         </section>
     );
 };
