@@ -47,8 +47,10 @@ export function usePWAInstall(): PWAInstallState {
         setPlatform(detectPlatform());
 
         // Android / Desktop Chrome: capture the install prompt event
-        const handleBeforeInstall = (e: Event) => {
-            e.preventDefault(); // stop browser's default mini-infobar
+        const handleBeforeInstall = (e: any) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
             deferredPrompt.current = e;
             setCanPrompt(true);
         };

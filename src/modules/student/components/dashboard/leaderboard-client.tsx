@@ -1,10 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, Trophy, Star, Shield, Users, ArrowRight, Activity, Target, Zap } from 'lucide-react';
+import { Trophy, Star, Shield, Users, Activity, Target, Zap, BookOpen, Clock, Medal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
 import { getStudentLeaderboard } from '@/modules/student/actions/leaderboard-actions';
 import { cn } from '@/lib/utils';
 
@@ -43,13 +41,13 @@ export function LeaderboardClient({ initialData }: LeaderboardClientProps) {
             setLoading(false);
         }
         update();
-    }, [scope]); 
+    }, [scope]);
 
     return (
         <div className="min-h-screen bg-slate-50/10 pb-20 overflow-x-hidden">
-            {/* Header: Mobilized */}
-            <div className="relative bg-slate-950 overflow-hidden py-12 md:py-20 px-6 lg:px-12 border-b border-white/5">
-                <div className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 bg-indigo-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+            {/* Elite Header */}
+            <div className="relative bg-slate-900 overflow-hidden py-16 md:py-20 lg:py-24 px-6 lg:px-12 border-b border-white/5">
+                <div className="absolute top-0 right-0 w-[400px] md:w-[800px] h-[400px] md:h-[800px] bg-indigo-500/10 rounded-full blur-[100px] md:blur-[150px] pointer-events-none" />
                 
                 <div className="max-w-[1440px] mx-auto relative z-10 flex flex-col items-center lg:items-start lg:flex-row justify-between gap-10">
                     <div className="w-full lg:flex-1 text-center lg:text-left">
@@ -102,9 +100,16 @@ export function LeaderboardClient({ initialData }: LeaderboardClientProps) {
                 </div>
             </div>
 
-            {/* List: Horizontal Overflow Protected */}
+            {/* List */}
             <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 -mt-10 relative z-20">
                 <div className="bg-white rounded-[2.5rem] p-6 lg:p-12 border border-slate-100 shadow-xl shadow-slate-200/10 min-h-[400px] relative overflow-hidden">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12">
+                      <QuickStatCard icon={BookOpen} value={0} label="Lessons" />
+                      <QuickStatCard icon={Clock} value={`0h`} label="Time Spent" />
+                      <QuickStatCard icon={Target} value={`0%`} label="Score" />
+                      <QuickStatCard icon={Medal} value={`#${userStats.rank || '-'}`} label="Rank" />
+                    </div>
+
                     <div className="flex flex-col sm:flex-row items-center justify-between mb-8 pb-6 border-b border-slate-50 gap-4">
                         <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">
                             {data?.title || 'Protocol Results'}
@@ -168,7 +173,6 @@ function LeaderboardRow({ user }: { user: any }) {
                 ? 'bg-slate-900 text-white border-slate-900 shadow-xl' 
                 : 'bg-white border-slate-100 hover:border-indigo-100'
         )}>
-            {/* Rank - Compact on Mobile */}
             <div className="w-10 shrink-0 flex justify-center">
                 {isTop3 ? (
                     <div className={cn(
@@ -184,7 +188,6 @@ function LeaderboardRow({ user }: { user: any }) {
                 )}
             </div>
 
-            {/* Avatar + name - Flexible wrapping safe */}
             <div className="flex items-center gap-4 flex-1 min-w-0">
                 <div className={cn(
                     "w-11 h-11 rounded-2xl flex items-center justify-center text-sm font-black shrink-0 shadow-sm",
@@ -207,7 +210,6 @@ function LeaderboardRow({ user }: { user: any }) {
                 </div>
             </div>
 
-            {/* Stats - Horizontal Flow, Hidden Labels on small screens to save space */}
             <div className="flex items-center gap-4 lg:gap-8 shrink-0 ml-auto">
                 <div className="hidden md:flex items-center gap-8">
                     <MetricItem value={`${user.accuracy}%`} icon={Target} color="text-emerald-500" isCurrentUser={isCurrentUser} />
@@ -229,6 +231,18 @@ function MetricItem({ value, icon: Icon, color, isCurrentUser }: any) {
             <span className={cn("text-xs font-black uppercase tracking-tight", isCurrentUser ? 'text-white' : 'text-slate-700')}>
                 {value}
             </span>
+        </div>
+    );
+}
+
+function QuickStatCard({ icon: Icon, value, label }: any) {
+    return (
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-3">
+            <Icon className="text-indigo-500" size={20} />
+            <div>
+                <div className="text-2xl font-black text-slate-900">{value}</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</div>
+            </div>
         </div>
     );
 }

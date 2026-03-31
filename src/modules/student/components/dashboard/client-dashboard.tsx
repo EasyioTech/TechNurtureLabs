@@ -125,7 +125,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
             {/* 1. Active Learning Hero (Resume) */}
             {lastCourse && (
               <section className="group">
-                <div className="relative overflow-hidden rounded-2xl sm:rounded-[2rem] bg-slate-950 p-5 sm:p-7 lg:p-10 text-white shadow-xl shadow-indigo-950/20 border border-white/5">
+                <div className="relative overflow-hidden rounded-2xl sm:rounded-[2rem] bg-indigo-950 p-5 sm:p-7 lg:p-10 text-white shadow-xl shadow-indigo-950/20 border border-white/5">
                   <div className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 bg-indigo-500/10 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
 
                   <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8 sm:gap-10">
@@ -145,7 +145,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                               strokeDasharray={mobileCircumference}
                               strokeDashoffset={mobileOffset}
                               strokeLinecap="round"
-                              className="text-indigo-500"
+                              className="text-indigo-400"
                               style={{ transition: 'stroke-dashoffset 1.5s ease-out' }}
                             />
                           </svg>
@@ -164,11 +164,11 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                       <h2 className="text-xl sm:text-2xl lg:text-4xl font-black uppercase tracking-tight leading-tight mb-4 sm:mb-5 max-w-2xl">{lastCourse.title}</h2>
 
                       <div className="flex flex-wrap items-center gap-3 mb-5 sm:mb-7">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-200/50">
                           <BookOpen size={13} className="text-indigo-400" />
                           <span>{lastCourse.totalLessons} lessons</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-200/50">
                           <Clock size={13} className="text-indigo-400" />
                           <span>{Math.ceil(lastCourse.totalLessons * 0.5)}h total</span>
                         </div>
@@ -194,13 +194,13 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                           strokeDasharray={desktopCircumference}
                           strokeDashoffset={desktopOffset}
                           strokeLinecap="round"
-                          className="text-indigo-500"
+                          className="text-indigo-400"
                           style={{ transition: 'stroke-dashoffset 1.5s ease-out' }}
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <span className="text-3xl lg:text-4xl font-black tracking-tighter">{Math.round(courseProgress * 100)}%</span>
-                        <span className="text-[10px] font-semibold text-slate-500 mt-1">done</span>
+                        <span className="text-[10px] font-semibold text-indigo-300/40 mt-1 uppercase tracking-widest">Done</span>
                       </div>
                     </div>
                   </div>
@@ -211,31 +211,31 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
             {/* 2. Mobile Mini Dashboard: Analytics & Leaderboard */}
             <div className="lg:hidden grid grid-cols-2 gap-4">
               <Link href="/student/analytics" className="group">
-                <div className="h-24 rounded-2xl bg-indigo-50 p-4 flex flex-col justify-between border border-indigo-100 hover:bg-indigo-100 active:scale-95 transition-[background-color,transform] duration-150">
-                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100">
+                <div className="h-24 rounded-2xl bg-indigo-50/50 p-4 flex flex-col justify-between border border-indigo-100/50 hover:bg-indigo-100 active:scale-95 transition-[background-color,transform] duration-150">
+                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100/50">
                     <Activity size={18} strokeWidth={2} />
                   </div>
                   <div>
                     <p className="font-bold text-indigo-900 text-sm leading-tight">Analytics</p>
-                    <p className="text-[10px] text-indigo-400 mt-0.5">View insights</p>
+                    <p className="text-[10px] text-indigo-400 mt-0.5">Performance</p>
                   </div>
                 </div>
               </Link>
               <Link href="/student/leaderboard" className="group">
-                <div className="h-24 rounded-2xl bg-amber-50 p-4 flex flex-col justify-between border border-amber-100 hover:bg-amber-100 active:scale-95 transition-[background-color,transform] duration-150">
-                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-amber-600 shadow-sm border border-amber-100">
+                <div className="h-24 rounded-2xl bg-amber-50/50 p-4 flex flex-col justify-between border border-amber-100/50 hover:bg-amber-100 active:scale-95 transition-[background-color,transform] duration-150">
+                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-amber-600 shadow-sm border border-amber-100/50">
                     <Trophy size={18} strokeWidth={2} />
                   </div>
                   <div>
-                    <p className="font-bold text-amber-900 text-sm leading-tight">Rank</p>
-                    <p className="text-[10px] text-amber-500 mt-0.5">#{stats.rank || '-'}</p>
+                    <p className="font-bold text-amber-900 text-sm leading-tight">Leaderboard</p>
+                    <p className="text-[10px] text-amber-500 mt-0.5">Rank #{stats.rank || '-'}</p>
                   </div>
                 </div>
               </Link>
             </div>
 
             {/* 3. Overall Progress (Global Level) - Mobile only here */}
-            <div className="lg:hidden bg-slate-950 rounded-[2rem] p-6 text-white relative overflow-hidden shadow-2xl shadow-indigo-950/40 border border-white/5 group">
+            <div className="lg:hidden bg-slate-900 rounded-[2rem] p-6 text-white relative overflow-hidden shadow-2xl shadow-indigo-950/40 border border-white/5 group">
               <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-6">
@@ -244,7 +244,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                     <p className="text-xl font-black tracking-tight uppercase leading-none">Level {stats.level}</p>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10 shadow-2xl">
-                    <Crown size={24} className="text-indigo-500" />
+                    <Crown size={24} className="text-indigo-400" />
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -262,16 +262,8 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
               </div>
             </div>
 
-            {/* 4. Performance Stats Pills */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-              <QuickStatCard icon={BookOpen} value={stats?.lessonsCompleted || 0} label="Lessons" />
-              <QuickStatCard icon={Clock} value={`${((stats?.learningTimeMinutes || 0) / 60).toFixed(1)}h`} label="Time Spent" />
-              <QuickStatCard icon={Target} value={`${stats?.accuracy || 0}%`} label="Score" />
-              <QuickStatCard icon={Medal} value={`#${stats?.rank || '-'}`} label="Rank" />
-            </div>
-
-            {/* 5. Daily Goals (Missions) - Moved higher for mobile */}
-            <section className="lg:hidden bg-white rounded-3xl p-5 border border-slate-100 shadow-md">
+            {/* 4. Daily Goals (Missions) - Before Performance Stats */}
+            <section className="lg:hidden bg-white rounded-3xl p-5 border border-slate-100 shadow-sm">
               <div className="flex items-center justify-between mb-5">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 tracking-tight leading-none uppercase flex items-center gap-2">

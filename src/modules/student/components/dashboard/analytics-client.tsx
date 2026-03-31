@@ -39,9 +39,9 @@ export function AnalyticsClient({ initialData }: AnalyticsClientProps) {
 
     return (
         <div className="min-h-screen bg-slate-50/10 pb-20 overflow-x-hidden">
-            {/* Header: Fixed Mobile Scaling */}
-            <div className="relative bg-slate-950 overflow-hidden py-16 md:py-24 px-6 lg:px-12 border-b border-white/5">
-                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
+            {/* Elite Header */}
+            <div className="relative bg-slate-900 overflow-hidden py-16 md:py-20 lg:py-24 px-6 lg:px-12 border-b border-white/5">
+                <div className="absolute top-0 right-0 w-[400px] md:w-[800px] h-[400px] md:h-[800px] bg-amber-500/10 rounded-full blur-[100px] md:blur-[150px] pointer-events-none" />
                 
                 <div className="max-w-[1440px] mx-auto relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-12 lg:gap-16">
                     <div className="w-full lg:flex-1">
@@ -89,12 +89,13 @@ export function AnalyticsClient({ initialData }: AnalyticsClientProps) {
                 </div>
             </div>
 
-            {/* Matrix Data: Optimized for Mobile Wrap */}
             <main className="max-w-[1440px] mx-auto px-6 lg:px-12 -mt-10 md:-mt-16 relative z-20">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10 mb-12">
-                    <StatBox label="Lessons" value={summary.weeklyLessons ?? 0} icon={Clock} color="bg-indigo-600" />
-                    <StatBox label="Accuracy" value={`${summary.avgWeeklyAccuracy ?? 0}%`} icon={Target} color="bg-slate-900" />
-                    <StatBox label="XP Velocity" value={`+${summary.weeklyXp ?? 0}`} icon={Award} color="bg-slate-700" className="sm:col-span-2 lg:col-span-1" />
+                {/* 6. Performance Stats Pills - Reordered to bottom for mobile */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12">
+                  <QuickStatCard icon={BookOpen} value={summary.weeklyLessons || 0} label="Lessons" />
+                  <QuickStatCard icon={Clock} value={`${((summary.learningTimeMinutes || 0) / 60).toFixed(1)}h`} label="Time Spent" />
+                  <QuickStatCard icon={Target} value={`${summary.avgWeeklyAccuracy || 0}%`} label="Score" />
+                  <QuickStatCard icon={Medal} value={`#${summary.rank || '-'}`} label="Rank" />
                 </div>
 
                 <div className="bg-white rounded-[2.5rem] md:rounded-[4rem] p-8 md:p-16 border border-slate-100 shadow-xl shadow-slate-200/20 relative overflow-hidden group">
@@ -168,21 +169,13 @@ export function AnalyticsClient({ initialData }: AnalyticsClientProps) {
     );
 }
 
-function StatBox({ label, value, icon: Icon, color, className }: any) {
+function QuickStatCard({ icon: Icon, value, label }: any) {
     return (
-        <div className={cn(
-            "bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-lg shadow-slate-200/20 flex items-center justify-between group group hover:border-indigo-100 transition-all active:scale-[0.98] duration-300",
-            className
-        )}>
-            <div className="min-w-0">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">{label}</span>
-                <p className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter truncate">{value}</p>
-            </div>
-            <div className={cn(
-                "w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-xl transition-all duration-500",
-                color
-            )}>
-                <Icon size={24} className="md:w-8 md:h-8" />
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-3">
+            <Icon className="text-indigo-500" size={20} />
+            <div>
+                <div className="text-2xl font-black text-slate-900">{value}</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</div>
             </div>
         </div>
     );

@@ -167,12 +167,12 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
                             </div>
                         </section>
 
-                        <section className="bg-slate-50/50 border border-slate-100 rounded-[2.5rem] p-8 md:p-12 shadow-sm">
-                            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter mb-10 text-center underline decoration-indigo-200 underline-offset-8">Critical Metrics</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                <DetailedStat label="Lessons Completed" value={stats.lessonsCompleted} icon={AwardIcon} color="text-indigo-600" bg="bg-indigo-50" />
-                                <DetailedStat label="Average Accuracy" value={`${stats.accuracy}%`} icon={Activity} color="text-emerald-600" bg="bg-emerald-50" />
-                                <DetailedStat label="Growth Velocity" value={`${stats.efficiency}%`} icon={Zap} color="text-amber-600" bg="bg-amber-50" />
+                        <section className="bg-slate-50/50 border border-slate-100 rounded-[2.5rem] p-6 md:p-12 shadow-sm relative overflow-hidden">
+                            <h3 className="text-[10px] md:text-lg font-black text-slate-900 uppercase tracking-[0.3em] mb-10 text-center underline decoration-indigo-200 underline-offset-8">Critical Metrics</h3>
+                            <div className="grid grid-cols-3 gap-3 md:gap-6">
+                                <DetailedStat label="Lessons" value={stats.lessonsCompleted} icon={AwardIcon} color="text-indigo-600" bg="bg-indigo-50" />
+                                <DetailedStat label="Accuracy" value={`${stats.accuracy}%`} icon={Activity} color="text-emerald-600" bg="bg-emerald-50" />
+                                <DetailedStat label="Velocity" value={`${stats.efficiency}%`} icon={Zap} color="text-amber-600" bg="bg-amber-50" />
                             </div>
                         </section>
                     </div>
@@ -240,12 +240,12 @@ function QuickStat({ label, value, icon: Icon, color, bg, border, text = 'text-s
 
 function DetailedStat({ label, value, icon: Icon, color, bg }: any) {
     return (
-        <div className="p-8 rounded-[2rem] bg-white border border-slate-100 flex flex-col items-center text-center group hover:border-slate-300 hover:shadow-lg transition-all duration-500">
-            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500", bg, color)}>
-                <Icon size={24} strokeWidth={2.5} />
+        <div className="p-4 md:p-8 rounded-2xl md:rounded-[2rem] bg-white border border-slate-100 flex flex-col items-center text-center group hover:border-slate-300 hover:shadow-lg transition-all duration-500 min-w-0">
+            <div className={cn("w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500", bg, color)}>
+                <Icon size={18} className="md:w-6 md:h-6" strokeWidth={2.5} />
             </div>
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-tight">{label}</p>
-            <p className="text-2xl font-black text-slate-950 leading-none tracking-tight uppercase">{value}</p>
+            <p className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-tight truncate w-full">{label}</p>
+            <p className="text-sm md:text-2xl font-black text-slate-950 leading-none tracking-tight uppercase">{value}</p>
         </div>
     );
 }
