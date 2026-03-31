@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-// @ts-ignore - VariableSizeList is a valid member but sometimes types are misaligned in certain environments
-import { VariableSizeList as List } from 'react-window';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { cn } from '@/lib/utils';
@@ -62,28 +60,12 @@ export function PDFViewer({
     const [retryKey, setRetryKey] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
     
-    // Store page dimensions for virtualization
+    // Store page dimensions
     const [pageDimensions, setPageDimensions] = useState<Map<number, { width: number; height: number }>>(new Map());
     
     const containerRef = useRef<HTMLDivElement>(null);
-    const listRef = useRef<List>(null);
     const completedRef = useRef(false);
     
-    // Virtualization scroll handling
-    const onItemsRendered = useCallback(({ visibleStartIndex }: { visibleStartIndex: number }) => {
-        const currentPage = visibleStartIndex + 1;
-        if (currentPage !== pageNumber) {
-            onPageChange?.(currentPage);
-        }
-    }, [pageNumber, onPageChange]);
-
-    // Sync scroll position when pageNumber changes from parent (e.g. syllabus click)
-    useEffect(() => {
-        if (listRef.current) {
-            listRef.current.scrollToItem(pageNumber - 1, 'start');
-        }
-    }, [pageNumber]);
-
     // Measure container width
     useEffect(() => {
         const updateWidth = () => {
@@ -151,9 +133,6 @@ export function PDFViewer({
             next.set(pNum, { width, height });
             return next;
         });
-        if (listRef.current) {
-            listRef.current.resetAfterIndex(pNum - 1);
-        }
     };
 
     const getPageHeight = useCallback((index: number) => {
@@ -164,20 +143,6 @@ export function PDFViewer({
         }
         return DEFAULT_PAGE_HEIGHT;
     }, [pageDimensions, containerWidth]);
-
-    const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => (
-        <div style={style} className="flex justify-center py-4">
-            <Page
-                pageNumber={index + 1}
-                width={containerWidth}
-                onLoadSuccess={onPageLoadSuccess}
-                loading={<div style={{ height: getPageHeight(index) }} className="bg-slate-50 animate-pulse rounded-lg" />}
-                renderAnnotationLayer={false}
-                renderTextLayer={false}
-                className="shadow-xl"
-            />
-        </div>
-    );
 
     if (!absoluteUrl) return null;
 
@@ -260,17 +225,20 @@ export function PDFViewer({
                         options={fileOptions}
                     >
                         {numPages > 0 && (
-                            <List
-                                ref={listRef}
-                                height={isFullscreen ? window.innerHeight - 60 : 600}
-                                itemCount={numPages}
-                                itemSize={getPageHeight}
-                                width="100%"
-                                onItemsRendered={onItemsRendered}
-                                className="no-scrollbar"
-                            >
-                                {Row}
-                            </List>
+                            <div className="h-full overflow-y-auto no-scrollbar scroll-smooth p-4 space-y-6 flex flex-col items-center">
+                                {Array.from(new Array(numPages), (_, index) => (
+                                    <div key={`page_${index + 1}`} className="shadow-2xl rounded-sm overflow-hidden bg-white">
+                                        <Page
+                                            pageNumber={index + 1}
+                                            width={containerWidth}
+                                            renderAnnotationLayer={false}
+                                            renderTextLayer={false}
+                                            onLoadSuccess={onPageLoadSuccess}
+                                            loading={<div style={{ width: containerWidth, height: getPageHeight(index) }} className="bg-slate-50 animate-pulse" />}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </Document>
                 )}
