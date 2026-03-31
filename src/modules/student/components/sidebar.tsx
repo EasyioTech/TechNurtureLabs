@@ -15,15 +15,17 @@ import {
     Zap,
     ChevronLeft,
     LogOut as LogOutIcon,
-    Palette
+    Palette,
+    Microscope,
+    Beaker
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/student' },
-    { icon: BookOpen, label: 'My Library', href: '/student/courses' },
+    { icon: Microscope, label: 'Dashboard', href: '/student' },
+    { icon: Beaker, label: 'My Library', href: '/student/courses' },
     { icon: Target, label: 'Challenges', href: '/student/challenges' },
     { icon: Trophy, label: 'Achievements', href: '/student/achievements' },
     { icon: User, label: 'Profile', href: '/student/profile' },
@@ -91,9 +93,9 @@ export function StudentSidebar({
                           */}
                         <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-200">
                             {logoUrl ? (
-                                <img src={logoUrl} alt={displayName} className="w-7 h-7 object-contain" />
+                                <img src={logoUrl} alt={displayName} className="w-10 h-10 object-contain" />
                             ) : (
-                                <GraduationCap size={24} className="text-slate-800" />
+                                <img src="/science_1837996.png" alt={displayName} className="w-10 h-10 object-contain" />
                             )}
                         </div>
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />

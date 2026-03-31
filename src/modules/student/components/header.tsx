@@ -6,8 +6,10 @@ import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     Flame, Star, Crown, LogOut, Search, Menu, X,
+    Flame, Star, Crown, LogOut, Search, Menu, X,
     Settings, GraduationCap, LayoutDashboard,
-    Zap, Sparkles, Compass, User, BookOpen, Target, Trophy
+    Zap, Sparkles, Compass, User, BookOpen, Target, Trophy,
+    Beaker, Microscope
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 
@@ -75,8 +77,12 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                                 />
                             </div>
                         ) : (
-                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm">
-                                <GraduationCap size={20} className="text-white" />
+                            <div className="flex items-center justify-center overflow-hidden flex-shrink-0">
+                                <img
+                                    src="/science_1837996.png"
+                                    alt={displayName}
+                                    className="h-9 w-9 object-contain"
+                                />
                             </div>
                         )}
                         {(!school || settings?.show_platform_name !== false) && (
@@ -187,8 +193,8 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                                             <img src={logoUrl} alt={displayName} className="w-full h-full object-contain" />
                                         </div>
                                     ) : (
-                                        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
-                                            <GraduationCap size={16} />
+                                        <div className="w-8 h-8 flex items-center justify-center overflow-hidden">
+                                            <img src="/science_1837996.png" alt={displayName} className="w-full h-full object-contain" />
                                         </div>
                                     )}
                                     <span className="font-extrabold text-slate-800 text-[15px] tracking-tight truncate max-w-[150px]">{displayName}</span>
@@ -220,8 +226,8 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
 
                             {/* Nav */}
                             <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
-                                <NavItem icon={LayoutDashboard} label="Dashboard" href="/student" active={pathname === '/student'} close={() => setMobileOpen(false)} />
-                                <NavItem icon={BookOpen} label="My Library" href="/student/courses" active={pathname === '/student/courses'} close={() => setMobileOpen(false)} />
+                                <NavItem icon={Microscope} label="Dashboard" href="/student" active={pathname === '/student'} close={() => setMobileOpen(false)} />
+                                <NavItem icon={Beaker} label="My Library" href="/student/courses" active={pathname === '/student/courses'} close={() => setMobileOpen(false)} />
                                 <NavItem icon={Target} label="Challenges" href="/student/challenges" active={pathname === '/student/challenges'} close={() => setMobileOpen(false)} />
                                 <NavItem icon={Trophy} label="Achievements" href="/student/achievements" active={pathname === '/student/achievements'} close={() => setMobileOpen(false)} />
                                 <div className="py-2 px-4">
