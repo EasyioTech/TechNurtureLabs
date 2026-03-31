@@ -28,8 +28,8 @@ export const PricingSection = () => {
 
     if (loading) {
         return (
-            <div className="py-32 flex justify-center items-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <div className="py-20 sm:py-32 flex justify-center items-center">
+                <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-t-2 border-b-2 border-blue-500"></div>
             </div>
         );
     }
@@ -54,23 +54,23 @@ export const PricingSection = () => {
     }
 
     return (
-        <section id="pricing" className="py-32 bg-slate-50 relative z-10 transition-colors duration-300">
-            <div className="max-w-7xl mx-auto px-6">
+        <section id="pricing" className="py-12 sm:py-20 lg:py-32 bg-slate-50 relative z-10 transition-colors duration-300">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
-                <div className="text-center mb-16 relative">
+                <div className="text-center mb-8 sm:mb-12 lg:mb-16 relative">
                     <ScrollReveal>
-                        <h2 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight">
+                        <h2 className="text-2xl sm:text-4xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight">
                             Simple, transparent pricing
                         </h2>
-                        <p className="mt-4 text-xl text-slate-600 font-medium max-w-2xl mx-auto leading-relaxed">
-                            No hidden fees. No complicated tiers. Just value for your institution.
+                        <p className="mt-3 sm:mt-4 text-base sm:text-lg lg:text-xl text-slate-600 font-medium max-w-2xl mx-auto leading-relaxed">
+                            No hidden fees. No tiers. Just value for your institution.
                         </p>
                     </ScrollReveal>
 
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-blue-100/30 rounded-full blur-[100px] -z-10" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 sm:w-96 sm:h-96 lg:w-[400px] lg:h-[400px] bg-blue-100/30 rounded-full blur-2xl sm:blur-[80px] lg:blur-[100px] -z-10" />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-center">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto items-center">
                     {displayPlans.map((plan, idx) => {
                         if (!plan) return <div key={idx} className="hidden md:block" />;
                         const isCenter = idx === 1 || (plans.length === 1 && plan.is_popular);

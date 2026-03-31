@@ -12,6 +12,7 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from 'recharts';
+import { cn } from '@/lib/utils';
 
 interface AnalyticsClientProps {
   initialData: {
@@ -24,64 +25,63 @@ interface AnalyticsClientProps {
 export function AnalyticsClient({ initialData }: AnalyticsClientProps) {
     const { profile, chartData, summary } = initialData;
 
-    // Guard against missing data (network error during SSR)
     if (!profile || !summary) {
         return (
-            <div className="min-h-screen bg-slate-50/10 flex items-center justify-center">
-                <div className="text-center">
-                    <BarChart3 size={48} className="text-slate-200 mx-auto mb-4" />
-                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Analytics unavailable</p>
-                    <p className="text-xs text-slate-300 mt-2">Please refresh the page to try again.</p>
+            <div className="min-h-screen bg-slate-50/10 flex items-center justify-center p-6">
+                <div className="text-center max-w-xs">
+                    <BarChart3 size={48} className="text-slate-200 mx-auto mb-6" />
+                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest leading-relaxed">Intelligence data stream unavailable</p>
+                    <p className="text-[10px] font-bold text-slate-300 mt-4 uppercase tracking-widest">Protocol: Re-synchronize Required</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50/10 pb-32">
-            {/* Analytical Header */}
-            <div className="relative bg-slate-950 overflow-hidden py-24 lg:py-32 px-6 lg:px-12 border-b border-white/5">
-                <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[150px] pointer-events-none" />
+        <div className="min-h-screen bg-slate-50/10 pb-20 overflow-x-hidden">
+            {/* Header: Fixed Mobile Scaling */}
+            <div className="relative bg-slate-950 overflow-hidden py-16 md:py-24 px-6 lg:px-12 border-b border-white/5">
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
                 
-                <div className="max-w-[1440px] mx-auto relative z-10 flex flex-col lg:flex-row items-center justify-between gap-16">
-                    <div className="flex-1">
+                <div className="max-w-[1440px] mx-auto relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-12 lg:gap-16">
+                    <div className="w-full lg:flex-1">
                         <motion.div 
-                            initial={{ opacity: 0, x: -20 }}
+                            initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className="inline-flex items-center gap-3 px-6 py-2.5 rounded-full bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 mb-10 shadow-2xl"
+                            className="inline-flex items-center gap-2.5 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-8"
                         >
-                            <Activity size={18} fill="currentColor" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.4em]">Learning Progress</span>
+                            <Activity size={14} className="fill-indigo-500/20" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Intelligence Feed</span>
                         </motion.div>
 
-                        <h1 className="text-6xl md:text-8xl font-black text-white uppercase tracking-tighter leading-none mb-12">
+                        <h1 className="text-4xl sm:text-6xl md:text-8xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-8">
                             Performance <br />
                             <span className="text-indigo-500">Analytics</span>
                         </h1>
 
-                        <div className="flex flex-wrap items-center gap-10">
+                        <div className="flex flex-wrap items-center gap-6 md:gap-10">
                             <div className="space-y-1">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Points Earned</span>
-                                <div className="flex items-center gap-4">
-                                    <TrendingUp size={28} className="text-emerald-400" />
-                                    <span className="text-4xl font-black text-white tracking-tighter">+{summary.weeklyXp ?? 0} XP</span>
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Mission Progress</span>
+                                <div className="flex items-center gap-3">
+                                    <TrendingUp size={24} className="text-emerald-400 shrink-0" />
+                                    <span className="text-2xl sm:text-4xl font-black text-white tracking-tighter">+{summary.weeklyXp ?? 0} XP</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="w-full lg:w-auto flex justify-end">
-                        <div className="w-full max-w-md bg-indigo-600 rounded-[4rem] p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl shadow-indigo-950/40 border border-indigo-500/30 relative overflow-hidden group">
+                    <div className="w-full lg:w-auto self-stretch lg:self-center">
+                        <div className="w-full lg:max-w-md bg-indigo-600 rounded-[2.5rem] p-8 md:p-12 flex flex-col items-center justify-center text-center shadow-2xl border border-indigo-500/30 relative overflow-hidden group">
                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.1)_0%,_transparent_70%)] pointer-events-none" />
-                           <div className="relative z-10">
-                                <div className="w-24 h-24 rounded-[2.5rem] bg-white text-indigo-600 flex items-center justify-center mb-10 shadow-2xl group-hover:rotate-12 transition-transform duration-500">
-                                    <BarChart3 size={48} />
+                           <div className="relative z-10 w-full">
+                                <div className="w-16 h-16 md:w-20 md:h-20 rounded-[1.5rem] md:rounded-[2rem] bg-white text-indigo-600 flex items-center justify-center mx-auto mb-8 shadow-xl group-hover:scale-105 transition-transform duration-500">
+                                    <BarChart3 size={32} />
                                 </div>
-                                <h3 className="text-3xl font-black text-white uppercase tracking-tighter mb-8">Student Profile</h3>
-                                <div className="space-y-4 w-full bg-black/20 rounded-[2.5rem] p-8 backdrop-blur-md border border-white/5">
-                                    <ProfileStat label="Current Level" value={`Level ${profile.level ?? 1}`} />
-                                    <ProfileStat label="Total Points" value={(profile.xp ?? 0).toLocaleString()} />
-                                    <ProfileStat label="Best Streak" value={`${profile.longest_streak ?? 0} Days`} />
+                                <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter mb-6">Cadet Status</h3>
+                                <div className="space-y-3 w-full bg-black/20 rounded-[2rem] p-6 backdrop-blur-md border border-white/5">
+                                    <ProfileStat label="Level" value={profile.level ?? 1} />
+                                    <ProfileStat label="Global XP" value={(profile.xp ?? 0).toLocaleString()} />
+                                    <ProfileStat label="Max Streak" value={`${profile.longest_streak ?? 0} Days`} />
                                 </div>
                            </div>
                         </div>
@@ -89,32 +89,34 @@ export function AnalyticsClient({ initialData }: AnalyticsClientProps) {
                 </div>
             </div>
 
-            {/* Matrix Data */}
-            <main className="max-w-[1440px] mx-auto px-6 lg:px-12 -mt-16 relative z-20">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-12 mb-16">
-                    <StatBox label="Lessons Completed" value={summary.weeklyLessons ?? 0} icon={Clock} color="bg-indigo-600" />
-                    <StatBox label="Quiz Accuracy" value={`${summary.avgWeeklyAccuracy ?? 0}%`} icon={Target} color="bg-slate-900" />
-                    <StatBox label="Weekly XP" value={`+${summary.weeklyXp ?? 0}`} icon={Award} color="bg-slate-700" />
+            {/* Matrix Data: Optimized for Mobile Wrap */}
+            <main className="max-w-[1440px] mx-auto px-6 lg:px-12 -mt-10 md:-mt-16 relative z-20">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10 mb-12">
+                    <StatBox label="Lessons" value={summary.weeklyLessons ?? 0} icon={Clock} color="bg-indigo-600" />
+                    <StatBox label="Accuracy" value={`${summary.avgWeeklyAccuracy ?? 0}%`} icon={Target} color="bg-slate-900" />
+                    <StatBox label="XP Velocity" value={`+${summary.weeklyXp ?? 0}`} icon={Award} color="bg-slate-700" className="sm:col-span-2 lg:col-span-1" />
                 </div>
 
-                <div className="bg-white rounded-[4rem] p-10 lg:p-16 border border-slate-100 shadow-2xl shadow-slate-200/40 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-12 opacity-[0.03] text-slate-950 pointer-events-none">
+                <div className="bg-white rounded-[2.5rem] md:rounded-[4rem] p-8 md:p-16 border border-slate-100 shadow-xl shadow-slate-200/20 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-12 opacity-[0.03] text-slate-950 pointer-events-none hidden md:block">
                         <TrendingUp size={200} />
                     </div>
                     
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-16 pb-8 border-b border-slate-50">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-12 gap-4 pb-6 border-b border-slate-50">
                         <div>
-                            <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-3">Progress Tracing</h3>
-                            <div className="flex items-center gap-3 text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">
-                                <Activity size={16} /> Weekly XP Progress
+                            <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">Progress Vector</h3>
+                            <div className="flex items-center gap-2 text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+                                <Activity size={14} /> Intelligence Analytics
                             </div>
                         </div>
-                        <div className="text-[11px] font-black text-slate-300 uppercase tracking-[0.4em]">WEEKLY PROGRESS</div>
+                        <div className="px-3 py-1 bg-slate-50 text-slate-400 text-[9px] font-black uppercase tracking-[0.4em] rounded-lg border border-slate-100">
+                            SYNC_ACTIVE
+                        </div>
                     </div>
 
-                    <div className="h-[500px] w-full mt-4">
+                    <div className="h-[300px] md:h-[500px] w-full mt-4 -ml-4 sm:ml-0">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                            <LineChart data={chartData} margin={{ top: 20, right: 30, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
@@ -126,36 +128,36 @@ export function AnalyticsClient({ initialData }: AnalyticsClientProps) {
                                     dataKey="date"
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fontSize: 11, fill: '#64748b', fontWeight: 900 }}
-                                    dy={15}
+                                    tick={{ fontSize: 9, fill: '#64748b', fontWeight: 900 }}
+                                    dy={10}
                                 />
                                 <YAxis
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fontSize: 11, fill: '#64748b', fontWeight: 900 }}
-                                    dx={-15}
+                                    tick={{ fontSize: 9, fill: '#64748b', fontWeight: 900 }}
+                                    dx={-5}
                                 />
                                 <Tooltip
                                     cursor={{ stroke: '#e2e8f0', strokeWidth: 2, strokeDasharray: '4 4' }}
                                     contentStyle={{
-                                        borderRadius: '2.5rem',
+                                        borderRadius: '1.5rem',
                                         border: '1px solid #f1f5f9',
                                         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.1)',
-                                        padding: '24px',
+                                        padding: '16px',
                                         backgroundColor: 'rgba(255, 255, 255, 0.95)',
                                         backdropFilter: 'blur(8px)'
                                     }}
-                                    itemStyle={{ color: '#0f172a', fontWeight: '900', fontSize: '18px', padding: '0' }}
-                                    labelStyle={{ color: '#64748b', fontWeight: '900', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '12px' }}
+                                    itemStyle={{ color: '#0f172a', fontWeight: '900', fontSize: '14px', padding: '0' }}
+                                    labelStyle={{ color: '#64748b', fontWeight: '900', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '8px' }}
                                 />
                                 <Line
                                     type="monotone"
                                     dataKey="xp"
                                     stroke="#4f46e5"
-                                    strokeWidth={6}
-                                    dot={{ r: 8, fill: '#4f46e5', strokeWidth: 4, stroke: '#ffffff' }}
-                                    activeDot={{ r: 10, fill: '#4f46e5', strokeWidth: 0 }}
-                                    name="XP Earned"
+                                    strokeWidth={4}
+                                    dot={{ r: 4, fill: '#4f46e5', strokeWidth: 3, stroke: '#ffffff' }}
+                                    activeDot={{ r: 6, fill: '#4f46e5', strokeWidth: 0 }}
+                                    name="XP"
                                 />
                             </LineChart>
                         </ResponsiveContainer>
@@ -166,25 +168,31 @@ export function AnalyticsClient({ initialData }: AnalyticsClientProps) {
     );
 }
 
-function StatBox({ label, value, icon: Icon, color }: any) {
+function StatBox({ label, value, icon: Icon, color, className }: any) {
     return (
-        <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-2xl shadow-slate-200/20 flex items-center justify-between group hover:border-indigo-100 transition-all hover:-translate-y-2 duration-500">
-            <div>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{label}</span>
-                <p className="text-4xl font-black text-slate-900 mt-3 tracking-tighter">{value}</p>
+        <div className={cn(
+            "bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-lg shadow-slate-200/20 flex items-center justify-between group group hover:border-indigo-100 transition-all active:scale-[0.98] duration-300",
+            className
+        )}>
+            <div className="min-w-0">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">{label}</span>
+                <p className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter truncate">{value}</p>
             </div>
-            <div className={`w-20 h-20 rounded-[1.75rem] flex items-center justify-center text-white ${color} shadow-xl shadow-slate-200 group-hover:scale-110 group-hover:rotate-12 transition-all duration-500`}>
-                <Icon size={36} />
+            <div className={cn(
+                "w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-xl transition-all duration-500",
+                color
+            )}>
+                <Icon size={24} className="md:w-8 md:h-8" />
             </div>
         </div>
     );
 }
 
-function ProfileStat({ label, value }: { label: string; value: string }) {
+function ProfileStat({ label, value }: { label: string; value: any }) {
     return (
-        <div className="flex items-center justify-between py-2">
-            <span className="text-[10px] font-black text-indigo-200/60 uppercase tracking-[0.2em]">{label}</span>
-            <span className="text-sm font-black text-white uppercase tracking-widest">{value}</span>
+        <div className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+            <span className="text-[9px] font-black text-indigo-200/60 uppercase tracking-widest">{label}</span>
+            <span className="text-xs font-black text-white uppercase tracking-tight">{value}</span>
         </div>
     );
 }

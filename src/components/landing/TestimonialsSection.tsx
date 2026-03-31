@@ -95,30 +95,30 @@ export const TestimonialsColumn = (props: {
                     ease: "linear",
                     repeatType: "loop",
                 }}
-                className="flex flex-col gap-4 pb-4"
+                className="flex flex-col gap-3 sm:gap-4 pb-3 sm:pb-4"
             >
                 {[...new Array(2)].map((_, index) => (
                     <React.Fragment key={index}>
                         {props.testimonials.map(({ text, image, name, role }, i) => (
                             <SectionCard
                                 key={i}
-                                className="!p-6 w-full max-w-[320px] bg-white border-slate-100"
+                                className="!p-3 sm:!p-6 w-full max-w-xs sm:max-w-[320px] bg-white border-slate-100"
                             >
                                 <StarRating />
-                                <div className="text-slate-600 text-sm leading-relaxed font-medium">
+                                <div className="text-slate-600 text-xs sm:text-sm leading-relaxed font-medium">
                                     "{text}"
                                 </div>
-                                <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100">
+                                <div className="flex items-center gap-2 sm:gap-3 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100">
                                     <img
                                         width={32}
                                         height={32}
                                         src={image}
                                         alt={name}
-                                        className="h-8 w-8 rounded-full border border-slate-100"
+                                        className="h-7 w-7 sm:h-8 sm:w-8 rounded-full border border-slate-100"
                                     />
-                                    <div className="flex flex-col text-left">
-                                        <div className="font-bold text-slate-900 tracking-tight text-xs">{name}</div>
-                                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{role}</div>
+                                    <div className="flex flex-col text-left min-w-0">
+                                        <div className="font-bold text-slate-900 tracking-tight text-[10px] sm:text-xs truncate">{name}</div>
+                                        <div className="text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 truncate">{role}</div>
                                     </div>
                                 </div>
                             </SectionCard>
@@ -132,25 +132,25 @@ export const TestimonialsColumn = (props: {
 
 export const TestimonialsSection = () => {
     return (
-        <section id="testimonials" className="relative py-24 bg-white overflow-hidden border-t border-slate-50">
-            <div className="max-w-7xl mx-auto px-6 relative z-10">
-                <div className="text-center mb-16">
+        <section id="testimonials" className="relative py-12 sm:py-20 lg:py-24 bg-white overflow-hidden border-t border-slate-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+                <div className="text-center mb-8 sm:mb-12 lg:mb-16">
                     <div>
-                        <span className="px-4 py-1.5 rounded-full bg-slate-50 text-slate-600 text-xs font-bold uppercase tracking-[0.2em] border border-slate-100 mb-6 inline-block">
+                        <span className="px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-slate-50 text-slate-600 text-[9px] sm:text-xs font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em] border border-slate-100 mb-3 sm:mb-6 inline-block">
                             Real Stories
                         </span>
                     </div>
                     <div>
-                        <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+                        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
                             Loved by schools across India.
                         </h2>
-                        <p className="mt-3 text-slate-500 font-medium text-base max-w-md mx-auto">
-                            Principals, teachers, and parents share what changed after switching to TechNurture.
+                        <p className="mt-2 sm:mt-3 text-slate-500 font-medium text-xs sm:text-base max-w-md mx-auto">
+                            Teachers and parents share what changed after switching to TechNurture.
                         </p>
                     </div>
                 </div>
 
-                <div className="relative flex justify-center gap-6 mt-12 max-h-[600px] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_15%,black_85%,transparent)]">
+                <div className="relative flex justify-center gap-3 sm:gap-6 mt-8 sm:mt-12 max-h-96 sm:max-h-[600px] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_15%,black_85%,transparent)]">
                     <TestimonialsColumn testimonials={firstColumn} duration={25} />
                     <TestimonialsColumn testimonials={secondColumn} className="hidden md:block" duration={35} />
                     <TestimonialsColumn testimonials={thirdColumn} className="hidden lg:block" duration={30} />

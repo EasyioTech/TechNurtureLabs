@@ -163,8 +163,8 @@ export const DemoSection = ({ settings }: { settings?: any }) => {
     const videoType = settings?.hero_video_type || 'youtube';
 
     return (
-        <section ref={containerRef} id="demo" className={`relative z-10 bg-slate-50 ${isMobile ? 'h-auto py-20 overflow-hidden' : 'h-[250vh]'}`}>
-            <div className={`${isMobile ? 'relative w-full flex flex-col items-center' : 'sticky top-0 h-screen w-full flex flex-col items-center justify-center overflow-hidden'} px-6`}>
+        <section ref={containerRef} id="demo" className={`relative z-10 bg-slate-50 ${isMobile ? 'h-auto py-12 sm:py-20 overflow-hidden' : 'h-[250vh]'}`}>
+            <div className={`${isMobile ? 'relative w-full flex flex-col items-center' : 'sticky top-0 h-screen w-full flex flex-col items-center justify-center overflow-hidden'} px-4 sm:px-6`}>
 
                 {/* Subdued Grid Background */}
                 <div className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none"
@@ -175,13 +175,13 @@ export const DemoSection = ({ settings }: { settings?: any }) => {
                     style={{ opacity: textOpacity, y: textY }}
                     className={cn(
                         "text-center z-20 px-4 w-full",
-                        isMobile ? "relative pt-4 pb-12" : "absolute top-[5%] md:top-[8%] left-0 right-0"
+                        isMobile ? "relative pt-2 sm:pt-4 pb-6 sm:pb-12" : "absolute top-[5%] md:top-[8%] left-0 right-0"
                     )}
                 >
-                    <span className="text-[10px] md:text-sm font-bold text-blue-600 uppercase tracking-[0.2em] bg-blue-50 py-2.5 px-6 rounded-full inline-block mb-4 md:mb-8 shadow-sm border border-blue-100/50">
+                    <span className="text-[9px] sm:text-[10px] md:text-sm font-bold text-blue-600 uppercase tracking-[0.15em] sm:tracking-[0.2em] bg-blue-50 py-1.5 sm:py-2.5 px-4 sm:px-6 rounded-full inline-block mb-2 sm:mb-4 md:mb-8 shadow-sm border border-blue-100/50">
                         Video Demonstration
                     </span>
-                    <h2 className="text-4xl md:text-7xl font-black text-slate-900 tracking-tight leading-tight">
+                    <h2 className="text-xl sm:text-4xl lg:text-7xl font-black text-slate-900 tracking-tight leading-tight">
                         Experience the <span className="text-blue-600">Future</span>
                     </h2>
                 </motion.div>
@@ -190,24 +190,22 @@ export const DemoSection = ({ settings }: { settings?: any }) => {
                     style={isMobile ? {} : { scale }}
                     className={cn(
                         "relative w-full max-w-5xl mx-auto origin-center z-10 group cursor-pointer",
-                        isMobile ? "mt-0" : "mt-8 md:mt-24"
+                        isMobile ? "mt-4 sm:mt-6" : "mt-8 md:mt-24"
                     )}
                 >
                     {/* Dynamic Halo Glow behind the video */}
                     <motion.div
                         style={{ opacity: glowOpacity }}
-                        className="absolute -inset-20 bg-blue-300/15 rounded-full blur-[120px] pointer-events-none"
+                        className="absolute -inset-12 sm:-inset-20 bg-blue-300/15 rounded-full blur-2xl sm:blur-[120px] pointer-events-none"
                     />
 
                     {/* Premium Apple-style Glass Border (Fade White) */}
                     <div className={cn(
-                        "relative bg-white/40 p-1.5 md:p-2 rounded-[2.5rem] md:rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] ring-1 ring-white/60 backdrop-blur-xl z-20",
-                        isMobile && "rounded-[2rem] p-1 shadow-2xl"
+                        "relative bg-white/40 p-1 sm:p-1.5 md:p-2 rounded-2xl sm:rounded-[2.5rem] md:rounded-[3.5rem] shadow-lg sm:shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] ring-1 ring-white/60 backdrop-blur-xl z-20"
                     )}>
                         {/* Inner Video Container */}
                         <div className={cn(
-                            "relative rounded-[2.2rem] md:rounded-[3.2rem] overflow-hidden aspect-video bg-black shadow-2xl",
-                            isMobile && "rounded-[1.8rem]"
+                            "relative rounded-xl sm:rounded-[2.2rem] md:rounded-[3.2rem] overflow-hidden aspect-video bg-black shadow-2xl"
                         )}>
                             {videoUrl ? (
                                 <CustomVideoPlayer src={videoUrl} type={videoType} autoPlay={inView} />
