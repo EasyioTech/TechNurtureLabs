@@ -49,9 +49,11 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
 
     return (
         <div className="min-h-screen bg-slate-50/10 pb-20 overflow-x-hidden">
-            {/* Header Redesign: Modern & Clean */}
-            <div className="relative bg-white border-b border-slate-100 py-12 md:py-20 px-6 lg:px-12 overflow-hidden">
-                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-50 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none opacity-60" />
+            {/* Header Redesign: Premium Dark Gradient */}
+            <div className="relative bg-slate-950 overflow-hidden py-16 md:py-24 px-6 lg:px-12 border-b border-white/5 shadow-2xl">
+                {/* Dynamic Glow Orbs */}
+                <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-sky-500/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/4 pointer-events-none opacity-50" />
                 
                 <div className="max-w-[1440px] mx-auto relative z-10">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -59,49 +61,56 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
                             <motion.div 
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="inline-flex items-center gap-2.5 px-4 py-2 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 mb-8"
+                                className="inline-flex items-center gap-2.5 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-8"
                             >
-                                <LayoutDashboard size={14} className="fill-indigo-100" />
+                                <LayoutDashboard size={14} className="fill-indigo-500/20" />
                                 <span className="text-[10px] font-black uppercase tracking-widest">Growth Mission</span>
                             </motion.div>
 
-                            <h1 className="text-4xl md:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-6">
+                            <h1 className="text-4xl md:text-7xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-8">
                                 Mission <br />
-                                <span className="text-indigo-600">Objectives</span>
+                                <span className="text-indigo-500">Objectives</span>
                             </h1>
-                            <p className="text-slate-500 font-bold text-sm md:text-base max-w-xl leading-relaxed mb-10">
+                            <p className="text-slate-400 font-bold text-sm md:text-base max-w-xl leading-relaxed mb-12">
                                 Complete your daily mission protocols to earn XP, maintain your streak, and climb the platform leaderboard. Precision and consistency are your primary directives.
                             </p>
 
                             <div className="flex flex-wrap items-center gap-6 lg:gap-10">
-                                <QuickStat label="Active Streak" value={`${stats.streak} Days`} icon={Flame} color="text-orange-500" bg="bg-orange-50" />
-                                <div className="hidden sm:block w-px h-12 bg-slate-100" />
-                                <QuickStat label="Total Points" value={stats.xp.toLocaleString()} icon={Star} color="text-amber-500" bg="bg-amber-50" />
+                                <QuickStat label="Active Streak" value={`${stats.streak} Days`} icon={Flame} color="text-orange-500" bg="bg-white/5" border="border-white/5" text="text-white" />
+                                <div className="hidden sm:block w-px h-12 bg-white/10" />
+                                <QuickStat label="Total Points" value={stats.xp.toLocaleString()} icon={Star} color="text-amber-400" bg="bg-white/5" border="border-white/5" text="text-white" />
                             </div>
                         </div>
 
                         <div className="lg:col-span-5">
-                            <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-8 opacity-5 text-indigo-500">
-                                    <Trophy size={120} />
+                            <div className="bg-white/[0.03] backdrop-blur-3xl rounded-[3rem] p-8 md:p-12 border border-white/10 shadow-2xl relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-8 opacity-5 text-indigo-500 group-hover:scale-110 transition-transform duration-700">
+                                    <Trophy size={140} />
                                 </div>
                                 <div className="relative z-10">
-                                    <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Global Ranking</h3>
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-10">ID: STUDENT_PROTOCOL_{stats.rank}</p>
-                                    
-                                    <div className="grid grid-cols-2 gap-6 mb-10">
-                                        <div>
-                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Current Rank</p>
-                                            <p className="text-2xl font-black text-white">#{stats.rank}</p>
+                                    <div className="flex items-center gap-3 mb-8">
+                                        <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-600/20">
+                                            <AwardIcon size={24} />
                                         </div>
                                         <div>
-                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Percentile</p>
-                                            <p className="text-2xl font-black text-emerald-400">TOP {stats.rankPercentage}%</p>
+                                            <h3 className="text-xl font-black text-white uppercase tracking-tight">Global Ranking</h3>
+                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">ID: STUDENT_PROTOCOL_{stats.rank}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-8 mb-12">
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Current Rank</p>
+                                            <p className="text-3xl font-black text-white">#{stats.rank}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Percentile</p>
+                                            <p className="text-3xl font-black text-emerald-400">TOP {stats.rankPercentage}%</p>
                                         </div>
                                     </div>
 
                                     <Link href="/student/leaderboard" className="w-full">
-                                        <Button className="w-full h-14 bg-white text-slate-950 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-slate-100 shadow-xl active:scale-95 flex items-center justify-center gap-3">
+                                        <Button className="w-full h-16 bg-white text-slate-950 font-black uppercase tracking-widest text-[10px] rounded-[1.25rem] hover:bg-slate-100 shadow-xl active:scale-95 flex items-center justify-center gap-3 transition-all">
                                             Open Leaderboard <ArrowRight size={14} />
                                         </Button>
                                     </Link>
@@ -215,15 +224,15 @@ export function ChallengesClient({ initialData }: ChallengesClientProps) {
     );
 }
 
-function QuickStat({ label, value, icon: Icon, color, bg }: any) {
+function QuickStat({ label, value, icon: Icon, color, bg, border, text = 'text-slate-900' }: any) {
     return (
         <div className="flex items-center gap-4">
-            <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border border-slate-100 shadow-sm", bg, color)}>
+            <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border shadow-sm", bg, border, color)}>
                 <Icon size={20} />
             </div>
             <div>
                 <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{label}</p>
-                <p className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">{value}</p>
+                <p className={cn("text-xl font-black uppercase tracking-tight leading-none", text)}>{value}</p>
             </div>
         </div>
     );
