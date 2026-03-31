@@ -1,106 +1,115 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useUploadTasks, uploadStore } from '@/lib/upload-store';
 import { UploadProgress } from './upload-progress';
-import { ChevronDown, ChevronUp, Layers, X, ExternalLink } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 export function BackgroundUploadManager() {
     const tasks = useUploadTasks();
     const taskList = Object.values(tasks).filter(t => !t.isLocalVisible);
-    const [isMinimized, setIsMinimized] = useState(false);
-    
-    // Only show if there are active or errored tasks
-    if (taskList.length === 0) return null;
+    const [isCollapsed, setIsCollapsed] = useState(false);
+
+    // Swipe-to-dismiss state
+    const dragStartX = useRef<number | null>(null);
+    const [dragOffsetX, setDragOffsetX] = useState(0);
+    const [isDismissed, setIsDismissed] = useState(false);
+
+    if (taskList.length === 0 || isDismissed) return null;
 
     const activeCount = taskList.filter(t => t.isUploading).length;
     const errorCount = taskList.filter(t => t.error).length;
 
-    return (
-        <div className="fixed bottom-6 right-6 left-6 sm:left-auto z-[9999] flex flex-col items-end gap-3 pointer-events-none pb-safe">
-            <AnimatePresence mode="popLayout">
-                {!isMinimized ? (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        className="w-full sm:w-[340px] max-h-[80vh] sm:max-h-[500px] overflow-y-auto pointer-events-auto custom-scrollbar flex flex-col gap-3"
-                    >
-                        {/* Header for the group */}
-                        <div className="bg-slate-900 text-white p-3 rounded-2xl flex items-center justify-between shadow-2xl border border-white/10">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">
-                                    {activeCount > 0 ? `Uploading ${activeCount} items` : 'Upload Queue'}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setIsMinimized(true)}
-                                    className="w-6 h-6 hover:bg-white/10 text-slate-400"
-                                >
-                                    <ChevronDown size={14} />
-                                </Button>
-                            </div>
-                        </div>
+    const handlePointerDown = (e: React.PointerEvent) => {
+        dragStartX.current = e.clientX;
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    };
 
-                        {/* Individual Task Cards */}
-                        {taskList.slice().reverse().map((task) => (
-                            <div key={task.id} className="relative group">
-                                <UploadProgress
-                                    progress={task.progress}
-                                    fileName={task.fileName}
-                                    isUploading={task.isUploading}
-                                    error={task.error}
-                                    onCancel={() => task.onCancel?.()}
-                                    onReset={() => task.onReset?.()}
-                                    isDark={true}
-                                />
-                                {!task.isUploading && !task.error && (
-                                    <button 
-                                        onClick={() => uploadStore.removeTask(task.id)}
-                                        className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white/10 rounded-full text-white"
-                                    >
-                                        <X size={10} />
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </motion.div>
-                ) : (
-                    <motion.button
-                        layoutId="upload-manager-badge"
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        onClick={() => setIsMinimized(false)}
-                        className="pointer-events-auto flex items-center gap-3 px-4 py-3 bg-slate-900 text-white rounded-full shadow-2xl border border-white/10 hover:bg-slate-800 transition-all group"
-                    >
-                        <div className="relative">
-                            <Layers size={18} className="text-indigo-400 group-hover:scale-110 transition-transform" />
-                            {activeCount > 0 && (
-                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-slate-900 animate-pulse" />
-                            )}
-                        </div>
-                        <div className="flex flex-col items-start leading-tight">
-                            <span className="text-[10px] font-black uppercase tracking-widest">
-                                {activeCount} Active Uploads
+    const handlePointerMove = (e: React.PointerEvent) => {
+        if (dragStartX.current === null) return;
+        const delta = e.clientX - dragStartX.current;
+        if (delta > 0) setDragOffsetX(delta); // only allow sliding right
+    };
+
+    const handlePointerUp = () => {
+        if (dragOffsetX > 80) {
+            setIsDismissed(true);
+        } else {
+            setDragOffsetX(0);
+        }
+        dragStartX.current = null;
+    };
+
+    return (
+        <div
+            className="fixed bottom-4 right-4 z-[9999] w-[300px] max-w-[calc(100vw-2rem)]"
+            style={{
+                transform: `translateX(${dragOffsetX}px)`,
+                opacity: dragOffsetX > 0 ? Math.max(0, 1 - dragOffsetX / 160) : 1,
+                transition: dragStartX.current !== null ? 'none' : 'transform 0.2s ease, opacity 0.2s ease',
+            }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+        >
+            <div className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden select-none">
+                {/* Header */}
+                <div
+                    className="flex items-center justify-between px-3 py-2 bg-zinc-50 border-b border-zinc-200 cursor-pointer"
+                    onClick={() => setIsCollapsed(v => !v)}
+                >
+                    <div className="flex items-center gap-2">
+                        {activeCount > 0 && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                        )}
+                        <span className="text-xs font-semibold text-zinc-700">
+                            {activeCount > 0
+                                ? `Uploading ${activeCount} file${activeCount > 1 ? 's' : ''}…`
+                                : errorCount > 0
+                                ? `${errorCount} upload${errorCount > 1 ? 's' : ''} failed`
+                                : 'Uploads complete'}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        {errorCount > 0 && (
+                            <span className="text-[10px] font-bold text-red-500 bg-red-50 rounded px-1.5 py-0.5">
+                                {errorCount} error{errorCount > 1 ? 's' : ''}
                             </span>
-                            {errorCount > 0 && (
-                                <span className="text-[9px] font-bold text-rose-400 uppercase tracking-tighter">
-                                    {errorCount} failures noted
-                                </span>
-                            )}
-                        </div>
-                        <ChevronUp size={14} className="text-slate-500 ml-1" />
-                    </motion.button>
+                        )}
+                        <button
+                            className="text-zinc-400 hover:text-zinc-600 p-0.5 rounded"
+                            onClick={e => { e.stopPropagation(); setIsCollapsed(v => !v); }}
+                        >
+                            {isCollapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Task list */}
+                {!isCollapsed && (
+                    <div className="flex flex-col gap-1 p-2 max-h-[240px] overflow-y-auto">
+                        {taskList.slice().reverse().map(task => (
+                            <UploadProgress
+                                key={task.id}
+                                progress={task.progress}
+                                fileName={task.fileName}
+                                isUploading={task.isUploading}
+                                error={task.error}
+                                onCancel={() => task.onCancel?.()}
+                                onReset={() => task.onReset?.()}
+                                onDismiss={() => uploadStore.removeTask(task.id)}
+                                isDark={false}
+                            />
+                        ))}
+                    </div>
                 )}
-            </AnimatePresence>
+
+                {/* Swipe hint — only shown briefly on first mount */}
+                <div className="px-3 py-1.5 border-t border-zinc-100 bg-zinc-50">
+                    <p className="text-[10px] text-zinc-400 text-center">Slide right to dismiss</p>
+                </div>
+            </div>
         </div>
     );
 }

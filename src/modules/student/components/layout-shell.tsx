@@ -55,7 +55,7 @@ export function StudentLayoutShell({
         >
             {!isLessonPage && sidebar}
             <div className={cn(
-                "flex-1 flex flex-col min-w-0 transition-[padding-left] duration-300 ease-out pb-20 lg:pb-0",
+                "flex-1 flex flex-col min-w-0 transition-[padding-left] duration-300 ease-out pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0",
                 !isLessonPage
                     ? (isSidebarCollapsed ? "lg:pl-24" : "lg:pl-64")
                     : "w-full"

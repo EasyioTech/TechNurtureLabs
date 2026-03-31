@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import {
     Bell, Shield, CheckCircle2, LogOut, ArrowRight,
-    Loader2, User, Lock, Eye, EyeOff
+    Loader2, User, Lock, Eye, EyeOff,
+    Smartphone, Download, Share, Plus, CheckCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -17,8 +18,9 @@ import {
     changeStudentPin
 } from '@/modules/student/actions/settings-actions';
 import { deleteStudentAccountAction } from '@/modules/student/actions';
+import { usePWAInstall } from '@/hooks/use-pwa-install';
 
-type TabType = 'notifications' | 'security';
+type TabType = 'notifications' | 'security' | 'app';
 
 interface SettingsClientProps {
     initialData: {
@@ -38,6 +40,8 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
     const [emailReports, setEmailReports] = useState(true);
     const [newContentAlerts, setNewContentAlerts] = useState(true);
     const [publicProfile, setPublicProfile] = useState(true);
+
+    const pwa = usePWAInstall();
 
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -159,6 +163,13 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                             label="Privacy & Security"
                             onClick={() => setActiveTab('security')}
                         />
+                        <TabButton
+                            active={activeTab === 'app'}
+                            icon={Smartphone}
+                            label="Install App"
+                            onClick={() => setActiveTab('app')}
+                            badge={!pwa.isInstalled ? 'New' : undefined}
+                        />
                     </nav>
 
                     {/* Panel */}
@@ -171,7 +182,9 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                                 exit={{ opacity: 0, y: -8 }}
                                 transition={{ duration: 0.25, ease: 'easeOut' }}
                             >
-                                {activeTab === 'notifications' ? (
+                                {activeTab === 'app' ? (
+                                    <AppInstallPanel pwa={pwa} />
+                                ) : activeTab === 'notifications' ? (
                                     <SettingsPanel
                                         title="Notification Preferences"
                                         description="Notification delivery is coming soon."
@@ -278,8 +291,8 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                             </motion.div>
                         </AnimatePresence>
 
-                        {/* Save bar — only for tabs that have saveable toggles */}
-                        <div className="flex items-center justify-end gap-6 pt-8 mt-8 border-t border-slate-100">
+                        {/* Save bar — only for tabs that have saveable toggles (not the app install tab) */}
+                        {activeTab !== 'app' && <div className="flex items-center justify-end gap-6 pt-8 mt-8 border-t border-slate-100">
                             <AnimatePresence>
                                 {saved && (
                                     <motion.div
@@ -303,7 +316,7 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                                     : <><span>Save</span><ArrowRight size={15} /></>
                                 }
                             </Button>
-                        </div>
+                        </div>}
                     </div>
                 </div>
             </main>
@@ -313,8 +326,8 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
 
 /* ── Sub-components ── */
 
-function TabButton({ active, icon: Icon, label, onClick }: {
-    active: boolean; icon: React.ElementType; label: string; onClick: () => void;
+function TabButton({ active, icon: Icon, label, onClick, badge }: {
+    active: boolean; icon: React.ElementType; label: string; onClick: () => void; badge?: string;
 }) {
     return (
         <button
@@ -327,6 +340,11 @@ function TabButton({ active, icon: Icon, label, onClick }: {
         >
             <Icon size={17} strokeWidth={active ? 2.5 : 2} />
             <span className="whitespace-nowrap">{label}</span>
+            {badge && (
+                <span className="ml-auto text-[8px] font-black uppercase tracking-widest bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">
+                    {badge}
+                </span>
+            )}
         </button>
     );
 }
@@ -403,4 +421,181 @@ function PasswordInput({ label, value, onChange, show, onToggleShow }: {
 
 function Divider() {
     return <div className="h-px bg-slate-100 my-6" />;
+}
+
+/* ── PWA Install Panel ── */
+
+function AppInstallPanel({ pwa }: { pwa: ReturnType<typeof usePWAInstall> }) {
+    const [installing, setInstalling] = useState(false);
+    const [result, setResult] = useState<'accepted' | 'dismissed' | null>(null);
+
+    const handleInstall = async () => {
+        setInstalling(true);
+        const outcome = await pwa.prompt();
+        setInstalling(false);
+        if (outcome === 'accepted') {
+            setResult('accepted');
+            toast.success('App installed! Open it from your home screen.');
+        } else if (outcome === 'dismissed') {
+            setResult('dismissed');
+        }
+    };
+
+    // Already running as installed PWA
+    if (pwa.isInstalled) {
+        return (
+            <SettingsPanel
+                title="Install App"
+                description="Open the app directly from your home screen."
+            >
+                <div className="flex items-center gap-4 py-2">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                        <CheckCircle size={22} className="text-emerald-500" />
+                    </div>
+                    <div>
+                        <p className="text-base font-black text-slate-900 uppercase tracking-tight leading-none mb-1">
+                            App Installed
+                        </p>
+                        <p className="text-[11px] font-medium text-slate-400">
+                            You are already using the installed app. Tap its icon on your home screen anytime to open your dashboard directly.
+                        </p>
+                    </div>
+                </div>
+            </SettingsPanel>
+        );
+    }
+
+    // Android / Desktop — browser can prompt natively
+    if (pwa.platform === 'android' || pwa.platform === 'desktop') {
+        return (
+            <SettingsPanel
+                title="Install App"
+                description="Add this portal to your home screen for instant access."
+            >
+                <div className="space-y-6">
+                    <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0">
+                            <Download size={22} className="text-indigo-600" />
+                        </div>
+                        <div>
+                            <p className="text-base font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
+                                One-tap install
+                            </p>
+                            <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
+                                Install the app on your {pwa.platform === 'android' ? 'phone' : 'computer'} for instant access. No app store required — it opens straight to your dashboard, works like a native app, and keeps you logged in.
+                            </p>
+                        </div>
+                    </div>
+
+                    {result === 'accepted' ? (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                            <CheckCircle size={18} className="text-emerald-500 shrink-0" />
+                            <p className="text-xs font-semibold text-emerald-700">Installed! Find the app on your home screen.</p>
+                        </div>
+                    ) : result === 'dismissed' ? (
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                            <p className="text-xs font-medium text-slate-500">
+                                You dismissed the prompt. You can install later using your browser&apos;s menu (look for <strong>Add to Home Screen</strong> or the install icon in the address bar).
+                            </p>
+                        </div>
+                    ) : pwa.canPrompt ? (
+                        <Button
+                            onClick={handleInstall}
+                            disabled={installing}
+                            className="h-12 px-8 bg-indigo-600 text-white rounded-xl font-black uppercase tracking-[0.15em] text-[10px] hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95 flex items-center gap-3"
+                        >
+                            {installing
+                                ? <><Loader2 size={15} className="animate-spin" /> Installing…</>
+                                : <><Download size={15} /> Install App</>
+                            }
+                        </Button>
+                    ) : (
+                        <div className="p-4 rounded-xl bg-amber-50 border border-amber-100">
+                            <p className="text-xs font-medium text-amber-700 leading-relaxed">
+                                Your browser hasn&apos;t offered an install prompt yet — this usually means the app is already installed, or your browser needs a moment. Try refreshing, or look for the <strong>install icon</strong> in your browser&apos;s address bar.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </SettingsPanel>
+        );
+    }
+
+    // iOS Safari — no beforeinstallprompt, must guide manually
+    if (pwa.platform === 'ios') {
+        return (
+            <SettingsPanel
+                title="Install App"
+                description="Add this portal to your iPhone home screen."
+            >
+                <div className="space-y-5">
+                    <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
+                        On iPhone and iPad, follow these three steps in Safari to install the app. Once installed, tap its icon to open your dashboard directly — no login page, no browser.
+                    </p>
+
+                    <div className="space-y-3">
+                        <IOSStep
+                            number={1}
+                            icon={Share}
+                            title='Tap the Share button'
+                            description='The box-with-arrow icon at the bottom of Safari (or top on iPad).'
+                        />
+                        <IOSStep
+                            number={2}
+                            icon={Plus}
+                            title='Tap "Add to Home Screen"'
+                            description='Scroll down in the share sheet until you see this option.'
+                        />
+                        <IOSStep
+                            number={3}
+                            icon={CheckCircle}
+                            title='Tap "Add" to confirm'
+                            description='The app icon will appear on your home screen immediately.'
+                        />
+                    </div>
+
+                    <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50 border border-blue-100">
+                        <Smartphone size={16} className="text-blue-500 mt-0.5 shrink-0" />
+                        <p className="text-[10px] font-medium text-blue-700 leading-relaxed">
+                            <strong>Must use Safari.</strong> Chrome and other browsers on iPhone do not support Add to Home Screen for web apps.
+                        </p>
+                    </div>
+                </div>
+            </SettingsPanel>
+        );
+    }
+
+    // Fallback for unsupported browsers
+    return (
+        <SettingsPanel
+            title="Install App"
+            description="Add this portal to your home screen."
+        >
+            <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
+                Your current browser doesn&apos;t support app installation. Try opening this page in <strong>Chrome</strong> (Android / Desktop) or <strong>Safari</strong> (iPhone/iPad) for the best experience.
+            </p>
+        </SettingsPanel>
+    );
+}
+
+function IOSStep({ number, icon: Icon, title, description }: {
+    number: number;
+    icon: React.ElementType;
+    title: string;
+    description: string;
+}) {
+    return (
+        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-white border border-slate-100">
+            <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
+                {number}
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                    <Icon size={14} className="text-indigo-600 shrink-0" />
+                    <p className="text-sm font-bold text-slate-900 leading-none">{title}</p>
+                </div>
+                <p className="text-[10px] font-medium text-slate-400 leading-relaxed">{description}</p>
+            </div>
+        </div>
+    );
 }

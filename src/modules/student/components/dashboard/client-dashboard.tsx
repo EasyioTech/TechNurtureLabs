@@ -85,8 +85,8 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
   }, [courseProgress]);
 
   return (
-    <div className="min-h-screen bg-slate-50/20 pb-24 lg:pb-10">
-      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
+    <div className="min-h-screen bg-slate-50/20 pb-10 lg:pb-10">
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-10">
 
         {/* Welcome Desktop Header */}
         <div className="hidden lg:flex items-center justify-between mb-8">
@@ -94,7 +94,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
             <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tighter leading-none uppercase">
               {greeting}, <span className="text-indigo-600">{profile.full_name.split(' ')[0]}</span>
             </h1>
-            <p className="text-slate-400 font-bold text-[9px] uppercase tracking-[0.3em] mt-3 flex items-center gap-2.5">
+            <p className="text-slate-400 font-bold text-[11px] uppercase tracking-[0.2em] mt-3 flex items-center gap-2.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
               {profile.className || 'Assigned Class'} • Session {new Date().getFullYear()} Active
             </p>
@@ -102,30 +102,30 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
 
           <div className="flex items-center gap-6">
             <div className="flex flex-col items-end">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">Portal Status</p>
-              <Badge className="bg-slate-900 text-white border-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl">Session Secure</Badge>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-2">Portal Status</p>
+              <Badge className="bg-slate-900 text-white border-0 px-4 py-1.5 rounded-full text-xs font-semibold shadow-xl">Session Active</Badge>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8">
-          <div className="xl:col-span-8 space-y-10 lg:space-y-12">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 lg:gap-8">
+          <div className="xl:col-span-8 xl:order-1 order-2 space-y-8 lg:space-y-10">
 
             {/* Active Learning Hero */}
             {lastCourse && (
               <section className="group">
-                <div className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] bg-slate-950 p-6 sm:p-8 lg:p-10 text-white shadow-2xl shadow-indigo-950/20 border border-white/5">
-                  <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-500/10 rounded-full -mr-32 -mt-32 blur-3xl pointer-events-none" />
+                <div className="relative overflow-hidden rounded-2xl sm:rounded-[2rem] bg-slate-950 p-5 sm:p-7 lg:p-10 text-white shadow-xl shadow-indigo-950/20 border border-white/5">
+                  <div className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 bg-indigo-500/10 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
 
                   <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8 sm:gap-10">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-6 sm:mb-10 lg:hidden">
-                        <Badge className="bg-indigo-600 text-white border-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-indigo-600/40">
-                          {lastCourse.completedLessons === lastCourse.totalLessons ? 'Course Finished' : 'Resume Learning'}
+                        <Badge className="bg-indigo-600 text-white border-0 px-3 py-1 rounded-full text-[10px] font-bold shadow-lg shadow-indigo-600/30">
+                          {lastCourse.completedLessons === lastCourse.totalLessons ? 'Finished' : 'In Progress'}
                         </Badge>
 
                         {/* Mobile circle */}
-                        <div className="relative w-12 h-12 flex-shrink-0">
+                        <div className="relative w-14 h-14 flex-shrink-0">
                           <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160">
                             <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="20" fill="none" className="text-white/5" />
                             <circle
@@ -139,32 +139,32 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                             />
                           </svg>
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-[9px] font-black">{Math.round(courseProgress * 100)}%</span>
+                            <span className="text-xs font-black">{Math.round(courseProgress * 100)}%</span>
                           </div>
                         </div>
                       </div>
 
                       <div className="hidden lg:block mb-6">
-                        <Badge className="bg-indigo-600 text-white border-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.25em] shadow-2xl shadow-indigo-600/40">
+                        <Badge className="bg-indigo-600 text-white border-0 px-3 py-1 rounded-full text-[10px] font-bold shadow-lg shadow-indigo-600/30">
                           {lastCourse.completedLessons === lastCourse.totalLessons ? 'Course Finished' : 'Resume Learning'}
                         </Badge>
                       </div>
 
-                      <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black uppercase tracking-tighter leading-[0.95] mb-5 sm:mb-6 max-w-2xl">{lastCourse.title}</h2>
+                      <h2 className="text-xl sm:text-2xl lg:text-4xl font-black uppercase tracking-tight leading-tight mb-4 sm:mb-5 max-w-2xl">{lastCourse.title}</h2>
 
-                      <div className="flex flex-wrap items-center gap-4 sm:gap-6 mb-7 sm:mb-8">
-                        <div className="flex items-center gap-2 bg-white/5 lg:bg-transparent px-3 py-1.5 sm:px-0 sm:py-0 rounded-lg border border-white/5 lg:border-0 text-[9px] font-black text-slate-400 uppercase tracking-[0.25em]">
-                          <BookOpen size={14} className="text-indigo-400" />
-                          <span>{lastCourse.totalLessons} LESSONS</span>
+                      <div className="flex flex-wrap items-center gap-3 mb-5 sm:mb-7">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                          <BookOpen size={13} className="text-indigo-400" />
+                          <span>{lastCourse.totalLessons} lessons</span>
                         </div>
-                        <div className="flex items-center gap-2 bg-white/5 lg:bg-transparent px-3 py-1.5 sm:px-0 sm:py-0 rounded-lg border border-white/5 lg:border-0 text-[9px] font-black text-slate-400 uppercase tracking-[0.25em]">
-                          <Clock size={14} className="text-indigo-400" />
-                          <span>{Math.ceil(lastCourse.totalLessons * 0.5)}H TOTAL</span>
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                          <Clock size={13} className="text-indigo-400" />
+                          <span>{Math.ceil(lastCourse.totalLessons * 0.5)}h total</span>
                         </div>
                       </div>
 
                       <Link href={`/student/course/${lastCourse.id}`} className="block sm:inline-block">
-                        <Button className="w-full sm:w-auto h-12 sm:h-13 px-8 sm:px-10 rounded-xl bg-white text-slate-950 font-black uppercase tracking-[0.2em] text-[9px] hover:bg-white/90 transition-colors active:scale-95 shadow-2xl shadow-indigo-900/20 group/btn">
+                        <Button className="w-full sm:w-auto h-11 px-7 rounded-xl bg-white text-slate-950 font-bold text-sm hover:bg-white/90 transition-colors active:scale-95 shadow-lg shadow-indigo-900/20 group/btn">
                           {lastCourse.completedLessons === lastCourse.totalLessons
                             ? 'Revise Module'
                             : (lastCourse.completedLessons > 0 ? 'Resume Course' : 'Start Journey')}
@@ -189,7 +189,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <span className="text-3xl lg:text-4xl font-black tracking-tighter">{Math.round(courseProgress * 100)}%</span>
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mt-1.5">Finished</span>
+                        <span className="text-[10px] font-semibold text-slate-500 mt-1">done</span>
                       </div>
                     </div>
                   </div>
@@ -207,7 +207,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
 
             {/* Active Courses */}
             <section>
-              <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
+              <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white shadow-lg">
                     <Zap size={16} />
@@ -215,8 +215,8 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                   <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter">My Courses</h3>
                 </div>
                 <Link href="/student/courses">
-                  <Button variant="ghost" className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:bg-indigo-50 px-4 h-9 rounded-xl border border-transparent hover:border-indigo-100">
-                    See All <ChevronRight size={14} className="ml-1.5" />
+                  <Button variant="ghost" className="text-xs font-semibold text-indigo-600 hover:bg-indigo-50 px-3 h-9 rounded-xl border border-transparent hover:border-indigo-100">
+                    See All <ChevronRight size={14} className="ml-1" />
                   </Button>
                 </Link>
               </div>
@@ -239,15 +239,15 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
             </section>
           </div>
 
-          <div className="xl:col-span-4 space-y-8">
+          <div className="xl:col-span-4 xl:order-2 order-1 space-y-5 lg:space-y-6">
             {/* My Progress Dashboard */}
             <div className="bg-slate-950 rounded-[2rem] p-6 lg:p-7 text-white relative overflow-hidden shadow-2xl shadow-indigo-950/40 border border-white/5 group">
               <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em] mb-1.5">Overall Progress</p>
-                    <p className="text-xl lg:text-2xl font-black tracking-tighter uppercase leading-none">Level {stats.level}</p>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Overall Progress</p>
+                    <p className="text-xl font-black tracking-tight uppercase leading-none">Level {stats.level}</p>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10 shadow-2xl transition-transform duration-300 group-hover:rotate-6">
                     <Crown size={24} className="text-indigo-500" />
@@ -256,8 +256,8 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
 
                 <div className="space-y-3 mb-8">
                   <div className="flex items-end justify-between">
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Next Level Progress</p>
-                    <p className="text-[9px] font-black text-indigo-500">{Math.round(levelProgress)}% Complete</p>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Next Level</p>
+                    <p className="text-[10px] font-bold text-indigo-400">{Math.round(levelProgress)}%</p>
                   </div>
                   <div className="h-3 bg-white/5 rounded-full overflow-hidden p-1 flex border border-white/10">
                     <div
@@ -272,11 +272,11 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
 
                 <div className="grid grid-cols-2 gap-2.5">
                   <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest mb-1">Total XP</p>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">XP</p>
                     <p className="text-base font-black text-white">{stats.xp.toLocaleString()}</p>
                   </div>
                   <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest mb-1">Streak</p>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Streak</p>
                     <div className="flex items-center gap-1.5 text-orange-500">
                       <Flame size={14} fill="currentColor" />
                       <p className="text-base font-black text-white">{stats.streak}D</p>
@@ -289,26 +289,24 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
             {/* Quick Progress Analytics & Leaderboard */}
             <div className="grid grid-cols-2 gap-4">
               <Link href="/student/analytics" className="group">
-                <div className="h-32 rounded-[2rem] bg-indigo-50/50 p-6 flex flex-col justify-between border border-indigo-100/50 hover:bg-indigo-100/80 hover:scale-[1.02] active:scale-95 transition-[background-color,transform] duration-200 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/40 rounded-full -mr-8 -mt-8 blur-2xl" />
-                  <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-50">
-                    <Activity size={22} strokeWidth={2.5} />
+                <div className="h-24 rounded-2xl bg-indigo-50 p-4 flex flex-col justify-between border border-indigo-100 hover:bg-indigo-100 active:scale-95 transition-[background-color,transform] duration-150">
+                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100">
+                    <Activity size={18} strokeWidth={2} />
                   </div>
                   <div>
-                    <p className="font-black text-indigo-900/80 uppercase tracking-tighter text-base leading-[0.9]">Analytics</p>
-                    <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1.5">View Insights</p>
+                    <p className="font-bold text-indigo-900 text-sm leading-tight">Analytics</p>
+                    <p className="text-[10px] text-indigo-400 mt-0.5">View insights</p>
                   </div>
                 </div>
               </Link>
               <Link href="/student/leaderboard" className="group">
-                <div className="h-32 rounded-[2rem] bg-amber-50/50 p-6 flex flex-col justify-between border border-amber-100/50 hover:bg-amber-100/80 hover:scale-[1.02] active:scale-95 transition-[background-color,transform] duration-200 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/40 rounded-full -mr-8 -mt-8 blur-2xl" />
-                  <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-amber-600 shadow-sm border border-amber-50">
-                    <Trophy size={22} strokeWidth={2.5} />
+                <div className="h-24 rounded-2xl bg-amber-50 p-4 flex flex-col justify-between border border-amber-100 hover:bg-amber-100 active:scale-95 transition-[background-color,transform] duration-150">
+                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-amber-600 shadow-sm border border-amber-100">
+                    <Trophy size={18} strokeWidth={2} />
                   </div>
                   <div>
-                    <p className="font-black text-amber-900/80 uppercase tracking-tighter text-base leading-[0.9]">Leaderboard</p>
-                    <p className="text-[8px] font-black text-amber-500 uppercase tracking-widest mt-1.5">Weekly Rank</p>
+                    <p className="font-bold text-amber-900 text-sm leading-tight">Leaderboard</p>
+                    <p className="text-[10px] text-amber-500 mt-0.5">Your rank</p>
                   </div>
                 </div>
               </Link>
@@ -322,8 +320,8 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                     Mission Protocols
                     <Wand2 size={12} className="text-indigo-500 animate-pulse" />
                   </h3>
-                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
-                    <Clock size={10} /> Link Reset in {resetTime}
+                  <p className="text-[10px] font-medium text-slate-400 mt-1 flex items-center gap-1">
+                    <Clock size={10} /> Resets in {resetTime}
                   </p>
                 </div>
                 <Link href="/student/challenges">

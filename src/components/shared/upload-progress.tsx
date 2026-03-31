@@ -1,9 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Progress } from '@/components/ui/progress';
-import { X, Loader2, CloudUpload, FileCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface UploadProgressProps {
@@ -13,6 +11,7 @@ interface UploadProgressProps {
     error: string | null;
     onCancel?: () => void;
     onReset?: () => void;
+    onDismiss?: () => void;
     isDark?: boolean;
 }
 
@@ -23,120 +22,115 @@ export function UploadProgress({
     error,
     onCancel,
     onReset,
+    onDismiss,
     isDark = false,
 }: UploadProgressProps) {
     if (!isUploading && !error && progress === 0) return null;
 
+    const isProcessing = progress === 100 && isUploading;
+    const isDone = progress === 100 && !isUploading && !error;
+    const displayProgress = isProcessing ? 98 : progress;
+
+    const statusText = error
+        ? 'Failed'
+        : isProcessing
+        ? 'Processing…'
+        : isDone
+        ? 'Done'
+        : `${displayProgress}%`;
+
     return (
         <div className={cn(
-            "mt-4 p-4 rounded-2xl border-2 transition-all animate-in fade-in slide-in-from-top-2 duration-300",
-            isDark 
-                ? "bg-white/[0.03] border-white/5" 
-                : "bg-slate-50 border-slate-100 shadow-sm"
+            'flex items-center gap-2.5 px-3 py-2 rounded-lg border text-sm',
+            isDark
+                ? 'bg-zinc-900 border-zinc-800 text-white'
+                : 'bg-white border-zinc-200 text-zinc-900'
         )}>
-            <div className="flex items-center gap-3 mb-3">
-                <div className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                    error 
-                        ? "bg-rose-500/10 text-rose-500" 
-                        : (progress === 100 && !isUploading)
-                            ? "bg-emerald-500/10 text-emerald-500"
-                            : "bg-indigo-500/10 text-indigo-500"
-                )}>
-                    {error ? (
-                        <X size={20} />
-                    ) : (progress === 100 && !isUploading) ? (
-                        <FileCheck size={20} className="animate-bounce" />
-                    ) : progress === 100 ? (
-                        <Loader2 size={20} className="animate-spin" />
-                    ) : (
-                        <CloudUpload size={20} className={cn(isUploading && "animate-pulse")} />
-                    )}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start gap-2">
-                        <p className={cn(
-                            "text-[11px] font-black uppercase tracking-wider truncate",
-                            isDark ? "text-white" : "text-slate-900"
-                        )}>
-                            {fileName}
-                        </p>
-                        <span className={cn(
-                            "text-[10px] font-black tabular-nums",
-                            error ? "text-rose-500" : "text-indigo-500"
-                        )}>
-                            {error ? 'FAILED' : (progress === 100 && isUploading) ? '99%' : `${progress}%`}
-                        </span>
-                    </div>
-                    <p className={cn(
-                        "text-[9px] font-bold uppercase tracking-widest mt-0.5",
-                        isDark ? "text-slate-500" : "text-slate-400"
+            {/* Status icon */}
+            <div className="shrink-0">
+                {error ? (
+                    <AlertCircle size={15} className="text-red-500" />
+                ) : isDone ? (
+                    <CheckCircle size={15} className="text-emerald-500" />
+                ) : (
+                    <Loader2 size={15} className="animate-spin text-blue-500" />
+                )}
+            </div>
+
+            {/* File name + bar */}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className={cn(
+                        'text-xs font-medium truncate',
+                        isDark ? 'text-zinc-200' : 'text-zinc-800'
                     )}>
-                        {error 
-                            ? 'Upload interrupted' 
-                            : (progress === 100 && isUploading) 
-                                ? 'Processing on server...' 
-                                : progress === 100 
-                                    ? 'Success! File saved' 
-                                    : 'Transferring data...'}
-                    </p>
+                        {fileName}
+                    </span>
+                    <span className={cn(
+                        'text-xs font-semibold tabular-nums shrink-0',
+                        error ? 'text-red-500' : isDone ? 'text-emerald-500' : 'text-blue-500'
+                    )}>
+                        {statusText}
+                    </span>
                 </div>
 
-                {isUploading && onCancel && (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={onCancel}
+                {/* Progress bar */}
+                <div className={cn(
+                    'h-1 w-full rounded-full overflow-hidden',
+                    isDark ? 'bg-zinc-800' : 'bg-zinc-100'
+                )}>
+                    <div
                         className={cn(
-                            "w-8 h-8 rounded-full shrink-0",
-                            isDark ? "hover:bg-white/10 text-slate-500" : "hover:bg-slate-200 text-slate-400"
+                            'h-full rounded-full transition-all duration-300',
+                            error
+                                ? 'bg-red-500'
+                                : isDone
+                                ? 'bg-emerald-500'
+                                : 'bg-blue-500',
+                            isProcessing && 'animate-pulse'
                         )}
-                    >
-                        <X size={14} />
-                    </Button>
-                )}
-            </div>
-
-            <div className={cn(
-                "relative h-1.5 w-full rounded-full overflow-hidden",
-                isDark ? "bg-white/5" : "bg-slate-200"
-            )}>
-                <Progress 
-                    value={(progress === 100 && isUploading) ? 98 : progress} 
-                    className={cn(
-                        "h-full w-full bg-transparent border-0 transition-all duration-500",
-                        (progress === 100 && isUploading) && "animate-pulse"
-                    )}
-                />
-                {isUploading && (
-                    <div 
-                        className="absolute inset-y-0 left-0 bg-indigo-500/30 animate-shimmer"
-                        style={{ width: `${(progress === 100 && isUploading) ? 98 : progress}%` }}
+                        style={{ width: `${error ? 100 : displayProgress}%` }}
                     />
-                )}
+                </div>
             </div>
 
-            {error && (
-                <div className="mt-3 flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest flex items-center gap-1.5">
-                        <Loader2 size={10} className="animate-spin" /> {error}
-                    </p>
+            {/* Action button */}
+            {error ? (
+                <div className="flex items-center gap-1 shrink-0">
                     {onReset && (
-                        <Button
-                            size="sm"
-                            variant="ghost"
+                        <button
                             onClick={onReset}
                             className={cn(
-                                "h-7 px-3 rounded-full text-[9px] font-black uppercase tracking-widest",
-                                isDark ? "text-white hover:bg-white/10" : "text-slate-900 hover:bg-slate-200"
+                                'text-xs font-semibold px-2 py-0.5 rounded',
+                                isDark
+                                    ? 'text-blue-400 hover:bg-zinc-800'
+                                    : 'text-blue-600 hover:bg-zinc-100'
                             )}
                         >
-                            Retry Upload
-                        </Button>
+                            Retry
+                        </button>
+                    )}
+                    {onDismiss && (
+                        <button onClick={onDismiss} className="text-zinc-400 hover:text-zinc-600 p-0.5 rounded">
+                            <X size={13} />
+                        </button>
                     )}
                 </div>
-            )}
+            ) : isUploading && onCancel ? (
+                <button
+                    onClick={onCancel}
+                    className="shrink-0 text-zinc-400 hover:text-zinc-600 p-0.5 rounded"
+                >
+                    <X size={13} />
+                </button>
+            ) : isDone && onDismiss ? (
+                <button
+                    onClick={onDismiss}
+                    className="shrink-0 text-zinc-400 hover:text-zinc-600 p-0.5 rounded"
+                >
+                    <X size={13} />
+                </button>
+            ) : null}
         </div>
     );
 }

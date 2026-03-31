@@ -130,6 +130,7 @@ export async function GET(
         const MIME_MAP: Record<string, string> = {
             '.m3u8': 'application/x-mpegURL',
             '.ts': 'video/MP2T',
+            '.pdf': 'application/pdf',
         };
         const mimeType = response.ContentType || MIME_MAP[ext] || 'application/octet-stream';
 
@@ -138,6 +139,7 @@ export async function GET(
         headers.set('Content-Type', mimeType);
         if (response.ContentLength) headers.set('Content-Length', response.ContentLength.toString());
         if (response.ContentRange) headers.set('Content-Range', response.ContentRange);
+        headers.set('Accept-Ranges', 'bytes');
         headers.set('Cache-Control', 'private, max-age=3600');
         headers.set('Access-Control-Expose-Headers', 'Accept-Ranges, Content-Range, Content-Length');
 

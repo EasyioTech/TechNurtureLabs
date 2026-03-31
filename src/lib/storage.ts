@@ -19,6 +19,55 @@ if (!fs.existsSync(LOCAL_STORAGE_DIR)) {
 }
 
 // ─────────────────────────────────────────────
+// Security helpers
+// ─────────────────────────────────────────────
+
+/**
+ * Resolves `key` relative to LOCAL_STORAGE_DIR and throws if the resolved
+ * path escapes the storage root (path traversal guard).
+ */
+function resolveSafeLocalPath(key: string): string {
+    const resolved = path.resolve(path.join(LOCAL_STORAGE_DIR, key));
+    const storageRoot = path.resolve(LOCAL_STORAGE_DIR);
+    if (!resolved.startsWith(storageRoot + path.sep) && resolved !== storageRoot) {
+        throw Object.assign(
+            new Error(`Path traversal detected: key "${key}" escapes storage root`),
+            { code: 'PATH_TRAVERSAL' }
+        );
+    }
+    return resolved;
+}
+
+/**
+ * Retries `fn` up to `maxAttempts` times with exponential backoff.
+ * Only retries on transient errors (connection reset, throttling, 5xx).
+ * Re-throws immediately on non-retryable errors (e.g., 403, 404).
+ */
+async function withRetry<T>(
+    fn: () => Promise<T>,
+    maxAttempts: number = 3,
+    baseDelayMs: number = 200,
+): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            return await fn();
+        } catch (err: any) {
+            lastError = err;
+            // Do not retry on client errors (4xx) — they are permanent.
+            const status = err?.$metadata?.httpStatusCode ?? err?.statusCode;
+            if (status && status >= 400 && status < 500) throw err;
+            if (attempt < maxAttempts) {
+                const delay = baseDelayMs * Math.pow(2, attempt - 1);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                console.warn(`[Storage] R2 attempt ${attempt} failed, retrying in ${delay}ms:`, err?.message ?? err);
+            }
+        }
+    }
+    throw lastError;
+}
+
+// ─────────────────────────────────────────────
 // Cloudflare R2 client
 // ─────────────────────────────────────────────
 export const isCloudflareConfigured = Boolean(
@@ -74,7 +123,7 @@ export async function getObjectStream(key: string, range?: string) {
  * Pass range to support partial content (seeking).
  */
 export async function getLocalObjectStream(key: string, rangeHeader?: string) {
-    const filePath = path.join(LOCAL_STORAGE_DIR, key);
+    const filePath = resolveSafeLocalPath(key);
     if (!fs.existsSync(filePath)) {
         throw new Error("File not found in local storage.");
     }
@@ -98,19 +147,34 @@ export async function getLocalObjectStream(key: string, rangeHeader?: string) {
     const contentType = mimeTypes[ext] || 'application/octet-stream';
 
     if (rangeHeader) {
-        const parts = rangeHeader.replace(/bytes=/, "").split("-");
+        const parts = rangeHeader.replace(/bytes=/, '').split('-');
         const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-        const chunksize = (end - start) + 1;
-        
-        const stream = fs.createReadStream(filePath, { start, end });
-        
+        const end = parts[1] !== '' && parts[1] !== undefined
+            ? parseInt(parts[1], 10)
+            : fileSize - 1;
+
+        // RFC 7233 §2.1 — reject malformed, inverted, or out-of-bounds ranges
+        if (
+            isNaN(start) || isNaN(end) ||
+            start < 0 || end < start || start >= fileSize
+        ) {
+            const err = Object.assign(
+                new Error(`Invalid range: ${rangeHeader}`),
+                { code: 'RANGE_NOT_SATISFIABLE', fileSize }
+            );
+            throw err;
+        }
+
+        const safeEnd = Math.min(end, fileSize - 1);
+        const chunksize = safeEnd - start + 1;
+        const stream = fs.createReadStream(filePath, { start, end: safeEnd });
+
         return {
             body: stream as any,
             contentType,
             contentLength: chunksize,
-            contentRange: `bytes ${start}-${end}/${fileSize}`,
-            acceptRanges: 'bytes'
+            contentRange: `bytes ${start}-${safeEnd}/${fileSize}`,
+            acceptRanges: 'bytes',
         };
     } else {
         const stream = fs.createReadStream(filePath);
@@ -315,7 +379,7 @@ export async function uploadFile(
                 Body: buffer,
                 ContentType: mimeType,
             });
-            await s3Client.send(command);
+            await withRetry(() => s3Client!.send(command));
 
             return {
                 url: buildPublicUrl(key),
@@ -332,9 +396,7 @@ export async function uploadFile(
 
     // ── Local volume fallback ─────────────────────────────────────────
     const subDir = path.join(LOCAL_STORAGE_DIR, folder);
-    if (!fs.existsSync(subDir)) {
-        fs.mkdirSync(subDir, { recursive: true });
-    }
+    fs.mkdirSync(subDir, { recursive: true });
     const localPath = path.join(subDir, fileName);
     await fs.promises.writeFile(localPath, buffer);
 
@@ -357,6 +419,11 @@ export async function uploadFile(
  * @param storageType  Where the file lives
  */
 export async function deleteFile(filePath: string, storageType: 'r2' | 'local'): Promise<void> {
+    // Guard: R2 keys must not be absolute paths or contain traversal sequences.
+    if (filePath.startsWith('/') || filePath.includes('..')) {
+        throw new Error(`[Storage] Refusing to delete: invalid key "${filePath}"`);
+    }
+
     const isVideo = filePath.toLowerCase().match(/\.(mp4|mov|avi|mkv)$/);
     const hlsPrefix = isVideo ? filePath.replace(/\.[^/.]+$/, "") : null;
 
@@ -367,7 +434,7 @@ export async function deleteFile(filePath: string, storageType: 'r2' | 'local'):
                 Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
                 Key: filePath,
             });
-            await s3Client.send(deleteMain);
+            await withRetry(() => s3Client!.send(deleteMain));
 
             // 2. If it's a video, delete the HLS folder prefix
             if (hlsPrefix) {
@@ -397,8 +464,8 @@ export async function deleteFile(filePath: string, storageType: 'r2' | 'local'):
             throw err;
         }
     } else {
-        const fullPath = path.join(LOCAL_STORAGE_DIR, filePath);
-        
+        const fullPath = resolveSafeLocalPath(filePath);
+
         // 1. Delete main file
         if (fs.existsSync(fullPath)) {
             await fs.promises.unlink(fullPath);
@@ -406,7 +473,7 @@ export async function deleteFile(filePath: string, storageType: 'r2' | 'local'):
 
         // 2. Delete HLS folder
         if (hlsPrefix) {
-            const hlsFolderPath = path.join(LOCAL_STORAGE_DIR, hlsPrefix);
+            const hlsFolderPath = resolveSafeLocalPath(hlsPrefix);
             if (fs.existsSync(hlsFolderPath) && fs.lstatSync(hlsFolderPath).isDirectory()) {
                 await fs.promises.rm(hlsFolderPath, { recursive: true, force: true });
                 console.log(`[Storage] Cleaned up HLS directory for ${filePath}`);

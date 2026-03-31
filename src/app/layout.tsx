@@ -89,6 +89,16 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: "/api/branding/favicon",
     },
     category: "education",
+    // PWA — tells mobile browsers this is installable
+    applicationName: platformName,
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: platformName,
+    },
+    formatDetection: {
+      telephone: false,
+    },
   };
 }
 
@@ -100,6 +110,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* PWA meta — must be in <head>, not expressible via Next.js Metadata API */}
+        <meta name="theme-color" content="#4f46e5" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />

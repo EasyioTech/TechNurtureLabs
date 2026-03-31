@@ -62,11 +62,18 @@ export function PDFViewer({
     
     // Store page dimensions
     const [pageDimensions, setPageDimensions] = useState<Map<number, { width: number; height: number }>>(new Map());
-    
+
+    // Virtualization: tracks which page numbers have been "activated" for rendering.
+    // Pages are added as they approach the viewport; never removed (avoids re-render on scroll-back).
+    const [visiblePages, setVisiblePages] = useState<Set<number>>(new Set([1]));
+
     const containerRef = useRef<HTMLDivElement>(null);
     const completedRef = useRef(false);
+    const pageObserverRef = useRef<IntersectionObserver | null>(null);
+    const pagePlaceholderRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+    const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     
-    // Measure container width
+    // Measure container width with debounce to prevent excessive re-renders
     useEffect(() => {
         const updateWidth = () => {
             if (containerRef.current) {
@@ -74,11 +81,53 @@ export function PDFViewer({
                 if (w > 0) setContainerWidth(Math.min(w, MAX_RENDER_WIDTH));
             }
         };
-        const ro = new ResizeObserver(updateWidth);
+        const debouncedUpdateWidth = () => {
+            if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+            resizeTimerRef.current = setTimeout(updateWidth, 150);
+        };
+        const ro = new ResizeObserver(debouncedUpdateWidth);
         if (containerRef.current) ro.observe(containerRef.current);
-        updateWidth();
-        return () => ro.disconnect();
+        updateWidth(); // immediate measurement on mount (not debounced)
+        return () => {
+            ro.disconnect();
+            if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+        };
     }, []);
+
+    // Set up IntersectionObserver to lazy-activate pages as they approach the viewport.
+    // rootMargin of 200% pre-loads one "screen-height" above and below the visible area.
+    useEffect(() => {
+        if (numPages === 0) return;
+
+        pageObserverRef.current?.disconnect();
+
+        pageObserverRef.current = new IntersectionObserver(
+            (entries) => {
+                const toAdd: number[] = [];
+                for (const entry of entries) {
+                    if (entry.isIntersecting) {
+                        const pageNum = Number((entry.target as HTMLElement).dataset.pageNum);
+                        if (pageNum > 0) toAdd.push(pageNum);
+                    }
+                }
+                if (toAdd.length > 0) {
+                    setVisiblePages(prev => {
+                        const next = new Set(prev);
+                        toAdd.forEach(n => next.add(n));
+                        return next;
+                    });
+                }
+            },
+            { rootMargin: '200% 0px', threshold: 0 }
+        );
+
+        // Observe all currently-registered placeholder divs
+        pagePlaceholderRefs.current.forEach(el => {
+            pageObserverRef.current?.observe(el);
+        });
+
+        return () => { pageObserverRef.current?.disconnect(); };
+    }, [numPages]);
 
     const absoluteUrl = useMemo(() => {
         if (!url) return '';
@@ -102,7 +151,27 @@ export function PDFViewer({
         setError(null);
         setNumPages(0);
         setPageDimensions(new Map());
+        setVisiblePages(new Set([1]));
+        pagePlaceholderRefs.current.clear();
+        pageObserverRef.current?.disconnect();
+        pageObserverRef.current = null;
     }, [url]);
+
+    // Exit fullscreen on Escape key
+    useEffect(() => {
+        if (!isFullscreen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsFullscreen(false);
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [isFullscreen]);
+
+    // Lock body scroll when in fullscreen to prevent background scroll drift
+    useEffect(() => {
+        document.body.style.overflow = isFullscreen ? 'hidden' : '';
+        return () => { document.body.style.overflow = ''; };
+    }, [isFullscreen]);
 
     const handleRetry = useCallback(() => {
         setError(null);
@@ -226,18 +295,47 @@ export function PDFViewer({
                     >
                         {numPages > 0 && (
                             <div className="h-full overflow-y-auto no-scrollbar scroll-smooth p-4 space-y-6 flex flex-col items-center">
-                                {Array.from(new Array(numPages), (_, index) => (
-                                    <div key={`page_${index + 1}`} className="shadow-2xl rounded-sm overflow-hidden bg-white">
-                                        <Page
-                                            pageNumber={index + 1}
-                                            width={containerWidth}
-                                            renderAnnotationLayer={false}
-                                            renderTextLayer={false}
-                                            onLoadSuccess={onPageLoadSuccess}
-                                            loading={<div style={{ width: containerWidth, height: getPageHeight(index) }} className="bg-slate-50 animate-pulse" />}
-                                        />
-                                    </div>
-                                ))}
+                                {Array.from({ length: numPages }, (_, index) => {
+                                    const pageNum = index + 1;
+                                    const shouldRender = visiblePages.has(pageNum);
+                                    return (
+                                        <div
+                                            key={`page_${pageNum}`}
+                                            data-page-num={pageNum}
+                                            ref={(el) => {
+                                                if (el) {
+                                                    pagePlaceholderRefs.current.set(pageNum, el);
+                                                    pageObserverRef.current?.observe(el);
+                                                } else {
+                                                    pagePlaceholderRefs.current.delete(pageNum);
+                                                }
+                                            }}
+                                            className="shadow-2xl rounded-sm overflow-hidden bg-white"
+                                            style={{ minHeight: getPageHeight(index) }}
+                                        >
+                                            {shouldRender ? (
+                                                <Page
+                                                    pageNumber={pageNum}
+                                                    width={containerWidth}
+                                                    renderAnnotationLayer={false}
+                                                    renderTextLayer={false}
+                                                    onLoadSuccess={onPageLoadSuccess}
+                                                    loading={
+                                                        <div
+                                                            style={{ width: containerWidth, height: getPageHeight(index) }}
+                                                            className="bg-slate-50 animate-pulse"
+                                                        />
+                                                    }
+                                                />
+                                            ) : (
+                                                <div
+                                                    style={{ width: containerWidth, height: getPageHeight(index) }}
+                                                    className="bg-slate-50"
+                                                />
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </Document>

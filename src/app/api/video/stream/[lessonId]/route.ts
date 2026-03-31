@@ -92,6 +92,12 @@ async function handleStream(req: NextRequest, context: { params: Promise<{ lesso
                 });
             } catch (err: any) {
                 console.error('[Video Stream Local Error]:', err);
+                if (err?.code === 'RANGE_NOT_SATISFIABLE') {
+                    return new NextResponse(null, {
+                        status: 416,
+                        headers: { 'Content-Range': `bytes */${err.fileSize}` },
+                    });
+                }
                 return new NextResponse('File not found in local storage', { status: 404 });
             }
         }
