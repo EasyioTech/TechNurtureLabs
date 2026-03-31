@@ -1,5 +1,5 @@
 {
-  "id": "3b9900bb-49ad-412b-aebe-9c1885a027ef",
+  "id": "5cfd22e0-5761-4c63-bdb3-7484cd6b894f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -191,8 +191,8 @@
         "id": {
           "name": "id",
           "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
+          "primaryKey": false,
+          "notNull": false,
           "default": "gen_random_uuid()"
         },
         "user_id": {
@@ -302,6 +302,48 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "idx_audit_user_created": {
+          "name": "idx_audit_user_created",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_audit_school_created": {
+          "name": "idx_audit_school_created",
+          "columns": [
+            {
+              "expression": "school_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -319,7 +361,15 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "audit_logs_id_created_at_pk": {
+          "name": "audit_logs_id_created_at_pk",
+          "columns": [
+            "id",
+            "created_at"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -414,7 +464,16 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "cert_min_progress_range": {
+          "name": "cert_min_progress_range",
+          "value": "\"certificates\".\"min_progress_pct\" >= 0 AND \"certificates\".\"min_progress_pct\" <= 100"
+        },
+        "cert_min_quiz_score_range": {
+          "name": "cert_min_quiz_score_range",
+          "value": "\"certificates\".\"min_quiz_score\" >= 0 AND \"certificates\".\"min_quiz_score\" <= 100"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.classes": {
@@ -454,25 +513,43 @@
           "default": "now()"
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "classes_name_unique": {
-          "name": "classes_name_unique",
-          "nullsNotDistinct": false,
+      "indexes": {
+        "uq_classes_name": {
+          "name": "uq_classes_name",
           "columns": [
-            "name"
-          ]
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "deleted_at IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
-        "classes_level_unique": {
-          "name": "classes_level_unique",
-          "nullsNotDistinct": false,
+        "uq_classes_level": {
+          "name": "uq_classes_level",
           "columns": [
-            "level"
-          ]
+            {
+              "expression": "level",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "deleted_at IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -927,7 +1004,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "cp_progress_pct_range": {
+          "name": "cp_progress_pct_range",
+          "value": "\"course_progress\".\"progress_pct\" >= 0 AND \"course_progress\".\"progress_pct\" <= 100"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.courses": {
@@ -1064,6 +1146,21 @@
           "where": "deleted_at IS NULL",
           "concurrently": false,
           "method": "btree",
+          "with": {}
+        },
+        "idx_course_topics": {
+          "name": "idx_course_topics",
+          "columns": [
+            {
+              "expression": "topics",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
           "with": {}
         }
       },
@@ -2355,6 +2452,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "content_items": {
+          "name": "content_items",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "asset_id": {
+          "name": "asset_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "sequence_order": {
           "name": "sequence_order",
           "type": "integer",
@@ -2468,6 +2577,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "lessons_asset_id_media_assets_id_fk": {
+          "name": "lessons_asset_id_media_assets_id_fk",
+          "tableFrom": "lessons",
+          "tableTo": "media_assets",
+          "columnsFrom": [
+            "asset_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -2605,7 +2727,7 @@
           "name": "file_url",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "file_path": {
           "name": "file_path",
@@ -2654,8 +2776,28 @@
           "primaryKey": false,
           "notNull": false
         },
+        "processing_status": {
+          "name": "processing_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'completed'"
+        },
+        "error_message": {
+          "name": "error_message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -2918,18 +3060,27 @@
           "notNull": false
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "payment_plans_name_unique": {
-          "name": "payment_plans_name_unique",
-          "nullsNotDistinct": false,
+      "indexes": {
+        "uq_payment_plans_name": {
+          "name": "uq_payment_plans_name",
           "columns": [
-            "name"
-          ]
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "deleted_at IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -3120,6 +3271,156 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.pin_reset_requests": {
+      "name": "pin_reset_requests",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "school_id": {
+          "name": "school_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "requested_at": {
+          "name": "requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolved_by": {
+          "name": "resolved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "new_pin": {
+          "name": "new_pin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_pin_reset_student": {
+          "name": "idx_pin_reset_student",
+          "columns": [
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_pin_reset_school": {
+          "name": "idx_pin_reset_school",
+          "columns": [
+            {
+              "expression": "school_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_pin_reset_status": {
+          "name": "idx_pin_reset_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "pin_reset_requests_student_id_students_id_fk": {
+          "name": "pin_reset_requests_student_id_students_id_fk",
+          "tableFrom": "pin_reset_requests",
+          "tableTo": "students",
+          "columnsFrom": [
+            "student_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "pin_reset_requests_school_id_schools_id_fk": {
+          "name": "pin_reset_requests_school_id_schools_id_fk",
+          "tableFrom": "pin_reset_requests",
+          "tableTo": "schools",
+          "columnsFrom": [
+            "school_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "pin_reset_requests_resolved_by_school_admins_id_fk": {
+          "name": "pin_reset_requests_resolved_by_school_admins_id_fk",
+          "tableFrom": "pin_reset_requests",
+          "tableTo": "school_admins",
+          "columnsFrom": [
+            "resolved_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.platform_metrics_daily": {
       "name": "platform_metrics_daily",
       "schema": "",
@@ -3200,6 +3501,13 @@
           "notNull": true,
           "default": 0
         },
+        "peak_concurrent": {
+          "name": "peak_concurrent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp with time zone",
@@ -3249,6 +3557,18 @@
         },
         "favicon_url": {
           "name": "favicon_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logo_data": {
+          "name": "logo_data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "favicon_data": {
+          "name": "favicon_data",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -3399,20 +3719,35 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "uq_promo_codes_code": {
+          "name": "uq_promo_codes_code",
+          "columns": [
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "deleted_at IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "promo_codes_code_unique": {
-          "name": "promo_codes_code_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "code"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -3627,6 +3962,27 @@
           "columns": [
             {
               "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_qattempts_user_quiz": {
+          "name": "idx_qattempts_user_quiz",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "quiz_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -4033,7 +4389,7 @@
           "name": "email",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "password_hash": {
           "name": "password_hash",
@@ -4948,7 +5304,7 @@
           "name": "email",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "password_hash": {
           "name": "password_hash",
@@ -5040,11 +5396,39 @@
           "notNull": true,
           "default": true
         },
+        "is_verified": {
+          "name": "is_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "last_active_at": {
           "name": "last_active_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "notification_preferences": {
+          "name": "notification_preferences",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"mobile_push\":true,\"email_reports\":true,\"new_content\":true}'::jsonb"
+        },
+        "appearance_settings": {
+          "name": "appearance_settings",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"dark_mode\":false}'::jsonb"
+        },
+        "privacy_settings": {
+          "name": "privacy_settings",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"public_profile\":true}'::jsonb"
         },
         "created_at": {
           "name": "created_at",
@@ -5849,6 +6233,33 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "idx_xp_user_ref_source": {
+          "name": "idx_xp_user_ref_source",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "reference_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -5919,7 +6330,8 @@
         "role_change",
         "subscription_change",
         "payment",
-        "promotion"
+        "promotion",
+        "pin_reset_request"
       ]
     },
     "public.billing_cycle": {

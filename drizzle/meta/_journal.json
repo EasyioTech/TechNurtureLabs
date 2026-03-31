@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1773544838237,
-      "tag": "0000_fancy_hairball",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1773551025300,
-      "tag": "0001_hard_expediter",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1742169600000,
-      "tag": "0002_student_preferences",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1774726445808,
-      "tag": "0003_fix_analytics_schema",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1774808277745,
-      "tag": "0004_add_idempotency_and_quiz_indexes",
+      "when": 1774931987692,
+      "tag": "0000_friendly_shatterstar",
       "breakpoints": true
     }
   ]
