@@ -108,10 +108,21 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 lg:gap-8">
-          <div className="xl:col-span-8 xl:order-1 order-2 space-y-8 lg:space-y-10">
+        {/* Mobile-Only Greeting: High Priority */}
+        <div className="lg:hidden mb-6 pt-2">
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tighter leading-none uppercase">
+              {greeting}, <span className="text-indigo-600">{profile.full_name.split(' ')[0]}</span>
+            </h1>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Ready to crushed it today?</p>
+          </motion.div>
+        </div>
 
-            {/* Active Learning Hero */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 lg:gap-8">
+          {/* Main content - reordered for mobile priority: Active Learning -> Analytics -> Progress */}
+          <div className="xl:col-span-8 space-y-6 lg:space-y-10 order-1 lg:order-none">
+
+            {/* 1. Active Learning Hero (Resume) */}
             {lastCourse && (
               <section className="group">
                 <div className="relative overflow-hidden rounded-2xl sm:rounded-[2rem] bg-slate-950 p-5 sm:p-7 lg:p-10 text-white shadow-xl shadow-indigo-950/20 border border-white/5">
@@ -197,7 +208,61 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
               </section>
             )}
 
-            {/* Performance Summary */}
+            {/* 2. Mobile Mini Dashboard: Analytics & Leaderboard */}
+            <div className="lg:hidden grid grid-cols-2 gap-4">
+              <Link href="/student/analytics" className="group">
+                <div className="h-24 rounded-2xl bg-indigo-50 p-4 flex flex-col justify-between border border-indigo-100 hover:bg-indigo-100 active:scale-95 transition-[background-color,transform] duration-150">
+                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100">
+                    <Activity size={18} strokeWidth={2} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-indigo-900 text-sm leading-tight">Analytics</p>
+                    <p className="text-[10px] text-indigo-400 mt-0.5">View insights</p>
+                  </div>
+                </div>
+              </Link>
+              <Link href="/student/leaderboard" className="group">
+                <div className="h-24 rounded-2xl bg-amber-50 p-4 flex flex-col justify-between border border-amber-100 hover:bg-amber-100 active:scale-95 transition-[background-color,transform] duration-150">
+                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-amber-600 shadow-sm border border-amber-100">
+                    <Trophy size={18} strokeWidth={2} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-amber-900 text-sm leading-tight">Rank</p>
+                    <p className="text-[10px] text-amber-500 mt-0.5">#{stats.rank || '-'}</p>
+                  </div>
+                </div>
+              </Link>
+            </div>
+
+            {/* 3. Overall Progress (Global Level) - Mobile only here */}
+            <div className="lg:hidden bg-slate-950 rounded-[2rem] p-6 text-white relative overflow-hidden shadow-2xl shadow-indigo-950/40 border border-white/5 group">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Overall Progress</p>
+                    <p className="text-xl font-black tracking-tight uppercase leading-none">Level {stats.level}</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10 shadow-2xl">
+                    <Crown size={24} className="text-indigo-500" />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-end justify-between">
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Next Level</p>
+                    <p className="text-[10px] font-bold text-indigo-400">{Math.round(levelProgress)}%</p>
+                  </div>
+                  <div className="h-3 bg-white/5 rounded-full overflow-hidden p-1 flex border border-white/10">
+                    <div
+                      className="h-full bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.6)]"
+                      style={{ width: `${levelProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Performance Stats Pills */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               <QuickStatCard icon={BookOpen} value={stats?.lessonsCompleted || 0} label="Lessons" />
               <QuickStatCard icon={Clock} value={`${((stats?.learningTimeMinutes || 0) / 60).toFixed(1)}h`} label="Time Spent" />
@@ -205,7 +270,42 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
               <QuickStatCard icon={Medal} value={`#${stats?.rank || '-'}`} label="Rank" />
             </div>
 
-            {/* Active Courses */}
+            {/* 5. Daily Goals (Missions) - Moved higher for mobile */}
+            <section className="lg:hidden bg-white rounded-3xl p-5 border border-slate-100 shadow-md">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 tracking-tight leading-none uppercase flex items-center gap-2">
+                    Mission Protocols
+                    <Wand2 size={12} className="text-indigo-500 animate-pulse" />
+                  </h3>
+                  <p className="text-[10px] font-medium text-slate-400 mt-1 flex items-center gap-1">
+                    <Clock size={10} /> Resets in {resetTime}
+                  </p>
+                </div>
+                <Link href="/student/challenges">
+                  <Button variant="ghost" className="w-8 h-8 p-0 rounded-lg bg-slate-50 text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100">
+                    <ChevronRight size={14} />
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="space-y-3.5">
+                {challenges.slice(0, 2).map((challenge) => (
+                  <ChallengeItem
+                    key={challenge.id}
+                    title={challenge.title}
+                    progress={challenge.current_progress}
+                    total={challenge.target_value}
+                    reward={challenge.xp_reward}
+                    icon={getChallengeIcon(challenge.icon)}
+                    color="indigo"
+                    isCompact={true}
+                  />
+                ))}
+              </div>
+            </section>
+
+            {/* 6. Active Courses List */}
             <section>
               <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-3">
@@ -232,14 +332,15 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                       <BookOpen size={32} />
                     </div>
                     <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">No Courses Found</h4>
-                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-3 max-w-sm leading-relaxed">No courses have been assigned to you yet. Please contact your teacher or administrator.</p>
+                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-3 max-w-sm leading-relaxed">No courses have been assigned to you yet.</p>
                   </div>
                 )}
               </div>
             </section>
           </div>
 
-          <div className="xl:col-span-4 xl:order-2 order-1 space-y-5 lg:space-y-6">
+          {/* Desktop Sidebar - Hidden on Mobile */}
+          <div className="hidden xl:block xl:col-span-4 space-y-6">
             {/* My Progress Dashboard */}
             <div className="bg-slate-950 rounded-[2rem] p-6 lg:p-7 text-white relative overflow-hidden shadow-2xl shadow-indigo-950/40 border border-white/5 group">
               <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -333,16 +434,6 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
 
               <div className="space-y-3.5 px-0.5">
                 {challenges.slice(0, 3).map((challenge) => {
-                  const getTheme = (type: string) => {
-                    const map: Record<string, string> = {
-                      'xp_gain': 'amber',
-                      'learning_time': 'sky',
-                      'quiz_complete': 'violet',
-                      'streak': 'emerald',
-                      'lesson_complete': 'emerald'
-                    };
-                    return map[type] || 'indigo';
-                  };
                   return (
                     <ChallengeItem
                       key={challenge.id}
@@ -351,8 +442,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                       total={challenge.target_value}
                       reward={challenge.xp_reward}
                       icon={getChallengeIcon(challenge.icon)}
-                      color={getTheme(challenge.challenge_type)}
-                      unit={challenge.challenge_type === 'learning_time' ? 'm' : ''}
+                      color="indigo"
                       isCompact={true}
                     />
                   );
