@@ -110,14 +110,14 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
         <div className="min-h-screen bg-slate-50/10 pb-20">
 
             {/* ── Header ── */}
-            <div className="relative bg-white border-b border-slate-100 py-14 px-6 lg:px-12 overflow-hidden">
+            <div className="relative bg-white border-b border-slate-100 py-10 md:py-14 px-6 lg:px-12 overflow-hidden">
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-50/40 rounded-full blur-[120px] pointer-events-none translate-x-1/3 -translate-y-1/3" />
 
-                <div className="max-w-[1200px] mx-auto relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-8">
+                <div className="max-w-[1200px] mx-auto relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
                     {/* Identity */}
                     <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}>
                         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-500 mb-3">Account Settings</p>
-                        <h1 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-[0.9] mb-4">
+                        <h1 className="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-[0.9] mb-4">
                             {userProfile?.full_name || 'Student'}
                         </h1>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">
@@ -127,8 +127,8 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
 
                     {/* Actions */}
                     <div className="flex items-center gap-3">
-                        <Link href="/student/profile">
-                            <Button variant="outline" className="h-12 px-6 rounded-xl border-2 border-slate-100 font-black uppercase tracking-widest text-[10px] flex items-center gap-2 hover:border-indigo-200 hover:text-indigo-600 transition-all">
+                        <Link href="/student/profile" className="flex-1 sm:flex-none">
+                            <Button variant="outline" className="w-full h-12 px-6 rounded-xl border-2 border-slate-100 font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:border-indigo-200 hover:text-indigo-600 transition-all">
                                 <User size={15} />
                                 View Profile
                             </Button>
@@ -149,8 +149,8 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
             <main className="max-w-[1200px] mx-auto px-6 lg:px-12 py-10">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-                    {/* Tab Nav */}
-                    <nav className="lg:col-span-3 flex flex-row lg:flex-col gap-3" aria-label="Settings navigation">
+                    {/* Tab Nav: Optimized for Mobile Horizontal Scroll */}
+                    <nav className="lg:col-span-3 -mx-6 px-6 sm:mx-0 sm:px-0 flex flex-row lg:flex-col gap-3 overflow-x-auto pb-4 lg:pb-0 no-scrollbar items-start" aria-label="Settings navigation">
                         <TabButton
                             active={activeTab === 'notifications'}
                             icon={Bell}
@@ -160,13 +160,13 @@ export function SettingsClient({ initialData }: SettingsClientProps) {
                         <TabButton
                             active={activeTab === 'security'}
                             icon={Shield}
-                            label="Privacy & Security"
+                            label="Security"
                             onClick={() => setActiveTab('security')}
                         />
                         <TabButton
                             active={activeTab === 'app'}
                             icon={Smartphone}
-                            label="Install App"
+                            label="App"
                             onClick={() => setActiveTab('app')}
                             badge={!pwa.isInstalled ? 'New' : undefined}
                         />
@@ -332,16 +332,17 @@ function TabButton({ active, icon: Icon, label, onClick, badge }: {
     return (
         <button
             onClick={onClick}
-            className={`flex items-center gap-3 px-5 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border-2 ${
+            className={cn(
+                "flex items-center gap-3 px-5 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border-2 shrink-0 min-w-max",
                 active
                     ? 'bg-indigo-600 text-white border-indigo-500 shadow-xl shadow-indigo-200 lg:translate-x-2'
                     : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200 hover:text-slate-800 shadow-sm'
-            }`}
+            )}
         >
-            <Icon size={17} strokeWidth={active ? 2.5 : 2} />
+            <Icon size={17} strokeWidth={active ? 2.5 : 2} className="shrink-0" />
             <span className="whitespace-nowrap">{label}</span>
             {badge && (
-                <span className="ml-auto text-[8px] font-black uppercase tracking-widest bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">
+                <span className="ml-2 text-[8px] font-black uppercase tracking-widest bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">
                     {badge}
                 </span>
             )}
