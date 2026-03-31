@@ -194,11 +194,10 @@ export function MediaLibraryPicker({
     async function loadAssets(type: AssetType, targetFolder: string, targetPage: number, query: string, append: boolean) {
         if (append) setLoadingMore(true);
         else setLoading(true);
-        
+
         setError(null);
         try {
-            const params = new URLSearchParams({ 
-                _t: Date.now().toString(),
+            const params = new URLSearchParams({
                 page: targetPage.toString(),
                 limit: '24'
             });
@@ -206,7 +205,16 @@ export function MediaLibraryPicker({
             if (targetFolder !== 'all') params.set('folder', targetFolder);
             if (query) params.set('search', query);
 
-            const res = await fetch(`/api/media/library?${params.toString()}`);
+            // Force fresh data by adding cache-bust header
+            const res = await fetch(`/api/media/library?${params.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, max-age=0',
+                    'Pragma': 'no-cache',
+                    'X-Requested-Timestamp': Date.now().toString()
+                },
+                cache: 'no-store'
+            });
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({ error: 'Unknown server error' }));
                 throw new Error(errorData.details || errorData.error || 'Failed to load library');

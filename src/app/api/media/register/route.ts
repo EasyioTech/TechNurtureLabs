@@ -46,13 +46,33 @@ export async function POST(req: NextRequest) {
             processing_status: 'completed',
         } as any).returning();
 
-
+        // Compute the final URL using the standard utility
+        const { computeMediaUrl } = await import('@/lib/media');
+        const finalUrl = computeMediaUrl(asset);
 
         return NextResponse.json({
             success: true,
             assetId: asset.id,
-            url: `/api/media/r2/${filePath}`,
-            processingStatus: asset.processing_status
+            asset: {
+                id: asset.id,
+                file_name: asset.file_name,
+                original_name: asset.original_name,
+                file_url: finalUrl,
+                file_path: asset.file_path,
+                mime_type: asset.mime_type,
+                file_size: asset.file_size,
+                storage_type: asset.storage_type,
+                asset_type: asset.asset_type,
+                created_at: asset.created_at
+            },
+            url: finalUrl,
+            processingStatus: asset.processing_status,
+            // Add cache-busting header info for client
+            refreshRequired: true
+        }, {
+            headers: {
+                'Cache-Control': 'no-store, max-age=0'
+            }
         });
 
     } catch (err: any) {

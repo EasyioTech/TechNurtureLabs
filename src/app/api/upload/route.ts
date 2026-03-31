@@ -120,13 +120,34 @@ export async function POST(request: NextRequest) {
 
 
 
-        return NextResponse.json({
-            url: result.url,
+        // Compute the final URL using the standard utility
+        const { computeMediaUrl } = await import('@/lib/media');
+        const finalUrl = computeMediaUrl(asset);
+
+        const response = NextResponse.json({
+            url: finalUrl,
             path: result.path,
             assetId: asset.id,
             storageType: result.storageType,
             processingStatus: asset.processing_status,
+            asset: {
+                id: asset.id,
+                file_name: asset.file_name,
+                original_name: asset.original_name,
+                file_path: asset.file_path,
+                mime_type: asset.mime_type,
+                file_size: asset.file_size,
+                storage_type: asset.storage_type,
+                asset_type: asset.asset_type,
+                created_at: asset.created_at
+            },
+            refreshRequired: true
         });
+
+        // Force fresh responses — don't cache upload responses
+        response.headers.set('Cache-Control', 'no-store, max-age=0');
+        response.headers.set('Pragma', 'no-cache');
+        return response;
     } catch (error: any) {
         console.error('[Upload] CRITICAL ERROR:', {
             message: error.message,

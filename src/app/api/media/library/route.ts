@@ -55,7 +55,9 @@ export async function GET(request: NextRequest) {
             file_url: computeMediaUrl(asset)
         }));
 
-        return NextResponse.json({
+        // CRITICAL: Disable all caching on media library endpoint
+        // This ensures uploaded files appear immediately in the UI
+        const response = NextResponse.json({
             assets: mapped,
             pagination: {
                 total,
@@ -64,6 +66,14 @@ export async function GET(request: NextRequest) {
                 limit
             }
         });
+
+        // Force fresh data on every request
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+        response.headers.set('X-Data-Freshness', new Date().toISOString());
+
+        return response;
     } catch (error) {
         console.error('[Media Library] GET error:', error);
         return NextResponse.json({ error: 'Failed to fetch media library' }, { status: 500 });

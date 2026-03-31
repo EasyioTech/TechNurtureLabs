@@ -834,6 +834,8 @@ export const mediaAssets = pgTable('media_assets', {
 }, (table) => [
     index('idx_media_asset_type').on(table.asset_type),
     index('idx_media_uploaded_by').on(table.uploaded_by),
+    index('idx_media_folder').on(table.folder),
+    index('idx_media_storage_type').on(table.storage_type),
     index('idx_media_created').on(table.created_at),
 ]);
 
