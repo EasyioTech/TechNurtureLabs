@@ -2,8 +2,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { SchoolCourseMetric } from '../../types';
 import { useSchoolTheme, ts } from '../../theme-context';
-import { BookOpen, BarChart3, ChevronRight } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { BookOpen, BarChart3 } from 'lucide-react';
 import { handleThumbnailError } from '@/lib/media-client';
 
 interface CoursesTabProps {
@@ -13,7 +12,6 @@ interface CoursesTabProps {
 
 export function SchoolCoursesTab({ courseMetrics, schoolClasses = [] }: CoursesTabProps) {
     const { isDark } = useSchoolTheme();
-    const router = useRouter();
     const [selectedTab, setSelectedTab] = React.useState<string>('all');
 
     // Use actual school classes for tabs if available, otherwise fallback to ones from courses
@@ -107,7 +105,7 @@ export function SchoolCoursesTab({ courseMetrics, schoolClasses = [] }: CoursesT
                 {displayedCourses.map((course) => (
                     <div
                         key={course.id}
-                        className={`group relative rounded-[28px] overflow-hidden border transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/10 flex flex-col ${ts.card(isDark)}`}>
+                        className={`group relative rounded-[28px] overflow-hidden border transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-500/30 flex flex-col ${ts.card(isDark)}`}>
 
                         {/* Course Image */}
                         <div className="aspect-[16/9] relative overflow-hidden flex-shrink-0 sm:aspect-[16/10]">
@@ -129,64 +127,61 @@ export function SchoolCoursesTab({ courseMetrics, schoolClasses = [] }: CoursesT
                         <div className="p-6 flex flex-col flex-1">
                             {/* Class Badges */}
                             {course.mapped_classes && course.mapped_classes.length > 0 && (
-                                <div className="flex flex-wrap items-center gap-2 mb-4">
+                                <div className="flex flex-wrap items-center gap-2 mb-3">
                                     {course.mapped_classes.slice(0, 2).map(cls => (
-                                        <Badge key={cls} className={`px-2.5 py-0.5 rounded-full border-0 text-[9px] font-black tracking-widest uppercase ${ts.accentSoft(isDark)}`}>
+                                        <Badge key={cls} className={`px-3 py-1 rounded-lg border-0 text-[9px] font-black tracking-widest uppercase ${ts.accentSoft(isDark)}`}>
                                             {cls}
                                         </Badge>
                                     ))}
                                     {course.mapped_classes.length > 2 && (
-                                        <Badge className={`px-2.5 py-0.5 rounded-full border-0 text-[9px] font-black tracking-widest uppercase ${ts.accentSoft(isDark)}`}>
+                                        <Badge className={`px-3 py-1 rounded-lg border-0 text-[9px] font-black tracking-widest uppercase ${ts.accentSoft(isDark)}`}>
                                             +{course.mapped_classes.length - 2}
                                         </Badge>
                                     )}
                                 </div>
                             )}
 
-                            {/* Title */}
-                            <h3 className={`text-[18px] sm:text-[19px] font-black tracking-tight mb-2 group-hover:text-indigo-500 transition-colors line-clamp-2 leading-tight ${ts.textPrimary(isDark)}`}>
+                            {/* Title - Larger and More Prominent */}
+                            <h3 className={`text-[19px] sm:text-[20px] font-black tracking-tight mb-3 group-hover:text-indigo-500 transition-colors line-clamp-2 leading-snug ${ts.textPrimary(isDark)}`}>
                                 {course.title}
                             </h3>
 
                             {/* Description */}
                             {course.description && (
-                                <p className={`text-[13px] font-medium leading-relaxed mb-6 line-clamp-2 ${ts.textMuted(isDark)}`}>
+                                <p className={`text-[13px] font-medium leading-relaxed mb-4 line-clamp-2 ${ts.textSecondary(isDark)}`}>
                                     {course.description}
                                 </p>
                             )}
 
                             {/* Stats Grid */}
                             <div className={`p-5 rounded-[20px] mt-auto grid grid-cols-3 gap-3 ${isDark ? 'bg-white/5 border border-white/5' : 'bg-slate-50 border border-slate-200/50'}`}>
-                                <div className="space-y-1.5">
-                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-50 ${ts.textPrimary(isDark)}`}>Users</p>
-                                    <p className={`text-[15px] sm:text-[16px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.enrolled_count.toLocaleString()}</p>
+                                <div className="space-y-2">
+                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-60 ${ts.textPrimary(isDark)}`}>Enrolled</p>
+                                    <div className="flex items-baseline gap-1">
+                                        <p className={`text-[16px] sm:text-[18px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.enrolled_count}</p>
+                                        <p className={`text-[10px] opacity-60 ${ts.textPrimary(isDark)}`}>users</p>
+                                    </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-50 ${ts.textPrimary(isDark)}`}>Lessons</p>
-                                    <p className={`text-[15px] sm:text-[16px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.lesson_count}</p>
+                                <div className="space-y-2">
+                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-60 ${ts.textPrimary(isDark)}`}>Content</p>
+                                    <div className="flex items-baseline gap-1">
+                                        <p className={`text-[16px] sm:text-[18px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.lesson_count}</p>
+                                        <p className={`text-[10px] opacity-60 ${ts.textPrimary(isDark)}`}>lessons</p>
+                                    </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-50 ${ts.textPrimary(isDark)}`}>Done</p>
-                                    <div className="space-y-1">
-                                        <p className={`text-[15px] sm:text-[16px] font-black leading-none ${ts.textPrimary(isDark)}`}>{course.completion_rate}%</p>
-                                        <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-200'}`}>
+                                <div className="space-y-2">
+                                    <p className={`text-[10px] font-black uppercase tracking-widest opacity-60 ${ts.textPrimary(isDark)}`}>Progress</p>
+                                    <div className="space-y-1.5">
+                                        <p className={`text-[16px] sm:text-[18px] font-black leading-none text-indigo-500`}>{course.completion_rate}%</p>
+                                        <div className={`h-1 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-200'}`}>
                                             <div
-                                                className="h-full bg-indigo-500 rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(99,102,241,0.5)]"
+                                                className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(99,102,241,0.5)]"
                                                 style={{ width: `${course.completion_rate}%` }}
                                             />
                                         </div>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* View Insights Button */}
-                            <button
-                                onClick={() => router.push(`/school-admin/course/${course.id}`)}
-                                className={`w-full mt-6 py-3 rounded-[20px] flex items-center justify-center gap-2 text-[13px] font-black transition-all border ${isDark ? 'bg-white/5 border-white/5 text-indigo-400 hover:bg-indigo-500 hover:text-white' : 'bg-indigo-50 border-indigo-100 text-indigo-600 hover:bg-indigo-600 hover:text-white'}`}
-                            >
-                                VIEW INSIGHTS
-                                <ChevronRight size={16} strokeWidth={2.5} />
-                            </button>
                         </div>
                     </div>
                 ))}
