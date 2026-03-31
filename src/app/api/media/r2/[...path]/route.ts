@@ -76,18 +76,19 @@ export async function GET(
             return new NextResponse('Cloudflare R2 not configured', { status: 501 });
         }
 
-        // 3. SECURE REDIRECTION Strategy (M-10)
-        // For non-HLS assets, we stop proxying immediately and redirect to a direct 
-        // short-lived signed R2 URL. This offloads bandwidth from Next.js.
-        if (!isHls) {
-            try {
-                const url = await getSignedDownloadUrl(key, 3600);
-                return NextResponse.redirect(url, 302);
-            } catch (err) {
-                console.error('[R2 Proxy] Signed URL generation failed:', err);
-                // Fall back to proxying if signing fails for some reason
-            }
-        }
+        // 3. SECURE PROXY Strategy (M-10)
+        // For non-HLS assets like PDFs, we proxy the file from R2 instead of redirecting.
+        // Redirecting to a signed R2 URL often causes CORS failures in the PDF viewer.
+        // Proxying ensures the origin remains consistent (technurturelms.in).
+        // if (!isHls) {
+        //     try {
+        //         const url = await getSignedDownloadUrl(key, 3600);
+        //         return NextResponse.redirect(url, 302);
+        //     } catch (err) {
+        //         console.error('[R2 Proxy] Signed URL generation failed:', err);
+        //         // Fall back to proxying if signing fails for some reason
+        //     }
+        // }
 
         // 4. HLS Proxy with HMAC Validation
         // HLS segments are hard to sign individually. We use an HMAC token for the folder.
