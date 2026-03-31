@@ -34,6 +34,7 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
     const [logoLayout, setLogoLayout] = useState('landscape');
     const [showPlatformName, setShowPlatformName] = useState(true);
     const [logoHeight, setLogoHeight] = useState(40);
+    const [showHeroVideo, setShowHeroVideo] = useState(true);
 
     // 2FA States
     const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -130,6 +131,7 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                     logo_layout: logoLayout,
                     show_platform_name: showPlatformName,
                     logo_height: logoHeight,
+                    show_hero_video: showHeroVideo,
                 })
             });
             const data = await res.json();
@@ -207,6 +209,7 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                     setLogoLayout(data.settings.logo_layout || 'landscape');
                     setShowPlatformName(data.settings.show_platform_name ?? true);
                     setLogoHeight(data.settings.logo_height || 40);
+                    setShowHeroVideo(data.settings.show_hero_video ?? true);
                 }
                 setLoading(false);
             })
@@ -677,13 +680,25 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                     <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
                         <Film className={accent.text} size={28} />
                     </div>
-                    <div>
+                    <div className="flex-1">
                         <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Landing Page Video</h2>
                         <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Configure the hero video shown on the main product landing page.</p>
                     </div>
                 </div>
 
-                <div className="space-y-8">
+                <div className="mb-8 p-6 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10 flex items-center justify-between">
+                    <div className="space-y-1">
+                        <Label className={`text-lg font-bold ${t.textPrimary(isDark)}`}>Enable Hero Video Section</Label>
+                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium`}>Show or hide the video demonstration section on the landing page.</p>
+                    </div>
+                    <Switch 
+                        checked={showHeroVideo} 
+                        onCheckedChange={setShowHeroVideo}
+                        className={`data-[state=checked]:bg-${accent.name}-500`}
+                    />
+                </div>
+
+                <div className={`space-y-8 transition-all duration-300 ${showHeroVideo ? 'opacity-100' : 'opacity-40 pointer-events-none grayscale'}`}>
                     {/* Video Type Selector */}
                     <div className="grid grid-cols-2 lg:grid-cols-2 gap-4 max-w-2xl">
                         {[

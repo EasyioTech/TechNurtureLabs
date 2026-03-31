@@ -29,6 +29,8 @@ interface CloudflareStreamPlayerProps {
     } | null;
     onComplete?: (isVideo?: boolean) => void;
     className?: string;
+    autoPlay?: boolean;
+    muted?: boolean;
 }
 
 export function CloudflareStreamPlayer({
@@ -37,6 +39,8 @@ export function CloudflareStreamPlayer({
     initialProgress,
     onComplete,
     className,
+    autoPlay = false,
+    muted = false,
 }: CloudflareStreamPlayerProps) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -67,7 +71,7 @@ export function CloudflareStreamPlayer({
 
     const embedUrl = [
         `https://iframe.videodelivery.net/${uid}`,
-        `?autoplay=false&preload=auto&enableIframeApi=true`,
+        `?autoplay=${autoPlay}&muted=${muted}&preload=auto&enableIframeApi=true`,
         startTimeSecs ? `&startTime=${startTimeSecs}` : '',
     ].join('');
 

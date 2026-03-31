@@ -55,6 +55,7 @@ export async function getPlatformSettings() {
         show_platform_name: true,
         logo_height: 32,
         hero_video_url: null,
+        show_hero_video: true,
         created_at: new Date(),
         updated_at: new Date()
     };

@@ -1,4 +1,5 @@
 'use client';
+// Refactored for toggle control, muted autoplay on reach, and mobile performance.
 
 import React, { useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useMotionValue } from 'framer-motion';
@@ -7,7 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { CloudflareStreamPlayer } from '../video/cloudflare-stream-player';
 
-const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
+const CustomVideoPlayer = ({ src, type, autoPlay = false }: { src: string, type: string, autoPlay?: boolean }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
 
@@ -44,7 +45,7 @@ const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
 
         return (
             <div className="absolute inset-0">
-                <CloudflareStreamPlayer uid={uid} />
+                <CloudflareStreamPlayer uid={uid} autoPlay={autoPlay} muted={true} />
             </div>
         );
     }
@@ -72,7 +73,7 @@ const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
 
         return (
             <iframe
-                src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3`}
+                src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=${autoPlay ? 1 : 0}&mute=1&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3&controls=1`}
                 className="absolute inset-0 w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
@@ -86,7 +87,7 @@ const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
         const videoId = src.split('/').pop();
         return (
             <iframe
-                src={`https://player.vimeo.com/video/${videoId}`}
+                src={`https://player.vimeo.com/video/${videoId}?autoplay=${autoPlay ? 1 : 0}&muted=1`}
                 className="absolute inset-0 w-full h-full"
                 allow="autoplay; fullscreen; picture-in-picture"
                 allowFullScreen
@@ -102,6 +103,8 @@ const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
                 className={`w-full h-full object-cover absolute top-0 left-0 transition-all duration-700 ${!isPlaying ? 'blur-md scale-105 brightness-90' : 'blur-none scale-100 brightness-100'}`}
                 playsInline
                 loop
+                muted
+                autoPlay={autoPlay}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
             />
@@ -119,11 +122,30 @@ const CustomVideoPlayer = ({ src, type }: { src: string, type: string }) => {
 export const DemoSection = ({ settings }: { settings?: any }) => {
     const isMobile = useIsMobile();
     const containerRef = useRef<HTMLDivElement>(null);
+    const [inView, setInView] = useState(false);
+
+    // Toggle logic
+    if (settings && settings.show_hero_video === false) return null;
 
     const { scrollYProgress } = useScroll({
         target: containerRef,
         offset: ["start start", "end end"]
     });
+
+    // Observer to handle autoplay when reached section
+    React.useEffect(() => {
+        if (!containerRef.current) return;
+        
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                setInView(entry.isIntersecting);
+            },
+            { threshold: 0.3 }
+        );
+        
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, []);
 
     // Transforms for desktop only - Animating through the 200vh height
     const scaleTransform = useTransform(scrollYProgress, [0, 0.8], [0.8, 1.2]);
@@ -133,13 +155,12 @@ export const DemoSection = ({ settings }: { settings?: any }) => {
 
     // Apply values based on device
     const scale = isMobile ? 1 : scaleTransform;
-    const glowOpacity = isMobile ? 0.2 : glowOpacityTransform;
+    const glowOpacity = isMobile ? 0.3 : glowOpacityTransform;
     const textOpacity = isMobile ? 1 : textOpacityTransform;
     const textY = isMobile ? 0 : textYTransform;
 
     const videoUrl = settings?.hero_video_url || '';
     const videoType = settings?.hero_video_type || 'youtube';
-    const loading = false;
 
     return (
         <section ref={containerRef} id="demo" className={`relative z-10 bg-slate-50 ${isMobile ? 'h-auto py-20 overflow-hidden' : 'h-[250vh]'}`}>
@@ -179,11 +200,17 @@ export const DemoSection = ({ settings }: { settings?: any }) => {
                     />
 
                     {/* Premium Apple-style Glass Border (Fade White) */}
-                    <div className="relative bg-white/40 p-1 md:p-2 rounded-[2.5rem] md:rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] ring-1 ring-white/60 backdrop-blur-xl z-20">
+                    <div className={cn(
+                        "relative bg-white/40 p-1.5 md:p-2 rounded-[2.5rem] md:rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] ring-1 ring-white/60 backdrop-blur-xl z-20",
+                        isMobile && "rounded-[2rem] p-1 shadow-2xl"
+                    )}>
                         {/* Inner Video Container */}
-                        <div className="relative rounded-[2.2rem] md:rounded-[3.2rem] overflow-hidden aspect-video bg-black shadow-2xl">
+                        <div className={cn(
+                            "relative rounded-[2.2rem] md:rounded-[3.2rem] overflow-hidden aspect-video bg-black shadow-2xl",
+                            isMobile && "rounded-[1.8rem]"
+                        )}>
                             {videoUrl ? (
-                                <CustomVideoPlayer src={videoUrl} type={videoType} />
+                                <CustomVideoPlayer src={videoUrl} type={videoType} autoPlay={inView} />
                             ) : (
                                 <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-slate-500 gap-4">
                                      <Video className="w-12 h-12 opacity-20 animate-pulse" />

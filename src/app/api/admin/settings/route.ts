@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
         const {
             hero_video_type,
             hero_video_url,
+            show_hero_video,
             logo_url,
             favicon_url,
             platform_name,
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
                 .set({
                     hero_video_type,
                     hero_video_url,
+                    show_hero_video,
                     logo_url: logo_url || null,
                     favicon_url: favicon_url || null,
                     platform_name,
@@ -70,6 +72,7 @@ export async function POST(request: NextRequest) {
                     id: 'global',
                     hero_video_type,
                     hero_video_url,
+                    show_hero_video,
                     logo_url: logo_url || null,
                     favicon_url: favicon_url || null,
                     platform_name,
