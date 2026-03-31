@@ -31,7 +31,8 @@ async function seedScale() {
     
     // Classes
     for (let i = 1; i <= 12; i++) {
-        await sql`INSERT INTO classes (name, level) VALUES (${`Class ${i}`}, ${i}) ON CONFLICT DO NOTHING`;
+        const className = 'Class ' + i;
+        await sql`INSERT INTO classes (name, level) VALUES (${className}, ${i}) ON CONFLICT DO NOTHING`;
     }
     const classRows = await sql`SELECT id FROM classes ORDER BY level ASC`;
     const classIds = classRows.map(r => r.id);
@@ -96,10 +97,11 @@ async function seedScale() {
             VALUES (${schoolId}, ${planId}, 'active', NOW(), NOW() + INTERVAL '1 year')
         `;
 
-        // Add School Admin
+        const schoolAdminLastName = 'Admin ' + i;
+        const schoolAdminEmail = 'admin@school' + i + '.com';
         await sql`
             INSERT INTO school_admins (school_id, first_name, last_name, email, password_hash)
-            VALUES (${schoolId}, 'Principal', 'Admin ${i}', ${`admin@school${i}.com`}, ${ADMIN_PASSWORD_HASH})
+            VALUES (${schoolId}, 'Principal', ${schoolAdminLastName}, ${schoolAdminEmail}, ${ADMIN_PASSWORD_HASH})
         `;
 
         // Add Students (5-10 per school)
@@ -108,16 +110,18 @@ async function seedScale() {
             const studentId = uuidv4();
             const studentEmail = `student${j}@school${i}.com`;
             
+            const studentLastName = j + ' (School ' + i + ')';
             await sql`
                 INSERT INTO students (id, school_id, first_name, last_name, email, password_hash, is_active)
-                VALUES (${studentId}, ${schoolId}, 'Student', `${j} (School ${i})`, ${studentEmail}, ${STUDENT_PIN_HASH}, true)
+                VALUES (${studentId}, ${schoolId}, 'Student', ${studentLastName}, ${studentEmail}, ${STUDENT_PIN_HASH}, true)
             `;
 
             // Assign to a random class (1-12)
             const randomClassId = classIds[Math.floor(Math.random() * classIds.length)];
+            const rollNumber = j.toString();
             await sql`
                 INSERT INTO student_academic_records (user_id, school_id, session_id, class_id, roll_number)
-                VALUES (${studentId}, ${schoolId}, ${sessionId}, ${randomClassId}, ${`${j}`})
+                VALUES (${studentId}, ${schoolId}, ${sessionId}, ${randomClassId}, ${rollNumber})
             `;
         }
 
