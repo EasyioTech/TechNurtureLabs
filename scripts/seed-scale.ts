@@ -142,4 +142,3 @@ seedScale().catch(err => {
     console.error('❌ Scale seed failed:', err);
     process.exit(1);
 });
-`,Description:
