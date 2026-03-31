@@ -19,6 +19,7 @@ import {
 } from '@/modules/student/actions/settings-actions';
 import { deleteStudentAccountAction } from '@/modules/student/actions';
 import { usePWAInstall } from '@/hooks/use-pwa-install';
+import { cn } from '@/lib/utils';
 
 type TabType = 'notifications' | 'security' | 'app';
 
