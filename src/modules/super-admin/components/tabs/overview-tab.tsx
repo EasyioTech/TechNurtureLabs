@@ -125,14 +125,38 @@ function LoginHeatmap({ heatmap }: { heatmap: number[][] }) {
     }, [heatmap]);
 
     const cellColor = (count: number) => {
-        if (count === 0) return isDark ? 'bg-white/[0.04]' : 'bg-slate-100';
+        // 6 colors in visual hierarchy - cool to warm progression
+        if (count === 0) {
+            // Level 0: No activity - Gray (neutral baseline)
+            return isDark ? 'bg-gray-600 border-gray-500' : 'bg-gray-400 border-gray-500';
+        }
+
         const ratio = count / max;
-        // Theme-responsive opacity mapping
-        if (ratio < 0.2) return isDark ? `${accent.bg}/20` : `${accent.bg}/10`;
-        if (ratio < 0.45) return isDark ? `${accent.bg}/40` : `${accent.bg}/30`;
-        if (ratio < 0.7) return isDark ? `${accent.bg}/65` : `${accent.bg}/60`;
-        if (ratio < 0.9) return isDark ? `${accent.bg}/85` : `${accent.bg}/80`;
-        return isDark ? `${accent.bg} shadow-sm shadow-${accent.name}-500/20` : `${accent.bg} shadow-sm shadow-${accent.name}-500/30`;
+
+        // 6 levels with hierarchical color progression (cool → warm)
+        if (ratio <= 0.15) {
+            // Level 1: Very Low - Light Blue (cool start)
+            return isDark ? 'bg-blue-700 border-blue-600' : 'bg-blue-300 border-blue-400';
+        }
+        if (ratio <= 0.30) {
+            // Level 2: Low - Teal/Cyan (cool-mid)
+            return isDark ? 'bg-cyan-600 border-cyan-500' : 'bg-cyan-300 border-cyan-400';
+        }
+        if (ratio <= 0.50) {
+            // Level 3: Medium - Emerald/Teal-Green (cool-warm transition)
+            return isDark ? 'bg-teal-500 border-teal-400' : 'bg-teal-400 border-teal-500';
+        }
+        if (ratio <= 0.70) {
+            // Level 4: High - Green (warm start)
+            return isDark ? 'bg-green-500 border-green-400' : 'bg-green-500 border-green-600';
+        }
+        if (ratio <= 0.85) {
+            // Level 5: Very High - Orange (warm-mid)
+            return isDark ? 'bg-orange-600 border-orange-500' : 'bg-orange-500 border-orange-600';
+        }
+
+        // Level 6: Peak - Red (warm peak)
+        return isDark ? 'bg-red-600 border-red-500' : 'bg-red-500 border-red-600';
     };
 
     return (
@@ -140,57 +164,72 @@ function LoginHeatmap({ heatmap }: { heatmap: number[][] }) {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45, duration: 0.5 }}
-            className={`rounded-[24px] border p-6 lg:p-8 shadow-xl shadow-black/5 ${t.card(isDark)}`}
+            className={`rounded-[32px] border p-6 lg:p-8 shadow-2xl shadow-black/5 ${t.card(isDark)}`}
         >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform hover:rotate-3 ${isDark ? 'bg-white/[0.04]' : 'bg-[#171717] text-white'}`}>
-                        <CalendarDays size={22} className={isDark ? accent.text : 'text-white'} />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
+                <div className="flex items-center gap-5">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${isDark ? 'bg-white/[0.04]' : 'bg-[#171717] text-white'} shadow-lg`}>
+                        <Activity size={24} className={isDark ? accent.text : 'text-emerald-400'} />
                     </div>
                     <div>
-                        <h3 className={`text-base font-black tracking-tight ${t.textPrimary(isDark)}`}>User Peak Times</h3>
-                        <p className={`text-[11px] font-bold ${t.textMuted(isDark)} uppercase tracking-[0.15em]`}>Tracking login frequency across the platform</p>
+                        <h3 className={`text-lg font-black tracking-tight ${t.textPrimary(isDark)}`}>User Pulse Heatmap</h3>
+                        <p className={`text-[11px] font-bold ${t.textMuted(isDark)} uppercase tracking-[0.25em] flex items-center gap-2`}>
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            Live system activity tracking
+                        </p>
                     </div>
                 </div>
 
-                {/* Plain-English summary for non-technical admins */}
-                <div className={`px-4 py-2.5 rounded-xl border ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-neutral-50'} max-w-xs`}>
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)} mb-0.5`}>Peak Performance</p>
-                    <p className={`text-[11px] font-bold ${t.textPrimary(isDark)}`}>
-                        Highest activity on <span className={accent.text}>{peakActivity.day}</span> around <span className={accent.text}>{peakActivity.hour}</span> 
-                        {peakActivity.value > 0 && ` (${peakActivity.value} logins)`}
-                    </p>
+                <div className={`px-5 py-3 rounded-2xl border ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-neutral-50'} flex items-center gap-4`}>
+                    <div className="text-right">
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)} mb-0.5`}>Peak Performance</p>
+                        <p className={`text-[13px] font-black ${t.textPrimary(isDark)}`}>
+                            {peakActivity.day} @ {peakActivity.hour} 
+                            {peakActivity.value > 0 && <span className="ml-2 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 text-[10px] uppercase font-black">{peakActivity.value} Logins</span>}
+                        </p>
+                    </div>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-emerald-400/10' : 'bg-emerald-50'} text-emerald-500`}>
+                        <TrendingUp size={20} />
+                    </div>
                 </div>
             </div>
 
-            <div className="relative overflow-x-auto pb-6 -mx-2 px-2 scrollbar-thin scrollbar-thumb-neutral-300">
-                <div className="min-w-[700px]">
-                    {/* Hour labels — spread across the top */}
-                    <div className="flex gap-1 mb-2 ml-10">
-                        {HOURS.map((h, i) => (
-                            <div key={i} className={`flex-1 text-center text-[9px] font-black uppercase tracking-tighter transition-opacity ${i % 3 === 0 ? 'opacity-100' : 'opacity-20'} ${t.textMuted(isDark)}`}>
-                                {h}
-                            </div>
-                        ))}
+            <div className="relative overflow-x-auto pb-4 custom-scrollbar">
+                <div className="pr-4">
+                    {/* Hour labels */}
+                    <div className="flex gap-1.5 mb-3">
+                        <div className="w-12 flex-shrink-0" />
+                        <div className="flex flex-1 gap-1.5">
+                            {HOURS.map((h, i) => (
+                                <div key={i} className={`flex-1 text-center text-[9px] font-black uppercase tracking-tighter transition-all duration-500 ${i % 3 === 0 ? 'opacity-100' : 'opacity-20'} ${t.textMuted(isDark)}`}>
+                                    {h}
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Heatmap Grid */}
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                         {DAYS.map((day, dow) => (
-                            <div key={dow} className="flex items-center gap-1 group/row">
-                                <div className={`w-9 flex-shrink-0 text-[10px] font-black uppercase text-right pr-2 ${t.textMuted(isDark)} group-hover/row:${t.textPrimary(isDark)} transition-colors`}>
+                            <div key={dow} className="flex items-center gap-1.5 group/row">
+                                <div className={`w-12 flex-shrink-0 text-[11px] font-black uppercase text-right pr-3 ${t.textMuted(isDark)} group-hover/row:text-cyan-400 transition-colors`}>
                                     {day}
                                 </div>
-                                <div className="flex flex-1 gap-1">
+                                <div className="flex flex-1 gap-1.5 items-center">
                                     {heatmap[dow].map((count, hour) => (
                                         <motion.div
                                             key={hour}
                                             initial={{ opacity: 0, scale: 0.8 }}
                                             animate={{ opacity: 1, scale: 1 }}
-                                            transition={{ delay: 0.5 + (dow * 0.05) + (hour * 0.01), duration: 0.2 }}
-                                            className={`flex-1 h-6 rounded-md transition-all duration-300 cursor-help hover:scale-110 active:scale-90 hover:z-10 ${cellColor(count)} border ${isDark ? 'border-white/[0.02]' : 'border-black/[0.02]'}`}
-                                            title={`${day} ${HOURS[hour]}: ${count} logins`}
-                                        />
+                                            whileHover={{ scale: 1.3, zIndex: 10 }}
+                                            transition={{ delay: 0.5 + (dow * 0.05) + (hour * 0.01), type: 'spring', stiffness: 400, damping: 25 }}
+                                            className={`w-6 h-6 rounded-full transition-all duration-300 cursor-pointer ${cellColor(count)} border relative group/cell flex-1 flex items-center justify-center`}
+                                        >
+                                            {/* Minimal Tooltip */}
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 rounded-lg bg-neutral-900 text-white text-[10px] font-black whitespace-nowrap opacity-0 group-hover/cell:opacity-100 pointer-events-none transition-all translate-y-1 group-hover/cell:translate-y-0 z-50 shadow-2xl border border-white/10">
+                                                {count} LOGINS • {day}, {HOURS[hour]}
+                                            </div>
+                                        </motion.div>
                                     ))}
                                 </div>
                             </div>
@@ -199,21 +238,25 @@ function LoginHeatmap({ heatmap }: { heatmap: number[][] }) {
                 </div>
             </div>
 
-            {/* Bottom Legend + Insights */}
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-white/[0.05]">
+            {/* Legend: Less → More with hierarchical color progression */}
+            <div className="mt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-white/[0.05]">
                 <div className="flex items-center gap-3">
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Quiet</span>
-                    <div className="flex items-center gap-1">
-                        {[0, 0.2, 0.5, 0.8, 1].map((v, i) => (
-                            <div key={i} className={`w-4 h-4 rounded-md ${cellColor(Math.round(v * max))}`} />
-                        ))}
+                    <p className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>Less</p>
+                    <div className="flex items-center gap-1.5">
+                        <div className={`w-4 h-4 rounded-full ${isDark ? 'bg-gray-600 border-gray-500' : 'bg-gray-400 border-gray-500'}`} title="No Activity" />
+                        <div className={`w-4 h-4 rounded-full ${isDark ? 'bg-blue-700 border-blue-600' : 'bg-blue-300 border-blue-400'}`} title="Very Low" />
+                        <div className={`w-4 h-4 rounded-full ${isDark ? 'bg-cyan-600 border-cyan-500' : 'bg-cyan-300 border-cyan-400'}`} title="Low" />
+                        <div className={`w-4 h-4 rounded-full ${isDark ? 'bg-teal-500 border-teal-400' : 'bg-teal-400 border-teal-500'}`} title="Medium" />
+                        <div className={`w-4 h-4 rounded-full ${isDark ? 'bg-green-500 border-green-400' : 'bg-green-500 border-green-600'}`} title="High" />
+                        <div className={`w-4 h-4 rounded-full ${isDark ? 'bg-orange-600 border-orange-500' : 'bg-orange-500 border-orange-600'}`} title="Very High" />
+                        <div className={`w-4 h-4 rounded-full ${isDark ? 'bg-red-600 border-red-500' : 'bg-red-500 border-red-600'}`} title="Peak" />
                     </div>
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Very Busy</span>
+                    <p className={`text-[9px] font-bold ${t.textMuted(isDark)}`}>More</p>
                 </div>
-                
-                <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full animate-pulse ${accent.bg}`} />
-                    <p className={`text-[10px] font-bold ${t.textMuted(isDark)} uppercase tracking-widest`}>Data updating in real-time</p>
+
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] font-black ${isDark ? 'bg-white/[0.05] text-cyan-400' : 'bg-cyan-50 text-cyan-600'} flex-shrink-0`}>
+                    <RefreshCw size={10} className="animate-spin-slow" />
+                    SYNCING
                 </div>
             </div>
         </motion.div>

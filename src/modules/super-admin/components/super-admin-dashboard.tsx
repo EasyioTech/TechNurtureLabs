@@ -123,10 +123,14 @@ function DashboardContent() {
     const initializedTabs = useRef<Set<string>>(new Set());
 
     // Effect 1: tabs that need live data on every page-change or search update
+    // Also auto-sync metrics when Overview tab loads
     useEffect(() => {
-        if (activePage === 'users') {
+        if (activePage === 'overview') {
+            data.syncMetrics();
+            data.loadSchools(data.schoolsPage, searchQuery);
+        } else if (activePage === 'users') {
             data.loadStudents(data.userMetricsPage, searchQuery);
-        } else if (activePage === 'schools' || activePage === 'overview') {
+        } else if (activePage === 'schools') {
             data.loadSchools(data.schoolsPage, searchQuery);
         } else if (activePage === 'library') {
             data.loadGlobalLessons(data.globalLessonsPage, searchQuery);

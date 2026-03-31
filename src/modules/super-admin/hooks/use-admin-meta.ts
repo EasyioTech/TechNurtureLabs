@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
     fetchAdminStats,
@@ -45,6 +45,9 @@ export function useAdminMeta() {
     async function fetchInitialData() {
         setLoading(true);
         try {
+            // Auto-sync metrics on dashboard load/refresh
+            await syncPlatformMetrics().catch(() => null);
+
             const [statsData, metaData, extras] = await Promise.all([
                 fetchAdminStats(),
                 fetchAdminMetadata(),
@@ -67,6 +70,18 @@ export function useAdminMeta() {
             setLoading(false);
         }
     }
+
+    // Auto-sync when user refocuses the dashboard/page
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                syncPlatformMetrics().catch(() => null);
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
 
     // Surgical refresh — only reloads plans + promos, not stats/metrics
     async function refreshPlansAndPromos() {
