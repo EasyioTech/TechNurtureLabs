@@ -21,9 +21,9 @@ while ! pg_isready -h ${DB_HOST:-db} -p ${DB_PORT:-5432} -U ${POSTGRES_USER:-pos
 done
 echo "✅ Database is ready"
 
-# Wait for Redis to be ready
+# Wait for Redis to be ready (with extra warmup time for slow systems)
 echo "⏳ Waiting for Redis to be ready..."
-max_attempts=10
+max_attempts=20
 attempt=1
 while ! redis-cli -h ${REDIS_HOST:-redis} -p ${REDIS_PORT:-6379} ping > /dev/null 2>&1; do
     if [ $attempt -eq $max_attempts ]; then
@@ -34,6 +34,8 @@ while ! redis-cli -h ${REDIS_HOST:-redis} -p ${REDIS_PORT:-6379} ping > /dev/nul
     attempt=$((attempt + 1))
     sleep 1
 done
+# Extra wait to ensure Redis connections are fully established
+sleep 2
 echo "✅ Redis is ready"
 
 if [ $# -eq 0 ]; then

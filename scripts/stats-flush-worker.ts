@@ -15,40 +15,50 @@ dotenv.config();
 
 async function flushTimeSpent() {
     const flushKey = `stats:needs_flush:time_spent`;
-    
-    // 1. Get all user:lesson pairs that need flushing
-    const entries = await redis.smembers(flushKey);
-    if (entries.length === 0) return;
 
-    console.log(`[FlushWorker] Found ${entries.length} entries to flush for time_spent`);
+    try {
+        // 1. Get all user:lesson pairs that need flushing
+        const entries = await redis.smembers(flushKey);
+        if (entries.length === 0) return;
 
-    for (const entry of entries) {
-        const [userId, lessonId] = entry.split(':');
-        const statsKey = `stats:time_spent:user:${userId}`;
+        console.log(`[FlushWorker] Found ${entries.length} entries to flush for time_spent`);
 
-        try {
-            // 2. Get the current accumulated value
-            const secondsStr = await redis.hget(statsKey, lessonId);
-            const seconds = parseInt(secondsStr || '0', 10);
+        for (const entry of entries) {
+            const [userId, lessonId] = entry.split(':');
+            const statsKey = `stats:time_spent:user:${userId}`;
 
-            if (seconds > 0) {
-                // 3. Atomically update DB
-                await db.update(lessonProgress)
-                    .set({
-                        time_spent_secs: sql`${lessonProgress.time_spent_secs} + ${seconds}`,
-                        updated_at: new Date()
-                    })
-                    .where(and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId)));
+            try {
+                // 2. Get the current accumulated value
+                const secondsStr = await redis.hget(statsKey, lessonId);
+                const seconds = parseInt(secondsStr || '0', 10);
 
-                // 4. Decrement the value we just flushed from Redis
-                // Using HINCRBY -value is safer than HDEL in case more time was added during the DB write
-                await redis.hincrby(statsKey, lessonId, -seconds);
+                if (seconds > 0) {
+                    // 3. Atomically update DB
+                    await db.update(lessonProgress)
+                        .set({
+                            time_spent_secs: sql`${lessonProgress.time_spent_secs} + ${seconds}`,
+                            updated_at: new Date()
+                        })
+                        .where(and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId)));
+
+                    // 4. Decrement the value we just flushed from Redis
+                    // Using HINCRBY -value is safer than HDEL in case more time was added during the DB write
+                    await redis.hincrby(statsKey, lessonId, -seconds);
+                }
+
+                // 5. Remove from the "needs flush" set
+                await redis.srem(flushKey, entry);
+            } catch (err) {
+                console.error(`[FlushWorker] Failed to flush ${entry}:`, err);
             }
-
-            // 5. Remove from the "needs flush" set
-            await redis.srem(flushKey, entry);
-        } catch (err) {
-            console.error(`[FlushWorker] Failed to flush ${entry}:`, err);
+        }
+    } catch (err) {
+        // Redis is temporarily unavailable — that's OK, we'll retry next cycle
+        // Don't crash the worker, just skip this cycle
+        if (err instanceof Error && err.message.includes('Stream isn\'t writeable')) {
+            console.warn('[FlushWorker] Redis temporarily unavailable, will retry in next cycle');
+        } else {
+            console.error('[FlushWorker] Error in flushTimeSpent:', err);
         }
     }
 }
