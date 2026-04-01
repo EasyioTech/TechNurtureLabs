@@ -38,12 +38,13 @@ echo "✅ Redis is ready"
 
 # Run database migrations
 echo "🔄 Running database migrations..."
-if npm run db:push 2>/dev/null; then
+if npm run db:push; then
     echo "✅ Database migrations completed successfully"
 else
-    echo "⚠️  Database migrations skipped (migrations may already be applied)"
+    echo "❌ Database migrations failed!"
+    exit 1
 fi
 
 # Start the application
 echo "🎯 Starting application server..."
-exec node server.js
+exec node .next/standalone/server.js
