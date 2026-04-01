@@ -14,6 +14,8 @@
         "db:push": "drizzle-kit push",
         "db:migrate": "drizzle-kit migrate",
         "db:seed": "npx tsx scripts/seed.ts",
+        "db:seed:scale": "npx tsx scripts/seed-scale.ts",
+        "db:seed:courses": "npx tsx scripts/seed-courses.ts",
         "db:studio": "drizzle-kit studio",
         "setup": "npm run infra:up && npm run db:migrate && npm run db:push && npm run db:seed",
         "worker:video": "npx tsx scripts/video-worker.ts",
