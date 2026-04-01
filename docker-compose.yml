@@ -150,14 +150,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      # Two-stage check: first verify postgres is accepting connections,
-      # then verify the schema init scripts have finished by checking that
-      # the super_admins table exists. This prevents the app from starting
-      # while docker-entrypoint-initdb.d scripts are still running.
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-technurturelabs} && psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-technurturelabs} -c 'SELECT 1 FROM super_admins LIMIT 1' > /dev/null 2>&1" ]
+      # Simple check: verify postgres is accepting connections.
+      # Schema initialization (migrations) happens in app container via docker-entrypoint.sh
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 10
       start_period: 10s
 
   # ----------------------------
