@@ -163,8 +163,8 @@ export function SchoolsTab({
                             </div>
 
                             <div className="flex-1 min-w-0">
-                                <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-3">
-                                    <p className={`font-black text-sm tracking-tight truncate ${t.textPrimary(isDark)}`}>{school.name}</p>
+                                <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-3">
+                                    <p className={`font-black text-sm sm:text-base tracking-tight truncate ${t.textPrimary(isDark)}`}>{school.name}</p>
                                     <div className="flex items-center gap-1.5 flex-wrap">
                                         <Badge className={`text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-md ${school.plan_name ? t.accentSoft(isDark, accent) : (isDark ? 'bg-white/[0.1] text-slate-400 border border-white/[0.05]' : 'bg-slate-100 text-slate-400 border border-slate-200')}`}>
                                             {school.plan_name ? school.plan_name.toUpperCase() : 'NO PLAN'}
@@ -174,12 +174,23 @@ export function SchoolsTab({
                                         </Badge>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-x-3 gap-y-1 mt-1 sm:mt-1.5 flex-wrap">
-                                    <span className={`text-[10px] font-bold flex items-center gap-1 ${t.textMuted(isDark)} truncate max-w-[150px] sm:max-w-none`}><Mail size={10} />{school.email}</span>
-                                    {school.city && <span className={`text-[10px] font-bold flex items-center gap-1 ${t.textMuted(isDark)}`}><MapPin size={10} />{school.city}</span>}
-                                    <span className={`lg:hidden text-[10px] font-black flex items-center gap-1 ${t.textSecondary(isDark)}`}>
-                                        <Users size={10} /> {(school.student_count || 0).toLocaleString()}
-                                    </span>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-1.5 mt-2 sm:mt-1.5">
+                                    <div className="flex items-center gap-1.5 overflow-hidden">
+                                        <Mail size={10} className={`flex-shrink-0 ${t.textMuted(isDark)}`} />
+                                        <span className={`text-[10px] sm:text-[11px] font-bold truncate ${t.textMuted(isDark)} mb-[-1px]`}>{school.email}</span>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        {school.city && (
+                                            <div className="flex items-center gap-1">
+                                                <MapPin size={10} className={`flex-shrink-0 ${t.textMuted(isDark)}`} />
+                                                <span className={`text-[10px] sm:text-[11px] font-bold ${t.textMuted(isDark)}`}>{school.city}</span>
+                                            </div>
+                                        )}
+                                        <div className="lg:hidden flex items-center gap-1">
+                                            <Users size={10} className={`flex-shrink-0 ${t.textSecondary(isDark)}`} /> 
+                                            <span className={`text-[10px] sm:text-[11px] font-black ${t.textSecondary(isDark)}`}>{(school.student_count || 0).toLocaleString()}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

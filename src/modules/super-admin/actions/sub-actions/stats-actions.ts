@@ -14,10 +14,11 @@ import { analyticsService } from '@/lib/services/analytics-service';
 // Normalize billing cycle to a monthly divisor for MRR
 function billingCycleMonths(cycle: string): number {
     switch (cycle) {
-        case 'yearly':     return 12;
-        case 'quarterly':  return 3;
+        case 'annual':      return 12;
+        case 'semi_annual':  return 6;
+        case 'quarterly':    return 3;
         case 'monthly':
-        default:           return 1;
+        default:            return 1;
     }
 }
 
