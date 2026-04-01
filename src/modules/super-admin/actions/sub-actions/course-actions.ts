@@ -156,9 +156,6 @@ export async function saveCourseAdmin(courseData: unknown) {
             }
         }
 
-        // Internal call — we use tx-aware updates if this were refactored, 
-        // but for now updateCourseTotals is standalone.
-        // TODO: Move updateCourseTotals into a database trigger for perfect integrity.
         
         if (isNew) {
             analyticsService.incrementMetric('total_courses').catch(() => {});

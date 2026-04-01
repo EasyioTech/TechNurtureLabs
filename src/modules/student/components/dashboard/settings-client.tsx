@@ -405,6 +405,13 @@ function PasswordInput({ label, value, onChange, show, onToggleShow }: {
                     maxLength={6}
                     value={value}
                     onChange={e => onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            const parent = e.currentTarget.closest('.space-y-4');
+                            const nextInput = e.currentTarget.parentElement?.nextElementSibling?.querySelector('input') as HTMLInputElement;
+                            nextInput?.focus();
+                        }
+                    }}
                     className="w-full h-11 px-4 pr-11 rounded-xl border-2 border-slate-100 bg-slate-50 text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-400 transition-colors"
                     autoComplete="new-password"
                 />

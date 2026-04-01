@@ -52,8 +52,6 @@ export async function ensureEnrollment(userId: string, courseId: string) {
     
     if (!user?.school_id) return null;
 
-    // TODO: Re-enable subscription gating once Razorpay integration is live.
-    // Bypassed for testing — all schools are treated as having a valid subscription.
     // if (role === 'student') {
     //     const subscription = await db.query.schoolSubscriptions.findFirst({
     //         where: eq(schoolSubscriptions.school_id, user.school_id),

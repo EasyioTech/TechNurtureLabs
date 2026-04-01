@@ -412,6 +412,11 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
                               type="text"
                               value={formData.first_name}
                               onChange={e => setFormData({ ...formData, first_name: e.target.value })}
+                              onKeyDown={(e) => {
+                                 if (e.key === 'Enter') {
+                                    e.currentTarget.nextElementSibling?.querySelector('input')?.focus();
+                                 }
+                              }}
                               className="w-full h-14 px-6 rounded-xl bg-slate-50 border-4 border-slate-50 focus:border-indigo-600 outline-none text-base font-black transition-all shadow-inner"
                            />
                         </div>
@@ -421,6 +426,13 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
                               type="text"
                               value={formData.last_name}
                               onChange={e => setFormData({ ...formData, last_name: e.target.value })}
+                              onKeyDown={(e) => {
+                                 if (e.key === 'Enter') {
+                                    const parent = e.currentTarget.closest('.space-y-6');
+                                    const phoneInput = parent?.querySelector('input[type="text"]:nth-of-type(3)') as HTMLInputElement;
+                                    phoneInput?.focus();
+                                 }
+                              }}
                               className="w-full h-14 px-6 rounded-xl bg-slate-50 border-4 border-slate-50 focus:border-indigo-600 outline-none text-base font-black transition-all shadow-inner"
                            />
                         </div>
@@ -430,8 +442,16 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Phone Number</label>
                         <input
                            type="text"
+                           inputMode="tel"
                            value={formData.phone || ''}
                            onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                           onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                 const parent = e.currentTarget.closest('.space-y-6');
+                                 const bioInput = parent?.querySelector('textarea') as HTMLTextAreaElement;
+                                 bioInput?.focus();
+                              }
+                           }}
                            className="w-full h-14 px-6 rounded-xl bg-slate-50 border-4 border-slate-50 focus:border-indigo-600 outline-none text-base font-black transition-all shadow-inner"
                            placeholder="+X XXX XXX XXXX"
                         />
@@ -442,6 +462,11 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
                         <textarea
                            value={bioText}
                            onChange={e => setBioText(e.target.value)}
+                           onKeyDown={(e) => {
+                              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                 saveProfile();
+                              }
+                           }}
                            className="w-full h-32 p-6 rounded-2xl bg-slate-50 border-4 border-slate-50 focus:border-indigo-600 outline-none text-base font-bold transition-all resize-none shadow-inner"
                            placeholder="Define your academic trajectory..."
                         />

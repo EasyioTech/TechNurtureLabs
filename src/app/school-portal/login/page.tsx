@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/providers/auth-provider';
-import { LogIn, ArrowLeft, Loader2, School, Eye, EyeOff, Building2 } from 'lucide-react';
+import { LogIn, ArrowLeft, Loader2, School, Eye, EyeOff } from 'lucide-react';
 import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { SchoolLoginSidebar } from '@/components/registration/SchoolLoginSidebar';
 import { getPlatformSettings } from '@/components/landing/actions';
@@ -91,11 +91,6 @@ export default function SchoolLoginPage() {
               </div>
             )}
             <span className="text-xl font-bold tracking-tight text-slate-900">{platformSettings?.platform_name || 'Schools'}</span>
-          </div>
-
-          <div className="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-slate-50 shadow-sm mb-4 border border-slate-100">
-            <Building2 size={12} className="text-slate-900" />
-            <span className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Portal Access</span>
           </div>
 
           <h1 className="text-3xl font-black mb-1 text-slate-900 tracking-tight leading-tight">Admin Sign In</h1>

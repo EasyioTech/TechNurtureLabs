@@ -63,27 +63,27 @@ const FAQ_LD_JSON = {
 
 export const FAQSection = () => {
     return (
-        <section className="py-24 bg-white relative z-10">
-            <div className="max-w-4xl mx-auto px-6">
+        <section className="py-12 sm:py-20 lg:py-24 bg-white relative z-10">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6">
 
-                <div className="flex flex-col md:flex-row items-center gap-12 mb-20">
+                <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8 lg:gap-12 mb-12 lg:mb-20">
                     <div className="text-left flex-1">
                         <div>
-                            <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-                                Frequently Asked <br className="hidden md:block" /> Questions
+                            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+                                Frequently Asked <br className="hidden sm:block" /> Questions
                             </h2>
-                            <p className="mt-4 text-lg text-slate-600 font-medium max-w-md">
-                                Everything schools ask before going live. If you have more, our team is one message away.
+                            <p className="mt-3 sm:mt-4 text-sm sm:text-lg text-slate-600 font-medium max-w-md">
+                                Everything schools ask before going live. If you have more, we're one message away.
                             </p>
                         </div>
                     </div>
                     <div className="hidden lg:block w-full max-w-[400px]">
-                        <img 
-                            src="/illustrations/faq-primary.webp" 
-                            alt="FAQ Support" 
+                        <img
+                            src="/illustrations/faq-primary.webp"
+                            alt="FAQ Support"
                             loading="lazy"
                             decoding="async"
-                            className="w-full h-auto pointer-events-none mix-blend-multiply" 
+                            className="w-full h-auto pointer-events-none mix-blend-multiply"
                         />
                     </div>
                 </div>
@@ -132,16 +132,17 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div className="py-6">
+        <div className="py-4 sm:py-6">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center justify-between w-full text-left focus:outline-none group cursor-pointer"
+                className="flex items-start sm:items-center justify-between w-full text-left focus:outline-none group cursor-pointer gap-3"
             >
-                <span className="text-lg font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                <span className="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-blue-600 transition-colors leading-snug">
                     {question}
                 </span>
                 <ChevronDown
-                    className={cn("text-slate-400 transition-transform duration-300", isOpen ? "rotate-180" : "rotate-0")}
+                    size={18}
+                    className={cn("text-slate-400 transition-transform duration-300 flex-shrink-0 mt-0.5 sm:mt-0", isOpen ? "rotate-180" : "rotate-0")}
                 />
             </button>
 
@@ -154,7 +155,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
                         transition={{ duration: 0.3 }}
                         className="overflow-hidden"
                     >
-                        <p className="pt-4 text-slate-600 font-medium leading-relaxed">
+                        <p className="pt-3 sm:pt-4 text-xs sm:text-base text-slate-600 font-medium leading-relaxed">
                             {answer}
                         </p>
                     </motion.div>

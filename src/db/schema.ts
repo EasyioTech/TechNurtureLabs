@@ -14,8 +14,6 @@ export const userTypeEnum = pgEnum('user_type', ['super_admin', 'school_admin', 
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'trialing', 'past_due', 'cancelled', 'expired']);
 export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'quarterly', 'semi_annual', 'annual']);
 export const paymentStatusEnum = pgEnum('payment_status', ['created', 'authorized', 'captured', 'failed', 'refunded']);
-// NEW BUG 5: removed 'quiz' — quizzes are a first-class entity (quizzes table). A lesson's quiz
-// is discovered via the quizzes relation (WHERE lesson_id = ?), not via content_type.
 export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['video', 'ppt', 'pdf', 'quiz', 'assignment']);
 export const questionTypeEnum = pgEnum('question_type', ['mcq', 'true_false', 'fill_blank', 'multi_select']);
 export const xpSourceEnum = pgEnum('xp_source', ['lesson_completion', 'quiz_score', 'daily_streak', 'challenge_win', 'badge_earned', 'bonus', 'manual_adjustment']);
@@ -60,7 +58,6 @@ export const academicSessions = pgTable('academic_sessions', {
     start_date: date('start_date').notNull(),
     end_date: date('end_date').notNull(),
     is_current: boolean('is_current').notNull().default(false),
-    // ISSUE 16: soft delete added — hard-deleting a session destroys enrollment/progress history
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -278,7 +275,6 @@ export const classes = pgTable('classes', {
     id: uuid('id').defaultRandom().primaryKey(),
     name: text('name').notNull(),
     level: integer('level').notNull(),
-    // ISSUE 16: soft delete — hard deleting breaks all historical student records for the class
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
@@ -299,7 +295,6 @@ export const schoolClassMapping = pgTable('school_class_mapping', {
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    // NEW BUG 1: Must be partial — otherwise a soft-deleted mapping blocks re-adding the same class
     uniqueIndex('uq_school_class')
         .on(table.school_id, table.class_id)
         .where(sql`deleted_at IS NULL`),
@@ -361,7 +356,6 @@ export const courseClassMapping = pgTable('course_class_mapping', {
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    // NEW BUG 1: Must be partial — otherwise a soft-deleted mapping blocks re-adding the same class
     uniqueIndex('uq_course_class')
         .on(table.course_id, table.class_id)
         .where(sql`deleted_at IS NULL`),
@@ -450,12 +444,10 @@ export const enrollments = pgTable('enrollments', {
     enrolled_at: timestamp('enrolled_at', { withTimezone: true }).notNull().defaultNow(),
     completed_at: timestamp('completed_at', { withTimezone: true }),
     is_active: boolean('is_active').notNull().default(true),
-    // ISSUE 16: soft delete — distinguishes "unenrolled" from "archived" cleanly
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    // NEW BUG 1: Must be partial — a soft-deleted enrollment must not block re-enrollment
     // in the same session. Re-enrollment API must UPSERT (reactivate row) not INSERT.
     uniqueIndex('uq_enrollment')
         .on(table.user_id, table.course_id, table.session_id)
@@ -816,10 +808,7 @@ export const mediaAssets = pgTable('media_assets', {
     id: uuid('id').defaultRandom().primaryKey(),
     file_name: text('file_name').notNull(),         // UUID-based storage key/filename
     original_name: text('original_name').notNull(), // Original filename from the user
-    // ISSUE 19 TODO: Remove file_url in a future migration once all API serializers compute
-    // the URL at runtime from file_path + storage_type (avoids CDN domain coupling).
-    // Until then, keep it to avoid breaking existing integrations.
-    file_url: text('file_url'),            // Public URL (R2 or /api/media/...) - DEPRECATED: use computeMediaUrl instead
+    file_url: text('file_url'),
     file_path: text('file_path').notNull(),          // Storage key (R2) or relative local path
     mime_type: text('mime_type').notNull(),
     file_size: bigint('file_size', { mode: 'number' }).notNull().default(0),
@@ -912,7 +901,6 @@ export const userSessions = pgTable('user_sessions', {
 }, (table) => [
     index('idx_sessions_user').on(table.user_id),
     index('idx_sessions_expires').on(table.expires_at),
-    // NEW BUG 2: unique index on token hash — enforces no hash collisions and makes
     // POST /auth/refresh lookup O(1) instead of a full table scan
     uniqueIndex('uq_sessions_token_hash').on(table.refresh_token_hash),
 ]);

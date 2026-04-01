@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import {
   ArrowLeft, Users, CheckCircle2, Loader2,
   CreditCard, Check, Eye, EyeOff, ArrowRight,
-  Building2, Landmark, BadgeCheck, X, MapPin, Map, Compass, Shield, Lock
+  Building2, BadgeCheck, X, MapPin, Map, Compass, Shield, Lock
 } from 'lucide-react';
 import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { SchoolRegistrationSidebar } from '@/components/registration/SchoolRegistrationSidebar';
@@ -425,16 +425,6 @@ export default function SchoolRegistrationPage() {
             Back to School Portal
           </Link>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white border border-slate-200 shadow-sm mb-6">
-            <div className="w-5 h-5 flex items-center justify-center overflow-hidden">
-              {settings?.logo_url ? (
-                <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
-              ) : (
-                <Landmark size={16} className="text-slate-900" />
-              )}
-            </div>
-            <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">{settings?.platform_name || 'Portal'} Registration</span>
-          </div>
 
           <h1 className="text-4xl font-black mb-3 text-slate-900 tracking-tight leading-tight">School Onboarding</h1>
           <p className="text-slate-500 font-medium mb-10 text-lg">Step {step} of {paymentPlans.length > 0 ? 4 : 3}: Setup your account</p>
@@ -476,6 +466,9 @@ export default function SchoolRegistrationPage() {
                   <div className="space-y-2">
                     <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.udise_code ? 'text-rose-500' : 'text-slate-600'}`}>Registration ID / UDISE *</Label>
                     <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       value={formData.udise_code}
                       onChange={(e) => {
                         setFormData({ ...formData, udise_code: e.target.value });

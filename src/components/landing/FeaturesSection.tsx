@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Gamepad2, BarChart3, Users, Shield, BookOpen, Globe, ArrowRight } from 'lucide-react';
+import { Gamepad2, BarChart3, Users, Shield, BookOpen, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SectionCard } from './SectionCard';
 
@@ -55,9 +55,9 @@ export const FeaturesSection = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 auto-rows-auto lg:auto-rows-[280px] gap-4 sm:gap-5 lg:gap-6">
 
                     {/* Main Feature - Gamification (Span 2x2 on desktop, full on mobile) */}
-                    <div className="sm:col-span-2 lg:row-span-2 h-full">
+                    <div className="sm:col-span-2 lg:row-span-2 h-full animate-slide-up" style={{ animationDelay: '0ms' }}>
                         <div className="h-full">
-                            <SectionCard className="flex flex-col justify-between group overflow-hidden !bg-white/70 h-full relative border-slate-100 shadow-xl shadow-slate-200/20">
+                            <SectionCard className="flex flex-col justify-between group overflow-hidden !bg-white/70 h-full relative border-slate-100 shadow-xl shadow-slate-200/20 hover:shadow-2xl hover:shadow-indigo-200/30 transition-shadow duration-300">
                                 <div className="relative z-20">
                                     <NeumorphicIconContainer color="indigo" className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-[24px]">
                                         <Gamepad2 size={24} className="sm:block" />
@@ -69,18 +69,18 @@ export const FeaturesSection = () => {
                                 </div>
                                 {/* Decorative Element */}
                                 <div
-                                    className="absolute right-0 bottom-0 pointer-events-none translate-x-[10%] translate-y-[10%] opacity-80 lg:translate-x-[5%] lg:translate-y-[5%] lg:opacity-90 overflow-hidden"
+                                    className="absolute right-0 bottom-0 pointer-events-none translate-x-[10%] translate-y-[10%] opacity-80 lg:translate-x-[5%] lg:translate-y-[5%] lg:opacity-90 overflow-hidden group-hover:animate-float"
                                 >
-                                    <img src="/illustrations/gamified-learning.svg" alt="Gamification" className="w-[120px] sm:w-[200px] lg:w-[350px] transform group-hover:scale-105 transition-transform duration-1000" />
+                                    <img src="/illustrations/gamified-learning.svg" alt="Gamification" className="w-[120px] sm:w-[200px] lg:w-[350px] transition-opacity duration-300 group-hover:opacity-100" />
                                 </div>
                             </SectionCard>
                         </div>
                     </div>
 
                     {/* Feature 2 - Interactive Courses */}
-                    <div className="h-full">
+                    <div className="h-full animate-slide-up" style={{ animationDelay: '100ms' }}>
                         <div className="h-full">
-                            <SectionCard className="flex flex-col h-full !bg-white/60 justify-center group overflow-hidden relative">
+                            <SectionCard className="flex flex-col h-full !bg-white/60 justify-center group overflow-hidden relative hover:shadow-lg hover:shadow-blue-200/20 transition-shadow duration-300">
                                 <div className="relative z-10">
                                     <NeumorphicIconContainer color="blue" className="w-10 h-10 sm:w-12 sm:h-12">
                                         <BookOpen size={20} />
@@ -91,7 +91,7 @@ export const FeaturesSection = () => {
                                     </p>
                                 </div>
                                 <div
-                                    className="absolute -right-2 -bottom-2 opacity-70 sm:opacity-80 group-hover:opacity-100 transition-all duration-500 pointer-events-none"
+                                    className="absolute -right-2 -bottom-2 opacity-70 sm:opacity-80 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
                                 >
                                     <img src="/illustrations/interactive-courses.svg" alt="Books" className="w-32 sm:w-[180px] h-auto" />
                                 </div>
@@ -100,9 +100,9 @@ export const FeaturesSection = () => {
                     </div>
 
                     {/* Feature 3 - Progress Analytics */}
-                    <div className="h-full">
+                    <div className="h-full animate-slide-up" style={{ animationDelay: '200ms' }}>
                         <div className="h-full">
-                            <SectionCard className="flex flex-col h-full !bg-white/60 group overflow-hidden relative">
+                            <SectionCard className="flex flex-col h-full !bg-white/60 group overflow-hidden relative hover:shadow-lg hover:shadow-sky-200/20 transition-shadow duration-300">
                                 <div className="relative z-10">
                                     <NeumorphicIconContainer color="sky" className="w-10 h-10 sm:w-12 sm:h-12">
                                         <BarChart3 size={20} />
@@ -114,7 +114,7 @@ export const FeaturesSection = () => {
                                 </div>
 
                                 <div
-                                    className="absolute -right-2 -bottom-2 opacity-70 sm:opacity-80 group-hover:opacity-100 transition-all duration-500 pointer-events-none"
+                                    className="absolute -right-2 -bottom-2 opacity-70 sm:opacity-80 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
                                 >
                                     <img src="/illustrations/charts.svg" alt="Analytics" className="w-32 sm:w-[190px] h-auto" />
                                 </div>
@@ -123,9 +123,9 @@ export const FeaturesSection = () => {
                     </div>
 
                     {/* Feature 4 - Smart Academic Hub (Span 2 on sm, 1 on mobile) */}
-                    <div className="sm:col-span-2 h-full">
+                    <div className="sm:col-span-2 h-full animate-slide-up" style={{ animationDelay: '300ms' }}>
                         <div className="h-full">
-                            <SectionCard className="flex flex-col h-full !bg-white/60 justify-center group overflow-hidden relative">
+                            <SectionCard className="flex flex-col h-full !bg-white/60 justify-center group overflow-hidden relative hover:shadow-lg hover:shadow-teal-200/20 transition-shadow duration-300">
                                 <div className="relative z-10">
                                     <NeumorphicIconContainer color="teal" className="w-10 h-10 sm:w-12 sm:h-12">
                                         <Globe size={20} />
@@ -136,7 +136,7 @@ export const FeaturesSection = () => {
                                     </p>
                                 </div>
                                 <div
-                                    className="absolute -right-4 -bottom-4 opacity-70 sm:opacity-80 group-hover:opacity-100 transition-all duration-500 pointer-events-none hidden sm:block"
+                                    className="absolute -right-4 -bottom-4 opacity-70 sm:opacity-80 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none hidden sm:block"
                                 >
                                     <img src="/illustrations/learning.svg" alt="Learning" className="w-40 lg:w-[240px] h-auto" />
                                 </div>
@@ -145,9 +145,9 @@ export const FeaturesSection = () => {
                     </div>
 
                     {/* Horizontal Banner - Enterprise Security (Span 4 on desktop, 2 on tablet, 1 on mobile) */}
-                    <div className="sm:col-span-2 lg:col-span-4 h-full">
+                    <div className="sm:col-span-2 lg:col-span-4 h-full animate-slide-up" style={{ animationDelay: '400ms' }}>
                         <div className="h-full">
-                            <SectionCard className="flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-8 h-full !bg-white/60 group overflow-hidden relative">
+                            <SectionCard className="flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-8 h-full !bg-white/60 group overflow-hidden relative hover:shadow-xl hover:shadow-slate-200/30 transition-shadow duration-300">
                                 <div className="flex-1 relative z-10">
                                     <NeumorphicIconContainer color="slate" className="w-10 h-10 sm:w-12 sm:h-12">
                                         <Shield size={20} />
@@ -158,7 +158,7 @@ export const FeaturesSection = () => {
                                     </p>
                                 </div>
                                 <div
-                                    className="absolute right-0 top-0 h-full hidden lg:flex items-center transition-transform duration-500"
+                                    className="absolute right-0 top-0 h-full hidden lg:flex items-center transition-opacity duration-300 group-hover:opacity-100"
                                 >
                                     <img src="/illustrations/safe.svg" alt="Security" className="h-[90%] w-auto" />
                                 </div>

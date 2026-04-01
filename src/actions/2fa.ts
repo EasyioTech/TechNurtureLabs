@@ -62,11 +62,8 @@ export async function enable2FA(secret: string, token: string) {
         return { success: false, error: 'Invalid verification code' };
     }
 
-    // APP ISSUE 2 (Issue 4): Hash backup codes before storing.
-    // Plain codes are returned ONCE to the caller for the user to save.
-    // Stored hashes cannot be reversed — only bcrypt.compare verification works.
     const plainCodes = Array.from({ length: 8 }, () =>
-        crypto.randomBytes(4).toString('hex').toUpperCase() // e.g. "A1B2C3D4"
+        crypto.randomBytes(4).toString('hex').toUpperCase()
     );
     const hashedCodes = await Promise.all(
         plainCodes.map(code => bcrypt.hash(code, 10))
@@ -84,7 +81,6 @@ export async function enable2FA(secret: string, token: string) {
         .where(eq(table.id, session.userId));
 
     revalidatePath('/admin');
-    // Return plain codes ONCE — frontend must prompt user to copy/download them
     return { success: true, recoveryCodes: plainCodes };
 }
 
@@ -123,9 +119,7 @@ export async function disable2FA(token: string) {
 }
 
 /**
- * APP ISSUE 2 (Issue 4): Verify a 2FA backup code using bcrypt compare.
- * Must be called at POST /auth/2fa/verify-backup.
- *
+ * Verify a 2FA backup code
  * - Iterates hashed codes in DB and compares with bcrypt (not string equality).
  * - Removes the used code after successful verification (one-time use).
  * - Never returns the stored hashes to the client.
