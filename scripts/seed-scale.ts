@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { schools, students, studentAcademicRecords, schoolClassMapping, courseClassMapping, courses } from '@/db/schema';
+import { schools, students, studentAcademicRecords, schoolClassMapping, courseClassMapping, courses, sessions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
@@ -19,6 +19,15 @@ async function seedScale() {
         const allCourses = await db.query.courses.findMany({
             where: eq(courses.is_published, true)
         });
+
+        // Get current session
+        const sessionList = await db.query.sessions.findMany();
+        const currentSession = sessionList.length > 0 ? sessionList[0] : null;
+
+        if (!currentSession) {
+            console.error('❌ No academic session found. Please create one first.');
+            process.exit(1);
+        }
 
         if (allClasses.length === 0) {
             console.error('❌ No classes found. Run base seed first.');
@@ -104,9 +113,8 @@ async function seedScale() {
                 await db.insert(studentAcademicRecords).values({
                     user_id: student.id,
                     school_id: school.id,
+                    session_id: currentSession.id,
                     class_id: randomClass.id,
-                    current_level: 1,
-                    total_xp: Math.floor(Math.random() * 5000),
                 }).onConflictDoNothing();
             }
 
