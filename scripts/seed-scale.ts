@@ -28,9 +28,9 @@ async function seedScale() {
             console.log('📅 Creating academic session 2025-2026...');
             const [newSession] = await db.insert(academicSessions).values({
                 name: '2025-2026',
-                start_date: new Date('2025-04-01'),
-                end_date: new Date('2026-03-31'),
-                is_active: true,
+                start_date: '2025-04-01',
+                end_date: '2026-03-31',
+                is_current: true,
             }).returning();
             currentSession = newSession;
         }
