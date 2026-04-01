@@ -61,9 +61,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   output: 'standalone',
   async headers() {
     const isDev = process.env.NODE_ENV !== 'production';

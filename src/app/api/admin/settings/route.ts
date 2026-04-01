@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
                 });
         }
 
-        revalidateTag('platform-settings');
+        revalidateTag('platform-settings', 'layout');
         revalidatePath('/', 'layout');
         revalidatePath('/admin-portal', 'layout');
         revalidatePath('/school-portal', 'layout');

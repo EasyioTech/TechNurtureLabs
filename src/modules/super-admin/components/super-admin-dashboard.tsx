@@ -492,13 +492,25 @@ function DashboardContent() {
                         )}
                         {activePage === 'schools' && (
                             <SchoolsTab
-                                 onSync={data.syncMetrics}
-                                 page={data.schoolsPage}
-                                 setPage={data.setSchoolsPage}
-                                 totalPages={data.totalSchoolsPages}
-                                 hasMore={data.hasMoreSchools}
-                                 loadingMore={data.schoolsLoading}
-                                 onLoadMore={() => data.loadSchools(data.schoolsPage + 1, searchQuery, true)}
+                                stats={data.stats}
+                                schoolsList={data.schoolsList}
+                                paymentPlans={data.paymentPlans}
+                                onToggleStatus={data.toggleSchoolStatus}
+                                onSaveSchool={data.saveSchool}
+                                onAssignPlan={data.assignPlan}
+                                showEditDialog={data.showSchoolDialog}
+                                setShowEditDialog={data.setShowSchoolDialog}
+                                editingSchool={data.editingSchoolItem}
+                                setEditingSchool={data.setEditingSchoolItem}
+                                searchQuery={searchQuery}
+                                classes={data.classes}
+                                onSync={data.syncMetrics}
+                                page={data.schoolsPage}
+                                setPage={data.setSchoolsPage}
+                                totalPages={data.totalSchoolsPages}
+                                hasMore={data.hasMoreSchools}
+                                loadingMore={data.schoolsLoading}
+                                onLoadMore={() => data.loadSchools(data.schoolsPage + 1, searchQuery, true)}
                             />
                         )}
                         {activePage === 'users' && (
