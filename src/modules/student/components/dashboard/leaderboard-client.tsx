@@ -24,6 +24,7 @@ export function LeaderboardClient({ initialData }: LeaderboardClientProps) {
     const [loading, setLoading] = useState(false);
     const userStats = data.userStats || initialData.userStats || { rank: 0, rankPercentage: 0 };
 
+    // Effect 1: Re-fetch whenever scope changes
     useEffect(() => {
         if (scope === (initialData.scope || 'school')) {
             setData(initialData);
@@ -41,7 +42,25 @@ export function LeaderboardClient({ initialData }: LeaderboardClientProps) {
             setLoading(false);
         }
         update();
-    }, [scope]);
+    }, [scope, initialData]);
+
+    // Effect 2: Fallback — if initialData is empty on mount, trigger a fresh fetch
+    // This handles the case where the server rendered with zero students (session/profile issue)
+    useEffect(() => {
+        if (!initialData?.data?.length) {
+            async function refresh() {
+                setLoading(true);
+                try {
+                    const res = await getStudentLeaderboard(scope);
+                    setData(res);
+                } catch (err) {
+                    console.error('[Leaderboard] initial refresh error:', err);
+                }
+                setLoading(false);
+            }
+            refresh();
+        }
+    }, []); // Only run on mount
 
     return (
         <div className="min-h-screen bg-slate-50/10 pb-20 overflow-x-hidden">

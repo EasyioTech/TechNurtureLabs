@@ -58,8 +58,11 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     if (scope === 'class') {
         const classStudentIds = await db.select({ id: studentAcademicRecords.user_id })
             .from(studentAcademicRecords)
-            .where(eq(studentAcademicRecords.class_id, classId as string));
-        
+            .where(and(
+                eq(studentAcademicRecords.class_id, classId as string),
+                eq(studentAcademicRecords.school_id, schoolId as string)
+            ));
+
         const ids = classStudentIds.map(s => s.id);
         if (ids.length === 0) return { scope, data: [], title: 'Class Leaderboard' };
 
@@ -179,20 +182,21 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
         };
     });
 
-    // 4. Cache and Return
-    const result = {
-        scope,
-        data: finalData,
-        title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard'
-    };
-    try { await redis.set(cacheKey, JSON.stringify(result), 'EX', 600); } catch (_) { /* non-critical */ }
-
-    // 5. Add non-cached current user stats for UI sidebars
+    // 4. Get user profile stats BEFORE caching (so they're included in cache)
     const { getStudentProfileData } = await import('@/modules/student/actions/profile-actions');
     const profileData = await getStudentProfileData();
 
-    return {
-        ...result,
+    const result = {
+        scope,
+        data: finalData,
+        title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard',
         userStats: profileData.stats
     };
+
+    // 5. Cache the full result (including userStats) but only if we have actual data
+    if (finalData.length > 0) {
+        try { await redis.set(cacheKey, JSON.stringify(result), 'EX', 600); } catch (_) { /* non-critical */ }
+    }
+
+    return result;
 }
