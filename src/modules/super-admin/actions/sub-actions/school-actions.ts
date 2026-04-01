@@ -1,10 +1,10 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { 
-    schools, schoolSubscriptions, paymentPlans, 
-    students, schoolClassMapping, auditLogs, 
-    schoolAdmins, promoCodes
+import {
+    schools, schoolSubscriptions, paymentPlans,
+    students, schoolClassMapping, auditLogs,
+    schoolAdmins, promoCodes, paymentTransactions
 } from '@/db/schema';
 import { eq, count, sql, and, not, desc, asc, inArray, ilike, isNull } from 'drizzle-orm';
 import { requireSuperAdmin } from '@/lib/admin-guard';
