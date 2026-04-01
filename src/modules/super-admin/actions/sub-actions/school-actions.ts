@@ -269,6 +269,7 @@ export async function assignPlanToSchool(schoolId: string, planId: string, billi
             where: eq(schoolSubscriptions.school_id, schoolId),
         });
 
+        let subscriptionId = existing?.id;
         if (existing) {
             await tx.update(schoolSubscriptions).set({
                 plan_id: planId,
@@ -279,7 +280,7 @@ export async function assignPlanToSchool(schoolId: string, planId: string, billi
                 updated_at: now,
             }).where(eq(schoolSubscriptions.id, existing.id));
         } else {
-            await tx.insert(schoolSubscriptions).values({
+            const [created] = await tx.insert(schoolSubscriptions).values({
                 school_id: schoolId,
                 plan_id: planId,
                 promo_code_id: promoCodeId || null,
@@ -287,8 +288,29 @@ export async function assignPlanToSchool(schoolId: string, planId: string, billi
                 current_period_start: now,
                 current_period_end: periodEnd,
                 auto_renew: true,
-            } as any);
+            } as any).returning();
+            subscriptionId = created.id;
         }
+
+        // H-20: Manual Revenue Tracking
+        // If a plan with a price (> 0) is assigned, record a "captured" transaction
+        // so that dashboard metrics correctly reflect the platform revenue.
+        const [plan] = await tx.select().from(paymentPlans).where(eq(paymentPlans.id, planId)).limit(1);
+        if (plan && Number(plan.price) > 0 && subscriptionId) {
+            await tx.insert(paymentTransactions).values({
+                school_id: schoolId,
+                subscription_id: subscriptionId,
+                amount: plan.price.toString(),
+                currency: plan.currency,
+                status: 'captured',
+                gateway_response: { method: 'manual', note: 'Assigned by Super Admin' },
+            } as any);
+            
+            // Increment global revenue counter in Redis for immediate feedback 
+            // (stats fallback to DB if cache cold, but this keeps heatmaps/vitals warm)
+            analyticsService.incrementMetric('total_revenue', Number(plan.price)).catch(() => {});
+        }
+
         await redis.del(CACHE_KEY);
         return { success: true };
     });

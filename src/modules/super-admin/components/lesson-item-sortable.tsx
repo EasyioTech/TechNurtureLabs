@@ -38,52 +38,53 @@ export function SortableLessonItem({ lesson, index, onEdit, onDelete }: Sortable
 
     return (
         <div ref={setNodeRef} style={style} {...attributes}>
-            <div className={`p-4 rounded-2xl border transition-all duration-300 flex items-center gap-4 group
+            <div className={`p-3 sm:p-4 rounded-[20px] sm:rounded-2xl border transition-all duration-300 flex items-center gap-2.5 sm:gap-4 group
                 ${isDragging ? (isDark ? `bg-white/[0.08] border-${accent.name}-400/50` : `bg-slate-100 border-${accent.name}-400/30`) : (t.card(isDark) + ' ' + t.cardHover(isDark))}`}>
 
-                <div {...listeners} className={`cursor-grab active:cursor-grabbing p-1 rounded-lg transition-colors
+                <div {...listeners} className={`cursor-grab active:cursor-grabbing p-1 rounded-lg transition-colors flex-shrink-0
                     ${isDark ? `text-slate-400 ${accent.hoverText} hover:bg-white/[0.05]` : 'text-slate-300 hover:text-slate-900 hover:bg-slate-100'}`}>
-                    <GripVertical size={20} />
+                    <GripVertical size={18} className="sm:w-5 sm:h-5" />
                 </div>
 
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-[1000] flex-shrink-0 shadow-inner
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-[1000] flex-shrink-0 shadow-inner
                     ${isDark ? 'bg-white/[0.05] text-white/40' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>
                     {String(index + 1).padStart(2, '0')}
                 </div>
 
-                <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-transform shadow-lg shadow-black/5
+                <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-transform shadow-lg shadow-black/5
                     ${isDark ? `${accent.softDark.split(' ').slice(0, 2).join(' ')}` : 'bg-slate-900 text-white'}`}>
-                    <Icon size={18} />
+                    <Icon size={16} className="sm:w-4.5 sm:h-4.5" />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                        <p className={`font-black text-sm tracking-tight truncate ${t.textPrimary(isDark)}`}>{lesson.title}</p>
-                        <Badge className={`text-[8px] font-black px-1.5 py-0 rounded-md ${lesson.is_published ?? true ? t.live(isDark) : t.draft(isDark)}`}>
-                            {lesson.is_published ?? true ? 'LIVE' : 'DRAFT'}
-                        </Badge>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
+                        <p className={`font-black text-xs sm:text-sm tracking-tight truncate ${t.textPrimary(isDark)}`}>{lesson.title}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge className={`text-[7px] sm:text-[8px] font-black px-1 sm:px-1.5 py-0 rounded-md ${lesson.is_published ?? true ? t.live(isDark) : t.draft(isDark)}`}>
+                                {lesson.is_published ?? true ? 'LIVE' : 'DRAFT'}
+                            </Badge>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-3 mt-1">
-                        <Badge className={`text-[9px] font-black px-1.5 h-4 tracking-tighter ${isDark ? 'bg-white/[0.04] text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
+                    <div className="flex items-center gap-2 sm:gap-3 mt-1 sm:mt-1.5 overflow-x-auto no-scrollbar">
+                        <Badge className={`text-[8px] sm:text-[9px] font-black px-1 sm:px-1.5 h-3.5 sm:h-4 tracking-tighter flex-shrink-0 ${isDark ? 'bg-white/[0.04] text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
                             {typeConfig.label.toUpperCase()}
                         </Badge>
-                        <span className={`text-[10px] font-bold flex items-center gap-1 ${t.textMuted(isDark)}`}>
-                            <Clock size={10} />{lesson.duration || lesson.duration_minutes || 0}m
+                        <span className={`text-[9px] sm:text-[10px] font-bold flex items-center gap-1 flex-shrink-0 ${t.textMuted(isDark)}`}>
+                            <Clock size={10} strokeWidth={2.5} />{lesson.duration || lesson.duration_minutes || 0}m
                         </span>
-                        <span className={`text-[10px] font-black flex items-center gap-1 ${isDark ? 'text-violet-400/80' : 'text-violet-600/80'}`}>
-                            <Zap size={10} fill="currentColor" />{lesson.xp_reward} XP
+                        <span className={`text-[9px] sm:text-[10px] font-black flex items-center gap-1 flex-shrink-0 ${isDark ? 'text-violet-400/80' : 'text-violet-600/80'}`}>
+                            <Zap size={10} fill="currentColor" strokeWidth={2.5} />{lesson.xp_reward} XP
                         </span>
                     </div>
                 </div>
 
-                <div className="flex gap-2 flex-shrink-0">
-                    {/* Always visible on touch/mobile, hover-reveal on pointer devices */}
-                    <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full transition-all lg:opacity-0 lg:group-hover:opacity-100 ${isDark ? `text-slate-400 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`} onClick={onEdit}>
-                        <Edit size={14} />
+                <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+                    <Button variant="ghost" size="icon" className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all lg:opacity-0 lg:group-hover:opacity-100 ${isDark ? `text-slate-400 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`} onClick={onEdit}>
+                        <Edit size={13} className="sm:w-3.5 sm:h-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className={`w-9 h-9 rounded-full transition-all lg:opacity-0 lg:group-hover:opacity-100 ${isDark ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-500 hover:text-rose-600 hover:bg-rose-100'}`} onClick={onDelete}>
-                        <Trash2 size={14} />
+                    <Button variant="ghost" size="icon" className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all lg:opacity-0 lg:group-hover:opacity-100 ${isDark ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-500 hover:text-rose-600 hover:bg-rose-100'}`} onClick={onDelete}>
+                        <Trash2 size={13} className="sm:w-3.5 sm:h-3.5" />
                     </Button>
                 </div>
             </div>

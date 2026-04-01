@@ -234,6 +234,7 @@ async function seedCourses() {
                     ${courseData.lessons.reduce((sum, l) => sum + l.xp, 0)},
                     true
                 )
+                ON CONFLICT DO NOTHING
             `;
 
             // Map course to all classes
@@ -265,6 +266,7 @@ async function seedCourses() {
                         ${lesson.xp},
                         true
                     )
+                    ON CONFLICT DO NOTHING
                 `;
 
                 lessonCount++;

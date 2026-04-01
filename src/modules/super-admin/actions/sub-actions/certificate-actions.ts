@@ -52,7 +52,7 @@ const certSchema = z.object({
     course_id: z.string().uuid(),
     title: z.string().min(1, 'Certificate title is required').max(255),
     description: z.string().optional().nullable(),
-    min_progress_pct: z.number().min(0).max(100).default(100),
+    min_progress_pct: z.coerce.number().min(0).max(100).default(100),
     is_active: z.boolean().default(true),
 });
 
@@ -84,14 +84,14 @@ export async function fetchCoursesWithCertificates(): Promise<CourseWithCert[]> 
 
     const enrollMap = Object.fromEntries(enrollCounts.map(r => [r.course_id, Number(r.total)]));
 
-    // Get completion counts per course (progress_pct = 100)
+    // Get completion counts per course (progress_pct >= 100 or >= '100')
     const completeCounts = await db
         .select({
             course_id: courseProgress.course_id,
             total: count(courseProgress.id),
         })
         .from(courseProgress)
-        .where(sql`${courseProgress.progress_pct} >= 100`)
+        .where(sql`CAST(${courseProgress.progress_pct} AS NUMERIC) >= 100`)
         .groupBy(courseProgress.course_id);
 
     const completeMap = Object.fromEntries(completeCounts.map(r => [r.course_id, Number(r.total)]));

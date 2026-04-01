@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Building2, CheckCircle2, CreditCard, IndianRupee, Edit, Mail, MapPin, ArrowUpRight, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Building2, CheckCircle2, CreditCard, IndianRupee, Edit, Mail, MapPin, ArrowUpRight, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react';
 import { Stats, SchoolInfo, PaymentPlan } from '../../types';
 import { useAdminTheme, t } from '../../theme-context';
 
@@ -33,16 +33,33 @@ interface SchoolsTabProps {
     page?: number;
     setPage?: (p: number) => void;
     totalPages?: number;
+    hasMore?: boolean;
+    loadingMore?: boolean;
+    onLoadMore?: () => void;
 }
 
 export function SchoolsTab({
     stats, schoolsList, paymentPlans = [], onToggleStatus, onSaveSchool, onAssignPlan,
     showEditDialog, setShowEditDialog, editingSchool, setEditingSchool, searchQuery = '',
-    classes, onSync, page = 0, setPage, totalPages = 1
+    classes, onSync, page = 0, setPage, totalPages = 1,
+    hasMore = false, loadingMore = false, onLoadMore
 }: SchoolsTabProps) {
     const { isDark, accent } = useAdminTheme();
     const [assignSchoolId, setAssignSchoolId] = useState<string | null>(null);
     const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+
+    // Intersection Observer for Infinite Scroll
+    const observer = React.useRef<IntersectionObserver | null>(null);
+    const lastElementRef = React.useCallback((node: HTMLDivElement | null) => {
+        if (loadingMore) return;
+        if (observer.current) observer.current.disconnect();
+        observer.current = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && hasMore && onLoadMore) {
+                onLoadMore();
+            }
+        });
+        if (node) observer.current.observe(node);
+    }, [loadingMore, hasMore, onLoadMore]);
 
     // M-2: Server-side search handled by parent, filtering here is redundant but kept for safety if list isn't refreshed instantly
     const filteredSchools = searchQuery
@@ -106,76 +123,80 @@ export function SchoolsTab({
             {/* School List */}
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
                 className={`rounded-[24px] border overflow-hidden transition-all duration-300 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
-                <div className={`px-6 py-5 border-b ${t.border(isDark)} flex items-center justify-between`}>
-                    <div className="flex items-center justify-between flex-1">
-                        <div className="flex items-center gap-4">
-                            <div>
-                                <h3 className={`text-lg font-black tracking-tight ${t.textPrimary(isDark)}`}>School Directory</h3>
-                                <p className={`text-[12px] font-medium ${t.textMuted(isDark)}`}>Manage all registered schools and partner organizations.</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <Button type="button" size="sm"
-                                onClick={() => {
-                                    setEditingSchool({ is_active: true, classIds: [] });
-                                    setShowEditDialog(true);
-                                }}
-                                className={`rounded-xl gap-2 h-9 px-4 text-[10px] font-black shadow-lg transition-all
-                                    ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
-                                style={isDark ? t.glowStyle(isDark, accent) : {}}>
-                                <Plus size={14} strokeWidth={3} /> REGISTER SCHOOL
-                            </Button>
-                            <Badge className={`text-[10px] font-black px-3 py-1 rounded-full ${isDark ? 'bg-white/[0.12] text-white shadow-lg shadow-black/20' : 'bg-slate-900 text-white shadow-md shadow-slate-200'}`}>
-                                PAGE {page + 1}{totalPages > 1 ? ` OF ${totalPages}` : ''}
-                            </Badge>
-                        </div>
+                <div className={`px-4 sm:px-6 py-4 sm:py-5 border-b ${t.border(isDark)} flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
+                    <div>
+                        <h3 className={`text-lg font-black tracking-tight ${t.textPrimary(isDark)}`}>School Directory</h3>
+                        <p className={`text-[11px] sm:text-[12px] font-medium ${t.textMuted(isDark)}`}>Manage all registered schools and partner organizations.</p>
+                    </div>
+                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                        <Button type="button" size="sm"
+                            onClick={() => {
+                                setEditingSchool({ is_active: true, classIds: [] });
+                                setShowEditDialog(true);
+                            }}
+                            className={`rounded-xl gap-2 h-9 px-4 text-[10px] font-black shadow-lg transition-all
+                                ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
+                            style={isDark ? t.glowStyle(isDark, accent) : {}}>
+                            <Plus size={14} strokeWidth={3} /> REGISTER SCHOOL
+                        </Button>
+                        <Badge className={`text-[10px] font-black px-3 py-1 rounded-full ${isDark ? 'bg-white/[0.12] text-white shadow-lg shadow-black/20' : 'bg-slate-900 text-white shadow-md shadow-slate-200'}`}>
+                            PAGE {page + 1}
+                        </Badge>
                     </div>
                 </div>
                 <div className={t.divider(isDark)}>
                     {filteredSchools.map((school, i) => (
                         <motion.div key={school.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.22 + i * 0.04 }}
-                            className={`px-6 py-4 flex items-center gap-4 transition-all group ${t.cardHover(isDark)}`}>
-                            <div className="w-12 h-12 flex-shrink-0">
+                            className={`px-4 sm:px-6 py-4 flex items-start sm:items-center gap-3 sm:gap-4 transition-all group ${t.cardHover(isDark)}`}>
+                            
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 mt-1 sm:mt-0">
                                 {school.logo_url ? (
                                     <div className="w-full h-full flex items-center justify-center">
                                         <img src={school.logo_url} alt={school.name} className="w-full h-full object-contain" />
                                     </div>
                                 ) : (
-                                    <div className={`w-full h-full rounded-full flex items-center justify-center text-[14px] font-black
+                                    <div className={`w-full h-full rounded-full flex items-center justify-center text-[12px] sm:text-[14px] font-black
                                         ${t.initialCircle(isDark, accent)}`}>
                                         {school.name.charAt(0).toUpperCase()}
                                     </div>
                                 )}
                             </div>
+
                             <div className="flex-1 min-w-0">
-                                <p className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>{school.name}</p>
-                                <div className="flex items-center gap-3 mt-1">
-                                    <span className={`text-[10px] font-bold flex items-center gap-1 ${t.textMuted(isDark)}`}><Mail size={10} />{school.email}</span>
+                                <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-3">
+                                    <p className={`font-black text-sm tracking-tight truncate ${t.textPrimary(isDark)}`}>{school.name}</p>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <Badge className={`text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-md ${school.plan_name ? t.accentSoft(isDark, accent) : (isDark ? 'bg-white/[0.1] text-slate-400 border border-white/[0.05]' : 'bg-slate-100 text-slate-400 border border-slate-200')}`}>
+                                            {school.plan_name ? school.plan_name.toUpperCase() : 'NO PLAN'}
+                                        </Badge>
+                                        <Badge className={`text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-md border ${school.is_active ? t.live(isDark) : t.danger(isDark)}`}>
+                                            {school.is_active ? 'ACTIVE' : 'INACTIVE'}
+                                        </Badge>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-x-3 gap-y-1 mt-1 sm:mt-1.5 flex-wrap">
+                                    <span className={`text-[10px] font-bold flex items-center gap-1 ${t.textMuted(isDark)} truncate max-w-[150px] sm:max-w-none`}><Mail size={10} />{school.email}</span>
                                     {school.city && <span className={`text-[10px] font-bold flex items-center gap-1 ${t.textMuted(isDark)}`}><MapPin size={10} />{school.city}</span>}
+                                    <span className={`lg:hidden text-[10px] font-black flex items-center gap-1 ${t.textSecondary(isDark)}`}>
+                                        <Users size={10} /> {(school.student_count || 0).toLocaleString()}
+                                    </span>
                                 </div>
                             </div>
-                            <div className="hidden lg:flex flex-col items-end mr-2">
-                                <p className={`text-[10px] font-black tracking-widest uppercase mb-1 ${t.textMuted(isDark)}`}>Students</p>
-                                <p className={`text-[12px] font-black ${t.textSecondary(isDark)}`}>{(school.student_count || 0).toLocaleString()}</p>
+
+                            <div className="hidden lg:flex flex-col items-end min-w-[80px]">
+                                <p className={`text-[9px] font-black tracking-widest uppercase mb-0.5 ${t.textMuted(isDark)}`}>Students</p>
+                                <p className={`text-[11px] font-black ${t.textSecondary(isDark)}`}>{(school.student_count || 0).toLocaleString()}</p>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Badge className={`text-[9px] font-black px-2 py-0.5 rounded-md ${school.plan_name ? t.accentSoft(isDark, accent) : (isDark ? 'bg-white/[0.1] text-slate-400 border border-white/[0.05]' : 'bg-slate-100 text-slate-400 border border-slate-200')}`}>
-                                    {school.plan_name ? school.plan_name.toUpperCase() : 'NO PLAN'}
-                                </Badge>
-                                <Badge className={`text-[9px] font-black px-2 py-0.5 rounded-md border ${school.is_active ? t.live(isDark) : t.danger(isDark)}`}>
-                                    {school.is_active ? 'ACTIVE' : 'INACTIVE'}
-                                </Badge>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                {/* Assign Plan */}
+
+                            <div className="flex items-center gap-1 sm:gap-1.5 self-center sm:self-auto flex-shrink-0">
                                 {paymentPlans.length > 0 && onAssignPlan && (
                                     <Popover open={assignSchoolId === school.id} onOpenChange={(open) => {
                                         if (open) { setAssignSchoolId(school.id); setSelectedPlanId(school.plan_name ? (paymentPlans.find(p => p.name === school.plan_name)?.id || '') : ''); }
                                         else { setAssignSchoolId(null); }
                                     }}>
                                         <PopoverTrigger asChild>
-                                            <Button type="button" variant="ghost" size="sm" className={`rounded-full h-7 px-3 text-[9px] font-black opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-sky-400 hover:bg-sky-400/10 hover:text-sky-400' : 'text-sky-600 hover:bg-sky-50'}`}>
-                                                <CreditCard size={11} className="mr-1" />PLAN
+                                            <Button type="button" variant="ghost" size="sm" className={`rounded-lg h-7 sm:h-8 px-2 sm:px-3 text-[9px] font-black lg:opacity-0 lg:group-hover:opacity-100 transition-all ${isDark ? 'text-sky-400 hover:bg-sky-400/10 hover:text-sky-400' : 'text-sky-600 hover:bg-sky-50'}`}>
+                                                <CreditCard size={11} className="sm:mr-1" /><span className="hidden sm:inline">PLAN</span>
                                             </Button>
                                         </PopoverTrigger>
                                         <PopoverContent className={`w-72 rounded-2xl p-4 shadow-2xl border ${isDark ? 'bg-[#0f1219] border-white/10' : 'bg-white border-slate-200'}`} side="left">
@@ -184,10 +205,10 @@ export function SchoolsTab({
                                                 For: <span className={`font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{school.name}</span>
                                             </p>
                                             <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-                                                <SelectTrigger className={`rounded-full h-10 px-4 text-[12px] font-bold border-2 ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
+                                                <SelectTrigger className={`rounded-xl h-10 px-4 text-[12px] font-bold border-2 ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
                                                     <SelectValue placeholder="Choose a plan..." />
                                                 </SelectTrigger>
-                                                <SelectContent className={`rounded-2xl border ${isDark ? 'bg-[#0f1219] border-white/10' : 'bg-white border-slate-200'}`}>
+                                                <SelectContent className={`rounded-xl border ${isDark ? 'bg-[#0f1219] border-white/10' : 'bg-white border-slate-200'}`}>
                                                     {paymentPlans.map(p => (
                                                         <SelectItem key={p.id} value={p.id} className="text-[12px] font-bold cursor-pointer">
                                                             {p.name}   ₹{p.price.toLocaleString()}/{p.billing_cycle}
@@ -196,51 +217,48 @@ export function SchoolsTab({
                                                 </SelectContent>
                                             </Select>
                                             <Button type="button" onClick={handleAssignPlan} disabled={!selectedPlanId}
-                                                className={`mt-3 w-full rounded-full h-9 text-[11px] font-black border-0 disabled:opacity-40 ${t.btnPrimary(isDark, accent)}`}>
+                                                className={`mt-4 w-full rounded-xl h-10 text-[11px] font-black border-0 disabled:opacity-40 ${t.btnPrimary(isDark, accent)}`}>
                                                 Assign Plan
                                             </Button>
                                         </PopoverContent>
                                     </Popover>
                                 )}
 
-                                <Button type="button" variant="ghost" size="icon" className={`w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all ${isDark ? `text-slate-500 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-300 hover:text-slate-800 hover:bg-slate-100'}`}
+                                <Button type="button" variant="ghost" size="icon" className={`w-8 h-8 rounded-full lg:opacity-0 lg:group-hover:opacity-100 transition-all ${isDark ? `text-slate-500 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-300 hover:text-slate-800 hover:bg-slate-100'}`}
                                     onClick={() => openEdit(school)}>
                                     <Edit size={14} />
                                 </Button>
-                                <Switch checked={school.is_active} onCheckedChange={(val) => onToggleStatus(school.id, val)} className={`data-[state=checked]:${accent.bg}`} />
+                                <div className="scale-75 sm:scale-90 origin-right">
+                                    <Switch checked={school.is_active} onCheckedChange={(val) => onToggleStatus(school.id, val)} className={`data-[state=checked]:${accent.bg}`} />
+                                </div>
                             </div>
                         </motion.div>
                     ))}
-                    {filteredSchools.length === 0 && (
-                        <div className="py-14 text-center">
-                            <Building2 size={28} className={`mx-auto mb-2 ${t.textMuted(isDark)}`} />
-                            <p className={`text-[11px] ${t.textMuted(isDark)}`}>
-                                {searchQuery ? `No schools match "${searchQuery}"` : 'No schools registered'}
+
+                    {/* Loading indicator for Infinite Scroll */}
+                    <div ref={lastElementRef} className="py-8 flex flex-col items-center justify-center">
+                        {loadingMore ? (
+                            <div className="flex items-center gap-3">
+                                <div className={`w-5 h-5 border-2 border-t-transparent animate-spin rounded-full ${isDark ? 'border-sky-400' : 'border-sky-600'}`} />
+                                <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Fetching next institutions...</p>
+                            </div>
+                        ) : !hasMore && filteredSchools.length > 0 ? (
+                            <div className="flex flex-col items-center gap-1 opacity-40">
+                                <CheckCircle2 size={16} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
+                                <p className={`text-[9px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>End of Directory</p>
+                            </div>
+                        ) : null}
+                    </div>
+
+                    {filteredSchools.length === 0 && !loadingMore && (
+                        <div className="py-20 text-center">
+                            <Building2 size={32} className={`mx-auto mb-4 opacity-20 ${t.textMuted(isDark)}`} />
+                            <p className={`text-[12px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
+                                {searchQuery ? `No matches for "${searchQuery}"` : 'No institutions found'}
                             </p>
                         </div>
                     )}
                 </div>
-
-                {/* Pagination Footer (M-2) */}
-                {totalPages > 1 && setPage && (
-                    <div className={`px-6 py-4 border-t ${t.border(isDark)} flex items-center justify-between`}>
-                        <p className={`text-[11px] font-bold ${t.textMuted(isDark)}`}>
-                            Page {page + 1} of {totalPages}
-                        </p>
-                        <div className="flex items-center gap-2">
-                            <Button type="button" variant="ghost" size="sm" disabled={page === 0}
-                                onClick={() => setPage(page - 1)}
-                                className={`rounded-full h-8 px-4 text-[11px] font-black disabled:opacity-30 ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-700'}`}>
-                                <ChevronLeft size={14} className="mr-1" /> Prev
-                            </Button>
-                            <Button type="button" variant="ghost" size="sm" disabled={page >= totalPages - 1}
-                                onClick={() => setPage(page + 1)}
-                                className={`rounded-full h-8 px-4 text-[11px] font-black disabled:opacity-30 ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-700'}`}>
-                                Next <ChevronRight size={14} className="ml-1" />
-                            </Button>
-                        </div>
-                    </div>
-                )}
             </motion.div>
 
             {/* Edit Dialog */}

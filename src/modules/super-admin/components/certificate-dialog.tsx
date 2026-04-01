@@ -33,7 +33,7 @@ export function CertificateDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className={`w-[90vw] max-w-[520px] rounded-[28px] border-0 shadow-2xl p-0 overflow-hidden gap-0 ${isDark ? 'bg-[#0f1219]' : 'bg-white'}`}>
                 {/* Header */}
-                <div className={`px-8 pt-8 pb-6 border-b ${t.border(isDark)}`}>
+                <div className={`px-8 pt-8 pb-6 border-b ${t.border(isDark)} shrink-0`}>
                     <div className="flex items-center gap-4 mb-4">
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-amber-400/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
                             <Award size={22} />
@@ -42,6 +42,9 @@ export function CertificateDialog({
                             <DialogTitle className={`text-lg font-[1000] tracking-tight ${t.textPrimary(isDark)}`}>
                                 {isEdit ? 'Edit Certificate' : 'Add Certificate'}
                             </DialogTitle>
+                            <DialogDescription className="sr-only">
+                                Configure the certificate awarded on course completion
+                            </DialogDescription>
                             <p className={`text-[11px] font-bold mt-0.5 ${t.textMuted(isDark)}`}>
                                 Configure the certificate awarded on course completion
                             </p>
@@ -49,8 +52,8 @@ export function CertificateDialog({
                     </div>
                 </div>
 
-                {/* Body */}
-                <div className="px-8 py-6 space-y-5">
+                {/* Body - Scrollable on small screens */}
+                <div className="max-h-[60vh] overflow-y-auto px-8 py-6 space-y-5 custom-scrollbar">
                     {/* Title */}
                     <div className="space-y-2">
                         <Label className={`text-[11px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
@@ -116,7 +119,7 @@ export function CertificateDialog({
                 </div>
 
                 {/* Footer */}
-                <div className={`px-8 py-5 flex items-center gap-3 border-t ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-slate-50/80'}`}>
+                <div className={`px-8 py-5 flex items-center gap-3 border-t shrink-0 ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-slate-50/80'}`}>
                     {isEdit && onDelete && (
                         <Button
                             variant="ghost"

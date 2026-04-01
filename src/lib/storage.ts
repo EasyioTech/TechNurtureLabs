@@ -380,6 +380,7 @@ export async function uploadFile(
                 ContentType: mimeType,
             });
             await withRetry(() => s3Client!.send(command));
+            console.log('[Storage] ✓ R2 upload successful:', key);
 
             return {
                 url: buildPublicUrl(key),
@@ -390,7 +391,9 @@ export async function uploadFile(
             };
         } catch (r2Error) {
             // R2 upload failed — warn and fall through to local
-            console.warn('[Storage] R2 upload failed, falling back to local storage:', r2Error);
+            console.warn('[Storage] R2 upload failed for key:', key);
+            console.warn('[Storage] Error details:', (r2Error as any)?.message || r2Error);
+            console.warn('[Storage] Falling back to local storage...');
         }
     }
 

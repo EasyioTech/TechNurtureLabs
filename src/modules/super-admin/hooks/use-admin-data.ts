@@ -82,6 +82,8 @@ export function useAdminData() {
         totalStudentsCount: schools.totalStudentsCount,
         totalStudentPages: schools.totalStudentPages,
         studentsLoading:   schools.studentsLoading,
+        schoolsLoading:    schools.schoolsLoading,
+        hasMoreSchools:    schools.hasMoreSchools,
 
         showSchoolDialog: schools.showSchoolDialog, setShowSchoolDialog: schools.setShowSchoolDialog,
         editingSchoolItem: schools.editingSchoolItem, setEditingSchoolItem: schools.setEditingSchoolItem,

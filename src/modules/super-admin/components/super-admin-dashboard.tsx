@@ -127,20 +127,27 @@ function DashboardContent() {
 
     // Effect 1: tabs that need live data on every page-change or search update
     // Also auto-sync metrics when Overview tab loads
+    const lastSearch = useRef(searchQuery);
     useEffect(() => {
         if (activePage === 'overview') {
             data.syncMetrics();
-            data.loadSchools(data.schoolsPage, searchQuery);
+            data.loadSchools(0, searchQuery);
         } else if (activePage === 'users') {
             data.loadStudents(data.userMetricsPage, searchQuery);
         } else if (activePage === 'schools') {
-            data.loadSchools(data.schoolsPage, searchQuery);
+            // Reset and reload if search changed
+            if (searchQuery !== lastSearch.current) {
+                lastSearch.current = searchQuery;
+                data.loadSchools(0, searchQuery);
+            } else if (data.schoolsList.length === 0) {
+                data.loadSchools(0, searchQuery);
+            }
         } else if (activePage === 'library') {
             data.loadGlobalLessons(data.globalLessonsPage, searchQuery);
             data.loadGlobalQuizzes(data.globalQuizzesPage, searchQuery);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activePage, data.userMetricsPage, data.schoolsPage, data.globalLessonsPage, data.globalQuizzesPage, searchQuery]);
+    }, [activePage, data.userMetricsPage, searchQuery]);
 
     // Effect 2: tabs that only need a single initial load (pagination handled inside the tab)
     useEffect(() => {
@@ -485,22 +492,13 @@ function DashboardContent() {
                         )}
                         {activePage === 'schools' && (
                             <SchoolsTab
-                                stats={data.stats}
-                                schoolsList={data.schoolsList}
-                                paymentPlans={data.paymentPlans}
-                                onToggleStatus={data.toggleSchoolStatus}
-                                onSaveSchool={data.saveSchool}
-                                onAssignPlan={data.assignPlan}
-                                showEditDialog={data.showSchoolDialog}
-                                setShowEditDialog={data.setShowSchoolDialog}
-                                editingSchool={data.editingSchoolItem as any}
-                                setEditingSchool={data.setEditingSchoolItem as any}
-                                searchQuery={searchQuery}
-                                classes={data.classes}
-                                onSync={data.syncMetrics}
-                                page={data.schoolsPage}
-                                setPage={data.setSchoolsPage}
-                                totalPages={data.totalSchoolsPages}
+                                 onSync={data.syncMetrics}
+                                 page={data.schoolsPage}
+                                 setPage={data.setSchoolsPage}
+                                 totalPages={data.totalSchoolsPages}
+                                 hasMore={data.hasMoreSchools}
+                                 loadingMore={data.schoolsLoading}
+                                 onLoadMore={() => data.loadSchools(data.schoolsPage + 1, searchQuery, true)}
                             />
                         )}
                         {activePage === 'users' && (

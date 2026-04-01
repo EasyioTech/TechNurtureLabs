@@ -351,11 +351,18 @@ export function CertificationsTab({
                 animate={{ opacity: 1, y: 0 }}
                 className={`rounded-[24px] border overflow-hidden ${t.card(isDark)}`}
             >
-                {/* Table header */}
-                <div className={`grid grid-cols-12 gap-4 px-6 py-4 border-b ${t.border(isDark)}`}>
-                    {['Student', 'School', 'Completed', 'Progress', 'Status', 'Actions'].map((h, i) => (
-                        <p key={h} className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)} ${i === 0 ? 'col-span-3' : i === 1 ? 'col-span-2' : i === 4 ? 'col-span-2' : i === 5 ? 'col-span-2' : 'col-span-1'}`}>
-                            {h}
+                {/* Table header - Hidden on mobile */}
+                <div className={`hidden md:grid grid-cols-12 gap-4 px-6 py-4 border-b ${t.border(isDark)}`}>
+                    {[
+                        { label: 'Student', span: 'col-span-3' },
+                        { label: 'School', span: 'col-span-2' },
+                        { label: 'Completed', span: 'col-span-2' },
+                        { label: 'Progress', span: 'col-span-1' },
+                        { label: 'Status', span: 'col-span-2' },
+                        { label: 'Actions', span: 'col-span-2' }
+                    ].map(h => (
+                        <p key={h.label} className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)} ${h.span}`}>
+                            {h.label}
                         </p>
                     ))}
                 </div>
@@ -378,10 +385,10 @@ export function CertificationsTab({
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: i * 0.03 }}
-                                className={`grid grid-cols-12 gap-4 items-center px-6 py-4 transition-all ${t.cardHover(isDark)}`}
+                                className={`flex flex-col md:grid md:grid-cols-12 gap-4 items-start md:items-center px-6 py-5 md:py-4 transition-all ${t.cardHover(isDark)}`}
                             >
-                                {/* Name */}
-                                <div className="col-span-3 flex items-center gap-3 min-w-0">
+                                {/* Name & Avatar */}
+                                <div className="col-span-3 flex items-center gap-3 min-w-0 w-full md:w-auto">
                                     <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${isDark ? 'bg-white/[0.08] text-white' : 'bg-neutral-100 text-neutral-700'}`}>
                                         {student.full_name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()}
                                     </div>
@@ -391,49 +398,59 @@ export function CertificationsTab({
                                     </div>
                                 </div>
 
-                                {/* School */}
-                                <div className="col-span-2 min-w-0">
-                                    <p className={`text-[12px] font-bold truncate ${t.textMuted(isDark)}`}>{student.school_name}</p>
+                                {/* School - Visible desktop / Subtle mobile */}
+                                <div className="col-span-2 min-w-0 md:block">
+                                    <p className={`text-[12px] font-bold md:truncate ${t.textMuted(isDark)}`}>
+                                        <span className="md:hidden opacity-50 mr-1 text-[10px]">SCHOOL:</span>
+                                        {student.school_name}
+                                    </p>
                                 </div>
 
                                 {/* Completed date */}
-                                <div className="col-span-1">
-                                    <p className={`text-[11px] font-bold ${t.textMuted(isDark)}`}>
+                                <div className="col-span-2">
+                                    <p className={`text-[11px] font-bold ${t.textMuted(isDark)} flex items-center gap-2`}>
+                                        <span className="md:hidden opacity-50 text-[10px]">COMPLETED:</span>
                                         {student.completed_at
-                                            ? new Date(student.completed_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })
+                                            ? new Date(student.completed_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                                             : '—'
                                         }
                                     </p>
                                 </div>
 
                                 {/* Progress */}
-                                <div className="col-span-1 flex items-center gap-2">
-                                    <div className={`w-12 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-neutral-100'}`}>
-                                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, parseFloat(student.progress_pct))}%` }} />
+                                <div className="col-span-1 flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
+                                    <span className="md:hidden opacity-50 text-[10px] font-black uppercase tracking-widest">Progress</span>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-12 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-neutral-100'}`}>
+                                            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, parseFloat(student.progress_pct))}%` }} />
+                                        </div>
+                                        <p className={`text-[10px] font-black ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{parseFloat(student.progress_pct).toFixed(0)}%</p>
                                     </div>
-                                    <p className={`text-[10px] font-black ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{parseFloat(student.progress_pct).toFixed(0)}%</p>
                                 </div>
 
                                 {/* Status */}
-                                <div className="col-span-2">
+                                <div className="col-span-2 flex items-center justify-between md:justify-start w-full md:w-auto">
+                                    <span className="md:hidden opacity-50 text-[10px] font-black uppercase tracking-widest">Status</span>
                                     {student.certificate_issued ? (
-                                        <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-full ${isDark ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                                        <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full ${isDark ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
                                             <ShieldCheck size={10} /> ISSUED
                                         </span>
                                     ) : (
-                                        <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-full ${t.draft(isDark)}`}>
+                                        <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full ${t.draft(isDark)}`}>
                                             <Clock size={10} /> PENDING
                                         </span>
                                     )}
                                 </div>
 
                                 {/* Actions */}
-                                <div className="col-span-2 flex items-center gap-2">
+                                <div className="col-span-2 flex items-center gap-2 w-full md:w-auto justify-end md:justify-start pt-2 md:pt-0">
+                                    <span className="md:hidden flex-1 opacity-50 text-[10px] font-black uppercase tracking-widest">Quick Actions</span>
+                                    
                                     {/* Preview / Download */}
                                     <button
                                         title="Preview Certificate"
                                         onClick={() => setPreviewStudent(student)}
-                                        className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.08] text-slate-400' : 'hover:bg-neutral-50 text-neutral-500'}`}
+                                        className={`w-9 h-9 md:w-8 md:h-8 rounded-xl flex items-center justify-center border transition-all ${t.border(isDark)} ${isDark ? 'hover:bg-white/[0.08] text-slate-400' : 'hover:bg-neutral-50 text-neutral-500'}`}
                                     >
                                         <Eye size={14} />
                                     </button>
@@ -443,7 +460,7 @@ export function CertificationsTab({
                                         <button
                                             title="Revoke Certificate"
                                             onClick={() => handleRevoke(student)}
-                                            className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all border-rose-400/20 text-rose-400 hover:bg-rose-400/10`}
+                                            className={`w-9 h-9 md:w-8 md:h-8 rounded-xl flex items-center justify-center border transition-all border-rose-400/20 text-rose-400 hover:bg-rose-400/10`}
                                         >
                                             <XCircle size={14} />
                                         </button>
@@ -452,7 +469,7 @@ export function CertificationsTab({
                                             title="Issue Certificate"
                                             disabled={!selectedCourse.certificate}
                                             onClick={() => handleIssue(student)}
-                                            className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all ${
+                                            className={`w-9 h-9 md:w-8 md:h-8 rounded-xl flex items-center justify-center border transition-all ${
                                                 selectedCourse.certificate
                                                     ? `${isDark ? 'bg-amber-400/10 border-amber-400/20 text-amber-400 hover:bg-amber-400/20' : 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100'}`
                                                     : 'opacity-30 cursor-not-allowed border-transparent text-neutral-400'

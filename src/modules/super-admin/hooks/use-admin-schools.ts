@@ -12,12 +12,16 @@ import {
 import { SchoolInfo, UserMetric } from '../types';
 
 export const USER_METRICS_PAGE_SIZE = 25;
+export const SCHOOLS_PAGE_SIZE = 10;
 
 export function useAdminSchools() {
     const [schoolsList, setSchoolsList] = useState<SchoolInfo[]>([]);
     const [userMetrics, setUserMetrics] = useState<UserMetric[]>([]);
     const [schoolsPage, setSchoolsPage] = useState(0);
     const [totalSchoolsPages, setTotalSchoolsPages] = useState(0);
+    const [hasMoreSchools, setHasMoreSchools] = useState(true);
+    const [schoolsLoading, setSchoolsLoading] = useState(false);
+    
     const [userMetricsPage, setUserMetricsPage] = useState(0);
     const [totalStudentsCount, setTotalStudentsCount] = useState(0);
     const [totalStudentPages, setTotalStudentPages] = useState(0);
@@ -50,15 +54,24 @@ export function useAdminSchools() {
         finally { setStudentsLoading(false); }
     }
 
-    async function loadSchools(page = 0, search?: string) {
+    async function loadSchools(page = 0, search?: string, isAppend = false) {
+        if (schoolsLoading) return;
+        setSchoolsLoading(true);
         try {
-            const res = await fetchAdminSchools(page, 50, search);
-            setSchoolsList(res.data as any);
+            const res = await fetchAdminSchools(page, SCHOOLS_PAGE_SIZE, search);
+            if (isAppend) {
+                setSchoolsList(prev => [...prev, ...(res.data as any)]);
+            } else {
+                setSchoolsList(res.data as any);
+            }
             setSchoolsPage(page);
             setTotalSchoolsPages(res.pages);
+            setHasMoreSchools(page < res.pages - 1);
         } catch (err: any) {
             if (err?.message === 'UNAUTHORIZED') { window.location.href = '/admin-portal/login'; return; }
             toast.error('Failed to load schools');
+        } finally {
+            setSchoolsLoading(false);
         }
     }
 
@@ -99,7 +112,7 @@ export function useAdminSchools() {
 
     return {
         schoolsList, userMetrics,
-        schoolsPage, setSchoolsPage, totalSchoolsPages,
+        schoolsPage, setSchoolsPage, totalSchoolsPages, hasMoreSchools, schoolsLoading,
         userMetricsPage, setUserMetricsPage,
         totalStudentsCount, totalStudentPages, studentsLoading,
         showSchoolDialog, setShowSchoolDialog, editingSchoolItem, setEditingSchoolItem,

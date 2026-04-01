@@ -1,264 +1,116 @@
-# TechNurture LMS - Learning Management System
+# 🚀 TechNurture LMS - Professional Learning Platform
 
-A modern, multi-tenant Learning Management System (LMS) built with Next.js, featuring a gamified learning experience for students, comprehensive management tools for school administrators, and centralized oversight for platform operators.
+**TechNurture LMS** is a state-of-the-art, multi-tenant Learning Management System (LMS) designed for schools and educational institutions. It delivers a gamified learning experience for students, powerful management tools for school administrators, and a centralized oversight portal for platform operators (Super Admins).
 
-## 🎯 Features
+---
 
-### For Students
-- **Gamified Learning**: XP-based progression system with levels and achievements
-- **Personalized Dashboard**: Track progress, streaks, and performance across courses
-- **Interactive Lessons**: Video, PDF, PowerPoint, and interactive quiz content
-- **Challenge System**: Participate in engaging learning challenges
-- **Badge & Achievement System**: Earn badges for milestones and accomplishments
-- **Secure Access**: PIN-based authentication designed for younger learners
+## 🎯 Platform Features
 
-### For School Administrators
-- **Student Management**: Onboard and manage student enrollments
-- **Course Management**: Create, organize, and publish courses to students
-- **Academic Sessions**: Manage academic years and class structures
-- **Class Management**: Create and manage student groupings
-- **Performance Analytics**: Track student progress and course completion rates
-- **Subscription & Billing**: Monitor payment plans and student limits
+### 🎓 For Students (The "Nurturing" Environment)
+- **Gamified Journey**: XP-based progression, levels, and achievements to keep learners engaged.
+- **Interactive Content**: Seamless playback of videos (YouTube, Cloudflare Stream), PDFs, and interactive quizzes.
+- **Engagement Insights**: Personalized dashboards with learning curves, streaks, and achievement badges.
+- **Secure Access**: PIN-based authentication designed for classroom ease and student security.
 
-### For Super Administrators
-- **Multi-Tenant Management**: Oversee multiple schools on a single platform
-- **Global Content Library**: Centralized media management for all schools
-- **Content Cloning**: Quickly duplicate courses and lessons across schools
-- **Platform Analytics**: System-wide metrics and performance monitoring
-- **Payment Management**: Track all school subscriptions and billing
-- **Audit Logging**: Comprehensive activity tracking for compliance
+### 🏫 For School Administrators
+- **Institutional Control**: Full management of student enrollments, sessions, and class structures.
+- **Course Library**: Create and publish localized course content specifically for their institution.
+- **Performance Monitoring**: Real-time analytics on student progress, quiz performance, and active engagement.
+- **Subscription Insights**: Monitor payment plans, student caps, and billing cycles.
 
-## 🏗️ System Architecture
+### 🌐 For Super Administrators (The Operator)
+- **Centralized Oversight**: Manage multiple schools, cross-institutional contents, and global platform settings.
+- **Global Asset Management**: Centralized media library and course cloning capabilities.
+- **Revenue Dashboard**: Comprehensive tracking of school subscriptions, payments (Razorpay), and renewals.
+- **Infrastructure Health**: Real-time monitoring of platform metrics across all connected tenants.
 
-### Technology Stack
-- **Frontend**: Next.js 14+ with React and TypeScript
-- **Backend**: Next.js Server Actions, API Routes
-- **Database**: PostgreSQL with Drizzle ORM
-- **Caching**: Redis for sessions and performance optimization
-- **Storage**: Cloudflare R2 for media assets with local fallback
-- **Authentication**: JWT with HTTP-only cookies and Redis session verification
+---
 
-### Key Components
-```
-src/
-├── app/                          # Next.js pages and API routes
-│   ├── api/                      # REST API endpoints
-│   ├── admin-portal/             # Super Admin dashboard
-│   ├── school-portal/            # School Admin dashboard
-│   └── dashboard/                # Student dashboard
-├── modules/                      # Feature-specific modules
-│   ├── super-admin/              # Super Admin functionality
-│   ├── school-admin/             # School Admin functionality
-│   ├── student/                  # Student learning platform
-│   └── learning/                 # Shared learning components
-├── components/                   # Reusable UI components
-├── lib/                          # Core utilities and services
-│   ├── auth.ts                   # Authentication logic
-│   ├── db.ts                     # Database connection
-│   ├── redis.ts                  # Redis client
-│   ├── storage.ts                # File storage management
-│   └── services/                 # Business logic services
-└── db/                           # Database schema and migrations
-```
+## 🏗️ Architecture & Technology
 
-### Multi-Tenancy Architecture
-- **Subdomain-Based Routing**: Uses Next.js middleware to route traffic based on subdomains
-- **Tenant Isolation**: Each school has complete data isolation through `school_id` foreign keys
-- **Shared Infrastructure**: Centralized auth, storage, and database services
+### Modern Tech Stack
+- **Frontend**: Next.js 14+ (App Router) with React, TypeScript, and Framer Motion for premium UI.
+- **Backend Services**: Next.js Server Actions and API Routes for efficient, type-safe communication.
+- **Database Layer**: PostgreSQL with Drizzle ORM for performant, relational data management.
+- **Real-time & Caching**: Redis for session management, dynamic caching, and rate limiting.
+- **Scalable Storage**: Cloudflare R2 for asset storage with a performance-optimized local fallback.
 
-## 🚀 Quick Start
+### Multi-Tenant Model
+- **Subdomain-Based Routing**: Powered by Next.js middleware for tenant isolation.
+- **Data Isolation**: Robust data-access patterns ensure schools see only their authorized data.
 
-### Prerequisites
-- Node.js 18+
-- PostgreSQL 14+
-- Redis 6+
-- Cloudflare R2 account (optional, local storage available)
+---
 
-### Installation
+## 🚀 Getting Started
 
-1. **Clone and install dependencies**
+### 💻 Local Development Setup
+
+1. **Install Dependencies**
    ```bash
    npm install
    ```
 
-2. **Set up environment variables**
+2. **Configure Environment**
    ```bash
-   cp .env.example .env.local
+   cp .env.example .env
    ```
-   Configure the following:
-   - `DATABASE_URL`: PostgreSQL connection string
-   - `REDIS_URL`: Redis connection string
-   - `R2_BUCKET_NAME`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`: Cloudflare R2 credentials
-   - `JWT_SECRET`: Secret key for JWT signing
-   - Other platform-specific variables (see `.env.example`)
+   *Edit `.env` to include your PostgreSQL, Redis, and Cloudflare credentials.*
 
-3. **Initialize the database**
+3. **Initialize Database**
    ```bash
    npm run db:push
+   npm run db:seed
    ```
 
-4. **Run the development server**
+4. **Launch Dev Server**
    ```bash
    npm run dev
    ```
 
-5. **Access the application**
-   - Student Dashboard: http://school.localhost:3000/dashboard
-   - School Admin Portal: http://school.localhost:3000/school-portal
-   - Super Admin Portal: http://admin.localhost:3000/admin-portal
+### 🌍 Deployment to Production
 
-## 📖 Core Concepts
+The project includes an **Operations (ops)** suite of automated scripts for seamless VPS deployment.
 
-### User Roles
-1. **Super Admin**: Platform-wide management, multi-school oversight, global content library
-2. **School Admin**: Single school management, student and course administration
-3. **Student**: Learner accessing courses and participating in gamified learning
+- **Initial Setup**: `bash ops/setup.sh` (installs Docker, configures firewall/Caddy)
+- **Deployment**: `bash ops/deploy.sh` (automates builds, migrations, and service restarts)
+- **Maintenance**: `bash ops/doctor.sh` (system-wide health check and diagnostics)
 
-### XP & Leveling System
-- Students earn XP through:
-  - Lesson completions
-  - Quiz performance
-  - Daily engagement streaks
-  - Challenge wins
-  - Badge achievements
-- XP converts to levels using a configurable algorithm
-- Visual journey map shows learning progress
-
-### Academic Sessions
-- Each school maintains academic years (e.g., 2024-2025)
-- Students are enrolled within specific sessions
-- Supports multi-class and multi-course enrollment per session
-
-### Subscription & Billing
-- Schools have payment plans with `max_students` limits
-- Payment status tracks active, trialing, past due, and cancelled states
-- Razorpay integration for payment processing
-- Invoice and discount management
-
-## 🔐 Security
-
-### Authentication & Authorization
-- **Dual-Layer Verification**: JWT tokens with Redis session validation
-- **HTTP-Only Cookies**: Protects against XSS attacks
-- **SameSite Cookies**: Prevents CSRF attacks
-- **Pin-Based Student Access**: Secure 6-digit PIN for younger users (hashed with bcrypt)
-
-### Data Protection
-- **SQL Injection Prevention**: Drizzle ORM provides prepared statements
-- **Transaction Safety**: Critical operations wrapped in database transactions
-- **Soft Deletes**: Maintains historical records for audit compliance
-- **Path Traversal Protection**: Media server validates file paths
-
-### Storage Security
-- **Server-Side R2 Proxying**: Keeps R2 bucket private, prevents unauthorized access
-- **UUID-Based Filenames**: Prevents filename-based exploits
-- **Access Control**: Media endpoints verify user permissions
-
-## 📊 Database Schema
-
-Key entities:
-- **schools**: Multi-tenant organizations
-- **users**: Super admins, school admins, students with role-based separation
-- **courses**: Learning programs containing lessons
-- **lessons**: Individual learning units with content
-- **quizzes & quiz_questions**: Assessment and evaluation tools
-- **enrollments**: Student enrollment in courses
-- **lesson_progress**: Tracks student learning progress
-- **quiz_attempts**: Records student quiz performance
-- **student_academic_records**: Maintains historical academic data
-- **xp_logs**: Tracks gamification rewards
-- **badges & achievements**: Student accomplishments
-- **school_subscriptions**: Billing and payment tracking
-
-## 🛠️ Development
-
-### Running Tests
-```bash
-npm run test
-```
-
-### Building for Production
-```bash
-npm run build
-```
-
-### Database Migrations
-```bash
-npm run db:generate  # Generate migration files
-npm run db:migrate   # Apply migrations to production
-```
-
-### Environment Configuration
-See `.env.example` for all available configuration options. Critical variables:
-- Database connection
-- Redis connection
-- Storage credentials
-- JWT secrets
-- Third-party API keys
-
-## 📦 Deployment
-
-### Using Docker
-```bash
-bash ops/setup.sh        # Initial VPS setup
-bash ops/deploy.sh       # Deploy or update
-bash ops/doctor.sh       # Health check and diagnostics
-```
-
-### Configuration
-- `.env.production`: Production environment variables
-- `docker-compose.yml`: Service definitions
-- Nginx configuration for reverse proxy and SSL
-
-## 🎮 Gamification System
-
-### XP Sources
-- Lesson Completion: Base XP reward
-- Quiz Performance: Scaled by score percentage
-- Daily Streak: Consecutive day bonus
-- Challenge Wins: Achievement rewards
-- Badge Earned: Bonus points
-- Manual Adjustments: Admin-controlled adjustments
-
-### Visual Progress
-- Level indicator based on cumulative XP
-- Achievement timeline showing earned badges
-- Streak counter for engagement tracking
-- Journey map for course completion visualization
-
-## 📞 Support & Maintenance
-
-### Health Checks
-```bash
-bash ops/doctor.sh
-```
-
-Monitors:
-- Service port availability
-- Database connectivity
-- Redis connectivity
-- Environment configuration
-- Disk space and system resources
-
-### Common Tasks
-
-**Reset entire installation:**
-```bash
-bash ops/deploy.sh --clean
-```
-
-**Initialize database on fresh server:**
-```bash
-bash ops/db-init.sh
-```
-
-## 📄 License
-
-Proprietary - TechNurture Learning Management System
+For more detailed deployment instructions, refer to **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** and the **[Operations Manual](ops/README.md)**.
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: April 2026
+## 📂 Project Structure
 
-For additional technical documentation, see the `/ops/docs/` directory.
+```text
+├── src/
+│   ├── app/           # Domain-aware routing (admin., school., app.)
+│   ├── modules/       # Core business logic (Super Admin, School, Learning)
+│   ├── components/    # Reusable UI components
+│   ├── lib/           # Services, database clients, and utility functions
+│   └── db/            # Database schema and migration tracking
+├── ops/               # DevOps orchestration, and health-check scripts
+├── scripts/           # Maintenance, seeding, and migration utilities
+└── public/            # Static assets and global resources
+```
+
+---
+
+## 🔐 Support & Handover
+
+### Standard Credentials (Initial)
+| Role | Email | Default Password |
+|------|-------|------------------|
+| Super Admin | `admin@technurture.com` | `AdminPassword123!` |
+
+*(Note: Change these immediately after your first successful deployment.)*
+
+### Key Points for Handover
+- **Production URL Configuration**: Ensure `NEXT_PUBLIC_APP_URL` and `CADDY_DOMAIN` are set correctly in `.env.production`.
+- **Media Storage**: The system is pre-configured for Cloudflare R2, but can be toggled to `local` storage via environmental settings.
+- **Automated Seeding**: Use `bash ops/deploy.sh --clean` for a fresh installation with pre-configured classes and payment tiers.
+
+---
+
+**Version**: 1.0.1  
+**Release Date**: April 2026  
+**License**: Proprietary - TechNurture LMS
