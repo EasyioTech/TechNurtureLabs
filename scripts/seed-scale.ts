@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { schools, students, studentAcademicRecords, schoolClassMapping, courseClassMapping, courses, sessions } from '@/db/schema';
+import { schools, students, studentAcademicRecords, schoolClassMapping, courseClassMapping, courses, academicSessions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
@@ -21,7 +21,7 @@ async function seedScale() {
         });
 
         // Get current session
-        const sessionList = await db.query.sessions.findMany();
+        const sessionList = await db.query.academicSessions.findMany();
         const currentSession = sessionList.length > 0 ? sessionList[0] : null;
 
         if (!currentSession) {
