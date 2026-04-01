@@ -55,6 +55,7 @@ tmp/
 # Temporary patch/dump files — these should never be committed
 *.sql
 !database/*.sql
+!drizzle/*.sql
 fix_*.sh
 seed_*.sh
 

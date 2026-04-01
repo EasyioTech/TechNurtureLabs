@@ -1,5 +1,5 @@
 {
-  "id": "5cfd22e0-5761-4c63-bdb3-7484cd6b894f",
+  "id": "b3b0f75a-9b18-42af-8e28-c5927a0e55d4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -2835,6 +2835,36 @@
           "method": "btree",
           "with": {}
         },
+        "idx_media_folder": {
+          "name": "idx_media_folder",
+          "columns": [
+            {
+              "expression": "folder",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_media_storage_type": {
+          "name": "idx_media_storage_type",
+          "columns": [
+            {
+              "expression": "storage_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "idx_media_created": {
           "name": "idx_media_created",
           "columns": [
@@ -3614,6 +3644,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'youtube'"
+        },
+        "show_hero_video": {
+          "name": "show_hero_video",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
         },
         "support_email": {
           "name": "support_email",
