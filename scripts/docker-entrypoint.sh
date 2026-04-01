@@ -39,8 +39,14 @@ echo "✅ Redis is ready"
 if [ $# -eq 0 ]; then
     # Run database migrations
     echo "🔄 Running database migrations..."
-    if npm run db:push; then
+    if npm run db:migrate; then
         echo "✅ Database migrations completed successfully"
+        echo "🌱 Seeding default database data..."
+        if npm run db:seed; then
+            echo "✅ Database seeding completed successfully"
+        else
+            echo "⚠️ Database seeding failed! Check logs."
+        fi
     else
         echo "❌ Database migrations failed!"
         exit 1
@@ -48,7 +54,7 @@ if [ $# -eq 0 ]; then
 
     # Start the application
     echo "🎯 Starting application server..."
-    exec node .next/standalone/server.js
+    exec node server.js
 else
     # Start the worker process
     echo "🎯 Starting worker process: $@"
