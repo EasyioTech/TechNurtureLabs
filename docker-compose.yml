@@ -9,6 +9,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - CADDY_DOMAIN=${CADDY_DOMAIN:-technurturelms.in}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -98,6 +100,11 @@ services:
       redis:
         condition: service_healthy
     command: npx tsx scripts/event-worker.ts
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ----------------------------
   # Stats & Maintenance Worker (Metrics Flush + DB Partitioning)
@@ -117,6 +124,11 @@ services:
       redis:
         condition: service_healthy
     command: npx tsx scripts/stats-flush-worker.ts
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ----------------------------
   # PostgreSQL Database
@@ -133,12 +145,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
       POSTGRES_DB: ${POSTGRES_DB:-technurturelabs}
-    ports:
-      - "5433:5432"
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
-      - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
     healthcheck:
       # Two-stage check: first verify postgres is accepting connections,
       # then verify the schema init scripts have finished by checking that

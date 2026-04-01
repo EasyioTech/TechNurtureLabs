@@ -37,7 +37,6 @@ ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_RAZORPAY_KEY_ID=""
 ENV NEXT_PUBLIC_RAZORPAY_KEY_ID=$NEXT_PUBLIC_RAZORPAY_KEY_ID
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_SKIP_TYPECHECK=1
 ENV NODE_OPTIONS="--max-old-space-size=2560"
 
 RUN npm run build
@@ -76,6 +75,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/src ./src
 COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/docker-entrypoint.sh ./docker-entrypoint.sh
 
 # Create local_storage directory for fallback uploads
 RUN mkdir -p /app/local_storage && chown nextjs:nodejs /app/local_storage
@@ -83,11 +83,18 @@ RUN mkdir -p /app/local_storage && chown nextjs:nodejs /app/local_storage
 # Create tmp workspace directory for worker tasks
 RUN mkdir -p /app/tmp && chown nextjs:nodejs /app/tmp
 
+# Make entrypoint script executable
+RUN chmod +x ./docker-entrypoint.sh
+
 USER nextjs
 
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV DB_HOST="db"
+ENV DB_PORT="5432"
+ENV REDIS_HOST="redis"
+ENV REDIS_PORT="6379"
 
-CMD ["node", "server.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]

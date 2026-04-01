@@ -1,8 +1,14 @@
-technurturelms.in {
+# TechNurture LMS Reverse Proxy Configuration
+# Configured for multi-tenant subdomain routing
+
+# Note: Replace {DOMAIN} with your actual domain in docker-compose environment
+# Example: admin.yourdomain.com, school.yourdomain.com
+
+{$CADDY_DOMAIN:technurturelms.in} {
     reverse_proxy app:3000
 }
 
-www.technurturelms.in {
+www.{$CADDY_DOMAIN:technurturelms.in} {
     # Let Caddy handle its own ACME challenge before any redirect.
     # Without this matcher, the http-01 challenge token for the www subdomain
     # gets redirected to https:// before Let's Encrypt can read it → 404 / auth failure.
@@ -11,6 +17,20 @@ www.technurturelms.in {
         respond 200
     }
     handle {
-        redir https://technurturelms.in{uri} permanent
+        redir https://{$CADDY_DOMAIN:technurturelms.in}{uri} permanent
+    }
+}
+
+# Catch-all for all subdomains (admin.*, school.*, etc.)
+*.{$CADDY_DOMAIN:technurturelms.in} {
+    reverse_proxy app:3000
+}
+
+# Default http:// listener for health checks
+:80 {
+    reverse_proxy app:3000 {
+        health_uri /
+        health_interval 10s
+        health_timeout 5s
     }
 }
