@@ -1,16 +1,19 @@
 import { db } from '@/lib/db';
 import { schools, students, studentAcademicRecords, schoolClassMapping, courseClassMapping, courses } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import bcrypt from 'bcryptjs';
 
 const SCHOOLS_COUNT = 100;
-const STUDENTS_PER_SCHOOL = 7.81; // Average to get 781 total
 const CLASSES_PER_SCHOOL = 3;
-const STUDENTS_PER_CLASS = 26; // Roughly 26 students per class
+const DEFAULT_PASSWORD = 'Student123!';
 
 async function seedScale() {
     console.log('🚀 Starting Scale Seed (100 Schools, ~781 Students)...\n');
 
     try {
+        // Hash the default password
+        const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+
         // Get all classes and courses
         const allClasses = await db.query.classes.findMany();
         const allCourses = await db.query.courses.findMany({
@@ -31,7 +34,6 @@ async function seedScale() {
 
         let schoolCount = 0;
         let studentCount = 0;
-        let studentsForThisSchool = 0;
         const startTime = Date.now();
 
         // Create 100 schools
@@ -82,7 +84,6 @@ async function seedScale() {
 
             // Create students for this school (average ~7.81 per school = 781 total)
             const numStudentsForSchool = i <= 79 ? 8 : 7;
-            studentsForThisSchool = 0;
 
             for (let s = 1; s <= numStudentsForSchool; s++) {
                 const studentEmail = `student${schoolCount}-${s}@school${i}.com`;
@@ -92,11 +93,11 @@ async function seedScale() {
                     last_name: `${schoolCount}-${s}`,
                     email: studentEmail,
                     school_id: school.id,
+                    password_hash: hashedPassword,
                     cumulative_xp: Math.floor(Math.random() * 5000),
                 }).returning();
 
                 studentCount++;
-                studentsForThisSchool++;
 
                 // Assign to a random class
                 const randomClass = classesToMap[Math.floor(Math.random() * classesToMap.length)];
