@@ -73,11 +73,49 @@ while [ $COUNT -lt $MAX_RETRIES ]; do
   COUNT=$((COUNT + 1))
 done
 
-if [ "$SUCCESS" = true ]; then
-  echo "🚀 Deployment successful!"
-  exit 0
-else
+if [ "$SUCCESS" = false ]; then
   echo "⚠️ Warning: App is not reported as healthy yet, but services are running."
   echo "Check logs: docker compose logs app"
+fi
+
+# Step 7: Seed Initial Data
+echo ""
+echo "🌱 Seeding initial data (Admin, Payment Plans, Settings, Classes)..."
+docker compose exec -T app npm run db:seed
+
+if [ $? -eq 0 ]; then
+  echo "✅ Seeding completed successfully!"
+  echo ""
+  echo "═══════════════════════════════════════════════════════════════"
+  echo "🎉 DEPLOYMENT COMPLETE & SEEDED"
+  echo "═══════════════════════════════════════════════════════════════"
+  echo ""
+  echo "📋 INITIAL CREDENTIALS:"
+  echo "   Email:    admin@technurture.com"
+  echo "   Password: AdminPassword123!"
+  echo ""
+  echo "⚠️  IMPORTANT: Change this password immediately after first login!"
+  echo ""
+  echo "🌐 ACCESS POINTS:"
+  echo "   Admin Portal:        https://admin.technurturelms.in"
+  echo "   Student Dashboard:   https://school.technurturelms.in"
+  echo ""
+  echo "✅ Payment Plans Created:"
+  echo "   1. Starter LMS (₹9,999/year - 100 students)"
+  echo "   2. Standard Scholar (₹24,999/year - 500 students) - POPULAR"
+  echo "   3. Elite Institutional (₹49,999/year - Unlimited)"
+  echo ""
+  echo "📊 DATABASE READY with:"
+  echo "   ✓ Super Admin Account"
+  echo "   ✓ 12 Classes (Class 1-12)"
+  echo "   ✓ 3 Payment Plans"
+  echo "   ✓ Platform Settings"
+  echo ""
+  echo "🚀 System is ready for use!"
+  echo "═══════════════════════════════════════════════════════════════"
+  exit 0
+else
+  echo "⚠️ Seeding encountered an issue. Check logs: docker compose logs app"
+  echo "You can manually seed later by running: docker compose exec app npm run seed"
   exit 0
 fi
