@@ -54,10 +54,9 @@ export function PromoCodeDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className={`sm:max-w-[700px] gap-0 border-0 overflow-hidden rounded-[2.5rem] p-0 shadow-2xl ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
-                <div className="flex flex-col md:flex-row h-full">
-                    {/* ── Left Side: Inputs ── */}
-                    <div className={`p-8 md:w-3/5 border-r ${t.border(isDark)}`}>
+            <DialogContent className={`sm:max-w-[500px] border-0 overflow-hidden rounded-[2.5rem] p-0 shadow-2xl ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
+                <div className="flex flex-col h-full">
+                    <div className="p-8">
                         <DialogHeader className="mb-8">
                             <DialogTitle className={`text-2xl font-black tracking-tight ${t.textPrimary(isDark)}`}>
                                 {editingCode?.id ? 'Edit Promo' : 'Create Promo'}
@@ -166,65 +165,6 @@ export function PromoCodeDialog({
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {editingCode?.id ? 'Update Code' : 'Create Now'}
                             </Button>
-                        </div>
-                    </div>
-
-                    {/* ── Right Side: Live Premium Preview ── */}
-                    <div className={`md:w-2/5 p-8 flex flex-col items-center justify-center relative overflow-hidden ${isDark ? 'bg-slate-950/50' : 'bg-slate-50'}`}>
-                        {/* Background Decoration */}
-                        <div className={`absolute top-0 right-0 w-64 h-64 blur-3xl rounded-full opacity-20 bg-${accent.name}-500`} />
-                        <div className={`absolute bottom-0 left-0 w-64 h-64 blur-3xl rounded-full opacity-10 bg-emerald-500`} />
-
-                        <div className="relative z-10 w-full">
-                            <p className={`text-[10px] font-black uppercase tracking-widest mb-6 text-center ${t.textMuted(isDark)}`}>Live Preview</p>
-                            
-                            <motion.div
-                                layout
-                                transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                                className={`w-full aspect-[4/5] rounded-[2rem] border-4 p-8 flex flex-col items-center justify-between text-center relative shadow-2xl overflow-hidden
-                                    ${isDark ? 'bg-slate-900 border-white/[0.05]' : 'bg-white border-slate-100 shadow-slate-200'}`}
-                            >
-                                {/* Ticket cutout effect */}
-                                <div className={`absolute -left-5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`} />
-                                <div className={`absolute -right-5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`} />
-                                <div className={`absolute left-8 right-8 top-1/2 border-t-2 border-dashed ${isDark ? 'border-white/10' : 'border-slate-200'}`} />
-
-                                <div className="space-y-4 pt-2">
-                                    <div className={`mx-auto w-16 h-16 rounded-3xl flex items-center justify-center transition-transform duration-500 hover:rotate-6
-                                        ${t.accentSoft(isDark, accent)}`}>
-                                        <Tag size={32} />
-                                    </div>
-                                    <div>
-                                        <h4 className={`text-4xl font-black tracking-tighter ${t.textPrimary(isDark)}`}>
-                                            {type === 'percentage' ? `${val || 0}%` : `₹${val || 0}`}
-                                        </h4>
-                                        <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Instant Discount</p>
-                                    </div>
-                                </div>
-
-                                <div className="w-full space-y-3 pb-2">
-                                    <div className={`py-4 rounded-2xl border-2 border-dashed font-mono font-black text-2xl tracking-[0.2em] transition-all
-                                        ${isDark ? 'bg-white/[0.05] border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
-                                        {codeStr || 'CODE'}
-                                    </div>
-                                    <div className="flex items-center justify-center gap-2">
-                                        <div className={`w-2 h-2 rounded-full ${editingCode?.is_active !== false ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-                                        <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
-                                            {editingCode?.is_active !== false ? 'Ready to use' : 'Inactive'}
-                                        </p>
-                                    </div>
-                                </div>
-                            </motion.div>
-
-                            <div className="mt-8 space-y-4">
-                                <div className="flex justify-between items-center text-[10px] font-bold">
-                                    <span className={t.textMuted(isDark)}>Usage Cap</span>
-                                    <span className={t.textPrimary(isDark)}>{editingCode?.max_uses || 'Unlimited'}</span>
-                                </div>
-                                <div className={`h-1.5 w-full rounded-full overflow-hidden ${isDark ? 'bg-white/[0.05]' : 'bg-slate-100'}`}>
-                                    <motion.div initial={{ width: 0 }} animate={{ width: '65%' }} className={`h-full ${accent.bg}`} />
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>

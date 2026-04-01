@@ -32,25 +32,74 @@ async function seed() {
     }
 
     // 2. Payment Plans
-    console.log('   - Seeding Payment Plans (Three Tiers)...');
-    await sql`
-        INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
-        VALUES
-            ('Starter LMS', 'Basic learning management for up to 100 students.', 'annual', 9999, 100, ${JSON.stringify({ lms: true, analytics: false, support: false })}, true, false)
-        ON CONFLICT DO NOTHING
-    `;
-    await sql`
-        INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
-        VALUES
-            ('Standard Scholar', 'Advanced features for growing schools (Up to 500 students).', 'annual', 24999, 500, ${JSON.stringify({ lms: true, analytics: true, support: true })}, true, true)
-        ON CONFLICT DO NOTHING
-    `;
-    await sql`
-        INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
-        VALUES
-            ('Elite Institutional', 'Full platform features with unlimited students and priority support.', 'annual', 49999, NULL, ${JSON.stringify({ lms: true, analytics: true, priority_support: true, custom_branding: true })}, true, false)
-        ON CONFLICT DO NOTHING
-    `;
+    console.log('   - Seeding Payment Plans (Updated Tiers)...');
+    
+    const plans = [
+        {
+            name: 'Launchpad',
+            description: 'Perfect for small coaching centers and independent educators starting their digital journey.',
+            billing_cycle: 'annual',
+            price: 5999,
+            max_students: 50,
+            features: [
+                'Mobile-First Student Dashboard',
+                'Basic Course Builder (Unlimited Lessons)',
+                'Automated XP & Level Progression',
+                'Student Progress Reports',
+                'Standard Email Support'
+            ],
+            is_active: true,
+            is_popular: false
+        },
+        {
+            name: 'Scale Pro',
+            description: 'The complete toolkit for established schools requiring deeper student engagement and analytics.',
+            billing_cycle: 'annual',
+            price: 19999,
+            max_students: 300,
+            features: [
+                'Everything in Launchpad',
+                'Advanced Performance Analytics',
+                'School-Wide Leaderboards',
+                'Parent Monitoring Dashboard',
+                'Custom Domain Integration',
+                'Priority Slack Support'
+            ],
+            is_active: true,
+            is_popular: true
+        },
+        {
+            name: 'Enterprise Apex',
+            description: 'Fully white-labeled infrastructure for large institutions with total platform control.',
+            billing_cycle: 'annual',
+            price: 49999,
+            max_students: null,
+            features: [
+                'Everything in Scale Pro',
+                'White-Label Mobile Experience',
+                'Custom Branding & Themes',
+                'Unlimited Student Seats',
+                'Multi-School Management',
+                'Dedicated Success Manager'
+            ],
+            is_active: true,
+            is_popular: false
+        }
+    ];
+
+    for (const plan of plans) {
+        await sql`
+            INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
+            VALUES (${plan.name}, ${plan.description}, ${plan.billing_cycle}, ${plan.price}, ${plan.max_students}, ${JSON.stringify(plan.features)}, ${plan.is_active}, ${plan.is_popular})
+            ON CONFLICT (name) WHERE deleted_at IS NULL DO UPDATE SET
+                description = EXCLUDED.description,
+                price = EXCLUDED.price,
+                max_students = EXCLUDED.max_students,
+                features = EXCLUDED.features,
+                is_popular = EXCLUDED.is_popular,
+                updated_at = NOW()
+        `;
+    }
 
     // 3. Platform Settings
     console.log('   - Seeding Platform Settings...');
