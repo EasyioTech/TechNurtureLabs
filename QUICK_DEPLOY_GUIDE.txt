@@ -1,0 +1,122 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                   TECHNURTURE LABS — QUICK DEPLOY GUIDE                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🎯 ONE-COMMAND DEPLOYMENT
+
+  ssh root@187.127.132.137
+  cd ~/TechNurtureLabs && git pull origin main && chmod +x VPS_DEPLOY.sh && ./VPS_DEPLOY.sh
+
+⏱️  Time: 5-10 minutes (mostly Docker build time)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ WHAT WE FIXED
+
+  ❌ Problem: App stuck in crash loop (missing migration files)
+  ✅ Solution: Regenerated clean migration (0000_parched_prima.sql)
+  ✅ Result: Fresh database, admin account, 3 payment plans, all seeded
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 ADMIN CREDENTIALS (After Deployment)
+
+  Email:    admin@technurture.com
+  Password: AdminPassword123!
+
+  ⚠️  CHANGE THIS IMMEDIATELY after first login!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌱 SEEDED DATA
+
+  Classes:        Class 1 through Class 12 ✅
+  Payment Plans:  3 tiers (₹9,999 / ₹24,999 / ₹49,999) ✅
+  Settings:       TechNurture Labs, INR, support@technurture.io ✅
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 DEPLOYMENT STEPS (Automated by VPS_DEPLOY.sh)
+
+  1. Git pull latest code                    ✓
+  2. Copy .env.production → .env             ✓
+  3. Fix Redis kernel setting                ✓
+  4. Stop and clean Docker containers        ✓
+  5. Build Docker image (fresh)              ✓
+  6. Start all containers                    ✓
+  7. Wait for app health check               ✓
+  8. Display credentials                     ✓
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 VERIFY DEPLOYMENT
+
+  # Check logs
+  docker compose logs -f LMS_app
+
+  # Expected output:
+  # ✅ Database migrations completed successfully
+  # ✅ Database seeding completed successfully
+  # 🎯 Starting application server...
+
+  # Check containers
+  docker compose ps
+
+  # All should be "running" and "healthy" except caddy (will be "running")
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 ACCESS APPLICATION
+
+  URL:     https://technurturelms.in
+  Admin:   admin@technurture.com
+  Pass:    AdminPassword123!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ IF DEPLOYMENT FAILS
+
+  # Check app logs
+  docker compose logs LMS_app | tail -100
+
+  # Check all logs
+  docker compose logs | grep -i error
+
+  # Restart everything
+  docker compose down -v
+  docker compose up -d
+
+  # See full guides
+  cat DEPLOYMENT_CHECKLIST.md
+  cat MIGRATION_RESET_SUMMARY.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 AFTER FIRST LOGIN
+
+  1. Change admin password → Settings > Account
+  2. Create a test school → Schools > New School
+  3. Create a class → Classes > New Class
+  4. Create a course → Courses > New Course
+  5. Enroll a student → Enrollment > New Student
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 DETAILED GUIDES
+
+  VPS_DEPLOY.sh              → Automated script (RUN THIS)
+  DEPLOYMENT_CHECKLIST.md    → Manual step-by-step guide
+  MIGRATION_RESET_SUMMARY.md → What we fixed and why
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ STATUS: READY FOR PRODUCTION ✨
+
+  • All code committed to GitHub
+  • Fresh migrations tested locally
+  • Deployment script ready
+  • Admin + seeding configured
+
+  Just run: ./VPS_DEPLOY.sh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
