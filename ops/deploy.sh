@@ -49,7 +49,10 @@ docker compose up -d db redis
 # Step 5: Build and start Everything
 if [ "$CLEAN_MODE" = true ]; then
   echo "Building and starting ALL services WITHOUT CACHE..."
-  docker compose up -d --build --no-cache
+  # Note: --no-cache flag not supported in all docker-compose versions
+  # Use docker buildx prune instead
+  docker builder prune -af 2>/dev/null || true
+  docker compose up -d --build
 else
   echo "Building and starting ALL services..."
   docker compose up -d --build
