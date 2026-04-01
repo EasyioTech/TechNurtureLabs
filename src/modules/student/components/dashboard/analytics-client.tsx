@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Target, TrendingUp, BarChart3, Clock, Trophy, Award, Activity } from 'lucide-react';
+import { Target, TrendingUp, BarChart3, Clock, Trophy, Award, Activity, BookOpen, Medal } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
     LineChart,
