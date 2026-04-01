@@ -49,8 +49,6 @@ export function PromoCodeDialog({
     };
 
     const type = editingCode?.discount_type || 'percentage';
-    const val = editingCode?.discount_value || 0;
-    const codeStr = editingCode?.code || 'NEWCODE';
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
