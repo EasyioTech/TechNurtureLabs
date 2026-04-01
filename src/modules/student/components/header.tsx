@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     Flame, Star, Crown, LogOut, Search, Menu, X,
-    Flame, Star, Crown, LogOut, Search, Menu, X,
     Settings, GraduationCap, LayoutDashboard,
     Zap, Sparkles, Compass, User, BookOpen, Target, Trophy,
     Beaker, Microscope
