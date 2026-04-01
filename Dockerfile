@@ -52,6 +52,8 @@ ENV NODE_ENV=production
 # Install minimal OS dependencies if necessary (wget is used in healthcheck)
 RUN apt-get update && apt-get install -y \
     wget \
+    postgresql-client \
+    redis-tools \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 

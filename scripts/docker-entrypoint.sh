@@ -36,15 +36,21 @@ while ! redis-cli -h ${REDIS_HOST:-redis} -p ${REDIS_PORT:-6379} ping > /dev/nul
 done
 echo "✅ Redis is ready"
 
-# Run database migrations
-echo "🔄 Running database migrations..."
-if npm run db:push; then
-    echo "✅ Database migrations completed successfully"
-else
-    echo "❌ Database migrations failed!"
-    exit 1
-fi
+if [ $# -eq 0 ]; then
+    # Run database migrations
+    echo "🔄 Running database migrations..."
+    if npm run db:push; then
+        echo "✅ Database migrations completed successfully"
+    else
+        echo "❌ Database migrations failed!"
+        exit 1
+    fi
 
-# Start the application
-echo "🎯 Starting application server..."
-exec node .next/standalone/server.js
+    # Start the application
+    echo "🎯 Starting application server..."
+    exec node .next/standalone/server.js
+else
+    # Start the worker process
+    echo "🎯 Starting worker process: $@"
+    exec "$@"
+fi
