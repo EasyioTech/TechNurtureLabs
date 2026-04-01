@@ -5,6 +5,7 @@ import { useAdminMeta } from './use-admin-meta';
 import { useAdminCourses } from './use-admin-courses';
 import { useAdminSchools } from './use-admin-schools';
 import { useAdminLibrary } from './use-admin-library';
+import { useAdminCertifications } from './use-admin-certifications';
 
 export { USER_METRICS_PAGE_SIZE } from './use-admin-schools';
 
@@ -18,6 +19,7 @@ export function useAdminData() {
     const courses = useAdminCourses();
     const schools = useAdminSchools();
     const library = useAdminLibrary();
+    const certs   = useAdminCertifications();
 
     // Load stats + metadata once on mount
     useEffect(() => { meta.fetchInitialData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -100,5 +102,16 @@ export function useAdminData() {
         totalGlobalQuizzesPages: library.totalGlobalQuizzesPages,
         loadGlobalLessons:       library.loadGlobalLessons,
         loadGlobalQuizzes:       library.loadGlobalQuizzes,
+
+        // ── Certifications ─────────────────────────────────────────
+        certCourses:           certs.certCourses,
+        certLoading:           certs.certLoading,
+        certInitialized:       certs.certInitialized,
+        loadCertCourses:       certs.loadCertCourses,
+        saveCert:              certs.saveCert,
+        deleteCert:            certs.deleteCert,
+        getCompletedStudents:  certs.getCompletedStudents,
+        issueCert:             certs.issueCert,
+        revokeCert:            certs.revokeCert,
     };
 }

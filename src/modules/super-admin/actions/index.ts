@@ -10,3 +10,11 @@ export { fetchQuizAdmin, saveQuizAdmin, deleteQuizAdmin, cloneQuizAction, fetchG
 export { fetchAdminMetadata, fetchAdminOverviewExtras, savePlanAdmin, deletePlanAdmin, savePromoCode, deletePromoCode, validatePromoCode, fetchAllClasses, createClass, deleteClass, ensureDefaultClasses, syncPlatformMetrics } from './sub-actions/meta-actions';
 export { fetchAdminStudents, invalidateAdminCache } from './sub-actions/student-actions';
 export { getSystemHealth } from './redis-monitoring';
+export {
+    fetchCoursesWithCertificates,
+    saveCertificateConfig,
+    deleteCertificateConfig,
+    fetchCompletedStudents,
+    issueCertificate,
+    revokeCertificate,
+} from './sub-actions/certificate-actions';

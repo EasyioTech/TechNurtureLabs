@@ -34,6 +34,7 @@ import { SettingsTab } from './tabs/settings-tab';
 import { PromoCodesTab } from './tabs/promo-codes-tab';
 import { SystemHealthTab } from './tabs/system-health-tab';
 import { LibraryTab } from './tabs/library-tab';
+import { CertificationsTab } from './tabs/certifications-tab';
 
 import {
     Popover,
@@ -44,6 +45,7 @@ import {
 const NAV_ITEMS = [
     { id: 'overview', label: 'DASHBOARD', icon: LayoutGrid },
     { id: 'courses', label: 'COURSES', icon: BookOpen },
+    { id: 'certifications', label: 'CERTS', icon: GraduationCap },
     { id: 'plans', label: 'PLANS', icon: CreditCard },
     { id: 'promo', label: 'PROMOS', icon: CreditCard },
     { id: 'schools', label: 'SCHOOLS', icon: Building2 },
@@ -55,6 +57,7 @@ const NAV_ITEMS = [
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
     overview: { title: 'Platform Overview', subtitle: 'Monitor platform performance and system health.' },
     courses: { title: 'Course Management', subtitle: 'Create and manage courses and learning content.' },
+    certifications: { title: 'Certifications', subtitle: 'Configure certificates and issue them to students who complete courses.' },
     plans: { title: 'Pricing Plans', subtitle: 'Manage subscription plans and pricing levels.' },
     promo: { title: 'Promo Codes', subtitle: 'Manage platform-wide discount codes.' },
     schools: { title: 'Schools & Partners', subtitle: 'View and manage all registered school accounts.' },
@@ -144,6 +147,10 @@ function DashboardContent() {
         if (activePage === 'courses' && !initializedTabs.current.has('courses')) {
             initializedTabs.current.add('courses');
             data.loadCourses(0);
+        }
+        if (activePage === 'certifications' && !initializedTabs.current.has('certifications')) {
+            initializedTabs.current.add('certifications');
+            data.loadCertCourses();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activePage]);
@@ -446,6 +453,18 @@ function DashboardContent() {
                                 editingLesson={data.editingLesson} setEditingLesson={data.setEditingLesson}
                                 classes={data.classes}
                                 courseClassMappings={data.courseClassMappings}
+                            />
+                        )}
+                        {activePage === 'certifications' && (
+                            <CertificationsTab
+                                courses={data.certCourses}
+                                loading={data.certLoading}
+                                onRefresh={data.loadCertCourses}
+                                onSaveCert={data.saveCert}
+                                onDeleteCert={data.deleteCert}
+                                onFetchStudents={data.getCompletedStudents}
+                                onIssueCert={data.issueCert}
+                                onRevokeCert={data.revokeCert}
                             />
                         )}
                         {activePage === 'plans' && (

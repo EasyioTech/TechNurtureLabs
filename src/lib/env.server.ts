@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 const serverSchema = z.object({
     DATABASE_URL: z.string().url(),
-    REDIS_URL: z.string().url().optional().default('redis://localhost:6379'),
+    REDIS_URL: z.string().url().optional().or(z.literal('')).default('redis://localhost:6379'),
     JWT_SECRET: z.string().min(32, { message: "JWT_SECRET must be at least 32 characters long" }),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     // AES-256-GCM key for encrypting TOTP secrets at rest.

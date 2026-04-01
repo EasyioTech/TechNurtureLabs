@@ -58,7 +58,27 @@ import { managePartitions } from './partition-worker';
 
 async function run() {
     console.log('--- Stats Flush Worker Started ---');
-    
+
+    // Wait for Redis to be ready before starting
+    let redisReady = false;
+    let attempts = 0;
+    while (!redisReady && attempts < 30) {
+        try {
+            await redis.ping();
+            redisReady = true;
+            console.log('[FlushWorker] Redis is ready');
+        } catch (err) {
+            attempts++;
+            console.log(`[FlushWorker] Waiting for Redis... (attempt ${attempts}/30)`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+
+    if (!redisReady) {
+        console.error('[FlushWorker] Redis failed to become ready after 30 attempts');
+        process.exit(1);
+    }
+
     let lastPartitionCheck = 0;
     const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -77,7 +97,7 @@ async function run() {
         } catch (err) {
             console.error('[FlushWorker] Iteration failure:', err);
         }
-        
+
         // Sleep for 5 minutes (300 seconds) between flush cycles (Quick Win #5)
         await new Promise(resolve => setTimeout(resolve, 300000));
     }

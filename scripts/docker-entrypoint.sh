@@ -37,19 +37,26 @@ done
 echo "✅ Redis is ready"
 
 if [ $# -eq 0 ]; then
-    # Run database migrations
+    # Run database migrations using SQL files directly via psql
     echo "🔄 Running database migrations..."
-    if npm run db:migrate; then
-        echo "✅ Database migrations completed successfully"
-        echo "🌱 Seeding default database data..."
-        if npm run db:seed; then
-            echo "✅ Database seeding completed successfully"
+
+    if [ -d "./drizzle" ] && [ -f "./scripts/run-migrations.ts" ]; then
+        echo "Found migration script, running migrations natively via Drizzle..."
+        if npx tsx scripts/run-migrations.ts; then
+            echo "✅ Database migrations completed successfully"
         else
-            echo "⚠️ Database seeding failed! Check logs."
+            echo "❌ Failed to run migrations via Drizzle"
+            exit 1
         fi
     else
-        echo "❌ Database migrations failed!"
-        exit 1
+        echo "⚠️ No migration script found, skipping migrations"
+    fi
+
+    echo "🌱 Seeding default database data..."
+    if npm run db:seed; then
+        echo "✅ Database seeding completed successfully"
+    else
+        echo "⚠️ Database seeding failed! Check logs."
     fi
 
     # Start the application
