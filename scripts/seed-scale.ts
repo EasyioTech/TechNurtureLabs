@@ -20,13 +20,19 @@ async function seedScale() {
             where: eq(courses.is_published, true)
         });
 
-        // Get current session
-        const sessionList = await db.query.academicSessions.findMany();
-        const currentSession = sessionList.length > 0 ? sessionList[0] : null;
+        // Get or create current session
+        let sessionList = await db.query.academicSessions.findMany();
+        let currentSession = sessionList.length > 0 ? sessionList[0] : null;
 
         if (!currentSession) {
-            console.error('❌ No academic session found. Please create one first.');
-            process.exit(1);
+            console.log('📅 Creating academic session 2025-2026...');
+            const [newSession] = await db.insert(academicSessions).values({
+                name: '2025-2026',
+                start_date: new Date('2025-04-01'),
+                end_date: new Date('2026-03-31'),
+                is_active: true,
+            }).returning();
+            currentSession = newSession;
         }
 
         if (allClasses.length === 0) {
