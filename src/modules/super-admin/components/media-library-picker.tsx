@@ -25,7 +25,7 @@ interface MediaAsset {
     file_path: string;
     mime_type: string;
     file_size: number;
-    storage_type: 'r2' | 'stream' | 'local';
+    storage_type: 'r2' | 'local';
     asset_type: 'video' | 'image' | 'document';
     created_at: string;
 }

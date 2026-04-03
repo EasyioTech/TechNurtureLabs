@@ -33,14 +33,10 @@ export async function DELETE(
         }
 
 
-        // Delete storage (R2 or local) — stream videos are managed by Cloudflare
+        // Delete storage (R2 or local)
         try {
-            const storageType = asset.storage_type as string;
-            if (storageType === 'stream') {
-                // Stream videos are managed by Cloudflare, just delete DB record
-                console.log('[Media Library] Skipping Cloudflare Stream deletion (managed separately)');
-            } else if (storageType === 'r2' || storageType === 'local') {
-                await deleteFile(asset.file_path, storageType as 'r2' | 'local');
+            if (asset.storage_type === 'r2' || asset.storage_type === 'local') {
+                await deleteFile(asset.file_path, asset.storage_type);
             }
         } catch (storageErr) {
             console.warn('[Media Library] Storage delete failed (still removing DB record):', storageErr);

@@ -22,12 +22,10 @@ export async function GET(request: NextRequest) {
 
         const filters: any[] = [];
 
-        // CRITICAL: Only show cloud-based storage (R2 or Cloudflare Stream)
+        // CRITICAL: Only show cloud-based storage (R2)
         // Never show local/server-side storage in the media library UI
-        filters.push(or(
-            eq(mediaAssets.storage_type, 'r2'),
-            eq(mediaAssets.storage_type, 'stream')
-        ));
+        // Note: Cloudflare Stream assets are managed via /api/media/stream-list
+        filters.push(eq(mediaAssets.storage_type, 'r2'));
 
         if (type && ['video', 'image', 'document'].includes(type)) {
             filters.push(eq(mediaAssets.asset_type, type as any));
