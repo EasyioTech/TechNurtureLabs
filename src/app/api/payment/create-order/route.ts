@@ -25,9 +25,12 @@ const razorpay = (!isBuild && serverEnv.RAZORPAY_KEY_ID && serverEnv.RAZORPAY_KE
 }) : null;
 
 if (!isBuild) {
-    if (!serverEnv.RAZORPAY_KEY_ID) logger.warn('[Create Order] RAZORPAY_KEY_ID not configured');
-    if (!serverEnv.RAZORPAY_KEY_SECRET) logger.warn('[Create Order] RAZORPAY_KEY_SECRET not configured');
-    if (razorpay) logger.info('[Create Order] Razorpay initialized successfully');
+    if (serverEnv.RAZORPAY_KEY_ID) console.log('[Razorpay] KEY_ID found:', serverEnv.RAZORPAY_KEY_ID.substring(0, 20) + '...');
+    else console.error('[Razorpay] KEY_ID NOT found');
+    if (serverEnv.RAZORPAY_KEY_SECRET) console.log('[Razorpay] KEY_SECRET found, length:', serverEnv.RAZORPAY_KEY_SECRET.length);
+    else console.error('[Razorpay] KEY_SECRET NOT found');
+    if (razorpay) console.log('[Razorpay] Instance initialized successfully');
+    else console.error('[Razorpay] Instance is NULL');
 }
 
 export async function POST(req: NextRequest) {
