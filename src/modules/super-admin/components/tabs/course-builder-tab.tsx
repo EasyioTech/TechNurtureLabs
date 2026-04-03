@@ -24,13 +24,11 @@ import {
     AlertDialogTitle,
     AlertDialogDescription,
 } from '@/components/ui/alert-dialog';
-import { 
-    performBackupAction, 
-    performLessonBackupAction, 
-    performCourseBackupAction, 
-    listBackupsAction, 
-    restoreFromBackupAction, 
-    restoreLessonFromBackupAction,
+import {
+    performBackupAction,
+    performCourseBackupAction,
+    listBackupsAction,
+    restoreFromBackupAction,
     performInstantSaveAction,
     checkForRestorePointAction,
     deleteRestorePointAction
@@ -77,11 +75,9 @@ export function CourseBuilderTab({
 
     // Backup state
     const [backups, setBackups] = useState<any[]>([]);
-    const [lessonBackups, setLessonBackups] = useState<any[]>([]);
     const [isBackingUp, setIsBackingUp] = useState(false);
     const [isRestoring, setIsRestoring] = useState<string | null>(null);
     const [showBackupsDialog, setShowBackupsDialog] = useState(false);
-    const [backupType, setBackupType] = useState<'course' | 'lesson'>('course');
     const [restorePoint, setRestorePoint] = useState<{ key: string, timestamp: Date } | null>(null);
     const [showRestorePrompt, setShowRestorePrompt] = useState(false);
     const [selectedBackupPreview, setSelectedBackupPreview] = useState<any>(null);
@@ -123,18 +119,21 @@ export function CourseBuilderTab({
     };
 
 
-    const fetchBackups = async (type: 'course' | 'lesson' = 'course') => {
-        const data = await listBackupsAction(type);
-        if (type === 'course') setBackups(data);
-        else setLessonBackups(data);
+    const fetchBackups = async () => {
+        const data = await listBackupsAction('course');
+        setBackups(data);
     };
 
     const handleTriggerBackup = async () => {
         setIsBackingUp(true);
         const res = await performBackupAction();
         if (res.success) {
-            toast.success("Content backed up successfully to R2");
-            fetchBackups('course');
+            if (res.isNew) {
+                toast.success("✅ New backup created successfully");
+            } else {
+                toast.success("✓ No changes detected - using existing backup");
+            }
+            fetchBackups();
         } else {
             toast.error(res.error || "Backup failed");
         }
@@ -146,8 +145,8 @@ export function CourseBuilderTab({
             loading: 'Backing up course...',
             success: (res: any) => {
                 if (res.success) {
-                    fetchBackups('course');
-                    return 'Course backed up successfully to R2';
+                    fetchBackups();
+                    return res.isNew ? '✅ Course backup created' : '✓ No changes - using existing backup';
                 }
                 throw new Error(res.error);
             },
@@ -155,19 +154,7 @@ export function CourseBuilderTab({
         });
     };
 
-    const handleLessonBackup = async (lessonId: string) => {
-        toast.promise(performLessonBackupAction(lessonId), {
-            loading: 'Backing up lesson...',
-            success: (res: any) => {
-                if (res.success) {
-                    fetchBackups('lesson');
-                    return 'Lesson backed up successfully';
-                }
-                throw new Error(res.error);
-            },
-            error: (err) => err.message || 'Backup failed'
-        });
-    };
+    // Lesson backups deprecated - all backups are course-level
 
     const handleRestore = async (key: string) => {
         if (!confirm("Are you sure? This will update existing data or restore deleted content.")) return;
@@ -190,31 +177,7 @@ export function CourseBuilderTab({
         }
     };
 
-    const handleLessonRestore = async (key: string) => {
-        if (!selectedCourse) {
-            toast.error("Please select a target course first");
-            return;
-        }
-        if (!confirm(`Restore this lesson into "${selectedCourse.title}"?`)) return;
-
-        setIsRestoring(key);
-        try {
-            const res = await restoreLessonFromBackupAction(key, selectedCourse.id);
-            if (res.success) {
-                toast.success("Lesson restored successfully");
-                // Reload page to get fresh lesson data
-                setTimeout(() => {
-                    window.location.href = window.location.href;
-                }, 1000);
-            } else {
-                toast.error(res.error || "Restore failed");
-            }
-        } catch (err: any) {
-            toast.error(err.message || "Restore failed");
-        } finally {
-            setIsRestoring(null);
-        }
-    };
+    // Lesson restores deprecated - all backups are course-level
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -272,15 +235,15 @@ export function CourseBuilderTab({
                             <Button
                                 size="sm"
                                 onClick={() => {
-                                    fetchBackups(backupType);
+                                    fetchBackups();
                                     setShowBackupsDialog(true);
                                 }}
                                 title="Manage backups and restore points"
-                                className={`h-10 px-4 sm:px-5 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] shadow-lg transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
-                                    ${accent.bg} text-white ${accent.bgHover} hover:shadow-xl`}
+                                className={`h-10 px-3 sm:px-5 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] shadow-lg transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
+                                    ${isDark ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-500 hover:bg-emerald-600'} text-white hover:shadow-xl`}
                             >
                                 <RefreshCw size={14} />
-                                <span className="hidden xs:inline">Restore</span>
+                                <span className="whitespace-nowrap">Restore</span>
                             </Button>
                         </DialogTrigger>
                         <DialogContent className={`max-w-2xl border-0 p-0 overflow-hidden rounded-3xl ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}>
@@ -302,38 +265,17 @@ export function CourseBuilderTab({
                                         </div>
                                     </div>
                                     
-                                    <div className={`flex gap-1 p-1 rounded-2xl mt-8 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-                                        <button
-                                            onClick={() => { setBackupType('course'); fetchBackups('course'); }}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all
-                                                ${backupType === 'course' 
-                                                    ? (isDark ? 'bg-white/10 text-white shadow-xl' : 'bg-white text-slate-900 shadow-md')
-                                                    : 'text-slate-500 hover:text-slate-400'}`}
-                                        >
-                                            <Layers size={14} />
-                                            Full Courses
-                                        </button>
-                                        <button
-                                            onClick={() => { setBackupType('lesson'); fetchBackups('lesson'); }}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all
-                                                ${backupType === 'lesson'
-                                                    ? (isDark ? 'bg-white/10 text-white shadow-xl' : 'bg-white text-slate-900 shadow-md')
-                                                    : 'text-slate-500 hover:text-slate-400'}`}
-                                        >
-                                            <BookOpen size={14} />
-                                            Individual Lessons
-                                        </button>
-                                    </div>
+                                    {/* Backup tabs removed - all backups are now course-level */}
                                 </DialogHeader>
 
                                 <div className="space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar pr-1">
-                                    {(backupType === 'course' ? backups : lessonBackups).length === 0 ? (
+                                    {backups.length === 0 ? (
                                         <div className={`py-16 sm:py-20 rounded-2xl sm:rounded-3xl border-2 border-dashed flex flex-col items-center gap-3 sm:gap-4 ${isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50'}`}>
                                             <Database size={32} className="text-slate-700 opacity-20" />
                                             <p className={`text-xs sm:text-sm font-bold ${t.textMuted(isDark)}`}>No backups found in R2</p>
                                         </div>
                                     ) : (
-                                        (backupType === 'course' ? backups : lessonBackups).map((b) => (
+                                        backups.map((b) => (
                                             <div key={b.key} className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all group cursor-pointer hover:scale-[1.02] ${isDark ? 'bg-white/[0.02] border-white/5 hover:border-white/15 hover:bg-white/[0.04]' : 'bg-slate-50 border-slate-100 hover:border-slate-300 hover:bg-white shadow-sm'}`}
                                                 onClick={() => {
                                                     setSelectedBackupPreview(b);
@@ -342,7 +284,7 @@ export function CourseBuilderTab({
                                             >
                                                 <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
                                                     <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 transition-transform ${isDark ? 'bg-white/5 group-hover:bg-white/10' : 'bg-slate-100 group-hover:bg-slate-200'}`}>
-                                                        {backupType === 'course' ? <Layers size={18} className="text-sky-400" /> : <BookOpen size={18} className="text-orange-400" />}
+                                                        <Layers size={18} className="text-sky-400" />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <p className={`text-xs sm:text-sm font-bold tracking-tight truncate ${t.textPrimary(isDark)}`}>{b.key.split('/').pop()}</p>
@@ -360,15 +302,6 @@ export function CourseBuilderTab({
                                         ))
                                     )}
                                 </div>
-                                
-                                {backupType === 'lesson' && selectedCourse && (
-                                    <div className={`mt-6 p-4 rounded-2xl border-2 flex items-center gap-3 ${isDark ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
-                                        <Info size={16} className="text-indigo-400" />
-                                        <p className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>
-                                            Target: {selectedCourse.title}
-                                        </p>
-                                    </div>
-                                )}
                              </div>
                         </DialogContent>
                     </Dialog>
@@ -379,11 +312,11 @@ export function CourseBuilderTab({
                         disabled={isBackingUp}
                         onClick={handleTriggerBackup}
                         title="Create manual backup of all courses"
-                        className={`h-10 px-3 sm:px-4 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
-                            ${isDark ? 'bg-blue-600/90 text-white hover:bg-blue-600 shadow-md' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'}`}
+                        className={`h-10 px-3 sm:px-5 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
+                            ${isDark ? 'bg-sky-600 hover:bg-sky-700' : 'bg-sky-500 hover:bg-sky-600'} text-white hover:shadow-lg shadow-md`}
                     >
                         {isBackingUp ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                        <span className="hidden xs:inline">Backup</span>
+                        <span className="whitespace-nowrap">Backup</span>
                     </Button>
 
                     <Button
@@ -397,11 +330,11 @@ export function CourseBuilderTab({
                             else toast.error(res.error);
                         }}
                         title="Quick auto-save snapshot"
-                        className={`h-10 px-3 sm:px-4 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
-                            ${isDark ? 'bg-slate-700 text-white hover:bg-slate-600 shadow-md' : 'bg-slate-500 text-white hover:bg-slate-600 shadow-md'}`}
+                        className={`h-10 px-3 sm:px-5 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
+                            ${isDark ? 'bg-violet-600 hover:bg-violet-700' : 'bg-violet-500 hover:bg-violet-600'} text-white hover:shadow-lg shadow-md`}
                     >
                         <Clock size={14} />
-                        <span className="hidden xs:inline">Quick Save</span>
+                        <span className="whitespace-nowrap">Quick Save</span>
                     </Button>
 
                     {/* Backup Preview Modal */}
@@ -409,15 +342,11 @@ export function CourseBuilderTab({
                         isOpen={showBackupPreview}
                         onClose={() => setShowBackupPreview(false)}
                         backup={selectedBackupPreview}
-                        backupType={backupType}
+                        backupType="course"
                         isRestoring={isRestoring === selectedBackupPreview?.key}
                         onRestore={() => {
                             if (selectedBackupPreview) {
-                                if (backupType === 'course') {
-                                    handleRestore(selectedBackupPreview.key);
-                                } else {
-                                    handleLessonRestore(selectedBackupPreview.key);
-                                }
+                                handleRestore(selectedBackupPreview.key);
                                 setShowBackupPreview(false);
                             }
                         }}
@@ -568,8 +497,7 @@ export function CourseBuilderTab({
                                         <div className="space-y-3">{lessons.map((lesson, index) => (
                                             <SortableLessonItem key={lesson.id} lesson={lesson} index={index}
                                                 onEdit={() => { setEditingLesson(lesson); setShowLessonDialog(true); }}
-                                                onDelete={() => setItemToDelete({ type: 'lesson', id: lesson.id, name: lesson.title })}
-                                                onBackup={() => handleLessonBackup(lesson.id)} />
+                                                onDelete={() => setItemToDelete({ type: 'lesson', id: lesson.id, name: lesson.title })} />
                                         ))}</div>
                                     </SortableContext>
                                 </DndContext>

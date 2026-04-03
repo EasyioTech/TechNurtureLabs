@@ -13,9 +13,19 @@ export async function performBackupAction() {
 
     try {
         const data = await exportAllCourses();
-        const fileName = await uploadBackupToR2(data, 'course');
+        const result = await uploadBackupToR2(data, 'course');
+
+        if (!result.isNew) {
+            return {
+                success: true,
+                fileName: result.fileName,
+                isNew: false,
+                message: 'No changes detected. Using existing backup.'
+            };
+        }
+
         revalidatePath('/super-admin');
-        return { success: true, fileName };
+        return { success: true, fileName: result.fileName, isNew: true, message: 'New backup created successfully' };
     } catch (error: any) {
         console.error('[Backup Action] Error:', error);
         return { success: false, error: error.message };
@@ -28,27 +38,31 @@ export async function performCourseBackupAction(courseId: string) {
 
     try {
         const data = await exportCourse(courseId);
-        const fileName = await uploadBackupToR2(data, 'course');
+        const result = await uploadBackupToR2(data, 'course');
+
+        if (!result.isNew) {
+            return {
+                success: true,
+                fileName: result.fileName,
+                isNew: false,
+                message: 'No changes detected. Using existing backup.'
+            };
+        }
+
         revalidatePath('/super-admin');
-        return { success: true, fileName };
+        return { success: true, fileName: result.fileName, isNew: true, message: 'Course backup created successfully' };
     } catch (error: any) {
         console.error('[Backup Course Action] Error:', error);
         return { success: false, error: error.message };
     }
 }
 
+/**
+ * DEPRECATED: Lesson backups removed - all backups are now course-level
+ * To restore individual lessons, restore the entire course backup
+ */
 export async function performLessonBackupAction(lessonId: string) {
-    const session = await verifySession();
-    if (session?.role !== 'super_admin') throw new Error('Unauthorized');
-
-    try {
-        const data = await exportLesson(lessonId);
-        const fileName = await uploadBackupToR2(data, 'lesson');
-        return { success: true, fileName };
-    } catch (error: any) {
-        console.error('[Backup Lesson Action] Error:', error);
-        return { success: false, error: error.message };
-    }
+    throw new Error('Lesson backups have been deprecated. Please use course-level backups instead.');
 }
 
 export async function listBackupsAction(type: 'course' | 'lesson' = 'course') {
@@ -58,7 +72,14 @@ export async function listBackupsAction(type: 'course' | 'lesson' = 'course') {
     if (!isCloudflareConfigured || !s3Client) return [];
 
     try {
-        const prefix = type === 'course' ? 'backups/courses/' : 'backups/lessons/';
+        // Only list course backups - lesson backups are deprecated
+        if (type === 'lesson') {
+            console.warn('[Backup Action] Lesson backups are deprecated. Returning course backups instead.');
+            // Return empty array for lesson backups to show "no backups" message
+            return [];
+        }
+
+        const prefix = 'backups/courses/';
         const command = new ListObjectsV2Command({
             Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
             Prefix: prefix,

@@ -2,8 +2,9 @@ import { db } from '@/lib/db';
 import * as schema from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { uploadFile, getObjectStream, s3Client, isCloudflareConfigured } from '@/lib/storage';
-import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { serverEnv } from '@/lib/env.server';
+import crypto from 'crypto';
 
 export interface CourseBackupData {
     version: string;
@@ -38,6 +39,57 @@ export interface LessonBackupData {
         };
     };
     mediaAsset?: typeof schema.mediaAssets.$inferSelect;
+}
+
+/**
+ * Calculate SHA256 hash of backup data to detect changes
+ */
+export function calculateBackupHash(data: CourseBackupData): string {
+    const jsonStr = JSON.stringify(data);
+    return crypto.createHash('sha256').update(jsonStr).digest('hex');
+}
+
+/**
+ * Get the most recent backup hash from R2 metadata
+ * Returns null if no previous backup exists
+ */
+export async function getLastBackupHash(courseId?: string): Promise<{ hash: string; fileName: string } | null> {
+    if (!isCloudflareConfigured || !s3Client) return null;
+
+    try {
+        const prefix = 'backups/courses/';
+        const command = new ListObjectsV2Command({
+            Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+            Prefix: prefix,
+        });
+
+        const response = await s3Client.send(command);
+        if (!response.Contents || response.Contents.length === 0) return null;
+
+        // Get the most recent backup file
+        const sortedBackups = (response.Contents || [])
+            .sort((a, b) => (b.LastModified?.getTime() || 0) - (a.LastModified?.getTime() || 0));
+
+        const latestBackup = sortedBackups[0];
+        if (!latestBackup?.Key) return null;
+
+        // Download and parse the latest backup
+        const getCommand = new GetObjectCommand({
+            Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+            Key: latestBackup.Key,
+        });
+
+        const getResponse = await s3Client.send(getCommand);
+        const bodyContents = await getResponse.Body?.transformToString();
+        if (!bodyContents) return null;
+
+        const lastBackup = JSON.parse(bodyContents);
+        const hash = calculateBackupHash(lastBackup);
+        return { hash, fileName: latestBackup.Key };
+    } catch (error) {
+        console.error('[Backup Service] Error getting last backup hash:', error);
+        return null;
+    }
 }
 
 export async function exportAllCourses(): Promise<CourseBackupData> {
@@ -180,14 +232,30 @@ export async function exportCourse(courseId: string): Promise<CourseBackupData> 
     };
 }
 
-export async function uploadBackupToR2(backupData: any, type: 'course' | 'lesson' = 'course'): Promise<string> {
+export async function uploadBackupToR2(backupData: any, type: 'course' | 'lesson' = 'course'): Promise<{ fileName: string; hash: string; isNew: boolean }> {
     if (!isCloudflareConfigured || !s3Client) {
         throw new Error("R2 is not configured. Cannot save backup.");
     }
 
+    // Calculate hash of current backup data
+    const currentHash = calculateBackupHash(backupData);
+
+    // Check if data has changed since last backup
+    const lastBackup = await getLastBackupHash();
+    const isNew = !lastBackup || lastBackup.hash !== currentHash;
+
+    if (!isNew) {
+        console.log('[Backup Service] No changes detected. Skipping backup creation.');
+        return {
+            fileName: lastBackup?.fileName || '',
+            hash: currentHash,
+            isNew: false
+        };
+    }
+
     const payload = JSON.stringify(backupData);
     const prefix = type === 'course' ? 'courses' : 'lessons';
-    
+
     let baseName = 'backup';
     if (type === 'course') {
         const bd = backupData as CourseBackupData;
@@ -204,10 +272,15 @@ export async function uploadBackupToR2(backupData: any, type: 'course' | 'lesson
         Key: fileName,
         Body: Buffer.from(payload),
         ContentType: 'application/json',
+        Metadata: {
+            'backup-hash': currentHash,
+            'backup-timestamp': new Date().toISOString(),
+        }
     });
 
     await s3Client.send(command);
-    return fileName;
+    console.log(`[Backup Service] New backup created: ${fileName}`);
+    return { fileName, hash: currentHash, isNew: true };
 }
 
 export async function downloadBackupFromR2(fileName: string): Promise<any> {
@@ -572,30 +645,42 @@ export async function performInstantSave() {
         throw new Error("R1/R2 is not configured. Cannot perform auto-save.");
     }
     const data = await exportAllCourses();
-    const fileName = await uploadBackupToR2(data, 'course');
-    // Rename to include 'instant_save' tag
-    const instantFileName = fileName.replace('backup_', 'instant_save_');
-    
-    // We already uploaded to fileName, but let's make it easy to find
-    // Or we update the uploadBackupToR2 to take a base name
+
+    // Skip if no changes detected
+    const lastBackup = await getLastBackupHash();
+    const currentHash = calculateBackupHash(data);
+
+    if (lastBackup && lastBackup.hash === currentHash) {
+        return {
+            success: true,
+            count: data.courses.length,
+            fileName: lastBackup.fileName,
+            message: `No changes detected. Using existing auto-save.`
+        };
+    }
+
+    // Create new instant save
     const payload = JSON.stringify(data);
     const finalKey = `backups/courses/instant_save_${new Date().getTime()}.json`;
-    
+
     const command = new PutObjectCommand({
         Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
         Key: finalKey,
         Body: Buffer.from(payload),
         ContentType: 'application/json',
+        Metadata: {
+            'backup-hash': currentHash,
+            'backup-timestamp': new Date().toISOString(),
+        }
     });
 
     await s3Client.send(command);
 
-    
     return {
         success: true,
         count: data.courses.length,
         fileName: finalKey,
-        message: `Current state (${data.courses.length} courses) saved to persistent storage.`
+        message: `Auto-save created (${data.courses.length} courses).`
     };
 }
 
