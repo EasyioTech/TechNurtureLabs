@@ -145,6 +145,8 @@ export async function middleware(request: NextRequest) {
   const isMutatingMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
   // Exempt: login/logout endpoints (unauthenticated), payment endpoints (external/pre-auth), webhooks
   const isCsrfExempt = url.pathname.startsWith('/api/auth/') ||
+                       url.pathname === '/api/admin/login' ||
+                       url.pathname === '/api/admin/register' ||
                        url.pathname === '/api/payment/verify' ||
                        url.pathname === '/api/payment/create-order';
 

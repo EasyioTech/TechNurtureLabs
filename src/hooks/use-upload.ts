@@ -123,9 +123,13 @@ export function useUpload(options?: UploadOptions) {
                         if (xhr.status >= 200 && xhr.status < 300) {
                             // 📝 Register with DB — wrapped in try/catch so errors are properly propagated
                             try {
+                                const csrfToken = getCsrfToken();
                                 const regRes = await fetch('/api/media/register', {
                                     method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
+                                    headers: { 
+                                        'Content-Type': 'application/json',
+                                        ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+                                    },
                                     body: JSON.stringify({
                                         fileName: file.name,
                                         filePath: key,

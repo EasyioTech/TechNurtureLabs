@@ -215,26 +215,14 @@ export async function getSignedDownloadUrl(key: string, expiresIn: number = 300,
 
 /** Determine folder prefix from MIME type and optional context */
 function getFolderPrefix(mimeType: string, context?: StorageContext, folderHint?: string): string {
-    const typeFolder = mimeType.startsWith('image/') ? 'images' :
-        mimeType.startsWith('video/') ? 'videos' : 'documents';
-
-    // 1. If we have a specific context (like a specific course/lesson)
-    if (context && context.id && context.type) {
-        // e.g., "courses/123/images" or "lessons/456/videos"
-        return `${context.type}s/${context.id}/${typeFolder}`;
+    // Simplify to top-level folders based strictly on type
+    if (mimeType.startsWith('image/') || mimeType === 'image/x-icon' || mimeType === 'image/vnd.microsoft.icon') {
+        return 'images';
     }
-
-    // 2. If we have a generic folder hint (like 'branding', 'settings', etc.)
-    if (folderHint) {
-        // Sanitize folder hint to lowercase and replace spaces
-        const sanitized = folderHint.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
-        if (sanitized) {
-            return `${sanitized}/${typeFolder}`;
-        }
+    if (mimeType.startsWith('video/')) {
+        return 'videos';
     }
-
-    // 3. Fallback to a generic library structure
-    return `library/${typeFolder}`;
+    return 'documents';
 }
 
 /** Derive normalized asset_type from MIME type */

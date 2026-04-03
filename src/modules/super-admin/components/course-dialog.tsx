@@ -30,7 +30,6 @@ interface CourseDialogProps {
 export function CourseDialog({
     open, onOpenChange, editingCourse, setEditingCourse, onSave, classes, courseClassMappings
 }: CourseDialogProps) {
-    console.log('[CourseDialog] Rendered with open:', open);
     const { isDark, accent } = useAdminTheme();
     const isEditing = !!editingCourse?.id;
 
