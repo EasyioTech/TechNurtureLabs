@@ -22,11 +22,11 @@ import { toast } from 'sonner';
 import {
   ArrowLeft, Users, CheckCircle2, Loader2,
   CreditCard, Check, Eye, EyeOff, ArrowRight,
-  Building2, BadgeCheck, X, MapPin, Map, Compass, Shield, Lock
+  Building2, BadgeCheck, X, MapPin, Map, Compass, Shield, Lock, Tag, Gift
 } from 'lucide-react';
 import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { SchoolRegistrationSidebar } from '@/components/registration/SchoolRegistrationSidebar';
-import { CheckoutOverlay } from '@/components/registration/CheckoutOverlay';
+import { SchoolRegistrationSidebar } from '@/components/registration/SchoolRegistrationSidebar';
 
 const INDIAN_STATES = [
   'Jammu and Kashmir', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -162,6 +162,15 @@ export default function SchoolRegistrationPage() {
     loadInitialData();
   }, []);
 
+  // Sync checkout order when plan or promo changes in Step 4
+  useEffect(() => {
+    if (step === 4 && formData.plan_id) {
+       createOrder(formData.plan_id, formData.promo_code_id)
+        .then(data => setCheckoutOrder(data))
+        .catch(err => console.error("Order sync failed", err));
+    }
+  }, [step, formData.plan_id, formData.promo_code_id]);
+
   /**
    * Razorpay is loaded via Next.js <Script> component at the bottom
    * for improved reliability and performance.
@@ -224,22 +233,7 @@ export default function SchoolRegistrationPage() {
     }
   };
 
-  const handleProceedToCheckout = async () => {
-    if (!formData.plan_id) {
-      toast.error('Please select a plan first');
-      return;
-    }
-    setCheckoutLoading(true);
-    try {
-      const data = await createOrder(formData.plan_id, formData.promo_code_id);
-      setCheckoutOrder(data);
-      setShowCheckout(true);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to prepare checkout');
-    } finally {
-      setCheckoutLoading(false);
-    }
-  };
+
 
   const handleRazorpayPayment = async () => {
     if (!checkoutOrder) {
@@ -331,7 +325,7 @@ export default function SchoolRegistrationPage() {
       });
 
       setTimeout(() => {
-        router.push('/school-portal/login?registered=true');
+        router.push('/school-admin');
       }, 3500);
     } catch (error: any) {
       toast.error('Registration failed: ' + error.message, { id: toastId });
@@ -388,27 +382,14 @@ export default function SchoolRegistrationPage() {
         )}
       </AnimatePresence>
 
-      <CheckoutOverlay
-        showCheckout={showCheckout}
-        checkoutOrder={checkoutOrder}
-        setShowCheckout={setShowCheckout}
-        appliedPromo={appliedPromo}
-        promoCodeInput={promoCodeInput}
-        setPromoCodeInput={setPromoCodeInput}
-        handleApplyPromo={handleApplyPromo}
-        promoLoading={promoLoading}
-        promoError={promoError}
-        removePromo={removePromo}
-        handleRazorpayPayment={handleRazorpayPayment}
-        loading={loading}
-        setPromoError={setPromoError}
-        settings={settings}
-      />
 
-      <SchoolRegistrationSidebar settings={settings} />
 
-      <div className="flex-1 flex flex-col items-center p-6 lg:p-12 relative z-10 overflow-y-auto">
-        <div className="w-full max-w-xl py-12 my-auto">
+      <AnimatePresence mode="wait">
+        {step < 4 && <SchoolRegistrationSidebar settings={settings} />}
+      </AnimatePresence>
+
+      <div className={`flex-1 flex flex-col items-center p-6 lg:p-12 relative z-10 overflow-y-auto transition-all duration-700 ${step === 4 ? 'w-full' : ''}`}>
+        <div className={`w-full py-12 my-auto transition-all duration-700 ${step === 4 ? 'max-w-4xl' : 'max-w-xl'}`}>
           <Link href="/school-portal" className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-900 mb-10 transition-all font-bold group cursor-pointer">
             <ArrowLeft size={18} className="transition-transform group-hover:-translate-x-1" />
             Back to School Portal
@@ -753,88 +734,179 @@ export default function SchoolRegistrationPage() {
               {step === 4 && paymentPlans.length > 0 && (
                 <motion.div
                   key="step4"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-6"
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  className="space-y-8"
                 >
                   <button type="button" onClick={() => setStep(3)} className="text-sm font-bold text-slate-400 hover:text-slate-900 flex items-center gap-1 cursor-pointer transition-colors mb-4">
-                    <ArrowLeft size={16} /> Previous
+                    <ArrowLeft size={16} /> Back to details
                   </button>
 
-                  <div className="flex items-center gap-2 text-slate-950 text-xs font-black uppercase tracking-widest mb-2">
-                    <CreditCard size={16} />
-                    License Selection
-                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    {/* Plans Selection */}
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-2 text-slate-950 text-xs font-black uppercase tracking-widest">
+                        <CreditCard size={16} />
+                        Select a Plan
+                      </div>
 
-                  {plansLoading ? (
-                    <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-4">
-                      <Loader2 className="animate-spin" size={32} />
-                      <p className="font-bold uppercase tracking-widest text-[10px]">Loading Plans...</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {paymentPlans.map((plan) => (
-                        <div
-                          key={plan.id}
-                          onClick={() => setFormData({ ...formData, plan_id: plan.id })}
-                          className={`relative p-6 rounded-[2rem] border-2 cursor-pointer transition-all ${formData.plan_id === plan.id
-                            ? 'bg-slate-50 border-slate-900 shadow-lg'
-                            : 'bg-white border-slate-100 hover:border-slate-300'
-                            }`}
-                        >
-                          {formData.plan_id === plan.id && (
-                            <div className="absolute top-4 right-4 w-6 h-6 rounded-full bg-slate-950 flex items-center justify-center">
-                              <Check size={14} className="text-white" />
-                            </div>
-                          )}
-                          <div className="flex justify-between items-start mb-4 pr-8">
-                            <div>
-                              <h3 className={`font-black text-xl tracking-tight ${formData.plan_id === plan.id ? 'text-slate-950' : 'text-slate-900'}`}>{plan.name}</h3>
-                              <p className="text-sm text-slate-500 font-medium">{plan.description}</p>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <div className="text-3xl font-black text-slate-900">
-                                {plan.currency === 'INR' ? '\u20B9' : plan.currency}{Number(plan.price).toLocaleString('en-IN')}
+                      {plansLoading ? (
+                        <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-4">
+                          <Loader2 className="animate-spin" size={32} />
+                          <p className="font-bold uppercase tracking-widest text-[10px]">Loading Plans...</p>
+                        </div>
+                      ) : (
+                        <div className="grid gap-4">
+                          {paymentPlans.map((plan) => (
+                            <div
+                              key={plan.id}
+                              onClick={() => {
+                                setFormData({ ...formData, plan_id: plan.id });
+                                setAppliedPromo(null);
+                                setPromoCodeInput('');
+                                setFormData(prev => ({ ...prev, promo_code_id: '' }));
+                              }}
+                              className={`relative p-6 rounded-[2rem] border-2 cursor-pointer transition-all ${formData.plan_id === plan.id
+                                ? 'bg-white border-slate-950 shadow-xl ring-4 ring-slate-950/5 scale-[1.02]'
+                                : 'bg-slate-50/50 border-slate-100 hover:border-slate-300'
+                                }`}
+                            >
+                              {formData.plan_id === plan.id && (
+                                <div className="absolute top-4 right-4 w-6 h-6 rounded-full bg-slate-950 flex items-center justify-center">
+                                  <Check size={14} className="text-white" />
+                                </div>
+                              )}
+                              <div className="flex justify-between items-start mb-2 pr-8">
+                                <div>
+                                  <h3 className={`font-black text-xl tracking-tight ${formData.plan_id === plan.id ? 'text-slate-950' : 'text-slate-900'}`}>{plan.name}</h3>
+                                  <p className="text-xs text-slate-500 font-medium">{plan.description}</p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <div className="text-2xl font-black text-slate-900">
+                                    {plan.currency === 'INR' ? '₹' : plan.currency}{Number(plan.price).toLocaleString('en-IN')}
+                                  </div>
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Yearly</p>
+                                </div>
                               </div>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Per {plan.billing_cycle}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Summary & Payment */}
+                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl p-8 space-y-8 sticky top-0">
+                      <div>
+                        <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
+                          Order Summary
+                        </h3>
+
+                        {checkoutOrder ? (
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="font-bold text-slate-500">Selected Plan</span>
+                              <span className="font-black text-slate-900">{checkoutOrder.plan.name}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="font-bold text-slate-500">Base Price</span>
+                              <span className="font-black text-slate-900">₹{Number(checkoutOrder.original_price).toLocaleString('en-IN')}</span>
+                            </div>
+
+                            <div className="pt-4 border-t border-slate-50 space-y-4">
+                              <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Promo Code</Label>
+                                {!appliedPromo ? (
+                                  <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                      <Tag size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                      <Input
+                                        placeholder="Enter Code"
+                                        value={promoCodeInput}
+                                        onChange={(e) => {
+                                          setPromoCodeInput(e.target.value.toUpperCase());
+                                          setPromoError('');
+                                        }}
+                                        className="h-12 pl-10 bg-slate-50 border-slate-100 rounded-xl font-bold uppercase tracking-widest placeholder:normal-case"
+                                      />
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={handleApplyPromo}
+                                      disabled={promoLoading || !promoCodeInput}
+                                      className="px-4 bg-slate-950 text-white rounded-xl font-black text-xs uppercase tracking-widest disabled:opacity-50"
+                                    >
+                                      {promoLoading ? <Loader2 size={16} className="animate-spin" /> : 'Apply'}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
+                                        <Gift size={14} className="text-white" />
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-black text-emerald-900 tracking-widest">{appliedPromo.code}</p>
+                                        <p className="text-[10px] font-bold text-emerald-600">Applied successfully</p>
+                                      </div>
+                                    </div>
+                                    <button onClick={removePromo} className="text-slate-400 hover:text-rose-500 transition-colors">
+                                      <X size={16} />
+                                    </button>
+                                  </div>
+                                )}
+                                {promoError && <p className="text-[10px] text-rose-500 font-bold ml-1">{promoError}</p>}
+                              </div>
+
+                              {appliedPromo && (
+                                <div className="flex justify-between items-center text-emerald-600">
+                                  <span className="text-sm font-bold flex items-center gap-1.5"><BadgeCheck size={14} /> Discount</span>
+                                  <span className="font-black">- ₹{Number(checkoutOrder.discount_amount).toLocaleString('en-IN')}</span>
+                                </div>
+                              )}
+
+                              <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
+                                <span className="text-lg font-black text-slate-900">Total Payable</span>
+                                <div className="text-right">
+                                  <span className="text-3xl font-black text-slate-950">
+                                    {checkoutOrder.final_amount === 0 ? 'FREE' : `₹${Number(checkoutOrder.final_amount).toLocaleString('en-IN')}`}
+                                  </span>
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Includes all taxes</p>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                          {plan.trial_days > 0 && (
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest rounded-md mb-4">
-                              <CheckCircle2 size={12} /> {plan.trial_days} Day Free Trial
-                            </div>
-                          )}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 pt-4 border-t border-slate-100">
-                            {(Array.isArray(plan.features) ? plan.features : []).slice(0, 4).map((f: any, idx: number) => (
-                              <div key={idx} className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                                <Check size={14} className="text-slate-900" />
-                                {f}
-                              </div>
-                            ))}
+                        ) : (
+                          <div className="py-20 flex flex-col items-center justify-center text-slate-300 gap-4">
+                            <Loader2 className="animate-spin" size={32} />
+                            <p className="font-bold uppercase tracking-widest text-[10px]">Calculating Summary...</p>
+                          </div>
+                        )}
+
+                        <div className="pt-8">
+                          <PrimaryButton
+                            type="button"
+                            onClick={handleRazorpayPayment}
+                            disabled={loading || !checkoutOrder || checkoutLoading}
+                            variant="primary"
+                            className="w-full !h-16 !text-base !rounded-2xl !bg-slate-950 hover:!bg-slate-900 !text-white shadow-2xl shadow-slate-950/20 transition-all font-black uppercase tracking-widest cursor-pointer group"
+                          >
+                            {loading ? (
+                              <><Loader2 className="mr-2 animate-spin" size={20} /> Processing...</>
+                            ) : (
+                              <>
+                                {checkoutOrder?.final_amount === 0 ? 'Complete Registration' : 'Proceed to Payment'}
+                                <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
+                              </>
+                            )}
+                          </PrimaryButton>
+                          <div className="mt-4 flex items-center justify-center gap-4">
+                            <Shield size={14} className="text-slate-400" />
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Secure Payment Gateway • RBI Compliant</p>
                           </div>
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  )}
-
-                  <div className="pt-6">
-                    <PrimaryButton
-                      type="button"
-                      onClick={handleProceedToCheckout}
-                      disabled={checkoutLoading || !formData.plan_id}
-                      variant="primary"
-                      className="w-full !h-16 !text-base !rounded-2xl !bg-slate-950 hover:!bg-slate-900 !text-white shadow-2xl shadow-slate-950/30 transition-all font-black uppercase tracking-widest cursor-pointer group"
-                    >
-                      {checkoutLoading ? (
-                        <><Loader2 className="mr-2 animate-spin" size={20} /> Preparing...</>
-                      ) : (
-                        <><CreditCard size={20} className="mr-2" /> Proceed to Checkout</>
-                      )}
-                    </PrimaryButton>
-                    <p className="text-center text-[11px] text-slate-400 font-bold mt-3 flex items-center justify-center gap-1.5">
-                      <Lock size={11} /> Secured by Razorpay • You can apply promo codes on the next screen
-                    </p>
                   </div>
                 </motion.div>
               )}

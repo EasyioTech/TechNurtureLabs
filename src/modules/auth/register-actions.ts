@@ -293,7 +293,12 @@ export async function registerSchool(formData: any) {
                 );
             }
 
-            return { success: true, school: newSchool };
+            // 5. Fetch the created admin to return it
+            const admin = await tx.query.schoolAdmins.findFirst({
+                where: eq(schoolAdmins.school_id, newSchool.id)
+            });
+
+            return { success: true, school: newSchool, admin: admin };
         });
 
         if (result.success) {
@@ -340,6 +345,10 @@ export async function registerSchool(formData: any) {
                     logger.error('[Registration] Subscription creation failed', { message: err.message });
                 }
             }
+        }
+
+        if (result.success && result.admin) {
+            await createSession({ userId: result.admin.id, userType: 'school_admin' });
         }
 
         return result;
