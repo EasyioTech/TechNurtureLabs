@@ -37,6 +37,7 @@ import {
 } from '../../actions/backup-actions';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { BackupPreviewModal } from '../backup-preview-modal';
 
 
 interface CourseBuilderTabProps {
@@ -83,6 +84,8 @@ export function CourseBuilderTab({
     const [backupType, setBackupType] = useState<'course' | 'lesson'>('course');
     const [restorePoint, setRestorePoint] = useState<{ key: string, timestamp: Date } | null>(null);
     const [showRestorePrompt, setShowRestorePrompt] = useState(false);
+    const [selectedBackupPreview, setSelectedBackupPreview] = useState<any>(null);
+    const [showBackupPreview, setShowBackupPreview] = useState(false);
 
 
     useEffect(() => { setIsDirtyOrder(false); }, [selectedCourse?.id]);
@@ -352,45 +355,36 @@ export function CourseBuilderTab({
                                     </div>
                                 </DialogHeader>
 
-                                <div className="space-y-4 max-h-[50vh] overflow-y-auto no-scrollbar pr-1">
+                                <div className="space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar pr-1">
                                     {(backupType === 'course' ? backups : lessonBackups).length === 0 ? (
-                                        <div className={`py-20 rounded-3xl border-2 border-dashed flex flex-col items-center gap-4 ${isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50'}`}>
+                                        <div className={`py-16 sm:py-20 rounded-2xl sm:rounded-3xl border-2 border-dashed flex flex-col items-center gap-3 sm:gap-4 ${isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50'}`}>
                                             <Database size={32} className="text-slate-700 opacity-20" />
-                                            <p className={`text-xs font-bold ${t.textMuted(isDark)}`}>No backups found in R2 storage</p>
+                                            <p className={`text-xs sm:text-sm font-bold ${t.textMuted(isDark)}`}>No backups found in R2</p>
                                         </div>
                                     ) : (
                                         (backupType === 'course' ? backups : lessonBackups).map((b) => (
-                                            <div key={b.key} className={`p-5 rounded-3xl border-2 flex items-center justify-between transition-all group ${isDark ? 'bg-white/[0.03] border-white/5 hover:border-white/10' : 'bg-slate-50 border-slate-100 hover:border-slate-200 shadow-sm'}`}>
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-inner ${isDark ? 'bg-white/5' : 'bg-white'}`}>
-                                                        {backupType === 'course' ? <Layers size={20} className="text-sky-400" /> : <BookOpen size={20} className="text-orange-400" />}
+                                            <div key={b.key} className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all group cursor-pointer hover:scale-[1.02] ${isDark ? 'bg-white/[0.02] border-white/5 hover:border-white/15 hover:bg-white/[0.04]' : 'bg-slate-50 border-slate-100 hover:border-slate-300 hover:bg-white shadow-sm'}`}
+                                                onClick={() => {
+                                                    setSelectedBackupPreview(b);
+                                                    setShowBackupPreview(true);
+                                                }}
+                                            >
+                                                <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
+                                                    <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 transition-transform ${isDark ? 'bg-white/5 group-hover:bg-white/10' : 'bg-slate-100 group-hover:bg-slate-200'}`}>
+                                                        {backupType === 'course' ? <Layers size={18} className="text-sky-400" /> : <BookOpen size={18} className="text-orange-400" />}
                                                     </div>
-                                                    <div>
-                                                        <p className={`text-sm font-black tracking-tight ${t.textPrimary(isDark)}`}>{b.key.split('/').pop()}</p>
-                                                        <div className="flex items-center gap-3 mt-1">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Clock size={10} className="text-slate-500" />
-                                                                <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>
-                                                                    {new Date(b.lastModified).toLocaleString()}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Badge variant="outline" className={`text-[9px] h-4 font-[900] uppercase tracking-tighter px-1.5 border-0 ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
-                                                                    {(b.size / 1024).toFixed(1)} KB
-                                                                </Badge>
-                                                            </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className={`text-xs sm:text-sm font-bold tracking-tight truncate ${t.textPrimary(isDark)}`}>{b.key.split('/').pop()}</p>
+                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
+                                                            <span className={`text-[9px] sm:text-[10px] font-medium ${t.textMuted(isDark)}`}>
+                                                                {new Date(b.lastModified).toLocaleDateString()}
+                                                            </span>
+                                                            <Badge className={`w-fit text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 ${isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                                                                {(b.size / 1024).toFixed(1)} KB
+                                                            </Badge>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <Button
-                                                    size="sm"
-                                                    disabled={!!isRestoring}
-                                                    onClick={() => backupType === 'course' ? handleRestore(b.key) : handleLessonRestore(b.key)}
-                                                    className={`h-11 px-6 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:scale-105 active:scale-95 transition-all
-                                                        ${isRestoring === b.key ? 'bg-slate-500' : (isDark ? 'bg-emerald-500/80 text-white hover:bg-emerald-500' : 'bg-slate-900 text-white hover:bg-slate-800')}`}
-                                                >
-                                                    {isRestoring === b.key ? <RefreshCw size={14} className="animate-spin" /> : 'Deploy Restore'}
-                                                </Button>
                                             </div>
                                         ))
                                     )}
@@ -407,6 +401,25 @@ export function CourseBuilderTab({
                              </div>
                         </DialogContent>
                     </Dialog>
+
+                    {/* Backup Preview Modal */}
+                    <BackupPreviewModal
+                        isOpen={showBackupPreview}
+                        onClose={() => setShowBackupPreview(false)}
+                        backup={selectedBackupPreview}
+                        backupType={backupType}
+                        isRestoring={isRestoring === selectedBackupPreview?.key}
+                        onRestore={() => {
+                            if (selectedBackupPreview) {
+                                if (backupType === 'course') {
+                                    handleRestore(selectedBackupPreview.key);
+                                } else {
+                                    handleLessonRestore(selectedBackupPreview.key);
+                                }
+                                setShowBackupPreview(false);
+                            }
+                        }}
+                    />
                 </div>
             </div>
 
