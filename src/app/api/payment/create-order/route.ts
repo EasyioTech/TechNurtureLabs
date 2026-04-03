@@ -203,11 +203,16 @@ export async function POST(req: NextRequest) {
                 plan: { id: plan.id, name: plan.name, currency: plan.currency },
             });
         } catch (rpError: any) {
-            logger.error('[Create Order] Razorpay API error', {
-                error: rpError?.message || String(rpError),
+            const errorDetails = {
+                message: rpError?.message || 'Unknown error',
                 code: rpError?.code,
-                stack: rpError?.stack?.split('\n')[0]
-            });
+                status: rpError?.statusCode || rpError?.status,
+                description: rpError?.description,
+                reason: rpError?.reason,
+                fullError: JSON.stringify(rpError).substring(0, 200)
+            };
+            logger.error('[Create Order] Razorpay API error', errorDetails);
+            console.error('[Create Order] Razorpay full error:', errorDetails);
             return NextResponse.json(
                 { error: 'Failed to create payment order. Please try again.' },
                 { status: 502 }
