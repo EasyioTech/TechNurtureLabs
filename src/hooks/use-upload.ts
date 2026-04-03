@@ -14,6 +14,7 @@ export function useUpload(options?: UploadOptions) {
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<any>(null);
     const xhrRef = useRef<XMLHttpRequest | null>(null);
+    const lastFileRef = useRef<{ file: File; additionalData: Record<string, string> } | null>(null);
 
     // Stable ID for this upload instance
     const uploadId = useMemo(() => options?.id || uuidv4(), [options?.id]);
@@ -35,13 +36,28 @@ export function useUpload(options?: UploadOptions) {
         uploadStore.removeTask(uploadId);
     }, [uploadId]);
 
+    // Retry the last failed upload
+    const retry = useCallback(async () => {
+        if (!lastFileRef.current) {
+            setError('No previous upload to retry');
+            return;
+        }
+        const { file, additionalData } = lastFileRef.current;
+        // Clear error and retry
+        setError(null);
+        return upload(file, additionalData);
+    }, [uploadId]);
+
     const upload = useCallback(async (file: File, additionalData: Record<string, string> = {}) => {
         setIsUploading(true);
         setProgress(0);
         setError(null);
         setResult(null);
 
-        // Register with global store
+        // Store for retry
+        lastFileRef.current = { file, additionalData };
+
+        // Register with global store — onReset is now retry, not just dismiss
         uploadStore.addTask({
             id: uploadId,
             fileName: file.name,
@@ -49,7 +65,7 @@ export function useUpload(options?: UploadOptions) {
             isUploading: true,
             error: null,
             onCancel: abort,
-            onReset: reset
+            onReset: undefined // Will be set to retry after first error
         });
 
         const formData = new FormData();
@@ -133,7 +149,7 @@ export function useUpload(options?: UploadOptions) {
                                 const msg = regErr.message || 'Failed to register uploaded asset';
                                 setError(msg);
                                 setIsUploading(false);
-                                uploadStore.updateTask(uploadId, { isUploading: false, error: msg });
+                                uploadStore.updateTask(uploadId, { isUploading: false, error: msg, onReset: retry });
                                 options?.onError?.(msg);
                                 reject(regErr);
                             }
@@ -141,7 +157,7 @@ export function useUpload(options?: UploadOptions) {
                              const errorMessage = `Upload failed: ${xhr.statusText || 'Gateway Error'}`;
                              setError(errorMessage);
                              setIsUploading(false);
-                             uploadStore.updateTask(uploadId, { isUploading: false, error: errorMessage });
+                             uploadStore.updateTask(uploadId, { isUploading: false, error: errorMessage, onReset: retry });
                              options?.onError?.(errorMessage);
                              reject(new Error(errorMessage));
                         }
@@ -151,7 +167,7 @@ export function useUpload(options?: UploadOptions) {
                         setIsUploading(false);
                         const errorMessage = 'Network error during upload';
                         setError(errorMessage);
-                        uploadStore.updateTask(uploadId, { isUploading: false, error: errorMessage });
+                        uploadStore.updateTask(uploadId, { isUploading: false, error: errorMessage, onReset: retry });
                         options?.onError?.(errorMessage);
                         reject(new Error(errorMessage));
                     });
@@ -212,7 +228,7 @@ export function useUpload(options?: UploadOptions) {
                         // ignore parse error, use default
                     }
                     setError(errorMessage);
-                    uploadStore.updateTask(uploadId, { isUploading: false, error: errorMessage });
+                    uploadStore.updateTask(uploadId, { isUploading: false, error: errorMessage, onReset: retry });
                     options?.onError?.(errorMessage);
                     reject(new Error(errorMessage));
                 }
@@ -222,7 +238,7 @@ export function useUpload(options?: UploadOptions) {
                 setIsUploading(false);
                 const errorMessage = 'Network error occurred';
                 setError(errorMessage);
-                uploadStore.updateTask(uploadId, { isUploading: false, error: errorMessage });
+                uploadStore.updateTask(uploadId, { isUploading: false, error: errorMessage, onReset: retry });
                 options?.onError?.(errorMessage);
                 reject(new Error(errorMessage));
             });
@@ -236,7 +252,7 @@ export function useUpload(options?: UploadOptions) {
             xhr.open('POST', '/api/upload');
             xhr.send(formData);
         });
-    }, [options, uploadId, abort, reset]);
+    }, [options, uploadId, abort, reset, retry]);
 
     return {
         upload,
