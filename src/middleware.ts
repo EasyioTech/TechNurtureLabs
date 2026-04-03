@@ -147,6 +147,7 @@ export async function middleware(request: NextRequest) {
   const isCsrfExempt = url.pathname.startsWith('/api/auth/') ||
                        url.pathname === '/api/admin/login' ||
                        url.pathname === '/api/admin/register' ||
+                       url.pathname === '/api/media/stream-upload' ||
                        url.pathname === '/api/payment/verify' ||
                        url.pathname === '/api/payment/create-order';
 
