@@ -15,6 +15,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     metadataBase: new URL(siteUrl),
+    verification: {
+      google: "nHmVx6LzIXAO7EfpHmrxWoArW3oF0djeJOfxo7EyCgI",
+    },
     title: {
       default: `${platformName} — LMS for Students | Online Learning Platform India`,
       template: `%s | ${platformName}`,
