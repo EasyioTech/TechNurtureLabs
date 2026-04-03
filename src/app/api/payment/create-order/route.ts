@@ -24,6 +24,12 @@ const razorpay = (!isBuild && serverEnv.RAZORPAY_KEY_ID && serverEnv.RAZORPAY_KE
     key_secret: serverEnv.RAZORPAY_KEY_SECRET,
 }) : null;
 
+if (!isBuild) {
+    if (!serverEnv.RAZORPAY_KEY_ID) logger.warn('[Create Order] RAZORPAY_KEY_ID not configured');
+    if (!serverEnv.RAZORPAY_KEY_SECRET) logger.warn('[Create Order] RAZORPAY_KEY_SECRET not configured');
+    if (razorpay) logger.info('[Create Order] Razorpay initialized successfully');
+}
+
 export async function POST(req: NextRequest) {
     try {
         // SECURITY: Rate-limit by IP — this endpoint is used during registration (pre-auth) and in-portal
@@ -198,8 +204,9 @@ export async function POST(req: NextRequest) {
             });
         } catch (rpError: any) {
             logger.error('[Create Order] Razorpay API error', {
-                error: rpError.message,
-                code: rpError.code
+                error: rpError?.message || String(rpError),
+                code: rpError?.code,
+                stack: rpError?.stack?.split('\n')[0]
             });
             return NextResponse.json(
                 { error: 'Failed to create payment order. Please try again.' },
