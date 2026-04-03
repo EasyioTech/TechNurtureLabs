@@ -38,7 +38,7 @@ export function computeMediaUrl(asset: {
     if (asset.storage_type === 'r2') {
         const workerUrl = process.env.CLOUDFLARE_WORKER_URL;
         const publicDomain = process.env.CLOUDFLARE_PUBLIC_DOMAIN;
-        
+
         if (workerUrl && isVideo) {
             // High-performance HLS Gateway
             const base = workerUrl.startsWith('http') ? workerUrl : `https://${workerUrl}`;
@@ -52,15 +52,16 @@ export function computeMediaUrl(asset: {
             if (r2Base) {
                 finalUrl = `${r2Base.replace(/\/$/, '')}/${path}`;
             } else {
-                // Fallback to local proxy
+                // Default: use server-side proxy for R2 assets (not public)
                 finalUrl = `/api/media/r2/${path}`;
             }
         }
-    }
-
-    // 3. Fallback to Local
-    if (!finalUrl) {
-        // Use relative URL to avoid CORS/Host mismatch issues in production
+    } else if (asset.storage_type === 'local') {
+        // Local storage: use API proxy to serve from disk
+        finalUrl = `/api/media/${path}`;
+    } else {
+        // Unknown storage type — fail safely
+        console.warn(`[Media] Unknown storage type: ${asset.storage_type}`);
         finalUrl = `/api/media/${path}`;
     }
 

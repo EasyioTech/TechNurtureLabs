@@ -369,7 +369,7 @@ export async function uploadFile(
 
     // ── Attempt R2 upload ──────────────────────────────────────────────
     const shouldTryR2 = isCloudflareConfigured && s3Client && preferredStorage !== 'local';
-    
+
     if (shouldTryR2 && s3Client) {
         const key = `${folder}/${fileName}`;
         try {
@@ -389,11 +389,25 @@ export async function uploadFile(
                 fileSize,
                 mimeType,
             };
-        } catch (r2Error) {
-            // R2 upload failed — warn and fall through to local
-            console.warn('[Storage] R2 upload failed for key:', key);
-            console.warn('[Storage] Error details:', (r2Error as any)?.message || r2Error);
-            console.warn('[Storage] Falling back to local storage...');
+        } catch (r2Error: any) {
+            const isProduction = process.env.NODE_ENV === 'production';
+            const errorMsg = `R2 upload failed: ${(r2Error as any)?.message || r2Error}`;
+            const errorCode = r2Error?.$metadata?.httpStatusCode;
+
+            console.error('[Storage] R2 Error Details:', {
+                message: (r2Error as any)?.message,
+                code: errorCode,
+                statusText: r2Error?.$metadata?.httpStatusText
+            });
+
+            // In production, ALWAYS fail if R2 is configured
+            if (isProduction && isCloudflareConfigured) {
+                throw r2Error;
+            }
+
+            // In development, warn and fall back to local storage
+            console.warn('[Storage] R2 unavailable, falling back to local storage');
+            console.warn('[Storage] Error was:', errorMsg);
         }
     }
 

@@ -45,7 +45,21 @@ export async function POST(req: NextRequest) {
         }
 
         if (!isCloudflareConfigured || !s3Client) {
-            return new NextResponse('R2 not configured', { status: 503 });
+            return new NextResponse(JSON.stringify({ error: 'R2 storage not configured' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+        }
+
+        // CRITICAL: Verify R2 connectivity by attempting a HEAD request to bucket
+        try {
+            const { HeadBucketCommand } = await import('@aws-sdk/client-s3');
+            const headCmd = new HeadBucketCommand({ Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME });
+            await s3Client.send(headCmd);
+        } catch (connErr: any) {
+            const msg = `R2 connectivity failed: ${connErr?.message || 'Unknown error'}`;
+            console.error('[Presign]', msg);
+            return new NextResponse(JSON.stringify({ error: msg, code: 'R2_CONNECTIVITY_FAILED' }), {
+                status: 503,
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
 
         const ext = path.extname(fileName);
@@ -67,7 +81,16 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (err: any) {
-        console.error('[Presign Error]:', err);
-        return new NextResponse('Internal Server Error', { status: 500 });
+        const errorMsg = err?.message || 'Internal Server Error';
+        console.error('[Presign] Error:', {
+            message: errorMsg,
+            code: err?.$metadata?.httpStatusCode || err?.code,
+            name: err?.name
+        });
+        return new NextResponse(JSON.stringify({
+            error: errorMsg,
+            code: err?.$metadata?.httpStatusCode || err?.code,
+            details: process.env.NODE_ENV === 'development' ? err?.message : undefined
+        }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 }

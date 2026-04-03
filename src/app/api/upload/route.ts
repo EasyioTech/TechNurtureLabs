@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadFile, getAssetType } from '@/lib/storage';
+import { uploadFile, getAssetType, s3Client, isCloudflareConfigured } from '@/lib/storage';
 import { db } from '@/lib/db';
 import { mediaAssets } from '@/db/schema';
 import { verifySession } from '@/lib/auth';
@@ -19,6 +19,21 @@ const ALLOWED_MIME_TYPES = new Set([
     'audio/mpeg', 'audio/ogg', 'audio/wav',
 ]);
 
+async function validateR2Connectivity(): Promise<{ ok: boolean; error?: string }> {
+    if (!isCloudflareConfigured || !s3Client) {
+        return { ok: false, error: 'R2 not configured' };
+    }
+    try {
+        const { HeadBucketCommand } = await import('@aws-sdk/client-s3');
+        const { serverEnv } = await import('@/lib/env.server');
+        const headCmd = new HeadBucketCommand({ Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME });
+        await s3Client.send(headCmd);
+        return { ok: true };
+    } catch (err: any) {
+        return { ok: false, error: `R2 unavailable: ${err?.message}` };
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
         // ─── STEP 1: AUTH FIRST — before touching the body ──────────────────────
@@ -32,6 +47,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
         uploadedBy = session.userId;
+
+        // ─── STEP 1a: VALIDATE R2 EARLY (if in production) ─────────────────────────
+        // In production only, check R2 connectivity upfront
+        if (process.env.NODE_ENV === 'production' && isCloudflareConfigured) {
+            const r2Status = await validateR2Connectivity();
+            if (!r2Status.ok) {
+                console.error('[Upload] R2 unavailable in production:', r2Status.error);
+                return NextResponse.json({ error: r2Status.error, code: 'STORAGE_UNAVAILABLE' }, { status: 503 });
+            }
+        }
 
         // Dynamic Cap based on role
         const maxSizeBytes = isAdmin ? 2048 * 1024 * 1024 : 20 * 1024 * 1024; // 2GB vs 20MB
@@ -149,13 +174,20 @@ export async function POST(request: NextRequest) {
         response.headers.set('Pragma', 'no-cache');
         return response;
     } catch (error: any) {
-        console.error('[Upload] CRITICAL ERROR:', {
-            message: error.message,
-            stack: error.stack,
-            error
-        });
+        const errorDetails = {
+            message: error?.message || String(error),
+            code: error?.code || error?.$metadata?.httpStatusCode,
+            name: error?.name,
+            statusCode: error?.statusCode,
+        };
+        console.error('[Upload] Error:', errorDetails);
+        console.error('[Upload] Full error:', error);
+
+        // Return detailed error to client for debugging
         return NextResponse.json({
-            error: 'Failed to upload file'
+            error: errorDetails.message || 'Failed to upload file',
+            code: errorDetails.code,
+            details: process.env.NODE_ENV === 'development' ? errorDetails : undefined
         }, { status: 500 });
     }
 }

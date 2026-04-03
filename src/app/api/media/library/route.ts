@@ -49,10 +49,24 @@ export async function GET(request: NextRequest) {
 
         const total = Number(countResult[0]?.count || 0);
         const { computeMediaUrl } = await import('@/lib/media');
+        const { s3Client, isCloudflareConfigured } = await import('@/lib/storage');
 
-        const mapped = assets.map(asset => ({
-            ...asset,
-            file_url: computeMediaUrl(asset)
+        // Verify R2 assets actually exist in storage
+        const mapped = await Promise.all(assets.map(async (asset) => {
+            const url = computeMediaUrl(asset);
+            // For R2 assets, verify they exist
+            if (asset.storage_type === 'r2' && isCloudflareConfigured && s3Client) {
+                try {
+                    const { HeadObjectCommand } = await import('@aws-sdk/client-s3');
+                    const { serverEnv } = await import('@/lib/env.server');
+                    const cmd = new HeadObjectCommand({ Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME, Key: asset.file_path });
+                    await s3Client.send(cmd);
+                } catch (err: any) {
+                    // Asset claims to be in R2 but doesn't exist
+                    console.warn(`[Media Library] R2 asset missing: ${asset.file_path}`);
+                }
+            }
+            return { ...asset, file_url: url };
         }));
 
         // CRITICAL: Disable all caching on media library endpoint

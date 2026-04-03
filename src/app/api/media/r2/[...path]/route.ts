@@ -11,9 +11,10 @@ export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ path: string[] }> }
 ) {
+    let key: string = '';
     try {
         const { path: filePathParams } = await params;
-        const key = filePathParams.join('/');
+        key = filePathParams.join('/');
         const ext = path.extname(key).toLowerCase();
         const isHls = ext === '.m3u8' || ext === '.ts';
 
@@ -150,7 +151,15 @@ export async function GET(
         if (error.name === 'NoSuchKey') {
             return new NextResponse('File not found', { status: 404 });
         }
-        console.error('[R2 Proxy] Serving error:', error);
+        console.error('[R2 Proxy] Error:', {
+            message: error?.message,
+            code: error?.$metadata?.httpStatusCode || error?.code,
+            key: key
+        });
+        // If it's an auth error (403), indicate R2 credentials issue
+        if (error?.$metadata?.httpStatusCode === 403) {
+            return new NextResponse('Access denied: R2 credentials invalid or insufficient permissions', { status: 403 });
+        }
         return new NextResponse('Internal Server Error', { status: 500 });
     }
 }
