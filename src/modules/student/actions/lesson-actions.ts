@@ -5,7 +5,7 @@ import { verifySession } from '@/lib/auth';
 import {
     students, schoolAdmins, superAdmins, lessons, lessonProgress,
     quizzes, quizQuestions, quizOptions, auditLogs, xpEvents, enrollments,
-    quizAttempts, quizAttemptAnswers
+    quizAttempts, quizAttemptAnswers, academicSessions
 } from '@/db/schema';
 import { eq, and, asc, isNotNull, sql } from 'drizzle-orm';
 import { awardXP, incrementProgressCounter, handleStudentEngagement } from '@/lib/gamification';
@@ -16,11 +16,17 @@ import { QuizData, Question } from '../types';
 
 /**
  * Fetch detailed lesson data including quiz and user progress
+ * SECURITY: Validates student belongs to lesson's school and has active subscription
  */
 export async function getLessonData(lessonId: string) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
+
+    // SECURITY FIX: Only students can access lesson data
+    if (session.userType !== 'student') {
+        throw new Error('Unauthorized');
+    }
 
     // SCALE BREAKER A: Optimized lesson fetch using deep Drizzle relations.
     // This replaces 5 sequential queries (lesson, asset, progress, quiz, questions, options)
@@ -49,8 +55,20 @@ export async function getLessonData(lessonId: string) {
     if (!lesson) return null;
 
     // 1. Enrollment check (remains as is for logic isolation)
+    // SECURITY: ensureEnrollment also validates school subscription
     const enrollment = await ensureEnrollment(lesson.course_id);
     if (!enrollment) return null;
+
+    // SECURITY FIX: Verify student's school matches lesson's school
+    // Fetch student's school_id once to avoid repeated DB lookups
+    const student = await db.query.students.findFirst({
+        where: eq(students.id, userId),
+        columns: { school_id: true }
+    });
+
+    if (!student || student.school_id !== enrollment.school_id) {
+        throw new Error('Unauthorized: Student not in lesson school');
+    }
 
     // 2. Media Logic
     const useHls = lesson.content_type === 'video' && 

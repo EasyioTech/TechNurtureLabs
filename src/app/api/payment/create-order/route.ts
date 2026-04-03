@@ -72,6 +72,13 @@ export async function POST(req: NextRequest) {
         }
 
         let finalAmount = Number(plan.price); // price in INR
+
+        // SECURITY FIX: Validate plan price is positive
+        if (!Number.isFinite(finalAmount) || finalAmount < 0) {
+            logger.error('[Create Order] Invalid plan price', { plan_id, price: plan.price });
+            return NextResponse.json({ error: 'Invalid plan price' }, { status: 400 });
+        }
+
         let discountAmount = 0;
         let promoData = null;
 

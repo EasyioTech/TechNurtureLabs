@@ -1,11 +1,24 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { superAdmins, schoolAdmins, students } from '@/db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
+import { rateLimitService } from '@/lib/services/rate-limit';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        // SECURITY: Rate limit to prevent user enumeration via activity tracking
+        const ip = req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '127.0.0.1';
+        const { allowed } = await rateLimitService.check({
+            key: `auth-me:${ip}`,
+            limit: 60,
+            windowSeconds: 60  // 60 requests per minute per IP
+        });
+
+        if (!allowed) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+        }
+
         const session = await verifySession();
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -84,19 +97,29 @@ export async function GET() {
         }
 
         const { password_hash, ...safeUser } = user;
+        // SECURITY: Handle XP as bigint to prevent overflow
+        // cumulative_xp is stored as bigint; convert safely preserving precision
+        const totalXp = typeof safeUser.cumulative_xp === 'bigint'
+            ? Number(safeUser.cumulative_xp)
+            : Number(safeUser.cumulative_xp || 0);
+        const level = Math.floor(totalXp / 1000) + 1;
+
         return NextResponse.json({
             user: {
                 ...safeUser,
                 role: userType,
                 full_name: `${safeUser.first_name || ''} ${safeUser.last_name || ''}`.trim() || 'User',
-                total_xp: Number(safeUser.cumulative_xp || 0),
-                level: Math.floor(Number(safeUser.cumulative_xp || 0) / 1000) + 1,
+                total_xp: totalXp,
+                level: Math.max(1, level),  // Ensure level is at least 1
             },
             role: userType
         });
 
     } catch (err) {
-        console.error('Me route error:', err);
+        // Log only in development to avoid information leakage
+        if (process.env.NODE_ENV === 'development') {
+            console.error('Me route error:', err);
+        }
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
 }

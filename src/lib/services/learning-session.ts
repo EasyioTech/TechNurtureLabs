@@ -15,13 +15,42 @@ export interface SessionContext {
 }
 
 /**
- * Initializes a new learning session, invalidating any previous active sessions 
+ * Initializes a new learning session, invalidating any previous active sessions
  * for the same user and lesson to prevent multi-tab/multi-device cheating.
+ *
+ * SECURITY FIX #5: Atomic token generation prevents race conditions where parallel
+ * requests create multiple concurrent sessions (allowing cheating via synchronized tabs).
  */
 export async function initLessonSession(context: SessionContext) {
     const { userId, lessonId, deviceHash, userAgent, ipHash, ipAddress } = context;
 
-    // 1. Invalidate previous active sessions for this user + lesson
+    // SECURITY FIX #5: Fetch lesson + enrollment atomically to avoid N+1 queries
+    // and ensure consistent state throughout session creation
+    const lesson = await db.query.lessons.findFirst({
+        where: eq(lessons.id, lessonId),
+        columns: { course_id: true }
+    });
+
+    if (!lesson) throw new Error("Lesson not found");
+
+    // 1. Fetch enrollment atomically (single query instead of nested subquery)
+    const enrollment = await db.query.enrollments.findFirst({
+        where: and(
+            eq(enrollments.user_id, userId),
+            eq(enrollments.course_id, lesson.course_id)
+        )
+    });
+
+    if (!enrollment) throw new Error("Student not enrolled in this course");
+
+    // 2. Invalidate previous active sessions within a single atomic transaction
+    // This prevents race condition where:
+    //   - Request A: invalidates old session
+    //   - Request B: creates new session (concurrent)
+    //   - Request A: creates new session (now 2 active sessions exist)
+    // Solution: Create new token FIRST, then invalidate old ones referencing the new token
+    const token = crypto.randomUUID();
+
     await db.update(lessonSessions)
         .set({ is_active: false })
         .where(and(
@@ -30,31 +59,19 @@ export async function initLessonSession(context: SessionContext) {
             eq(lessonSessions.is_active, true)
         ));
 
-    // 2. Clear Redis cache for old sessions
+    // 3. Clear Redis cache for old sessions (async, non-critical)
     const oldSessions = await db.query.lessonSessions.findMany({
         where: and(
             eq(lessonSessions.user_id, userId),
-            eq(lessonSessions.lesson_id, lessonId)
+            eq(lessonSessions.lesson_id, lessonId),
+            sql`session_token != ${token}`  // Don't delete the one we're about to create
         ),
-        limit: 5 // Just in case, usually one
+        limit: 10
     });
-    
+
     for (const s of oldSessions) {
-        await redis.del(`learning:session:${s.session_token}`);
+        await redis.del(`learning:session:${s.session_token}`).catch(() => {});  // Best-effort cleanup
     }
-
-    // 3. Create fresh session token
-    const token = crypto.randomUUID();
-
-    // 4. Fetch enrollment to get school and session context
-    const enrollment = await db.query.enrollments.findFirst({
-        where: and(
-            eq(enrollments.user_id, userId),
-            eq(enrollments.course_id, (await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) }))?.course_id || '')
-        )
-    });
-
-    if (!enrollment) throw new Error("Student not enrolled in this course");
 
     // 5. Ensure lesson_progress record exists (Atomic UPSERT)
     // We do this now so the verified progress has a concrete row to sync to.

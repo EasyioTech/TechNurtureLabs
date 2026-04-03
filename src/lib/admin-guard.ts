@@ -3,7 +3,7 @@
 import { verifySession } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { schoolAdmins, students, classes } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 /**
  * Auth guard for super-admin server actions.
@@ -43,12 +43,15 @@ export async function requireSchoolAdmin(requestedSchoolId: string) {
     }
 
     // CRITICAL: Verify the admin actually belongs to this school
-    // This is the missing check that allows cross-school data access
+    // This check MUST happen on every admin action to prevent cross-school data breaches.
+    // Schema enforces foreign key, but we validate in code for explicit auth layer.
     const admin = await db.query.schoolAdmins.findFirst({
         where: and(
             eq(schoolAdmins.id, session.userId),
             eq(schoolAdmins.school_id, requestedSchoolId),
-            eq(schoolAdmins.is_active, true)
+            eq(schoolAdmins.is_active, true),
+            // SECURITY: Also check not soft-deleted
+            sql`${schoolAdmins.deleted_at} IS NULL`
         )
     });
 

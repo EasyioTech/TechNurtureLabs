@@ -87,7 +87,10 @@ export async function POST(request: NextRequest) {
         const { password_hash, ...userData } = user;
         return NextResponse.json({ success: true, user: { ...userData, role: 'student' } });
     } catch (error: any) {
-        console.error('Student login error:', error);
+        // Log only in development to avoid information leakage
+        if (process.env.NODE_ENV === 'development') {
+            console.error('Student login error:', error);
+        }
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
