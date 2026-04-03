@@ -26,7 +26,6 @@ import {
 } from 'lucide-react';
 import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { SchoolRegistrationSidebar } from '@/components/registration/SchoolRegistrationSidebar';
-import { SchoolRegistrationSidebar } from '@/components/registration/SchoolRegistrationSidebar';
 
 const INDIAN_STATES = [
   'Jammu and Kashmir', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
