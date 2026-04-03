@@ -113,6 +113,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Google Search Console Verification */}
+        <meta name="google-site-verification" content="nHmVx6LzIXAO7EfpHmrxWoArW3oF0djeJOfxo7EyCgI" />
         {/* PWA meta — must be in <head>, not expressible via Next.js Metadata API */}
         <meta name="theme-color" content="#4f46e5" />
         <meta name="mobile-web-app-capable" content="yes" />
