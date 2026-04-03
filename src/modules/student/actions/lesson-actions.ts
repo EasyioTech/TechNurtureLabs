@@ -451,9 +451,62 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
 export async function getQuizData(quizId: string): Promise<QuizData> {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
+    if (session.userType !== 'student') {
+        throw new Error('Only students can access quiz content');
+    }
     const userId = session.userId;
 
+    // SECURITY FIX #6A: Pre-fetch lesson + course for authorization checks
+    // This prevents N+1 queries and centralizes authorization logic
     const quiz = await db.query.quizzes.findFirst({
+        where: eq(quizzes.id, quizId),
+        with: {
+            lesson: {
+                columns: { id: true, course_id: true, content_type: true }
+            }
+        }
+    });
+
+    if (!quiz || !quiz.lesson) {
+        throw new Error('Quiz not found or invalid');
+    }
+
+    // SECURITY FIX #6B: Verify enrollment before anything else
+    const enrollment = await ensureEnrollment(quiz.lesson.course_id);
+    if (!enrollment) {
+        throw new Error('Enrollment required to access assessment content.');
+    }
+
+    // SECURITY FIX #6C: Verify student belongs to enrollment's school
+    const student = await db.query.students.findFirst({
+        where: and(eq(students.id, userId), eq(students.is_active, true)),
+        columns: { school_id: true }
+    });
+
+    if (!student || student.school_id !== enrollment.school_id) {
+        throw new Error('Unauthorized: Cross-school access denied');
+    }
+
+    // SECURITY FIX #6D: Check quiz hasn't been completed (prevent retakes beyond limit)
+    const attemptCount = await db.query.quizAttempts.findMany({
+        where: and(
+            eq(quizAttempts.quiz_id, quizId),
+            eq(quizAttempts.user_id, userId)
+        ),
+        columns: { id: true }
+    });
+
+    if (quiz.max_attempts && attemptCount.length >= quiz.max_attempts) {
+        throw new Error(`Maximum attempts (${quiz.max_attempts}) exceeded for this assessment`);
+    }
+
+    // SECURITY FIX #6E: Verify lesson content type allows quiz access
+    if (quiz.lesson.content_type !== 'quiz') {
+        throw new Error('This lesson does not contain a quiz');
+    }
+
+    // SECURITY FIX #6F: Now fetch full quiz data with all questions/options
+    const fullQuiz = await db.query.quizzes.findFirst({
         where: eq(quizzes.id, quizId),
         with: {
             questions: {
@@ -467,26 +520,28 @@ export async function getQuizData(quizId: string): Promise<QuizData> {
         }
     });
 
-    if (!quiz) throw new Error('Quiz not found');
-
-    // SECURITY: Verify enrollment before leaking questions
-    const enrollment = await ensureEnrollment(quiz.course_id);
-    if (!enrollment) throw new Error('Enrollment required to access assessment content.');
+    if (!fullQuiz) throw new Error('Quiz data unavailable');
 
     return {
         quiz: {
-            id: quiz.id,
-            title: quiz.title,
-            time_limit_secs: quiz.time_limit_secs as number | null,
-            pass_percentage: Number(quiz.pass_percentage),
-            max_attempts: quiz.max_attempts,
-            xp_reward: quiz.xp_reward,
+            id: fullQuiz.id,
+            title: fullQuiz.title,
+            time_limit_secs: fullQuiz.time_limit_secs as number | null,
+            pass_percentage: Number(fullQuiz.pass_percentage),
+            max_attempts: fullQuiz.max_attempts,
+            xp_reward: fullQuiz.xp_reward,
         },
-        questions: quiz.questions.map(q => ({
+        questions: fullQuiz.questions.map(q => ({
             id: q.id,
             text: q.question_text,
             question_type: q.question_type as string,
-            options: q.options.map(opt => ({ id: opt.id, option_text: opt.option_text })),
+            // SECURITY: DO NOT leak correct answers in question options
+            // Only return option IDs and text; answers are validated server-side
+            options: q.options.map(opt => ({
+                id: opt.id,
+                option_text: opt.option_text,
+                // Intentionally omit: is_correct, feedback (these stay server-side)
+            })),
             points: q.points,
             time_limit_secs: q.time_limit_secs as number | null,
         })) as Question[]

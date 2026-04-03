@@ -423,24 +423,44 @@ export async function finalizeAndCompleteLesson(lessonId: string, token: string)
         console.error("Post-completion gamification failed:", e);
     }
 
-    // 7. CRITICAL FIX #4: Multi-Level Cache Invalidation
+    // 7. CRITICAL FIX #4: Multi-Level Cache Invalidation (Expanded)
     // Use centralized cacheService to invalidate tags (more reliable than raw redis.del)
+    // CRITICAL FIX #8: Invalidate ALL affected caches including school/global leaderboards
     try {
         const { cacheService } = await import('@/lib/cache');
 
-        // Invalidate all user-specific caches affected by lesson completion
+        // User-specific caches (immediate impact on student's view)
         await cacheService.invalidateTag(`user:${userId}:progress`);
-        await cacheService.invalidateTag(`user:${userId}:leaderboard`);
         await cacheService.invalidateTag(`user:${userId}:achievements`);
         await cacheService.invalidateTag(`user:${userId}:xp`);
         await cacheService.invalidateTag(`user:${userId}:stats`);
         await cacheService.invalidateTag(`user:${userId}:dashboard`);
 
-        // Invalidate course-level leaderboard
+        // Course-level caches (affects all students in course)
+        await cacheService.invalidateTag(`course:${lesson.course_id}:progress`);
         await cacheService.invalidateTag(`course:${lesson.course_id}:leaderboard`);
+        await cacheService.invalidateTag(`course:${lesson.course_id}:stats`);
+
+        // School-level caches (affects school-wide rankings)
+        await cacheService.invalidateTag(`school:${enrollment.school_id}:leaderboard`);
+        await cacheService.invalidateTag(`school:${enrollment.school_id}:xp_rankings`);
+        await cacheService.invalidateTag(`school:${enrollment.school_id}:dashboard`);
+        await cacheService.invalidateTag(`school:${enrollment.school_id}:analytics`);
+
+        // Global caches (affects system-wide rankings)
+        await cacheService.invalidateTag(`global:leaderboard`);
+        await cacheService.invalidateTag(`global:xp_rankings`);
+        await cacheService.invalidateTag(`global:stats`);
+
+        // Academic session caches (affects cohort-level data)
+        if (enrollment.session_id) {
+            await cacheService.invalidateTag(`session:${enrollment.session_id}:leaderboard`);
+            await cacheService.invalidateTag(`session:${enrollment.session_id}:progress`);
+        }
     } catch (err) {
         console.error("[Learning Complete] Cache invalidation error:", err);
         // Non-fatal: Stale cache is better than failed completion
+        // But log for monitoring - cache failures affect UX
     }
 
     // 8. Invalidate secure session

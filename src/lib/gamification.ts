@@ -13,17 +13,43 @@ const LB_CACHE_TTL = 604800;    // 7 days (Leaderboards are lazy-synced on fetch
  */
 
 export async function awardXP(
-    userId: string, 
-    xp: number, 
-    schoolId?: string | null, 
+    userId: string,
+    xp: number,
+    schoolId?: string | null,
     userType: 'student' | 'school_admin' | 'super_admin' = 'student',
     options?: { skipEmit?: boolean }
 ) {
     try {
+        // SECURITY FIX #9: Validate XP amount is positive and reasonable
+        if (!Number.isFinite(xp) || xp < 0) {
+            console.error('[XP Award] Invalid XP amount:', { userId, xp });
+            return;
+        }
+
+        // SECURITY FIX #9: Prevent XP injection attacks via unreasonable amounts
+        // Max reasonable XP per action: 10,000 (100 lessons worth)
+        if (xp > 10000) {
+            console.error('[XP Award] Unreasonably large XP amount:', { userId, xp, schoolId });
+            return;
+        }
+
         // 1. Update database based on user type
         let table: any = students;
         if (userType === 'school_admin') table = schoolAdmins;
         if (userType === 'super_admin') table = superAdmins;
+
+        // SECURITY FIX #9: For students, verify school_id matches
+        if (userType === 'student' && schoolId) {
+            const student = await db.query.students.findFirst({
+                where: and(eq(students.id, userId), eq(students.school_id, schoolId)),
+                columns: { id: true }
+            });
+
+            if (!student) {
+                console.error('[XP Award] Student not in school:', { userId, schoolId });
+                return; // Silently fail - prevents cross-school XP injection
+            }
+        }
 
         await db.update(table)
             .set({
