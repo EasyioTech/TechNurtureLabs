@@ -253,18 +253,7 @@ export default function SchoolRegistrationPage() {
       return;
     }
 
-    // PREVIEW / DEV MODE — Razorpay keys not configured
-    if (checkoutOrder.previewMode) {
-      toast.info('Dev mode: simulating payment...', { duration: 1500 });
-      setLoading(true);
-      setTimeout(() => {
-        const simulatedPaymentId = `pay_DEV_${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
-        handleRegisterSchool(simulatedPaymentId);
-      }, 1500);
-      return;
-    }
-
-    // REAL RAZORPAY PAYMENT
+    // LIVE RAZORPAY PAYMENT
     if (!window.Razorpay) {
       toast.error('Payment gateway not loaded. Please refresh the page and try again.');
       return;

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { db } from '@/lib/db';
-import { paymentPlans, promoCodes, schoolSubscriptions } from '@/db/schema';
+import { paymentPlans, promoCodes, schoolSubscriptions, paymentTransactions } from '@/db/schema';
 import { eq, and, isNull, lte, gte, or, sql, inArray } from 'drizzle-orm';
 import { rateLimitService } from '@/lib/services/rate-limit';
 import { serverEnv } from '@/lib/env.server';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
+import { verifySession } from '@/lib/auth';
 
 const createOrderSchema = z.object({
     plan_id: z.string().uuid('Invalid plan ID'),
@@ -24,7 +26,7 @@ const razorpay = (!isBuild && serverEnv.RAZORPAY_KEY_ID && serverEnv.RAZORPAY_KE
 
 export async function POST(req: NextRequest) {
     try {
-        // Rate-limit by IP — this endpoint is used during registration (pre-auth) and in-portal
+        // SECURITY: Rate-limit by IP — this endpoint is used during registration (pre-auth) and in-portal
         const ip = req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '127.0.0.1';
         const { allowed } = await rateLimitService.check({
             key: `payment-create:${ip}`,
@@ -32,26 +34,39 @@ export async function POST(req: NextRequest) {
             windowSeconds: 900
         });
         if (!allowed) {
+            logger.warn('[Create Order] Rate limit exceeded', { ip });
             return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
         }
 
         const body = createOrderSchema.safeParse(await req.json());
         if (!body.success) {
+            logger.warn('[Create Order] Invalid schema', { errors: body.error.issues });
             return NextResponse.json({ error: body.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 });
         }
         const { plan_id, promo_code_id } = body.data;
 
-        // Fetch plan
+        // SECURITY: Verify user is authenticated (for in-portal usage)
+        // NOTE: Registration endpoint is pre-auth, so we don't require session here
+        const session = await verifySession().catch(() => null);
+
+        // SECURITY: Fetch and validate plan
         const [plan] = await db.select().from(paymentPlans).where(eq(paymentPlans.id, plan_id));
         if (!plan) {
+            logger.warn('[Create Order] Plan not found', { plan_id });
             return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
+        }
+
+        // SECURITY: Validate plan is active and purchasable
+        if (!plan.is_active) {
+            logger.warn('[Create Order] Plan not active', { plan_id });
+            return NextResponse.json({ error: 'This plan is no longer available' }, { status: 400 });
         }
 
         let finalAmount = Number(plan.price); // price in INR
         let discountAmount = 0;
         let promoData = null;
 
-        // Apply promo code if provided — with strong atomicity via atomic UPDATE
+        // SECURITY: Apply promo code if provided — with strong atomicity via atomic UPDATE
         if (promo_code_id) {
             const now = new Date();
 
@@ -80,11 +95,22 @@ export async function POST(req: NextRequest) {
                 .returning();
 
             if (updatedPromo) {
+                // SECURITY: Validate discount calculation to prevent negative amounts
                 if (updatedPromo.discount_type === 'percentage') {
-                    discountAmount = (finalAmount * Number(updatedPromo.discount_value)) / 100;
+                    const percentage = Number(updatedPromo.discount_value);
+                    if (percentage < 0 || percentage > 100) {
+                        logger.error('[Create Order] Invalid percentage discount', { percentage, promo_code_id });
+                        return NextResponse.json({ error: 'Invalid discount' }, { status: 400 });
+                    }
+                    discountAmount = (finalAmount * percentage) / 100;
                 } else {
                     discountAmount = Number(updatedPromo.discount_value);
+                    if (discountAmount < 0) {
+                        logger.error('[Create Order] Negative fixed discount', { discountAmount, promo_code_id });
+                        return NextResponse.json({ error: 'Invalid discount' }, { status: 400 });
+                    }
                 }
+                // Ensure discount doesn't exceed plan price
                 discountAmount = Math.min(discountAmount, finalAmount);
                 finalAmount = Math.max(0, finalAmount - discountAmount);
                 promoData = {
@@ -93,8 +119,14 @@ export async function POST(req: NextRequest) {
                     discount_value: updatedPromo.discount_value,
                     discount_amount: discountAmount,
                 };
+                logger.info('[Create Order] Promo code applied', {
+                    code: updatedPromo.code,
+                    discount: discountAmount,
+                    final_amount: finalAmount
+                });
             } else {
                 // Code is invalid, expired, or exhausted — reject the request
+                logger.warn('[Create Order] Promo code invalid/expired/exhausted', { promo_code_id });
                 return NextResponse.json(
                     { error: 'Promo code is invalid, expired, or has reached its usage limit.' },
                     { status: 400 }
@@ -117,12 +149,16 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // Try to create Razorpay Order, fallback to SIMULATED for testing/preview if keys are missing
-        try {
-            if (!razorpay || !serverEnv.RAZORPAY_KEY_ID || serverEnv.RAZORPAY_KEY_ID === 'rzp_test_yourkeyhere') {
-                throw new Error('CONFIG_MISSING');
-            }
+        // SECURITY: Create Razorpay Order — NO FALLBACK
+        if (!razorpay || !serverEnv.RAZORPAY_KEY_ID) {
+            logger.error('[Create Order] Razorpay not configured');
+            return NextResponse.json(
+                { error: 'Payment gateway not configured. Please contact support.' },
+                { status: 500 }
+            );
+        }
 
+        try {
             const order = await razorpay.orders.create({
                 amount: amountInPaise,
                 currency: plan.currency || 'INR',
@@ -131,6 +167,22 @@ export async function POST(req: NextRequest) {
                     plan_name: plan.name,
                     promo_code_id: promo_code_id || '',
                 },
+            });
+
+            // SECURITY: Validate Razorpay response
+            if (!order.id || !order.id.startsWith('order_')) {
+                logger.error('[Create Order] Invalid Razorpay response', { orderId: order.id });
+                return NextResponse.json(
+                    { error: 'Failed to create payment order. Please try again.' },
+                    { status: 502 }
+                );
+            }
+
+            logger.info('[Create Order] Order created', {
+                order_id: order.id,
+                plan_id: plan.id,
+                amount: amountInPaise,
+                promo_applied: !!promoData
             });
 
             return NextResponse.json({
@@ -145,20 +197,14 @@ export async function POST(req: NextRequest) {
                 plan: { id: plan.id, name: plan.name, currency: plan.currency },
             });
         } catch (rpError: any) {
-            // Razorpay keys not configured — return a simulated preview order (dev/staging only)
-            // Return a mock order structure so the UI can proceed in "Preview Mode"
-            return NextResponse.json({
-                free: false,
-                order_id: `order_PREVIEW_${Math.random().toString(36).slice(2, 10)}`,
-                amount: amountInPaise,
-                currency: plan.currency || 'INR',
-                original_price: Number(plan.price),
-                discount_amount: discountAmount,
-                final_amount: finalAmount,
-                promo: promoData,
-                plan: { id: plan.id, name: plan.name, currency: plan.currency },
-                previewMode: true
+            logger.error('[Create Order] Razorpay API error', {
+                error: rpError.message,
+                code: rpError.code
             });
+            return NextResponse.json(
+                { error: 'Failed to create payment order. Please try again.' },
+                { status: 502 }
+            );
         }
     } catch (error: any) {
         console.error('Create order error:', error);

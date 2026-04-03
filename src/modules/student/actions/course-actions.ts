@@ -52,20 +52,25 @@ export async function ensureEnrollment(courseId: string) {
     } else {
         user = await db.query.superAdmins.findFirst({ where: eq(superAdmins.id, userId) });
     }
-    
+
     if (!user?.school_id) return null;
 
-    // if (role === 'student') {
-    //     const subscription = await db.query.schoolSubscriptions.findFirst({
-    //         where: eq(schoolSubscriptions.school_id, user.school_id),
-    //         columns: { status: true },
-    //         orderBy: (sub, { desc }) => [desc(sub.created_at)],
-    //     });
-    //     const blockedStatuses = ['cancelled', 'expired'];
-    //     if (!subscription || blockedStatuses.includes(subscription.status)) {
-    //         return null;
-    //     }
-    // }
+    // SECURITY: For students, verify school has an ACTIVE subscription
+    // Students cannot access courses if school's subscription is not active
+    if (role === 'student') {
+        const subscription = await db.query.schoolSubscriptions.findFirst({
+            where: and(
+                eq(schoolSubscriptions.school_id, user.school_id),
+                eq(schoolSubscriptions.status, 'active') // Only 'active' subscriptions allow access
+            ),
+            columns: { id: true }
+        });
+        // Deny access if no active subscription
+        if (!subscription) {
+            console.warn(`[Course Access] Student ${userId} denied - no active subscription for school ${user.school_id}`);
+            return null;
+        }
+    }
 
     const currentSession = await db.query.academicSessions.findFirst({
         where: and(eq(academicSessions.school_id, user.school_id), eq(academicSessions.is_current, true))

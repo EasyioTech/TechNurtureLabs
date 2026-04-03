@@ -211,8 +211,6 @@ export const CheckoutOverlay: React.FC<CheckoutOverlayProps> = ({
                                     <><Loader2 size={20} className="animate-spin" /> Applying promo...</>
                                 ) : checkoutOrder.final_amount === 0 ? (
                                     <><BadgeCheck size={20} /> Activate For Free</>
-                                ) : checkoutOrder.previewMode ? (
-                                    <><CreditCard size={20} /> Complete Dev Payment</>
                                 ) : (
                                     <><CreditCard size={20} /> Pay with Razorpay</>
                                 )}
