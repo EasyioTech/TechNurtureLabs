@@ -2,6 +2,7 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
+import { requireSuperAdmin } from '@/lib/admin-guard';
 import { redirect } from 'next/navigation';
 import { analyticsService } from '@/lib/services/analytics-service';
 import {
@@ -133,7 +134,10 @@ export async function getCourseDetailsData(courseId: string, bypassCache = false
     const role = session.userType;
 
     const course = await db.query.courses.findFirst({
-        where: eq(courses.id, courseId)
+        where: and(
+            eq(courses.id, courseId),
+            isNull(courses.deleted_at)
+        )
     });
 
     if (!course) throw new Error("Course not found");
@@ -198,7 +202,10 @@ export async function getCourseDetailsData(courseId: string, bypassCache = false
     // Class-course mapping is used for filtering/display only — not as an access gate.
 
     const courseLessons = await db.query.lessons.findMany({
-        where: eq(lessons.course_id, courseId),
+        where: and(
+            eq(lessons.course_id, courseId),
+            isNull(lessons.deleted_at)
+        ),
         orderBy: (lessons, { asc }) => [asc(lessons.sequence_order)]
     });
 
@@ -315,27 +322,35 @@ export async function getStudentDashboardCourses(bypassCache = false) {
     // ... (rest of logic)
 
     const [enrolled, global, classMapped] = await Promise.all([
-        db.query.enrollments.findMany({ 
+        db.query.enrollments.findMany({
             where: and(
-                eq(enrollments.user_id, userId), 
+                eq(enrollments.user_id, userId),
                 eq(enrollments.is_active, true),
+                isNull(enrollments.deleted_at),
                 sessionId ? eq(enrollments.session_id, sessionId) : isNotNull(enrollments.id)
-            ), 
-            with: { course: true } 
+            ),
+            with: { course: true }
         }),
-        db.query.courses.findMany({ 
-            where: and(eq(courses.all_classes, true), eq(courses.is_published, true)) 
+        db.query.courses.findMany({
+            where: and(
+                eq(courses.all_classes, true),
+                eq(courses.is_published, true),
+                isNull(courses.deleted_at)
+            )
         }),
-        classId ? db.query.courseClassMapping.findMany({ 
-            where: eq(courseClassMapping.class_id, classId), 
-            with: { course: true } 
+        classId ? db.query.courseClassMapping.findMany({
+            where: and(
+                eq(courseClassMapping.class_id, classId),
+                isNull(courseClassMapping.deleted_at)
+            ),
+            with: { course: true }
         }) : Promise.resolve([])
     ]);
 
     const courseMap = new Map<string, any>();
-    enrolled.forEach(e => e.course?.is_published && courseMap.set(e.course.id, { ...e.course, isEnrolled: true }));
-    global.forEach(c => !courseMap.has(c.id) && courseMap.set(c.id, { ...c, isEnrolled: false }));
-    (classMapped as any[]).forEach(m => m.course?.is_published && !courseMap.has(m.course.id) && courseMap.set(m.course.id, { ...m.course, isEnrolled: false }));
+    enrolled.forEach(e => e.course?.is_published && !e.course?.deleted_at && courseMap.set(e.course.id, { ...e.course, isEnrolled: true }));
+    global.forEach(c => !c.deleted_at && !courseMap.has(c.id) && courseMap.set(c.id, { ...c, isEnrolled: false }));
+    (classMapped as any[]).forEach(m => m.course?.is_published && !m.course?.deleted_at && !courseMap.has(m.course.id) && courseMap.set(m.course.id, { ...m.course, isEnrolled: false }));
 
     const allCourses = Array.from(courseMap.values());
     const courseIds = allCourses.map(c => c.id);
@@ -391,4 +406,30 @@ export async function getStudentDashboardCourses(bypassCache = false) {
     return result;
 }
 
+/**
+ * Invalidate all student dashboard caches (called after backup restore)
+ * Only super admin can trigger this
+ */
+export async function invalidateAllStudentDashboardCaches() {
+    const session = await requireSuperAdmin();
+
+    try {
+        const allStudents = await db.query.students.findMany({
+            columns: { id: true }
+        });
+
+        let invalidatedCount = 0;
+        for (const student of allStudents) {
+            const cacheKey = `cache:student:${student.id}:dashboard`;
+            await redis.del(cacheKey);
+            invalidatedCount++;
+        }
+
+        console.log(`[Cache Invalidation] Invalidated ${invalidatedCount} student dashboard caches`);
+        return { success: true, invalidatedCount };
+    } catch (error: any) {
+        console.error('[Cache Invalidation] Error:', error);
+        return { success: false, error: error.message };
+    }
+}
 

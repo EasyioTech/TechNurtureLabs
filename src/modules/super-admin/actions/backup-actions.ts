@@ -152,6 +152,15 @@ export async function restoreFromBackupAction(fileName: string) {
         let result;
         if (fileName.includes('/courses/')) {
             result = await restoreBackup(backupData, session.userId);
+
+            // Invalidate student dashboard caches after restore
+            try {
+                const { invalidateAllStudentDashboardCaches } = await import('@/modules/student/actions/course-actions');
+                const cacheResult = await invalidateAllStudentDashboardCaches();
+                console.log('[Backup Action] Cache invalidation:', cacheResult);
+            } catch (cacheErr) {
+                console.warn('[Backup Action] Cache invalidation warning:', cacheErr);
+            }
         } else if (fileName.includes('/lessons/')) {
             throw new Error("Generic lesson restore not implemented. Use specific course target.");
         }
@@ -170,6 +179,16 @@ export async function restoreLessonFromBackupAction(fileName: string, targetCour
     try {
         const backupData = await downloadBackupFromR2(fileName);
         const result = await restoreLessonBackup(backupData, targetCourseId);
+
+        // Invalidate student dashboard caches after restore
+        try {
+            const { invalidateAllStudentDashboardCaches } = await import('@/modules/student/actions/course-actions');
+            const cacheResult = await invalidateAllStudentDashboardCaches();
+            console.log('[Backup Action] Lesson restore cache invalidation:', cacheResult);
+        } catch (cacheErr) {
+            console.warn('[Backup Action] Lesson restore cache invalidation warning:', cacheErr);
+        }
+
         revalidatePath('/super-admin');
         return { success: true, result };
     } catch (error: any) {
