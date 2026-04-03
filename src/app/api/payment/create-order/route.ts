@@ -83,9 +83,9 @@ export async function POST(req: NextRequest) {
             // The WHERE clause is evaluated atomically with the UPDATE, ensuring
             // that if current_uses reaches max_uses, subsequent requests will fail
             // (WHERE condition will be false for future requests)
-            const [updatedPromo] = await db
-                .update(promoCodes)
-                .set({ current_uses: sql`${promoCodes.current_uses} + 1` })
+            const [promo] = await db
+                .select()
+                .from(promoCodes)
                 .where(
                     and(
                         eq(promoCodes.id, promo_code_id),
@@ -100,10 +100,10 @@ export async function POST(req: NextRequest) {
                         // validity window: valid_until IS NULL or now <= valid_until
                         or(isNull(promoCodes.valid_until), gte(promoCodes.valid_until, now))
                     )
-                )
-                .returning();
+                );
 
-            if (updatedPromo) {
+            if (promo) {
+                const updatedPromo = promo; 
                 // SECURITY: Validate discount calculation to prevent negative amounts
                 if (updatedPromo.discount_type === 'percentage') {
                     const percentage = Number(updatedPromo.discount_value);

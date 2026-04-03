@@ -260,28 +260,9 @@ export default function SchoolRegistrationPage() {
       description: `${checkoutOrder.plan.name} - Annual School License`,
       order_id: checkoutOrder.order_id,
       handler: async (response: any) => {
-        setLoading(true);
-        try {
-          const verifyRes = await fetch('/api/payment/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            }),
-          });
-          const verifyData = await verifyRes.json();
-          if (!verifyData.success) {
-            toast.error('Payment verification failed. Please contact support.');
-            setLoading(false);
-            return;
-          }
-          handleRegisterSchool(response.razorpay_payment_id);
-        } catch {
-          toast.error('Payment verification error. Please contact support.');
-          setLoading(false);
-        }
+        // Verification is now handled on-server inside registerSchool to avoid 
+        // session/auth issues during initial registration.
+        handleRegisterSchool(response);
       },
       prefill: {
         name: formData.principal_name,
@@ -300,11 +281,18 @@ export default function SchoolRegistrationPage() {
     rzp.open();
   };
 
-  const handleRegisterSchool = async (paymentId: string | null) => {
+  const handleRegisterSchool = async (paymentDetails: any = null) => {
     setLoading(true);
     const toastId = toast.loading('Setting up your school portal...');
     try {
-      const result = await registerSchool({ ...formData });
+      const result = await registerSchool(
+        { ...formData },
+        paymentDetails ? {
+          order_id: paymentDetails.razorpay_order_id,
+          payment_id: paymentDetails.razorpay_payment_id,
+          signature: paymentDetails.razorpay_signature
+        } : undefined
+      );
 
       if (!result.success) {
         toast.error(('error' in result ? (result as any).error : null) || 'Registration failed. Please try again.', { id: toastId });

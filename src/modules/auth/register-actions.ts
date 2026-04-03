@@ -5,9 +5,12 @@ import { students, schoolAdmins, superAdmins, schools, paymentPlans, studentAcad
 import { eq, and, or, sql, isNull } from 'drizzle-orm';
 import { asc } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
-import { schoolSubscriptions, promoCodes } from '@/db/schema';
+import { schoolSubscriptions, promoCodes, paymentTransactions, auditLogs } from '@/db/schema';
 import { createSession } from '@/lib/auth';
 import { handleStudentEngagement } from '@/lib/gamification';
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
+import { serverEnv } from '@/lib/env.server';
 
 export async function fetchGlobalClasses() {
     let allClasses = await db.query.classes.findMany({
@@ -83,6 +86,11 @@ export async function fetchActivePaymentPlans() {
 import { analyticsService } from '@/lib/services/analytics-service';
 import { registerStudentSchema } from '@/lib/validation';
 import { logger } from '@/lib/logger';
+
+const razorpay = (serverEnv.RAZORPAY_KEY_ID && serverEnv.RAZORPAY_KEY_SECRET) ? new Razorpay({
+    key_id: serverEnv.RAZORPAY_KEY_ID,
+    key_secret: serverEnv.RAZORPAY_KEY_SECRET,
+}) : null;
 
 export async function registerStudent(formData: any) {
     try {
@@ -208,7 +216,7 @@ export async function registerStudent(formData: any) {
     }
 }
 
-export async function registerSchool(formData: any) {
+export async function registerSchool(formData: any, paymentDetails?: { order_id: string, payment_id: string, signature: string }) {
     try {
         if (!formData.name || !formData.contact_email || !formData.password) {
             return { success: false, error: 'Missing required school registration fields.' };
@@ -240,6 +248,29 @@ export async function registerSchool(formData: any) {
         }
 
         const result = await db.transaction(async (tx) => {
+            // 0. VERIFY PAYMENT (if provided)
+            if (paymentDetails) {
+                const secret = serverEnv.RAZORPAY_KEY_SECRET;
+                if (!secret) {
+                    throw new Error('Payment gateway not configured on server.');
+                }
+
+                const hmacPayload = `${paymentDetails.order_id}|${paymentDetails.payment_id}`;
+                const expectedSignature = crypto
+                    .createHmac('sha256', secret)
+                    .update(hmacPayload)
+                    .digest('hex');
+
+                if (expectedSignature !== paymentDetails.signature) {
+                    logger.error('[Registration - FRAUD] Invalid signature', {
+                        orderId: paymentDetails.order_id,
+                        provided: paymentDetails.signature,
+                        expected: expectedSignature
+                    });
+                    throw new Error('Payment verification failed. Invalid signature.');
+                }
+            }
+
             // 1. Create School
             const [newSchool] = await tx.insert(schools).values({
                 name: formData.name,
@@ -272,7 +303,7 @@ export async function registerSchool(formData: any) {
             const lastName = lastNameParts.join(' ');
 
             // 3. Create School Admin — include phone so contact details are complete
-            await tx.insert(schoolAdmins).values({
+            const [admin] = await tx.insert(schoolAdmins).values({
                 email: email,
                 school_id: newSchool.id,
                 password_hash: hashedPassword,
@@ -280,7 +311,7 @@ export async function registerSchool(formData: any) {
                 last_name: lastName || '',
                 phone: formData.contact_phone || null,
                 is_active: true,
-            } as any);
+            } as any).returning();
 
             // 4. Map Selected Classes to New School
             if (formData.classes_available && Array.isArray(formData.classes_available) && formData.classes_available.length > 0) {
@@ -293,10 +324,50 @@ export async function registerSchool(formData: any) {
                 );
             }
 
-            // 5. Fetch the created admin to return it
-            const admin = await tx.query.schoolAdmins.findFirst({
-                where: eq(schoolAdmins.school_id, newSchool.id)
-            });
+            // 5. Handle Subscription and Payment Tracking
+            let subscriptionId: string | null = null;
+            if (formData.plan_id) {
+                const now = new Date();
+                const periodEnd = new Date(now);
+                periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+
+                const [newSub] = await tx.insert(schoolSubscriptions).values({
+                    school_id: newSchool.id,
+                    plan_id: formData.plan_id,
+                    promo_code_id: formData.promo_code_id || null,
+                    status: 'active',
+                    current_period_start: now,
+                    current_period_end: periodEnd,
+                    auto_renew: true,
+                } as any).returning();
+                subscriptionId = newSub.id;
+
+                // 6. Record Payment Transaction
+                if (paymentDetails) {
+                    // Fetch plan to get amount
+                    const [plan] = await tx.select().from(paymentPlans).where(eq(paymentPlans.id, formData.plan_id));
+                    
+                    await tx.insert(paymentTransactions).values({
+                        school_id: newSchool.id,
+                        subscription_id: subscriptionId!,
+                        promo_code_id: formData.promo_code_id || null,
+                        razorpay_order_id: paymentDetails.order_id,
+                        razorpay_payment_id: paymentDetails.payment_id,
+                        razorpay_signature: paymentDetails.signature,
+                        amount: plan?.price || '0',
+                        status: 'captured',
+                        created_at: now,
+                        updated_at: now
+                    } as any);
+
+                    // 7. Atomic Promo Code Increment (only now that it's successful)
+                    if (formData.promo_code_id) {
+                        await tx.update(promoCodes)
+                            .set({ current_uses: sql`${promoCodes.current_uses} + 1` })
+                            .where(eq(promoCodes.id, formData.promo_code_id));
+                    }
+                }
+            }
 
             return { success: true, school: newSchool, admin: admin };
         });
@@ -305,47 +376,7 @@ export async function registerSchool(formData: any) {
             analyticsService.incrementMetric('total_schools').catch(() => {});
         }
 
-        if (formData.plan_id && result?.school?.id) {
-            try {
-                // CRITICAL FIX #1: Use atomic upsert to prevent race condition
-                // If two concurrent requests both try to create subscription for same school,
-                // only one will succeed. The other will get a conflict (409) or update existing.
-                const now = new Date();
-                const periodEnd = new Date(now);
-                periodEnd.setFullYear(periodEnd.getFullYear() + 1);
 
-                // Check if subscription already exists for this school (just created)
-                const existingSub = await db.query.schoolSubscriptions.findFirst({
-                    where: eq(schoolSubscriptions.school_id, result.school.id)
-                });
-
-                if (!existingSub) {
-                    // Safe to insert — no existing subscription found
-                    await db.insert(schoolSubscriptions).values({
-                        school_id: result.school.id,
-                        plan_id: formData.plan_id,
-                        promo_code_id: formData.promo_code_id || null,
-                        status: 'active',
-                        current_period_start: now,
-                        current_period_end: periodEnd,
-                        auto_renew: true,
-                    } as any);
-
-                    analyticsService.incrementMetric('total_subscriptions').catch(() => {});
-                }
-                // If existingSub found, it means another request already created it during registration
-                // This is rare but handled gracefully by not inserting duplicate
-            } catch (err: any) {
-                // Check if error is due to unique constraint violation
-                if (err.message?.includes('unique') || err.code === '23505') {
-                    // Expected: another request beat us to it. Non-fatal.
-                    // Silently continue
-                } else {
-                    // Non-fatal — school is registered, subscription can be assigned later by admin
-                    logger.error('[Registration] Subscription creation failed', { message: err.message });
-                }
-            }
-        }
 
         if (result.success && result.admin) {
             await createSession({ userId: result.admin.id, userType: 'school_admin' });
