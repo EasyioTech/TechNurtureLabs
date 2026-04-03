@@ -1,15 +1,15 @@
 'use server';
 
 import { exportAllCourses, uploadBackupToR2, restoreBackup, downloadBackupFromR2, CourseBackupData } from '@/lib/services/backup-service';
-import { auth } from '@/lib/auth';
+import { verifySession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { s3Client, isCloudflareConfigured } from '@/lib/storage';
 import { ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { serverEnv } from '@/lib/env.server';
 
 export async function performBackupAction() {
-    const session = await auth();
-    if (session?.user?.role !== 'super_admin') {
+    const session = await verifySession();
+    if (session?.role !== 'super_admin') {
         throw new Error('Unauthorized');
     }
 
@@ -25,8 +25,8 @@ export async function performBackupAction() {
 }
 
 export async function listBackupsAction() {
-    const session = await auth();
-    if (session?.user?.role !== 'super_admin') {
+    const session = await verifySession();
+    if (session?.role !== 'super_admin') {
         throw new Error('Unauthorized');
     }
 
@@ -55,14 +55,14 @@ export async function listBackupsAction() {
 }
 
 export async function restoreFromBackupAction(fileName: string) {
-    const session = await auth();
-    if (session?.user?.role !== 'super_admin') {
+    const session = await verifySession();
+    if (session?.role !== 'super_admin') {
         throw new Error('Unauthorized');
     }
 
     try {
         const backupData = await downloadBackupFromR2(fileName);
-        await restoreBackup(backupData, session.user.id);
+        await restoreBackup(backupData, session.userId);
         revalidatePath('/super-admin');
         return { success: true };
     } catch (error: any) {
