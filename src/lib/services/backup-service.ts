@@ -284,6 +284,7 @@ export async function restoreBackup(backupData: CourseBackupData, superAdminId: 
                     category: courseData.category,
                     topics: courseData.topics,
                     updated_at: new Date(),
+                    deleted_at: null,
                 }).where(eq(schema.courses.id, existingCourse.id));
                 courseId = existingCourse.id;
             } else {
@@ -349,6 +350,7 @@ export async function restoreBackup(backupData: CourseBackupData, superAdminId: 
                 } else {
                     const [nl] = await tx.insert(schema.lessons).values({ ...lessonPayload, updated_at: undefined }).returning();
                     lessonId = nl.id;
+                    lessonsCount++;
                 }
 
                 if (lessonData.quiz) {
@@ -375,6 +377,7 @@ export async function restoreBackup(backupData: CourseBackupData, superAdminId: 
                     } else {
                         const [nq] = await tx.insert(schema.quizzes).values({ ...quizPayload, updated_at: undefined }).returning();
                         quizId = nq.id;
+                        quizzesCount++;
                     }
 
                     await tx.delete(schema.quizQuestions).where(eq(schema.quizQuestions.quiz_id, quizId));
@@ -397,10 +400,61 @@ export async function restoreBackup(backupData: CourseBackupData, superAdminId: 
                                 sequence_order: opt.sequence_order
                             });
                         }
-                        quizzesCount++;
                     }
                 }
-                lessonsCount++;
+            }
+
+            // 6. Restore Course-level Quizzes
+            for (const quizData of courseData.quizzes) {
+                const existingQuiz = await tx.query.quizzes.findFirst({
+                    where: (quizzes, { and, eq, isNull }) => and(eq(quizzes.course_id, courseId), isNull(quizzes.lesson_id), eq(quizzes.title, quizData.title))
+                });
+
+                let quizId: string;
+                const quizPayload = {
+                    course_id: courseId,
+                    lesson_id: null,
+                    title: quizData.title,
+                    description: quizData.description,
+                    time_limit_secs: quizData.time_limit_secs,
+                    pass_percentage: quizData.pass_percentage,
+                    max_attempts: quizData.max_attempts,
+                    xp_reward: quizData.xp_reward,
+                    is_published: quizData.is_published,
+                    updated_at: new Date(),
+                    deleted_at: null,
+                };
+
+                if (existingQuiz) {
+                    await tx.update(schema.quizzes).set(quizPayload).where(eq(schema.quizzes.id, existingQuiz.id));
+                    quizId = existingQuiz.id;
+                } else {
+                    const [nq] = await tx.insert(schema.quizzes).values({ ...quizPayload, updated_at: undefined }).returning();
+                    quizId = nq.id;
+                    quizzesCount++;
+                }
+
+                await tx.delete(schema.quizQuestions).where(eq(schema.quizQuestions.quiz_id, quizId));
+                for (const qData of quizData.questions) {
+                    const [newQ] = await tx.insert(schema.quizQuestions).values({
+                        quiz_id: quizId,
+                        question_text: qData.question_text,
+                        question_type: qData.question_type,
+                        explanation: qData.explanation,
+                        points: qData.points,
+                        time_limit_secs: qData.time_limit_secs,
+                        sequence_order: qData.sequence_order,
+                    }).returning();
+
+                    for (const opt of qData.options) {
+                        await tx.insert(schema.quizOptions).values({
+                            question_id: newQ.id,
+                            option_text: opt.option_text,
+                            is_correct: opt.is_correct,
+                            sequence_order: opt.sequence_order
+                        });
+                    }
+                }
             }
         }
 
@@ -512,3 +566,36 @@ export async function restoreLessonBackup(backupData: LessonBackupData, targetCo
         return { success: true };
     });
 }
+
+export async function performInstantSave() {
+    if (!isCloudflareConfigured || !s3Client) {
+        throw new Error("R1/R2 is not configured. Cannot perform auto-save.");
+    }
+    const data = await exportAllCourses();
+    const fileName = await uploadBackupToR2(data, 'course');
+    // Rename to include 'instant_save' tag
+    const instantFileName = fileName.replace('backup_', 'instant_save_');
+    
+    // We already uploaded to fileName, but let's make it easy to find
+    // Or we update the uploadBackupToR2 to take a base name
+    const payload = JSON.stringify(data);
+    const finalKey = `backups/courses/instant_save_${new Date().getTime()}.json`;
+    
+    const command = new PutObjectCommand({
+        Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+        Key: finalKey,
+        Body: Buffer.from(payload),
+        ContentType: 'application/json',
+    });
+
+    await s3Client.send(command);
+
+    
+    return {
+        success: true,
+        count: data.courses.length,
+        fileName: finalKey,
+        message: `Current state (${data.courses.length} courses) saved to persistent storage.`
+    };
+}
+

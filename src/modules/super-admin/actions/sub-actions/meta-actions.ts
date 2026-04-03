@@ -562,48 +562,73 @@ export async function runDatabaseDiagnostics(): Promise<DiagnosticsResult> {
         }
 
         // Check for orphaned course_enrollments (course deleted, but enrollment remains)
-        const orphanedEnrollments = await db.execute(sql`
-            SELECT COUNT(*) as count
-            FROM course_enrollments ce
-            WHERE NOT EXISTS (
-                SELECT 1 FROM courses c WHERE c.id = ce.course_id
-            ) AND ce.deleted_at IS NULL
-        `);
-        const enrollmentCount = (orphanedEnrollments[0] as any)?.count || 0;
-        tablesChecked++;
-        if (enrollmentCount > 0) {
-            issues.push(`${enrollmentCount} orphaned course_enrollments records (deleted course)`);
-            cleanedCount += enrollmentCount;
+        try {
+            const orphanedEnrollments = await db.execute(sql`
+                SELECT COUNT(*) as count
+                FROM course_enrollments ce
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM courses c WHERE c.id = ce.course_id
+                ) AND ce.deleted_at IS NULL
+            `);
+            const enrollmentCount = (orphanedEnrollments[0] as any)?.count || 0;
+            tablesChecked++;
+            if (enrollmentCount > 0) {
+                issues.push(`${enrollmentCount} orphaned course_enrollments records (deleted course)`);
+                cleanedCount += enrollmentCount;
+            }
+        } catch (err: any) {
+            // Table doesn't exist - skip check
+            if (err.message?.includes('does not exist')) {
+                console.warn('[Diagnostics] course_enrollments table not found - skipping check');
+            } else {
+                throw err;
+            }
         }
 
         // Check for orphaned user_xp (user deleted, but XP record remains)
-        const orphanedXp = await db.execute(sql`
-            SELECT COUNT(*) as count
-            FROM user_xp ux
-            WHERE NOT EXISTS (
-                SELECT 1 FROM users u WHERE u.id = ux.user_id
-            )
-        `);
-        const xpCount = (orphanedXp[0] as any)?.count || 0;
-        tablesChecked++;
-        if (xpCount > 0) {
-            issues.push(`${xpCount} orphaned user_xp records (deleted user)`);
-            cleanedCount += xpCount;
+        try {
+            const orphanedXp = await db.execute(sql`
+                SELECT COUNT(*) as count
+                FROM user_xp ux
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM users u WHERE u.id = ux.user_id
+                )
+            `);
+            const xpCount = (orphanedXp[0] as any)?.count || 0;
+            tablesChecked++;
+            if (xpCount > 0) {
+                issues.push(`${xpCount} orphaned user_xp records (deleted user)`);
+                cleanedCount += xpCount;
+            }
+        } catch (err: any) {
+            if (err.message?.includes('does not exist')) {
+                console.warn('[Diagnostics] user_xp table not found - skipping check');
+            } else {
+                throw err;
+            }
         }
 
         // Check for orphaned school_admin_profiles (school deleted, but profile remains)
-        const orphanedAdminProfiles = await db.execute(sql`
-            SELECT COUNT(*) as count
-            FROM school_admin_profiles sap
-            WHERE NOT EXISTS (
-                SELECT 1 FROM schools s WHERE s.id = sap.school_id
-            ) AND sap.deleted_at IS NULL
-        `);
-        const adminProfileCount = (orphanedAdminProfiles[0] as any)?.count || 0;
-        tablesChecked++;
-        if (adminProfileCount > 0) {
-            issues.push(`${adminProfileCount} orphaned school_admin_profiles records (deleted school)`);
-            cleanedCount += adminProfileCount;
+        try {
+            const orphanedAdminProfiles = await db.execute(sql`
+                SELECT COUNT(*) as count
+                FROM school_admin_profiles sap
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM schools s WHERE s.id = sap.school_id
+                ) AND sap.deleted_at IS NULL
+            `);
+            const adminProfileCount = (orphanedAdminProfiles[0] as any)?.count || 0;
+            tablesChecked++;
+            if (adminProfileCount > 0) {
+                issues.push(`${adminProfileCount} orphaned school_admin_profiles records (deleted school)`);
+                cleanedCount += adminProfileCount;
+            }
+        } catch (err: any) {
+            if (err.message?.includes('does not exist')) {
+                console.warn('[Diagnostics] school_admin_profiles table not found - skipping check');
+            } else {
+                throw err;
+            }
         }
 
         // Check soft-deleted records across key tables

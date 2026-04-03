@@ -24,9 +24,20 @@ import {
     AlertDialogTitle,
     AlertDialogDescription,
 } from '@/components/ui/alert-dialog';
-import { performBackupAction, performLessonBackupAction, performCourseBackupAction, listBackupsAction, restoreFromBackupAction, restoreLessonFromBackupAction } from '../../actions/backup-actions';
+import { 
+    performBackupAction, 
+    performLessonBackupAction, 
+    performCourseBackupAction, 
+    listBackupsAction, 
+    restoreFromBackupAction, 
+    restoreLessonFromBackupAction,
+    performInstantSaveAction,
+    checkForRestorePointAction,
+    deleteRestorePointAction
+} from '../../actions/backup-actions';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+
 
 interface CourseBuilderTabProps {
     courses: Course[];
@@ -70,8 +81,44 @@ export function CourseBuilderTab({
     const [isRestoring, setIsRestoring] = useState<string | null>(null);
     const [showBackupsDialog, setShowBackupsDialog] = useState(false);
     const [backupType, setBackupType] = useState<'course' | 'lesson'>('course');
+    const [restorePoint, setRestorePoint] = useState<{ key: string, timestamp: Date } | null>(null);
+    const [showRestorePrompt, setShowRestorePrompt] = useState(false);
+
 
     useEffect(() => { setIsDirtyOrder(false); }, [selectedCourse?.id]);
+
+    // Auto-save & Restore Point Check
+    useEffect(() => {
+        const checkRestore = async () => {
+            const res = await checkForRestorePointAction();
+            if (res.hasRestorePoint && res.key && res.timestamp) {
+                setRestorePoint({ key: res.key, timestamp: new Date(res.timestamp) });
+                setShowRestorePrompt(true);
+            }
+        };
+        checkRestore();
+
+        const interval = setInterval(async () => {
+            console.log('[Auto-Save] Triggering periodic backup...');
+            await performInstantSaveAction();
+        }, 5 * 60 * 1000); // Every 5 minutes
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleApplyRestorePoint = async () => {
+        if (!restorePoint) return;
+        await handleRestore(restorePoint.key);
+        setShowRestorePrompt(false);
+    };
+
+    const handleDiscardRestorePoint = async () => {
+        if (!restorePoint) return;
+        await deleteRestorePointAction(restorePoint.key);
+        setRestorePoint(null);
+        setShowRestorePrompt(false);
+    };
+
 
     const fetchBackups = async (type: 'course' | 'lesson' = 'course') => {
         const data = await listBackupsAction(type);
@@ -122,14 +169,22 @@ export function CourseBuilderTab({
     const handleRestore = async (key: string) => {
         if (!confirm("Are you sure? This will update existing data or restore deleted content.")) return;
         setIsRestoring(key);
-        const res = await restoreFromBackupAction(key);
-        if (res.success) {
-            toast.success("System restored successfully");
-            window.location.reload();
-        } else {
-            toast.error(res.error || "Restore failed");
+        try {
+            const res = await restoreFromBackupAction(key);
+            if (res.success) {
+                toast.success("System restored successfully");
+                // Reload page to get fresh data after server completes restore
+                setTimeout(() => {
+                    window.location.href = window.location.href;
+                }, 1000);
+            } else {
+                toast.error(res.error || "Restore failed");
+            }
+        } catch (err: any) {
+            toast.error(err.message || "Restore failed");
+        } finally {
+            setIsRestoring(null);
         }
-        setIsRestoring(null);
     };
 
     const handleLessonRestore = async (key: string) => {
@@ -138,16 +193,24 @@ export function CourseBuilderTab({
             return;
         }
         if (!confirm(`Restore this lesson into "${selectedCourse.title}"?`)) return;
-        
+
         setIsRestoring(key);
-        const res = await restoreLessonFromBackupAction(key, selectedCourse.id);
-        if (res.success) {
-            toast.success("Lesson restored successfully");
-            window.location.reload();
-        } else {
-            toast.error(res.error || "Restore failed");
+        try {
+            const res = await restoreLessonFromBackupAction(key, selectedCourse.id);
+            if (res.success) {
+                toast.success("Lesson restored successfully");
+                // Reload page to get fresh lesson data
+                setTimeout(() => {
+                    window.location.href = window.location.href;
+                }, 1000);
+            } else {
+                toast.error(res.error || "Restore failed");
+            }
+        } catch (err: any) {
+            toast.error(err.message || "Restore failed");
+        } finally {
+            setIsRestoring(null);
         }
-        setIsRestoring(null);
     };
 
     const sensors = useSensors(
@@ -183,32 +246,51 @@ export function CourseBuilderTab({
 
     return (
         <div className="flex flex-col h-full overflow-hidden space-y-6">
-            {/* ── Content Management Toolbar ───────────────────────────────── */}
-            <div className={`shrink-0 p-4 rounded-3xl border-2 shadow-xl flex items-center justify-between gap-4 transition-all overflow-hidden relative group
+            {/* ── Backup & Restore Toolbar ───────────────────────────────── */}
+            <div className={`shrink-0 p-4 rounded-2xl border shadow-lg flex items-center justify-between gap-3 transition-all overflow-hidden relative group
                 ${isDark ? 'bg-[#151921] border-white/10' : 'bg-white border-slate-200'}`}
             >
                  <div className={`absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-transparent opacity-0 group-hover:via-white/[0.03] group-hover:opacity-100 transition-opacity pointer-events-none`} />
-                
-                <div className="flex items-center gap-4 flex-1">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50'}`}>
-                        <Database size={24} className={isDark ? accent.text : 'text-slate-400'} />
+
+                <div className="flex items-center gap-3 flex-1">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
+                        <Database size={20} className={isDark ? accent.text : 'text-slate-700'} />
                     </div>
-                    <div>
-                        <h3 className={`text-sm font-black uppercase tracking-wider ${t.textPrimary(isDark)}`}>Content Management</h3>
-                        <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${t.textMuted(isDark)}`}>Disaster Recovery & Redundancy</p>
+                    <div className="hidden sm:block">
+                        <h3 className={`text-xs font-black uppercase tracking-wider ${t.textPrimary(isDark)}`}>Backup & Restore</h3>
+                        <p className={`text-[9px] font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>Disaster Recovery</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                     <Button
                         size="sm"
                         disabled={isBackingUp}
                         onClick={handleTriggerBackup}
-                        className={`h-11 px-6 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2
+                        title="Create manual backup of all courses"
+                        className={`h-9 px-3 rounded-lg font-bold uppercase tracking-wider text-[9px] shadow-md transition-all hover:scale-[1.05] active:scale-95 flex items-center gap-1.5
                             ${isDark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
                     >
-                        {isBackingUp ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                        Build System Backup
+                        {isBackingUp ? <RefreshCw size={12} className="animate-spin" /> : <Save size={12} />}
+                        <span className="hidden sm:inline">Backup</span>
+                    </Button>
+
+                    <Button
+                        size="sm"
+                        disabled={isBackingUp}
+                        onClick={async () => {
+                            toast.loading("Quick saving...");
+                            const res = await performInstantSaveAction();
+                            toast.dismiss();
+                            if (res.success) toast.success(res.message);
+                            else toast.error(res.error);
+                        }}
+                        title="Quick auto-save snapshot"
+                        className={`h-9 px-3 rounded-lg font-bold uppercase tracking-wider text-[9px] transition-all hover:scale-[1.05] active:scale-95 flex items-center gap-1.5
+                            ${isDark ? 'border border-white/10 text-white/70 hover:text-white hover:border-white/20 hover:bg-white/5' : 'border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+                    >
+                        <Clock size={12} />
+                        <span className="hidden sm:inline">Quick Save</span>
                     </Button>
 
                     <Dialog open={showBackupsDialog} onOpenChange={setShowBackupsDialog}>
@@ -219,11 +301,12 @@ export function CourseBuilderTab({
                                     fetchBackups(backupType);
                                     setShowBackupsDialog(true);
                                 }}
-                                className={`h-11 px-6 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2
+                                title="Manage backups and restore points"
+                                className={`h-9 px-3 rounded-lg font-bold uppercase tracking-wider text-[9px] shadow-md transition-all hover:scale-[1.05] active:scale-95 flex items-center gap-1.5
                                     ${accent.bg} text-slate-900 ${accent.bgHover}`}
                             >
-                                <RefreshCw size={14} />
-                                Open Restore Center
+                                <RefreshCw size={12} />
+                                <span className="hidden sm:inline">Restore</span>
                             </Button>
                         </DialogTrigger>
                         <DialogContent className={`max-w-2xl border-0 p-0 overflow-hidden rounded-3xl ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}>
@@ -538,6 +621,38 @@ export function CourseBuilderTab({
                 </AlertDialogContent>
             </AlertDialog>
 
+            {/* Restore Point Prompt */}
+            <AlertDialog open={showRestorePrompt} onOpenChange={setShowRestorePrompt}>
+                <AlertDialogContent className={`rounded-3xl border-0 p-8 max-w-sm ${isDark ? 'bg-[#151921]' : 'bg-white'}`}>
+                    <div className="flex flex-col items-center text-center space-y-4">
+                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center shadow-lg animate-pulse ${isDark ? 'bg-amber-500/10 text-amber-500' : 'bg-amber-50 text-amber-600'}`}>
+                            <ShieldAlert size={32} />
+                        </div>
+                        <AlertDialogTitle className={`text-xl font-black tracking-tight ${t.textPrimary(isDark)}`}>
+                            Restore Point Detected
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className={`text-sm font-medium ${t.textMuted(isDark)}`}>
+                            We found a recent auto-save from {restorePoint?.timestamp.toLocaleTimeString()}. Would you like to restore your last session's state?
+                        </AlertDialogDescription>
+                        
+                        <div className="flex flex-col w-full gap-2 pt-4">
+                            <Button
+                                onClick={handleApplyRestorePoint}
+                                className={`w-full h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg ${accent.bg} text-slate-900 ${accent.bgHover}`}
+                            >
+                                Restore Session
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={handleDiscardRestorePoint}
+                                className={`w-full h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] ${t.textMuted(isDark)}`}
+                            >
+                                Discard & Continue
+                            </Button>
+                        </div>
+                    </div>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

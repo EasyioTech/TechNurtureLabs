@@ -298,14 +298,23 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         setActiveUploadItemId(itemId);
         setUploadFile(file);
 
+        const getCsrfToken = () => document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrf_token='))
+            ?.split('=')[1];
+
         try {
             const isVideoFile = file.type.startsWith('video/');
 
             if (isVideoFile) {
                 // Videos always upload to Cloudflare Stream — no R2 path for video
+                const csrfToken = getCsrfToken();
                 const res = await fetch('/api/media/stream-upload', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+                    },
                     body: JSON.stringify({ fileName: file.name }),
                 });
                 if (!res.ok) {
