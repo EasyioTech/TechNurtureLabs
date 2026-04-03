@@ -1050,36 +1050,13 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3">
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <Button
-                                    type="button"
-                                    className={`h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all hover:scale-105 active:scale-95 ${t.btnPrimary(isDark, accent)}`}
-                                >
-                                    <Activity className="mr-2" size={18} />
-                                    Quick Monitor
-                                </Button>
-                            </DialogTrigger>
-                        <DialogContent className={`max-w-6xl w-[95vw] h-[90vh] overflow-y-auto ${isDark ? 'bg-[#09090b] border-white/10' : 'bg-white'}`}>
-                            <DialogTitle className="sr-only">Engine Intelligence - Infrastructure Monitor</DialogTitle>
-                            <DialogDescription className="sr-only">Deep-dive into platform infrastructure, database latency, and cache health.</DialogDescription>
-                            <div className="p-2 sm:p-6 translate-y-4">
-                                <div className="mb-10 text-center sm:text-left">
-                                    <h2 className={`text-3xl font-black ${t.textPrimary(isDark)} tracking-tighter`}>Engine Intelligence</h2>
-                                    <p className={`text-sm font-medium ${t.textMuted(isDark)} mt-2`}>Deep-dive into platform infrastructure, database latency, and cache health.</p>
-                                </div>
-                                <SystemHealthTab />
-                            </div>
-                        </DialogContent>
-                        </Dialog>
-                        <a href="/admin-portal/admin/engine-metrics">
+                        <a href="/admin-portal/admin/infrastructure-monitor">
                             <Button
                                 type="button"
-                                variant="outline"
-                                className={`h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-xs transition-all hover:scale-105 active:scale-95 ${t.btnOutline(isDark)}`}
+                                className={`h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all hover:scale-105 active:scale-95 ${t.btnPrimary(isDark, accent)}`}
                             >
                                 <Activity className="mr-2" size={18} />
-                                Detailed Analysis
+                                Infrastructure Monitor
                             </Button>
                         </a>
                     </div>
