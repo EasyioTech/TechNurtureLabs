@@ -14,7 +14,7 @@ export const userTypeEnum = pgEnum('user_type', ['super_admin', 'school_admin', 
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'trialing', 'past_due', 'cancelled', 'expired']);
 export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'quarterly', 'semi_annual', 'annual']);
 export const paymentStatusEnum = pgEnum('payment_status', ['created', 'authorized', 'captured', 'failed', 'refunded']);
-export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['video', 'ppt', 'pdf', 'quiz', 'assignment']);
+export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['video', 'ppt', 'pdf', 'quiz']);
 export const questionTypeEnum = pgEnum('question_type', ['mcq', 'true_false', 'fill_blank', 'multi_select']);
 export const xpSourceEnum = pgEnum('xp_source', ['lesson_completion', 'quiz_score', 'daily_streak', 'challenge_win', 'badge_earned', 'bonus', 'manual_adjustment']);
 export const achievementTierEnum = pgEnum('achievement_tier', ['bronze', 'silver', 'gold', 'platinum']);
@@ -571,19 +571,6 @@ export const quizAttemptAnswers = pgTable('quiz_attempt_answers', {
     index('idx_qa_answers_attempt').on(table.attempt_id),
 ]);
 
-export const lessonSubmissions = pgTable('lesson_submissions', {
-    id: uuid('id').defaultRandom().primaryKey(),
-    user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
-    lesson_id: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
-    asset_id: uuid('asset_id').notNull().references(() => mediaAssets.id, { onDelete: 'cascade' }),
-    feedback: text('feedback'),
-    status: text('status').notNull().default('submitted'),
-    created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [
-    index('idx_submission_user_lesson').on(table.user_id, table.lesson_id),
-]);
-
 // ============================================================================
 // GAMIFICATION
 // ============================================================================
@@ -929,7 +916,6 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
     lessonProgress: many(lessonProgress),
     courseProgress: many(courseProgress),
     quizAttempts: many(quizAttempts),
-    submissions: many(lessonSubmissions),
 }));
 
 export const schoolAdminsRelations = relations(schoolAdmins, ({ one, many }) => ({
@@ -960,7 +946,6 @@ export const lessonsRelations = relations(lessons, ({ one, many }) => ({
     quiz: one(quizzes, { fields: [lessons.id], references: [quizzes.lesson_id] }),
     asset: one(mediaAssets, { fields: [lessons.asset_id], references: [mediaAssets.id] }),
     progress: many(lessonProgress),
-    submissions: many(lessonSubmissions),
     sessions: many(lessonSessions),
 }));
 
@@ -1081,12 +1066,6 @@ export const invoicesRelations = relations(invoices, ({ one }) => ({
     school: one(schools, { fields: [invoices.school_id], references: [schools.id] }),
     subscription: one(schoolSubscriptions, { fields: [invoices.subscription_id], references: [schoolSubscriptions.id] }),
     transaction: one(paymentTransactions, { fields: [invoices.transaction_id], references: [paymentTransactions.id] }),
-}));
-
-export const lessonSubmissionsRelations = relations(lessonSubmissions, ({ one }) => ({
-    student: one(students, { fields: [lessonSubmissions.user_id], references: [students.id] }),
-    lesson: one(lessons, { fields: [lessonSubmissions.lesson_id], references: [lessons.id] }),
-    asset: one(mediaAssets, { fields: [lessonSubmissions.asset_id], references: [mediaAssets.id] }),
 }));
 
 export const lessonSessionsRelations = relations(lessonSessions, ({ one }) => ({

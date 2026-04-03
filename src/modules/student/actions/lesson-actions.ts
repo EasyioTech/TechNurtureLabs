@@ -2,9 +2,9 @@
 
 import { db } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
-import { 
-    students, schoolAdmins, superAdmins, lessons, lessonProgress, 
-    quizzes, quizQuestions, quizOptions, auditLogs, lessonSubmissions, xpEvents, enrollments,
+import {
+    students, schoolAdmins, superAdmins, lessons, lessonProgress,
+    quizzes, quizQuestions, quizOptions, auditLogs, xpEvents, enrollments,
     quizAttempts, quizAttemptAnswers
 } from '@/db/schema';
 import { eq, and, asc, isNotNull, sql } from 'drizzle-orm';
@@ -49,7 +49,7 @@ export async function getLessonData(lessonId: string) {
     if (!lesson) return null;
 
     // 1. Enrollment check (remains as is for logic isolation)
-    const enrollment = await ensureEnrollment(userId, lesson.course_id);
+    const enrollment = await ensureEnrollment(lesson.course_id);
     if (!enrollment) return null;
 
     // 2. Media Logic
@@ -124,7 +124,7 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
     if (!lesson) return { success: false, error: 'Lesson not found' };
 
-    const enrollment = await ensureEnrollment(userId, lesson.course_id);
+    const enrollment = await ensureEnrollment(lesson.course_id);
     if (!enrollment) return { success: false, error: 'Enrollment failed' };
 
     const existingProgress = await db.query.lessonProgress.findFirst({
@@ -278,57 +278,6 @@ export async function updateTimeSpent(lessonId: string, seconds: number) {
     }
 }
 
-/**
- * Handle student assignment submission
- */
-export async function submitAssignment(lessonId: string, assetId: string) {
-    const session = await verifySession();
-    if (!session) throw new Error('Unauthorized');
-    const userId = session.userId;
-
-    const existing = await db.query.lessonSubmissions.findFirst({
-        where: and(eq(lessonSubmissions.user_id, userId), eq(lessonSubmissions.lesson_id, lessonId))
-    });
-
-    if (existing) {
-        await db.update(lessonSubmissions)
-            .set({ asset_id: assetId, status: 'submitted', updated_at: new Date() })
-            .where(eq(lessonSubmissions.id, existing.id));
-    } else {
-        await db.insert(lessonSubmissions).values({
-            user_id: userId,
-            lesson_id: lessonId,
-            asset_id: assetId,
-            status: 'submitted',
-        });
-    }
-
-    await completeLessonAndReward(lessonId);
-    return { success: true };
-}
-
-export async function getSubmissionStatus(lessonId: string) {
-    const session = await verifySession();
-    if (!session) return null;
-
-    const submission = await db.query.lessonSubmissions.findFirst({
-        where: and(eq(lessonSubmissions.user_id, session.userId), eq(lessonSubmissions.lesson_id, lessonId)),
-        with: { asset: true }
-    });
-
-    if (submission && submission.asset) {
-        const { computeMediaUrl } = await import('@/lib/media');
-        return {
-            ...submission,
-            asset: {
-                ...submission.asset,
-                file_url: computeMediaUrl(submission.asset)
-            }
-        };
-    }
-
-    return submission;
-}
 
 /**
  * Server-side Quiz Grading & Recording (High Integrity)
@@ -346,8 +295,16 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
 
     if (!quiz) throw new Error('Quiz not found');
 
-    const enrollment = await ensureEnrollment(userId, quiz.course_id);
+    const enrollment = await ensureEnrollment(quiz.course_id);
     if (!enrollment) throw new Error('Enrollment not found');
+
+    // SECURITY: Validate all submitted option IDs belong to this quiz
+    const validOptionIds = new Set(quiz.questions.flatMap(q => q.options.map(o => o.id)));
+    for (const [, optionId] of Object.entries(responses)) {
+        if (optionId && !validOptionIds.has(optionId)) {
+            throw new Error('Invalid option submitted');
+        }
+    }
 
     const previousAttempts = await db.query.quizAttempts.findMany({
         where: and(eq(quizAttempts.user_id, userId), eq(quizAttempts.quiz_id, quizId))
@@ -482,7 +439,7 @@ export async function getQuizData(quizId: string): Promise<QuizData> {
     if (!quiz) throw new Error('Quiz not found');
 
     // SECURITY: Verify enrollment before leaking questions
-    const enrollment = await ensureEnrollment(userId, quiz.course_id);
+    const enrollment = await ensureEnrollment(quiz.course_id);
     if (!enrollment) throw new Error('Enrollment required to access assessment content.');
 
     return {

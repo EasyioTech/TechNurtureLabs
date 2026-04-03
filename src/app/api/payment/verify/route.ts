@@ -6,12 +6,15 @@ import { db } from '@/lib/db';
 import { paymentTransactions, schoolSubscriptions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import Razorpay from 'razorpay';
+import { verifySession } from '@/lib/auth';
+import { rateLimitService } from '@/lib/services/rate-limit';
+import { logger } from '@/lib/logger';
 
 const verifySchema = z.object({
     razorpay_order_id: z.string().min(1, 'Order ID is required'),
     razorpay_payment_id: z.string().min(1, 'Payment ID is required'),
     razorpay_signature: z.string().min(1, 'Signature is required'),
-    school_id: z.string().uuid('Invalid school ID').optional(),
+    school_id: z.string().uuid('Invalid school ID'), // SECURITY: Required, not optional
 });
 
 const isBuild = process.env.NEXT_SKIP_TYPECHECK === '1' || process.env.npm_lifecycle_event === 'build';
@@ -22,6 +25,20 @@ const razorpay = (!isBuild && serverEnv.RAZORPAY_KEY_ID && serverEnv.RAZORPAY_KE
 
 export async function POST(req: NextRequest) {
     try {
+        // SECURITY: Verify authentication
+        const session = await verifySession();
+        if (!session) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // SECURITY: Rate limit by IP to prevent verification attempts flooding
+        const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+        const rateLimitKey = `payment-verify:${ip}`;
+        const { allowed } = await rateLimitService.checkUserLimit(rateLimitKey, 'payment-verify', 5, 60);
+        if (!allowed) {
+            return NextResponse.json({ success: false, error: 'Too many verification attempts' }, { status: 429 });
+        }
+
         const body = verifySchema.safeParse(await req.json());
         if (!body.success) {
             return NextResponse.json({ success: false, error: body.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 });
@@ -51,7 +68,7 @@ export async function POST(req: NextRequest) {
             .digest('hex');
 
         if (expectedSignature !== razorpay_signature) {
-            console.warn(`[Payment Verify] Invalid signature: expected ${expectedSignature}, got ${razorpay_signature}`);
+            logger.warn('[Payment Verify] Invalid signature for order', { orderId: razorpay_order_id });
             return NextResponse.json({ success: false, error: 'Invalid payment signature' }, { status: 400 });
         }
 
@@ -62,7 +79,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (!transaction) {
-            console.warn(`[Payment Verify] Order not found in DB: ${razorpay_order_id}`);
+            logger.warn('[Payment Verify] Order not found in DB', { orderId: razorpay_order_id });
             return NextResponse.json(
                 { success: false, error: 'Order not found in system' },
                 { status: 404 }
@@ -70,10 +87,8 @@ export async function POST(req: NextRequest) {
         }
 
         // CRITICAL FIX #3: Verify school_id matches (prevent cross-school payment fraud)
-        if (school_id && transaction.school_id !== school_id) {
-            console.error(
-                `[Payment Verify - FRAUD] School ID mismatch: order=${razorpay_order_id}, claimed_school=${school_id}, actual_school=${transaction.school_id}`
-            );
+        if (transaction.school_id !== school_id) {
+            logger.error('[Payment Verify - FRAUD] School ID mismatch', { orderId: razorpay_order_id });
             return NextResponse.json(
                 { success: false, error: 'School ID mismatch' },
                 { status: 403 }
@@ -87,9 +102,10 @@ export async function POST(req: NextRequest) {
 
                 // Payment must be captured (not just authorized)
                 if (paymentDetails.status !== 'captured') {
-                    console.warn(
-                        `[Payment Verify] Payment status is ${paymentDetails.status}, not captured: ${razorpay_payment_id}`
-                    );
+                    logger.warn('[Payment Verify] Payment not captured', {
+                        orderId: razorpay_order_id,
+                        status: paymentDetails.status
+                    });
                     return NextResponse.json(
                         { success: false, error: `Payment status is ${paymentDetails.status}, not captured` },
                         { status: 400 }
@@ -99,16 +115,14 @@ export async function POST(req: NextRequest) {
                 // CRITICAL FIX #3: Verify amount matches (prevent amount tampering)
                 const expectedAmountPaise = Math.round(Number(transaction.amount) * 100);
                 if (paymentDetails.amount !== expectedAmountPaise) {
-                    console.error(
-                        `[Payment Verify - FRAUD] Amount mismatch: order=${razorpay_order_id}, expected=${expectedAmountPaise}, got=${paymentDetails.amount}`
-                    );
+                    logger.error('[Payment Verify - FRAUD] Amount mismatch', { orderId: razorpay_order_id });
                     return NextResponse.json(
                         { success: false, error: 'Amount mismatch with payment gateway' },
                         { status: 400 }
                     );
                 }
             } catch (rpError: any) {
-                console.error('[Payment Verify] Razorpay fetch failed:', rpError.message);
+                logger.error('[Payment Verify] Razorpay fetch failed', { orderId: razorpay_order_id });
                 return NextResponse.json(
                     { success: false, error: 'Failed to verify with payment gateway' },
                     { status: 502 }
@@ -138,7 +152,7 @@ export async function POST(req: NextRequest) {
             })
             .where(eq(schoolSubscriptions.id, transaction.subscription_id));
 
-        console.log(`[Payment Verify] ✓ Payment verified and subscription activated: ${razorpay_order_id}`);
+        logger.info('[Payment Verify] Payment verified and subscription activated', { orderId: razorpay_order_id });
 
         return NextResponse.json({
             success: true,
@@ -148,7 +162,7 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: any) {
-        console.error('[Payment Verify] Unexpected error:', error.message);
+        logger.error('[Payment Verify] Unexpected error', { message: error.message });
         return NextResponse.json(
             { success: false, error: 'Payment verification failed' },
             { status: 500 }

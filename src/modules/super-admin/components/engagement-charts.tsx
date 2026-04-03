@@ -50,8 +50,8 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                             </div>
                         </div>
                     </div>
-                    <div className="h-[280px]">
-                        {!mounted ? <div className="w-full h-full" /> : <ResponsiveContainer width="100%" height="100%">
+                    <div className="h-[280px] relative">
+                        {!mounted ? <div className="w-full h-[280px]" /> : <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={engagementData}>
                                 <defs>
                                     <linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1">
@@ -92,8 +92,8 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                             <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Current market share across pricing tiers.</p>
                         </div>
                     </div>
-                    <div className="h-[200px]">
-                        {!mounted ? <div className="w-full h-full" /> : <ResponsiveContainer width="100%" height="100%">
+                    <div className="h-[200px] relative">
+                        {!mounted ? <div className="w-full h-[200px]" /> : <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie data={planDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value" strokeWidth={0}>
                                     {planDistribution.map((_, i) => (
@@ -133,8 +133,8 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                         LAST 30 DAYS
                     </div>
                 </div>
-                <div className="h-[240px]">
-                    {!mounted ? <div className="w-full h-full" /> : <ResponsiveContainer width="100%" height="100%">
+                <div className="h-[240px] relative">
+                    {!mounted ? <div className="w-full h-[240px]" /> : <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={revenueData}>
                             <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
                             <XAxis dataKey="month" stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />

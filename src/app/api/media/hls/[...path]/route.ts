@@ -7,6 +7,7 @@ import { redis } from '@/lib/redis';
 import { db } from '@/lib/db';
 import { lessons as lessonsTable, enrollments } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import crypto from 'crypto';
 
 /**
  * PRODUCTION-GRADE HLS GATEWAY
@@ -92,11 +93,33 @@ export async function GET(
             // Note: branding/, library/, and avatars/ are allowed for any logged-in student.
         }
 
+        // ── 3. HMAC Validation ─────────────────────────────────────────────────
+        const token = request.nextUrl.searchParams.get('token');
+        const mediaSecret = process.env.MEDIA_SECRET;
+
+        if (mediaSecret) {
+            const signTarget = key.split('/').slice(0, -1).join('/');
+            const expectedHash = crypto
+                .createHmac('sha256', mediaSecret)
+                .update(signTarget)
+                .digest('hex')
+                .slice(0, 16);
+
+            if (token !== expectedHash) {
+                return new NextResponse('Forbidden: Invalid Media Token', { status: 403 });
+            }
+        } else if (process.env.NODE_ENV === 'production') {
+            // SECURITY: In production, fail-closed when MEDIA_SECRET is not configured
+            return new NextResponse('Media service misconfigured', { status: 503 });
+        }
+
         if (!isCloudflareConfigured || !s3Client) {
             return new NextResponse('Cloudflare R2 not configured', { status: 501 });
         }
 
-        const cacheKey = `hls:manifest:${key}`;
+        // SECURITY: Per-user cache key prevents revoked users from accessing cached manifests
+        // Lock key stays shared to prevent thundering herd on cold R2 fetch
+        const cacheKey = `hls:manifest:${session.userId}:${key}`;
         const lockKey  = `hls:lock:${key}`;
 
         // ── 3. Cache Lookup (Hot Path — serves majority of requests) ─────────
@@ -130,7 +153,6 @@ export async function GET(
 
         // ── 5. Cold Fetch from R2 (runs for at most 1 concurrent request per key)
         try {
-            console.log(`[HLS Gateway] Cold Fetch: ${key}`);
 
             const r2Response = await s3Client.send(new GetObjectCommand({
                 Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,

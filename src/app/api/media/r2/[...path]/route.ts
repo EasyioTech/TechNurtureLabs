@@ -90,15 +90,14 @@ export async function GET(
         //     }
         // }
 
-        // 4. HLS Proxy with HMAC Validation
-        // HLS segments are hard to sign individually. We use an HMAC token for the folder.
+        // 4. HMAC Validation for All File Types
+        // SECURITY: When MEDIA_SECRET is set, enforce HMAC on ALL file types
+        // HLS uses folder-level signature, other types use file-level signature
         const token = request.nextUrl.searchParams.get('token');
         const mediaSecret = process.env.MEDIA_SECRET;
 
-        // Secure Fix: Only enforce HMAC for HLS (.m3u8/ .ts). 
-        // Other files like PDFs use Proxy-based BOLA above (Session + Enrollment check).
-        if (isHls && mediaSecret) {
-            const signTarget = key.split('/').slice(0, -1).join('/'); // Check the parent folder signature
+        if (mediaSecret) {
+            const signTarget = isHls ? key.split('/').slice(0, -1).join('/') : key;
             const expectedHash = crypto
                 .createHmac('sha256', mediaSecret)
                 .update(signTarget)
@@ -108,8 +107,9 @@ export async function GET(
             if (token !== expectedHash) {
                 return new NextResponse('Forbidden: Invalid Media Token', { status: 403 });
             }
-        } else if (isHls && !mediaSecret) {
-            console.warn('[R2 Proxy] MEDIA_SECRET not set for HLS. Access is loosely guarded by session only.');
+        } else if (process.env.NODE_ENV === 'production') {
+            // SECURITY: In production, fail-closed when MEDIA_SECRET is not configured
+            return new NextResponse('Media service misconfigured', { status: 503 });
         }
 
         // Continue proxying for HLS segments (so relative paths in .m3u8 work)

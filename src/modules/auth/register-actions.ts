@@ -81,30 +81,29 @@ export async function fetchActivePaymentPlans() {
 }
 
 import { analyticsService } from '@/lib/services/analytics-service';
+import { registerStudentSchema } from '@/lib/validation';
+import { logger } from '@/lib/logger';
 
 export async function registerStudent(formData: any) {
     try {
-        if (!formData.email || !formData.password || !formData.full_name || !formData.school_id || (!formData.class_id && !formData.grade)) {
-            return { success: false, error: 'Missing required registration fields.' };
+        // SECURITY: Validate input with Zod schema
+        const validation = registerStudentSchema.safeParse(formData);
+        if (!validation.success) {
+            const message = validation.error.issues[0]?.message || 'Invalid registration data';
+            return { success: false, error: message };
         }
 
-        if (formData.password.length < 6) {
-            return { success: false, error: 'Your PIN must be exactly 6 digits.' };
-        }
+        const validatedData = validation.data;
 
-        const rawIdentifier = (formData.email || '').trim();
+        const rawIdentifier = validatedData.email.trim();
         const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawIdentifier);
         // Accept any 7-15 digit number (with optional +, spaces, dashes, parens)
         const digitsOnly = rawIdentifier.replace(/\D/g, '');
         const isPhone = !isEmail && digitsOnly.length >= 7 && digitsOnly.length <= 15;
 
-        if (!isEmail && !isPhone) {
-            return { success: false, error: 'Please enter a valid email address or phone number.' };
-        }
-
-        const [firstName, ...lastNameParts] = formData.full_name.trim().split(/\s+/);
+        const [firstName, ...lastNameParts] = validatedData.full_name.trim().split(/\s+/);
         const lastName = lastNameParts.join(' ');
-        
+
         // Normalize: Email to lowercase, Phone to digits only
         const emailVal: string | undefined = isEmail ? rawIdentifier.toLowerCase() : undefined;
         const phoneVal: string | undefined = isPhone ? digitsOnly : undefined;
@@ -128,7 +127,7 @@ export async function registerStudent(formData: any) {
             });
 
             if (existingGlobally) {
-                const isValidPassword = await bcrypt.compare(formData.password, existingGlobally.password_hash);
+                const isValidPassword = await bcrypt.compare(validatedData.password, existingGlobally.password_hash);
                 if (!isValidPassword) {
                     return { success: false, error: `This ${isEmail ? 'email' : 'phone number'} is already registered. Please enter your correct PIN to sign in.` };
                 }
@@ -144,15 +143,15 @@ export async function registerStudent(formData: any) {
                 return { success: true, user: existingGlobally, isExisting: true };
             }
 
-            const hashedPassword = await bcrypt.hash(formData.password, 10);
+            const hashedPassword = await bcrypt.hash(validatedData.password, 10);
             // Only include email/phone if defined — omitting them lets Postgres default to NULL,
             // preventing the empty-string unique constraint collision bug.
             const insertValues: any = {
                 password_hash: hashedPassword,
                 first_name: firstName || '',
                 last_name: lastName || '',
-                school_id: formData.school_id,
-                gender: formData.gender || null,
+                school_id: validatedData.school_id,
+                gender: validatedData.gender || null,
                 cumulative_xp: 0,
                 current_streak: 0,
                 is_active: true,
@@ -166,7 +165,7 @@ export async function registerStudent(formData: any) {
             // Academic Mapping
             let session = await tx.query.academicSessions.findFirst({
                 where: and(
-                    eq(academicSessions.school_id, formData.school_id),
+                    eq(academicSessions.school_id, validatedData.school_id),
                     eq(academicSessions.is_current, true)
                 )
             });
@@ -178,7 +177,7 @@ export async function registerStudent(formData: any) {
 
                 const [newSession] = await tx.insert(academicSessions).values({
                     name: `Session ${startDate.getFullYear()}-${startDate.getFullYear() + 1}`,
-                    school_id: formData.school_id,
+                    school_id: validatedData.school_id,
                     is_current: true,
                     start_date: startDate.toISOString().split('T')[0],
                     end_date: endDate.toISOString().split('T')[0]
@@ -190,7 +189,7 @@ export async function registerStudent(formData: any) {
                 user_id: newStudent.id,
                 school_id: newStudent.school_id,
                 session_id: session.id,
-                class_id: formData.class_id || formData.grade,
+                class_id: validatedData.class_id || validatedData.grade,
             } as any).onConflictDoNothing();
 
             // IMPORTANT: No auto-login for new students until verified
@@ -204,7 +203,7 @@ export async function registerStudent(formData: any) {
         }
         return result;
     } catch (error: any) {
-        console.error('Student registration error:', error);
+        logger.error('Student registration error', { message: error.message });
         return { success: false, error: error.message || 'An unexpected error occurred.' };
     }
 }
@@ -335,17 +334,17 @@ export async function registerSchool(formData: any) {
                 // Check if error is due to unique constraint violation
                 if (err.message?.includes('unique') || err.code === '23505') {
                     // Expected: another request beat us to it. Non-fatal.
-                    console.warn('[Registration] Subscription already created by concurrent request');
+                    // Silently continue
                 } else {
                     // Non-fatal — school is registered, subscription can be assigned later by admin
-                    console.error('[Registration] Subscription creation failed:', err.message);
+                    logger.error('[Registration] Subscription creation failed', { message: err.message });
                 }
             }
         }
 
         return result;
     } catch (error: any) {
-        console.error('School registration error:', error);
+        logger.error('School registration error', { message: error.message });
         return { success: false, error: error.message || 'An unexpected error occurred.' };
     }
 }

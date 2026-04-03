@@ -39,8 +39,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             if (token !== expectedHash) {
                 return new NextResponse('Forbidden: Invalid Media Token', { status: 403 });
             }
-        } else {
-            console.warn('[Media Proxy] MEDIA_SECRET not set. Access is loosely guarded by session only.');
+        } else if (process.env.NODE_ENV === 'production') {
+            // SECURITY: In production, fail-closed when MEDIA_SECRET is not configured
+            return new NextResponse('Media service misconfigured', { status: 503 });
         }
 
         // ── 2. Authorization (BOLA Protection) ──────────────────────

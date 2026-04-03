@@ -44,10 +44,14 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
     let cached: string | null = null;
     try { cached = await redis.get(cacheKey); } catch (_) { /* Redis unavailable — will query DB */ }
     if (cached) {
+        // SECURITY: Fetch userStats fresh — never serve from shared cache
+        const { getStudentProfileData } = await import('@/modules/student/actions/profile-actions');
+        const profileData = await getStudentProfileData();
         return {
             scope,
             data: JSON.parse(cached),
             title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard',
+            userStats: profileData.stats,
             cached: true
         };
     }
@@ -182,21 +186,23 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
         };
     });
 
-    // 4. Get user profile stats BEFORE caching (so they're included in cache)
+    // 4. Cache only the shared leaderboard data (NOT userStats)
+    const sharedData = {
+        scope,
+        data: finalData,
+        title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard'
+    };
+
+    if (finalData.length > 0) {
+        try { await redis.set(cacheKey, JSON.stringify(sharedData), 'EX', 600); } catch (_) { /* non-critical */ }
+    }
+
+    // 5. Fetch user profile stats AFTER cache write — never stored in shared cache
     const { getStudentProfileData } = await import('@/modules/student/actions/profile-actions');
     const profileData = await getStudentProfileData();
 
-    const result = {
-        scope,
-        data: finalData,
-        title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard',
+    return {
+        ...sharedData,
         userStats: profileData.stats
     };
-
-    // 5. Cache the full result (including userStats) but only if we have actual data
-    if (finalData.length > 0) {
-        try { await redis.set(cacheKey, JSON.stringify(result), 'EX', 600); } catch (_) { /* non-critical */ }
-    }
-
-    return result;
 }

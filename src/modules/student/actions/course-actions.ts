@@ -8,7 +8,7 @@ import {
     students, schoolAdmins, superAdmins, courses, lessons,
     lessonProgress, enrollments, quizAttempts, academicSessions,
     studentAcademicRecords, courseClassMapping, schools, auditLogs,
-    schoolSubscriptions
+    schoolSubscriptions, schoolClassMapping
 } from '@/db/schema';
 import { eq, and, inArray, asc, desc, isNotNull, isNull, sql, count } from 'drizzle-orm';
 import { redis } from '@/lib/redis';
@@ -25,10 +25,13 @@ export const invalidateStudentDashboardCache = async (userId: string) => {
 
 /**
  * Auto-enroll a student in a course if not already enrolled.
+ * SECURITY: userId is always from session, never caller-supplied
  */
-export async function ensureEnrollment(userId: string, courseId: string) {
+export async function ensureEnrollment(courseId: string) {
     const session = await verifySession();
     if (!session) return null;
+
+    const userId = session.userId;
 
     const existingEnrollment = await db.query.enrollments.findFirst({
         where: and(
@@ -150,7 +153,43 @@ export async function getCourseDetailsData(courseId: string, bypassCache = false
         throw new Error('Course not found');
     }
 
-    // Students can access any published course from their school.
+    // SECURITY: Students can only access courses from their own school
+    if (role === 'student') {
+        const studentRecord = await db.query.students.findFirst({
+            where: eq(students.id, userId),
+            columns: { school_id: true }
+        });
+
+        if (!studentRecord) {
+            throw new Error('Course not found');
+        }
+
+        // Verify course is mapped to this student's school
+        const schoolClassMappings = await db.query.schoolClassMapping.findMany({
+            where: eq(schoolClassMapping.school_id, studentRecord.school_id),
+            columns: { class_id: true }
+        });
+
+        const classIds = schoolClassMappings.map(m => m.class_id);
+
+        // Check if course is mapped to any of the student's school's classes
+        let hasAccess = false;
+        if (classIds.length > 0) {
+            const mapping = await db.query.courseClassMapping.findFirst({
+                where: and(
+                    eq(courseClassMapping.course_id, courseId),
+                    inArray(courseClassMapping.class_id, classIds)
+                )
+            });
+            hasAccess = !!mapping;
+        }
+
+        // Also check if course is for all classes
+        if (!hasAccess && !course.all_classes) {
+            throw new Error('Course not found');
+        }
+    }
+
     // Class-course mapping is used for filtering/display only — not as an access gate.
 
     const courseLessons = await db.query.lessons.findMany({

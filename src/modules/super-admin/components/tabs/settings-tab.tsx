@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { generate2FASecret, enable2FA, disable2FA } from '@/actions/2fa';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Slider } from '@/components/ui/slider';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { fetchAllClasses, createClass, deleteClass, ensureDefaultClasses, syncPlatformMetrics } from '@/modules/super-admin/actions';
 import { SystemHealthTab } from './system-health-tab';
 
@@ -1049,17 +1049,20 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                         </div>
                     </div>
 
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button 
-                                type="button"
-                                className={`h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all hover:scale-105 active:scale-95 ${t.btnPrimary(isDark, accent)}`}
-                            >
-                                <Activity className="mr-2" size={18} />
-                                Open Infrastructure Monitor
-                            </Button>
-                        </DialogTrigger>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button
+                                    type="button"
+                                    className={`h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all hover:scale-105 active:scale-95 ${t.btnPrimary(isDark, accent)}`}
+                                >
+                                    <Activity className="mr-2" size={18} />
+                                    Quick Monitor
+                                </Button>
+                            </DialogTrigger>
                         <DialogContent className={`max-w-6xl w-[95vw] h-[90vh] overflow-y-auto ${isDark ? 'bg-[#09090b] border-white/10' : 'bg-white'}`}>
+                            <DialogTitle className="sr-only">Engine Intelligence - Infrastructure Monitor</DialogTitle>
+                            <DialogDescription className="sr-only">Deep-dive into platform infrastructure, database latency, and cache health.</DialogDescription>
                             <div className="p-2 sm:p-6 translate-y-4">
                                 <div className="mb-10 text-center sm:text-left">
                                     <h2 className={`text-3xl font-black ${t.textPrimary(isDark)} tracking-tighter`}>Engine Intelligence</h2>
@@ -1068,7 +1071,18 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                                 <SystemHealthTab />
                             </div>
                         </DialogContent>
-                    </Dialog>
+                        </Dialog>
+                        <a href="/admin-portal/admin/engine-metrics">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className={`h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-xs transition-all hover:scale-105 active:scale-95 ${t.btnOutline(isDark)}`}
+                            >
+                                <Activity className="mr-2" size={18} />
+                                Detailed Analysis
+                            </Button>
+                        </a>
+                    </div>
                 </div>
                 
                 <div className={`p-8 rounded-[2rem] border-2 border-dashed ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100'} text-center`}>

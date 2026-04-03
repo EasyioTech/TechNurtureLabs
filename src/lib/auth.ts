@@ -69,7 +69,7 @@ export async function createSession(payload: Omit<SessionPayload, 'sessionId' | 
 
     // Mirror in Redis for fast verification (best-effort)
     redis.set(`session:${sessionId}`, JSON.stringify(sessionData), 'EX', roleExpiry)
-        .catch((e) => console.warn('[Auth] Redis cache miss on createSession — DB-only session:', e.message));
+        .catch(() => { /* Non-critical: Session will fall back to DB */ });
 
     // Create Access Token (JWT)
     const token = await new SignJWT(sessionData)
@@ -97,6 +97,22 @@ export async function createSession(payload: Omit<SessionPayload, 'sessionId' | 
         httpOnly: true,
         secure: isProduction && !isHttp,
         sameSite: 'strict', // Stricter for refresh tokens
+        path: '/',
+        maxAge: roleExpiry,
+    });
+
+    // SECURITY: Generate CSRF token (deterministic, derived from sessionId)
+    // Token is stable across access token rotation since sessionId is stable
+    const csrfToken = crypto
+        .createHmac('sha256', jwtSecretEnv || '')
+        .update(`csrf:${sessionId}`)
+        .digest('hex');
+
+    // Set CSRF Token Cookie (not httpOnly so JavaScript can read and send as header)
+    cookieStore.set('csrf_token', csrfToken, {
+        httpOnly: false,
+        secure: isProduction && !isHttp,
+        sameSite: 'strict',
         path: '/',
         maxAge: roleExpiry,
     });
@@ -136,7 +152,6 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
     // Before any expensive JWT/DB/Redis check, we protect our server from spam.
     const { success } = await rateLimitIp(ip, 200, 60);
     if (!success) {
-        console.warn(`[Blocked] Rate limit exceeded for IP: ${ip} at verifySession`);
         return null; // Return null so the request is treated as unauthorized/blocked
     }
 
@@ -163,7 +178,7 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
                 const exists = await redis.get(`session:${sessionData.sessionId}`);
                 sessionValid = !!exists;
             } catch (redisErr) {
-                console.warn('[Auth] Redis unavailable, falling back to DB for session check');
+                // Redis unavailable, fall back to DB for session check
                 const dbSession = await db.query.userSessions.findFirst({
                     where: and(
                         eq(userSessions.id, sessionData.sessionId),
@@ -341,4 +356,28 @@ export async function destroySession() {
 
     cookieStore.delete('session');
     cookieStore.delete('refresh_token');
+    cookieStore.delete('csrf_token');
+}
+
+/**
+ * Verify CSRF token using double-submit cookie pattern
+ * Token is derived deterministically from sessionId, so it's stable across access token rotation
+ */
+export async function verifyCsrfToken(submittedToken: string | null): Promise<boolean> {
+    if (!submittedToken) return false;
+
+    const session = await verifySession();
+    if (!session) return false;
+
+    try {
+        const expected = crypto
+            .createHmac('sha256', jwtSecretEnv || '')
+            .update(`csrf:${session.sessionId}`)
+            .digest('hex');
+
+        // Constant-time comparison to prevent timing attacks
+        return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(submittedToken));
+    } catch {
+        return false;
+    }
 }

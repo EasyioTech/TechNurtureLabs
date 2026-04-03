@@ -6,13 +6,11 @@ import {
     ensureEnrollment as ensureEnrolled
 } from '@/modules/student/actions/course-actions';
 
-import { 
-    getLessonData as getLesson, 
-    completeLessonAndReward as completeLesson, 
-    saveVideoProgress as saveVideo, 
-    updateTimeSpent as updateTime, 
-    submitAssignment as submitTask, 
-    getSubmissionStatus as getStatus 
+import {
+    getLessonData as getLesson,
+    completeLessonAndReward as completeLesson,
+    saveVideoProgress as saveVideo,
+    updateTimeSpent as updateTime
 } from '@/modules/student/actions/lesson-actions';
 
 /**
@@ -25,8 +23,8 @@ export async function getCourseDetailsData(courseId: string) {
     return getDetails(courseId);
 }
 
-export async function ensureEnrollment(userId: string, courseId: string) {
-    return ensureEnrolled(userId, courseId);
+export async function ensureEnrollment(courseId: string) {
+    return ensureEnrolled(courseId);
 }
 
 export async function getStudentDashboardCourses() {
@@ -62,13 +60,6 @@ export async function updateTimeSpent(lessonId: string, seconds: number) {
     return updateTime(lessonId, seconds);
 }
 
-export async function submitAssignment(lessonId: string, assetId: string) {
-    return submitTask(lessonId, assetId);
-}
-
-export async function getSubmissionStatus(lessonId: string) {
-    return getStatus(lessonId);
-}
 
 export async function markLessonComplete(lessonId: string) {
     return completeLesson(lessonId);

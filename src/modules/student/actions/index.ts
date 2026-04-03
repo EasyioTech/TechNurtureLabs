@@ -24,12 +24,10 @@ import {
     invalidateStudentDashboardCache
 } from './course-actions';
 
-import { 
-    getLessonData, 
-    completeLessonAndReward, 
-    saveVideoProgress, 
-    submitAssignment, 
-    getSubmissionStatus,
+import {
+    getLessonData,
+    completeLessonAndReward,
+    saveVideoProgress,
     updateTimeSpent,
     submitQuizAttempt,
     getQuizData
@@ -73,8 +71,6 @@ export {
     getLessonData,
     completeLessonAndReward,
     saveVideoProgress,
-    submitAssignment,
-    getSubmissionStatus,
     updateTimeSpent,
     submitQuizAttempt,
     getQuizData,

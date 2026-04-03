@@ -19,9 +19,29 @@ export async function POST(req: NextRequest) {
         }
 
         const { fileName, fileType, folder = 'library' } = await req.json();
-        
+
         if (!fileName || !fileType) {
             return new NextResponse('Missing filename or type', { status: 400 });
+        }
+
+        // SECURITY: MIME type allowlist
+        const ALLOWED_MIME_TYPES = new Set([
+            'video/mp4', 'video/quicktime', 'video/webm',
+            'application/pdf',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml',
+            'audio/mpeg'
+        ]);
+        if (!ALLOWED_MIME_TYPES.has(fileType)) {
+            return new NextResponse('File type not permitted', { status: 400 });
+        }
+
+        // SECURITY: Folder allowlist — extract first path segment only
+        const folderSegment = (folder as string).split('/')[0];
+        const ALLOWED_FOLDERS = new Set(['library', 'courses', 'lessons', 'assignments', 'branding', 'avatars']);
+        if (!ALLOWED_FOLDERS.has(folderSegment)) {
+            return new NextResponse('Folder not permitted', { status: 400 });
         }
 
         if (!isCloudflareConfigured || !s3Client) {

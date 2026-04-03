@@ -57,6 +57,13 @@ function isAllowedOrigin(origin: string | null): boolean {
 
 /**
  * Middleware: Global Scale Guards (M-9, M-8)
+ *
+ * NOTE: Subdomain routing is now handled by next.config.ts rewrites.
+ * This middleware focuses on:
+ * - Rate limiting (M-9)
+ * - Session validation and revocation (M-8)
+ * - CSRF protection
+ * - CORS headers injection
  */
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
@@ -103,7 +110,6 @@ export async function middleware(request: NextRequest) {
         sessionExists = await redis.get(`session:${sessionId}`);
       } catch (redisErr) {
         // Redis is down — fall back to database check
-        console.warn('[Middleware] Redis unavailable, checking DB for session:', (redisErr as any).message);
         try {
           const { and: drizzleAnd, eq: drizzleEq, gt: drizzleGt } = await import('drizzle-orm');
           const dbSession = await db.query.userSessions.findFirst({
@@ -134,6 +140,22 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // ─── 0.2 CSRF VALIDATION (Double-Submit Cookie Pattern) ──────────────────
+  // Validate CSRF tokens on state-changing requests (POST, PUT, PATCH, DELETE)
+  const isMutatingMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
+  // Exempt: login/logout endpoints (unauthenticated), payment webhooks (external)
+  const isCsrfExempt = url.pathname.startsWith('/api/auth/') || url.pathname === '/api/payment/verify';
+
+  if (isApi && isMutatingMethod && !isCsrfExempt && sessionToken) {
+    const submittedCsrf = request.headers.get('x-csrf-token');
+    const csrfCookie = request.cookies.get('csrf_token')?.value;
+
+    // CSRF token must match and be present in both header and cookie
+    if (!submittedCsrf || !csrfCookie || submittedCsrf !== csrfCookie) {
+      return new NextResponse('CSRF token validation failed', { status: 403 });
+    }
+  }
+
   // ─── 1. OPTIONS PREFLIGHT ─────────────────────────────────────────────────
   if (isApi && request.method === 'OPTIONS') {
     const responseHeaders: Record<string, string> = { ...CORS_HEADERS };
@@ -145,29 +167,8 @@ export async function middleware(request: NextRequest) {
     return new NextResponse(null, { status: 204, headers: responseHeaders });
   }
 
-  // ─── 2. MULTI-TENANT SUBDOMAIN ROUTING ───────────────────────────────────
-  const subdomain = hostname.split('.')[0];
-  let response: NextResponse | undefined;
-
-  if (url.pathname === '/school') {
-    response = NextResponse.redirect(new URL('/school-portal/login', request.url));
-  } else if (subdomain === 'school' || hostname.startsWith('school.')) {
-    // Catch-all: prepend /school-portal so all deep links work
-    if (!url.pathname.startsWith('/school-portal')) {
-      url.pathname = `/school-portal${url.pathname === '/' ? '' : url.pathname}`;
-      response = NextResponse.rewrite(url);
-    }
-  } else if (subdomain === 'admin' || hostname.startsWith('admin.')) {
-    if (!url.pathname.startsWith('/admin-portal')) {
-      url.pathname = `/admin-portal${url.pathname === '/' ? '' : url.pathname}`;
-      response = NextResponse.rewrite(url);
-    }
-  }
-
-  // ─── 3. INJECT CORS HEADERS ON API RESPONSES ─────────────────────────────
-  if (!response) {
-    response = NextResponse.next();
-  }
+  // ─── 2. INJECT CORS HEADERS ON API RESPONSES ─────────────────────────────
+  let response = NextResponse.next();
 
   if (isApi && originAllowed && origin) {
     response.headers.set('Access-Control-Allow-Origin', origin);

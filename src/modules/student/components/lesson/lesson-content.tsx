@@ -120,7 +120,7 @@ function extractStreamUid(url: string): string {
 
 // Parse content_items JSON. Falls back to single content_url for old lessons.
 function resolveBlocks(lesson: Lesson): ContentBlock[] | null {
-  if (lesson.content_type === 'quiz' || lesson.content_type === 'assignment') return null;
+  if (lesson.content_type === 'quiz') return null;
   if (lesson.content_items) {
     try {
       const parsed = JSON.parse(lesson.content_items);

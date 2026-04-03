@@ -33,7 +33,7 @@ const lessonSchema = z.object({
     course_id: z.string().uuid().optional().nullable(),
     title: z.string().min(1, 'Title is required').max(255),
     description: z.string().optional().nullable().default(''),
-    content_type: z.enum(['video', 'ppt', 'pdf', 'quiz', 'assignment']),
+    content_type: z.enum(['video', 'ppt', 'pdf', 'quiz']),
     content_url: z.string().optional().nullable().default(''),
     content_items: z.any().optional().nullable(),
     asset_id: z.string().uuid().optional().nullable(),
