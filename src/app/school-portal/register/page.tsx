@@ -851,6 +851,21 @@ export default function SchoolRegistrationPage() {
           </div>
         </div >
       </div>
+
+      {/* Load Razorpay Checkout SDK */}
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+        onLoad={() => {
+          if (typeof window !== 'undefined' && window.Razorpay) {
+            console.log('✓ Razorpay Checkout script loaded');
+          }
+        }}
+        onError={() => {
+          console.error('✗ Failed to load Razorpay Checkout script');
+          toast.error('Payment gateway failed to load. Please refresh the page.');
+        }}
+      />
     </div>
   );
 }
