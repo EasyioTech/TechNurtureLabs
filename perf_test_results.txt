@@ -7,3 +7,5 @@
 ╚════════════════════════════════════════════════════════════╝
 
 [0;34mℹ️  Checking if app is running at http://localhost:3000...[0m
+[0;31m❌ App not running at http://localhost:3000[0m
+Start the app with: npm run dev
