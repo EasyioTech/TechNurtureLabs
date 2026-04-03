@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { mediaAssets } from '@/db/schema';
-import { and, desc, eq, ilike, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, sql, or } from 'drizzle-orm';
 import { verifySession } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -21,21 +21,32 @@ export async function GET(request: NextRequest) {
         const offset = (page - 1) * limit;
 
         const filters: any[] = [];
+
+        // CRITICAL: Only show cloud-based storage (R2 or Cloudflare Stream)
+        // Never show local/server-side storage in the media library UI
+        filters.push(or(
+            eq(mediaAssets.storage_type, 'r2'),
+            eq(mediaAssets.storage_type, 'stream')
+        ));
+
         if (type && ['video', 'image', 'document'].includes(type)) {
             filters.push(eq(mediaAssets.asset_type, type as any));
         }
+
+        // Folder filtering: Match by folder prefix (e.g., "library" matches "library/images", "library/videos")
         if (folder && folder !== 'all') {
-            filters.push(eq(mediaAssets.folder, folder));
+            // If folder is just "library", match any library/* assets
+            // If folder is "courses", match courses/* assets, etc.
+            const folderPrefix = folder.toLowerCase();
+            filters.push(sql`LOWER(${mediaAssets.folder}) LIKE ${folderPrefix + '/%'} OR LOWER(${mediaAssets.folder}) = ${folderPrefix}`);
         }
-        // Require at least 2 characters before issuing a LIKE query with a leading wildcard.
-        // A single character (or empty string) forces Postgres to scan every row in the table.
-        // The real long-term fix is the pg_trgm GIN index added in migration 0004 — once that
-        // index is in place, even short trigram searches are fast.
+
+        // Search: Require at least 2 characters before LIKE query
         if (search && search.trim().length >= 2) {
             filters.push(ilike(mediaAssets.original_name, `%${search.trim()}%`));
         }
 
-        const whereClause = filters.length > 0 ? (filters.length > 1 ? and(...filters) : filters[0]) : undefined;
+        const whereClause = filters.length > 0 ? (filters.length > 1 ? and(...filters) : filters[0]) : filters[0];
 
         // Optimized: Fetch total count and assets in parallel
         const [assets, countResult] = await Promise.all([
@@ -49,24 +60,11 @@ export async function GET(request: NextRequest) {
 
         const total = Number(countResult[0]?.count || 0);
         const { computeMediaUrl } = await import('@/lib/media');
-        const { s3Client, isCloudflareConfigured } = await import('@/lib/storage');
 
-        // Verify R2 assets actually exist in storage
-        const mapped = await Promise.all(assets.map(async (asset) => {
-            const url = computeMediaUrl(asset);
-            // For R2 assets, verify they exist
-            if (asset.storage_type === 'r2' && isCloudflareConfigured && s3Client) {
-                try {
-                    const { HeadObjectCommand } = await import('@aws-sdk/client-s3');
-                    const { serverEnv } = await import('@/lib/env.server');
-                    const cmd = new HeadObjectCommand({ Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME, Key: asset.file_path });
-                    await s3Client.send(cmd);
-                } catch (err: any) {
-                    // Asset claims to be in R2 but doesn't exist
-                    console.warn(`[Media Library] R2 asset missing: ${asset.file_path}`);
-                }
-            }
-            return { ...asset, file_url: url };
+        // Map assets with computed URLs (no verification checks — they slow down pagination)
+        const mapped = assets.map((asset) => ({
+            ...asset,
+            file_url: computeMediaUrl(asset)
         }));
 
         // CRITICAL: Disable all caching on media library endpoint

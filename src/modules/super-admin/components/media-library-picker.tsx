@@ -25,7 +25,7 @@ interface MediaAsset {
     file_path: string;
     mime_type: string;
     file_size: number;
-    storage_type: 'r2' | 'local';
+    storage_type: 'r2' | 'stream' | 'local';
     asset_type: 'video' | 'image' | 'document';
     created_at: string;
 }
@@ -57,11 +57,11 @@ function AssetIcon({ asset_type, mime_type, className }: { asset_type: string; m
 }
 
 const TABS: { id: AssetType; label: string; icon: React.ElementType }[] = [
-    { id: 'all', label: 'All', icon: HardDrive },
-    { id: 'video', label: 'Local/R2 Videos', icon: Film },
-    { id: 'cloudflare_stream', label: 'Cloudflare Stream', icon: Cloud },
-    { id: 'image', label: 'Images', icon: ImageIcon },
-    { id: 'document', label: 'Docs', icon: FileText },
+    { id: 'all', label: 'All Cloud Assets', icon: HardDrive },
+    { id: 'video', label: 'R2 Videos', icon: Film },
+    { id: 'cloudflare_stream', label: 'Stream Videos', icon: Cloud },
+    { id: 'image', label: 'Cloud Images', icon: ImageIcon },
+    { id: 'document', label: 'Cloud Documents', icon: FileText },
 ];
 
 const FOLDERS = [
@@ -201,7 +201,8 @@ export function MediaLibraryPicker({
                 page: targetPage.toString(),
                 limit: '24'
             });
-            if (type !== 'all') params.set('type', type);
+            if (type !== 'all' && type !== 'cloudflare_stream') params.set('type', type);
+            // Send folder prefix that the backend can filter with (e.g., "lesson" matches "lessons/*/...")
             if (targetFolder !== 'all') params.set('folder', targetFolder);
             if (query) params.set('search', query);
 

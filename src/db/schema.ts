@@ -21,7 +21,7 @@ export const achievementTierEnum = pgEnum('achievement_tier', ['bronze', 'silver
 export const challengeStatusEnum = pgEnum('challenge_status', ['active', 'completed', 'expired']);
 export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion', 'pin_reset_request']);
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'issued', 'paid', 'void', 'overdue']);
-export const storageTypeEnum = pgEnum('storage_type', ['r2', 'local']);
+export const storageTypeEnum = pgEnum('storage_type', ['r2', 'local', 'stream']);
 export const assetTypeEnum = pgEnum('asset_type', ['video', 'image', 'document']);
 export const discountTypeEnum = pgEnum('discount_type', ['percentage', 'fixed']);
 
