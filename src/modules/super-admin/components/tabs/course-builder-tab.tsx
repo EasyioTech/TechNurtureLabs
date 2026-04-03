@@ -265,37 +265,8 @@ export function CourseBuilderTab({
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                    <Button
-                        size="sm"
-                        disabled={isBackingUp}
-                        onClick={handleTriggerBackup}
-                        title="Create manual backup of all courses"
-                        className={`h-9 px-3 rounded-lg font-bold uppercase tracking-wider text-[9px] shadow-md transition-all hover:scale-[1.05] active:scale-95 flex items-center gap-1.5
-                            ${isDark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
-                    >
-                        {isBackingUp ? <RefreshCw size={12} className="animate-spin" /> : <Save size={12} />}
-                        <span className="hidden sm:inline">Backup</span>
-                    </Button>
-
-                    <Button
-                        size="sm"
-                        disabled={isBackingUp}
-                        onClick={async () => {
-                            toast.loading("Quick saving...");
-                            const res = await performInstantSaveAction();
-                            toast.dismiss();
-                            if (res.success) toast.success(res.message);
-                            else toast.error(res.error);
-                        }}
-                        title="Quick auto-save snapshot"
-                        className={`h-9 px-3 rounded-lg font-bold uppercase tracking-wider text-[9px] transition-all hover:scale-[1.05] active:scale-95 flex items-center gap-1.5
-                            ${isDark ? 'border border-white/10 text-white/70 hover:text-white hover:border-white/20 hover:bg-white/5' : 'border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-                    >
-                        <Clock size={12} />
-                        <span className="hidden sm:inline">Quick Save</span>
-                    </Button>
-
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+                    {/* Primary Action: Restore (Most Important) */}
                     <Dialog open={showBackupsDialog} onOpenChange={setShowBackupsDialog}>
                         <DialogTrigger asChild>
                             <Button
@@ -305,11 +276,11 @@ export function CourseBuilderTab({
                                     setShowBackupsDialog(true);
                                 }}
                                 title="Manage backups and restore points"
-                                className={`h-9 px-3 rounded-lg font-bold uppercase tracking-wider text-[9px] shadow-md transition-all hover:scale-[1.05] active:scale-95 flex items-center gap-1.5
-                                    ${accent.bg} text-slate-900 ${accent.bgHover}`}
+                                className={`h-10 px-4 sm:px-5 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] shadow-lg transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
+                                    ${accent.bg} text-white ${accent.bgHover} hover:shadow-xl`}
                             >
-                                <RefreshCw size={12} />
-                                <span className="hidden sm:inline">Restore</span>
+                                <RefreshCw size={14} />
+                                <span className="hidden xs:inline">Restore</span>
                             </Button>
                         </DialogTrigger>
                         <DialogContent className={`max-w-2xl border-0 p-0 overflow-hidden rounded-3xl ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}>
@@ -401,6 +372,37 @@ export function CourseBuilderTab({
                              </div>
                         </DialogContent>
                     </Dialog>
+
+                    {/* Secondary Actions: Backup & Quick Save */}
+                    <Button
+                        size="sm"
+                        disabled={isBackingUp}
+                        onClick={handleTriggerBackup}
+                        title="Create manual backup of all courses"
+                        className={`h-10 px-3 sm:px-4 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
+                            ${isDark ? 'bg-blue-600/90 text-white hover:bg-blue-600 shadow-md' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'}`}
+                    >
+                        {isBackingUp ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                        <span className="hidden xs:inline">Backup</span>
+                    </Button>
+
+                    <Button
+                        size="sm"
+                        disabled={isBackingUp}
+                        onClick={async () => {
+                            toast.loading("Quick saving...");
+                            const res = await performInstantSaveAction();
+                            toast.dismiss();
+                            if (res.success) toast.success(res.message);
+                            else toast.error(res.error);
+                        }}
+                        title="Quick auto-save snapshot"
+                        className={`h-10 px-3 sm:px-4 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
+                            ${isDark ? 'bg-slate-700 text-white hover:bg-slate-600 shadow-md' : 'bg-slate-500 text-white hover:bg-slate-600 shadow-md'}`}
+                    >
+                        <Clock size={14} />
+                        <span className="hidden xs:inline">Quick Save</span>
+                    </Button>
 
                     {/* Backup Preview Modal */}
                     <BackupPreviewModal
