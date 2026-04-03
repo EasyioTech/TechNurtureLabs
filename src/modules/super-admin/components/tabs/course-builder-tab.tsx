@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { handleThumbnailError } from '@/lib/media-client';
-import { Plus, Save, Edit, Trash2, BookOpen, Layers, AlertOctagon } from 'lucide-react';
+import { Plus, Save, Edit, Trash2, BookOpen, Layers, AlertOctagon, Database, RefreshCw, Clock, ShieldAlert, Info } from 'lucide-react';
 import { SortableLessonItem } from '../lesson-item-sortable';
 import { CourseDialog } from '../course-dialog';
 import { LessonDialog } from '../lesson-dialog';
@@ -24,6 +24,9 @@ import {
     AlertDialogTitle,
     AlertDialogDescription,
 } from '@/components/ui/alert-dialog';
+import { performBackupAction, listBackupsAction, restoreFromBackupAction } from '../../actions/backup-actions';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface CourseBuilderTabProps {
     courses: Course[];
@@ -60,7 +63,44 @@ export function CourseBuilderTab({
     const [itemToDelete, setItemToDelete] = useState<{ type: 'course' | 'lesson', id: string, name: string } | null>(null);
     const [isDirtyOrder, setIsDirtyOrder] = useState(false);
 
+    // Backup state
+    const [backups, setBackups] = useState<any[]>([]);
+    const [isBackingUp, setIsBackingUp] = useState(false);
+    const [isRestoring, setIsRestoring] = useState<string | null>(null);
+    const [showBackupsDialog, setShowBackupsDialog] = useState(false);
+
     useEffect(() => { setIsDirtyOrder(false); }, [selectedCourse?.id]);
+
+    const fetchBackups = async () => {
+        const data = await listBackupsAction();
+        setBackups(data);
+    };
+
+    const handleTriggerBackup = async () => {
+        setIsBackingUp(true);
+        const res = await performBackupAction();
+        if (res.success) {
+            toast.success("Content backed up successfully to R2");
+            fetchBackups();
+        } else {
+            toast.error(res.error || "Backup failed");
+        }
+        setIsBackingUp(false);
+    };
+
+    const handleRestore = async (key: string) => {
+        if (!confirm("Are you sure? Existing courses with same slugs will be skipped.")) return;
+        setIsRestoring(key);
+        const res = await restoreFromBackupAction(key);
+        if (res.success) {
+            toast.success("System restored successfully");
+            // Optionally reload page or refetch courses
+            window.location.reload();
+        } else {
+            toast.error(res.error || "Restore failed");
+        }
+        setIsRestoring(null);
+    };
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -100,7 +140,60 @@ export function CourseBuilderTab({
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
                     className={`rounded-[24px] border overflow-hidden transition-all duration-500 shadow-xl shadow-black/5 flex flex-col h-[420px] sm:h-[520px] lg:h-[700px] ${t.card(isDark)}`}>
                     <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${t.border(isDark)}`}>
-                        <h3 className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>All Courses</h3>
+                        <div className="flex flex-col">
+                            <h3 className={`font-black text-sm tracking-tight ${t.textPrimary(isDark)}`}>All Courses</h3>
+                            <div className="flex gap-2 mt-1">
+                                <button
+                                    onClick={handleTriggerBackup}
+                                    disabled={isBackingUp}
+                                    className={`text-[8px] font-black uppercase tracking-widest flex items-center gap-1 hover:opacity-70 transition-opacity ${accent.text}`}
+                                >
+                                    {isBackingUp ? <RefreshCw className="w-2 h-2 animate-spin" /> : <Database className="w-2 h-2" />}
+                                    Backup
+                                </button>
+                                <Dialog open={showBackupsDialog} onOpenChange={(o) => {
+                                    setShowBackupsDialog(o);
+                                    if (o) fetchBackups();
+                                }}>
+                                    <DialogTrigger asChild>
+                                        <button className={`text-[8px] font-black uppercase tracking-widest flex items-center gap-1 hover:opacity-70 transition-opacity ${t.textMuted(isDark)}`}>
+                                            <Clock className="w-2 h-2" /> Restore
+                                        </button>
+                                    </DialogTrigger>
+                                    <DialogContent className={`max-w-md rounded-3xl border-0 ${isDark ? 'bg-[#0f1219] text-white' : 'bg-white'}`}>
+                                        <DialogHeader>
+                                            <DialogTitle className="text-xl font-black flex items-center gap-2">
+                                                <ShieldAlert className={accent.text} />
+                                                Cloudflare R2 Backups
+                                            </DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                                            {backups.length > 0 ? backups.map(b => (
+                                                <div key={b.key} className={`p-4 rounded-2xl border ${t.border(isDark)} flex items-center justify-between`}>
+                                                    <div className="min-w-0 flex-1 mr-4">
+                                                        <p className="text-[11px] font-black truncate">{b.key.split('/').pop()}</p>
+                                                        <p className={`text-[9px] font-bold uppercase opacity-50`}>
+                                                            {(b.size / 1024).toFixed(1)} KB • {new Date(b.lastModified).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => handleRestore(b.key)}
+                                                        disabled={!!isRestoring}
+                                                        className={`rounded-xl h-8 text-[9px] font-black uppercase tracking-widest ${t.btnOutline(isDark)}`}
+                                                    >
+                                                        {isRestoring === b.key ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'Restore'}
+                                                    </Button>
+                                                </div>
+                                            )) : (
+                                                <div className="text-center py-10 opacity-30 italic text-xs">No backups found</div>
+                                            )}
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+                        </div>
                         <Button variant="ghost" size="sm"
                             onClick={() => {
                                 console.log('[CourseBuilderTab] CREATE COURSE clicked');
