@@ -66,10 +66,9 @@ const TABS: { id: AssetType; label: string; icon: React.ElementType }[] = [
 
 const FOLDERS = [
     { id: 'all', label: 'All Assets', color: 'text-slate-400' },
-    { id: 'lesson', label: 'Lessons', color: 'text-sky-400' },
-    { id: 'course', label: 'Courses', color: 'text-indigo-400' },
-    { id: 'branding', label: 'Branding', color: 'text-amber-400' },
-    { id: 'library', label: 'General', color: 'text-emerald-400' },
+    { id: 'images', label: 'Images', color: 'text-emerald-400' },
+    { id: 'videos', label: 'Videos', color: 'text-sky-400' },
+    { id: 'documents', label: 'Documents', color: 'text-indigo-400' },
 ];
 
 export function MediaLibraryPicker({
@@ -503,8 +502,8 @@ export function MediaLibraryPicker({
                         </div>
                     )}
 
-                    {/* Folder Tabs — Hidden for Video */}
-                    {filterType !== 'video' && (
+                    {/* Folder Tabs — Hidden for Video or when a specific folder is enforced */}
+                    {filterType !== 'video' && !folder && (
                         <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
                             {FOLDERS.map(f => {
                                 const isActive = activeFolder === f.id;

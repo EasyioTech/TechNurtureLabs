@@ -179,3 +179,10 @@ export type SystemHealthData = {
     server: ServerHealthMetrics;
     database: DatabaseHealthMetrics;
 };
+
+export type DiagnosticsResult = {
+    status: 'ok' | 'issues_found';
+    tablesChecked: number;
+    issues: string[];
+    cleanedCount: number;
+};

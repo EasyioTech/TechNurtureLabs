@@ -292,7 +292,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     };
 
     // ── File upload for a specific block ──────────────────────────
-    const handleFileUpload = async (file: File, itemId: string) => {
+    const handleFileUpload = async (file: File, itemId: string, folder: string) => {
         if (!file) return;
         if (file.size > 2048 * 1024 * 1024) { toast.error('Max 2 GB'); return; }
         setActiveUploadItemId(itemId);
@@ -339,7 +339,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                 return;
             }
             // Standard upload (non-video or CF Stream fallback)
-            const result: any = await upload(file, { purpose: 'library', storagePreference: storagePref === 'local' ? 'local' : 'r2', folder: 'lesson' });
+            const result: any = await upload(file, { purpose: 'library', storagePreference: storagePref === 'local' ? 'local' : 'r2', folder });
             if (result?.url) applyBlockUpdate(itemId, 'url', result.url);
             toast.success('File uploaded');
         } catch (err: any) {
@@ -388,7 +388,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     };
 
     // ── Library filter type per block ─────────────────────────────
-    const getLibraryFilter = (type: string): 'video' | 'document' | 'image' | undefined => {
+    const getLibraryFilter = (type: ContentItem['type']): 'video' | 'document' | 'image' | undefined => {
         if (type === 'video') return 'video';
         if (type === 'image') return 'image';
         if (type === 'pdf' || type === 'ppt') return 'document';
@@ -624,7 +624,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                                                                         setActiveUploadItemId(`${item.id}:${imgIdx}`);
                                                                                         setUploadFile(f);
                                                                                         try {
-                                                                                            const result: any = await upload(f, { purpose: 'library', storagePreference: storagePref, folder: 'lesson' });
+                                                                                            const result: any = await upload(f, { purpose: 'library', storagePreference: storagePref, folder: 'images' });
                                                                                             if (result?.url) {
                                                                                                 const next = [...getImageUrls(item)];
                                                                                                 next[imgIdx] = result.url;
@@ -720,7 +720,13 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                                                     type="file"
                                                                     className="hidden"
                                                                     accept={bt.accept}
-                                                                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, item.id); }}
+                                                                    onChange={(e) => { 
+                                                                        const f = e.target.files?.[0]; 
+                                                                        if (f) {
+                                                                            const uploadFolder = (item.type === 'pdf' || item.type === 'ppt') ? 'documents' : 'videos';
+                                                                            handleFileUpload(f, item.id, uploadFolder); 
+                                                                        }
+                                                                    }}
                                                                 />
                                                                 {isUploadingThis
                                                                     ? <><Loader2 size={11} className="animate-spin" /> {isStreamUploadingThis ? streamProgress : progress}%</>
@@ -1036,6 +1042,16 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                     if (libraryTargetId.includes(':')) return 'image';
                     const targetItem = contentItems.find(i => i.id === libraryTargetId);
                     return targetItem ? getLibraryFilter(targetItem.type) : undefined;
+                })()}
+                folder={(() => {
+                    if (!libraryTargetId) return undefined;
+                    if (libraryTargetId.includes(':')) return 'images';
+                    const targetItem = contentItems.find(i => i.id === libraryTargetId);
+                    if (!targetItem) return undefined;
+                    if (targetItem.type === 'video') return 'videos';
+                    if (targetItem.type === 'image') return 'images';
+                    if (targetItem.type === 'pdf' || targetItem.type === 'ppt') return 'documents';
+                    return 'library';
                 })()}
                 onSelect={(url) => {
                     if (libraryTargetId) {

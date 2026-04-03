@@ -128,7 +128,7 @@ export function CourseDialog({
                                 value={editingCourse?.thumbnail || ''}
                                 onChange={(url) => setEditingCourse({ ...editingCourse, thumbnail: url })}
                                 isDark={isDark}
-                                folder="course"
+                                folder="images"
                             />
                             {editingCourse?.thumbnail && (
                                 (() => {

@@ -14,7 +14,8 @@ import { generate2FASecret, enable2FA, disable2FA } from '@/actions/2fa';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { fetchAllClasses, createClass, deleteClass, ensureDefaultClasses, syncPlatformMetrics } from '@/modules/super-admin/actions';
+import { fetchAllClasses, createClass, deleteClass, ensureDefaultClasses, syncPlatformMetrics, runDatabaseDiagnostics } from '@/modules/super-admin/actions';
+import { DiagnosticsResult } from '@/modules/super-admin/types';
 import { SystemHealthTab } from './system-health-tab';
 
 export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref) {
@@ -61,6 +62,8 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
     const [classCreating, setClassCreating] = useState(false);
     const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
     const [syncing, setSyncing] = useState(false);
+    const [diagnosing, setDiagnosing] = useState(false);
+    const [diagResults, setDiagResults] = useState<DiagnosticsResult | null>(null);
 
     const loadClasses = async () => {
         setClassesLoading(true);
@@ -1023,14 +1026,51 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                         <div className="space-y-2">
                             <h4 className={`text-sm font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Database Integrity</h4>
                             <p className={`text-[11px] font-medium leading-relaxed ${t.textMuted(isDark)}`}>
-                                Validates foreign key relationships and cleans up orphaned metadata. Recommended after massive course deletions.
+                                Validates foreign key relationships and detects orphaned metadata. Run after massive course/school deletions.
                             </p>
+                            {diagResults && (
+                                <div className={`mt-3 p-3 rounded-xl ${diagResults.status === 'ok' ? (isDark ? 'bg-emerald-500/10' : 'bg-emerald-50') : (isDark ? 'bg-rose-500/10' : 'bg-rose-50')}`}>
+                                    <p className={`text-[10px] font-black ${diagResults.status === 'ok' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                        {diagResults.status === 'ok'
+                                            ? '✓ Database Healthy - No issues found'
+                                            : `⚠ ${diagResults.issues.length} Issue${diagResults.issues.length > 1 ? 's' : ''} Found`}
+                                    </p>
+                                    {diagResults.issues.length > 0 && (
+                                        <ul className={`text-[9px] mt-2 space-y-1 ${isDark ? 'text-rose-200' : 'text-rose-700'}`}>
+                                            {diagResults.issues.map((issue, i) => (
+                                                <li key={i}>• {issue}</li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            )}
                         </div>
-                        <Button 
-                            variant="outline"
-                            className={`mt-6 w-fit rounded-full h-11 px-8 font-black uppercase tracking-widest text-[10px] border-2 ${t.btnOutline(isDark)} opacity-50 cursor-not-allowed`}
+                        <Button
+                            type="button"
+                            disabled={diagnosing}
+                            onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDiagnosing(true);
+                                try {
+                                    const res = await runDatabaseDiagnostics();
+                                    setDiagResults(res);
+                                    if (res.status === 'ok') {
+                                        toast.success('Database diagnostics: All clear');
+                                    } else {
+                                        toast.error(`Found ${res.issues.length} issue${res.issues.length > 1 ? 's' : ''}`);
+                                    }
+                                } catch (err: any) {
+                                    toast.error('Diagnostics failed: ' + err.message);
+                                    console.error(err);
+                                } finally {
+                                    setDiagnosing(false);
+                                }
+                            }}
+                            className={`mt-6 w-fit rounded-full h-11 px-8 font-black uppercase tracking-widest text-[10px] ${t.btnPrimary(isDark, accent)}`}
                         >
-                            RUN DIAGNOSTICS (SOON)
+                            {diagnosing ? <Loader2 className="animate-spin mr-2" size={14} /> : null}
+                            RUN DIAGNOSTICS
                         </Button>
                     </div>
                 </div>

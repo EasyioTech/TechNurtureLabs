@@ -7,16 +7,18 @@ import {
     RefreshCw, Cpu, HardDrive, Users, Clock, AlertTriangle, Info, Server, Network
 } from 'lucide-react';
 import { getSystemHealth } from '../../actions/redis-monitoring';
-import { type SystemHealthData } from '../../types';
+import { runDatabaseDiagnostics } from '../../actions';
+import { type SystemHealthData, type DiagnosticsResult } from '../../types';
 import { useAdminTheme, t } from '../../theme-context';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { performBackupAction, listBackupsAction, restoreFromBackupAction } from '../../actions/backup-actions';
 
 export function SystemHealthTab() {
     const { isDark, accent } = useAdminTheme();
     const [data, setData] = useState<SystemHealthData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [diagnosing, setDiagnosing] = useState(false);
+    const [diagResults, setDiagResults] = useState<DiagnosticsResult | null>(null);
 
     const fetchData = async (silent = false) => {
         if (!silent) setLoading(true);
@@ -536,6 +538,83 @@ export function SystemHealthTab() {
                             </p>
                         </div>
                     </div>
+                </div>
+
+                {/* Database Diagnostics Card */}
+                <div className={`rounded-[2.5rem] p-8 border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-white shadow-xl shadow-black/5'}`}>
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
+                            <ShieldAlert className={accent.text} size={20} />
+                            <h3 className={`text-sm font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Database Diagnostics</h3>
+                        </div>
+                        <Button
+                            type="button"
+                            size="sm"
+                            disabled={diagnosing}
+                            onClick={async () => {
+                                setDiagnosing(true);
+                                try {
+                                    const res = await runDatabaseDiagnostics();
+                                    setDiagResults(res);
+                                    if (res.status === 'ok') {
+                                        toast.success('Database integrity: All clear');
+                                    } else {
+                                        toast.warning(`Found ${res.issues.length} issue${res.issues.length > 1 ? 's' : ''}`);
+                                    }
+                                } catch (err: any) {
+                                    toast.error('Diagnostics error: ' + err.message);
+                                } finally {
+                                    setDiagnosing(false);
+                                }
+                            }}
+                            className={`rounded-full h-10 px-6 font-black uppercase tracking-widest text-[9px] ${t.btnPrimary(isDark, accent)}`}
+                        >
+                            {diagnosing ? <RefreshCw className="animate-spin mr-2" size={13} /> : null}
+                            {diagnosing ? 'Checking...' : 'Run Check'}
+                        </Button>
+                    </div>
+
+                    {diagResults ? (
+                        <div className="space-y-4">
+                            <div className={`p-6 rounded-2xl border-2 ${diagResults.status === 'ok'
+                                ? `border-emerald-500/20 ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-50'}`
+                                : `border-rose-500/20 ${isDark ? 'bg-rose-500/10' : 'bg-rose-50'}`
+                            }`}>
+                                <div className="flex items-center gap-3">
+                                    {diagResults.status === 'ok' ? (
+                                        <CheckCircle2 className="text-emerald-500" size={24} />
+                                    ) : (
+                                        <AlertTriangle className="text-rose-500" size={24} />
+                                    )}
+                                    <div>
+                                        <p className={`text-sm font-black ${diagResults.status === 'ok' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            {diagResults.status === 'ok' ? 'Database Healthy' : `${diagResults.issues.length} Issue${diagResults.issues.length > 1 ? 's' : ''} Found`}
+                                        </p>
+                                        <p className={`text-[10px] font-bold mt-1 ${diagResults.status === 'ok' ? (isDark ? 'text-emerald-200' : 'text-emerald-700') : (isDark ? 'text-rose-200' : 'text-rose-700')}`}>
+                                            Checked {diagResults.tablesChecked} table{diagResults.tablesChecked > 1 ? 's' : ''}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            {diagResults.issues.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Found Issues:</p>
+                                    {diagResults.issues.map((issue, i) => (
+                                        <div key={i} className={`p-3 rounded-lg flex gap-2 ${isDark ? 'bg-white/5' : 'bg-neutral-50'}`}>
+                                            <AlertTriangle className="text-rose-500 flex-shrink-0 mt-0.5" size={14} />
+                                            <p className={`text-[9px] font-bold leading-relaxed ${t.textSecondary(isDark)}`}>{issue}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className={`p-6 rounded-2xl border border-dashed ${t.border(isDark)} text-center`}>
+                            <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
+                                Click "Run Check" to validate database integrity and detect orphaned records
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 

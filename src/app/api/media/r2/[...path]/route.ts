@@ -25,14 +25,15 @@ export async function GET(
         }
 
         // ── 2. Authorization (BOLA Protection) ──────────────────────
-        // Quick Win #1/2: BOLA Protection for R2 assets
         if (session.userType === 'student') {
             const { db } = await import('@/lib/db');
             const { lessons: lessonsTable, enrollments } = await import('@/db/schema');
             const { eq, and } = await import('drizzle-orm');
             const pathParts = key.split('/');
             
-            // Pattern 1: Lessons (lessons/{lessonId}/...)
+            let hasAccessFlag = false;
+
+            // Legacy patterns (still supported for now)
             if (pathParts[0] === 'lessons' && pathParts[1]) {
                 const lessonId = pathParts[1];
                 const hasAccess = await db
@@ -46,13 +47,8 @@ export async function GET(
                         )
                     )
                     .limit(1);
-
-                if (hasAccess.length === 0) {
-                    return new NextResponse('Forbidden: Enrollment required.', { status: 403 });
-                }
+                if (hasAccess.length > 0) hasAccessFlag = true;
             }
-            
-            // Pattern 2: Courses (courses/{courseId}/...)
             else if (pathParts[0] === 'courses' && pathParts[1]) {
                 const courseId = pathParts[1];
                 const hasAccess = await db
@@ -65,10 +61,17 @@ export async function GET(
                         )
                     )
                     .limit(1);
+                if (hasAccess.length > 0) hasAccessFlag = true;
+            }
+            // Strict folder structure patterns (images/, videos/, documents/)
+            else if (['images', 'videos', 'documents'].includes(pathParts[0])) {
+                // For images, we generally allow authenticated students to view them
+                // Videos are further protected by HMAC tokens anyway
+                hasAccessFlag = true;
+            }
 
-                if (hasAccess.length === 0) {
-                    return new NextResponse('Forbidden: Enrollment required.', { status: 403 });
-                }
+            if (!hasAccessFlag) {
+                return new NextResponse('Forbidden: Access denied.', { status: 403 });
             }
         }
 

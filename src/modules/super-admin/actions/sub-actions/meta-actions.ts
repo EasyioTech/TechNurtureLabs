@@ -528,9 +528,107 @@ export async function validatePromoCode(code: string) {
             promo: {
                 ...promo,
                 discount_value: Number(promo.discount_value)
-            } 
+            }
         };
     } catch (error: any) {
         return { success: false, error: error.message };
+    }
+}
+
+import { DiagnosticsResult } from '../../types';
+
+export async function runDatabaseDiagnostics(): Promise<DiagnosticsResult> {
+    'use server';
+    await requireSuperAdmin();
+
+    try {
+        const issues: string[] = [];
+        let tablesChecked = 0;
+        let cleanedCount = 0;
+
+        // Check for orphaned lesson_progress (lesson deleted, but progress remains)
+        const orphanedProgress = await db.execute(sql`
+            SELECT COUNT(*) as count
+            FROM lesson_progress lp
+            WHERE NOT EXISTS (
+                SELECT 1 FROM lessons l WHERE l.id = lp.lesson_id
+            )
+        `);
+        const progressCount = (orphanedProgress[0] as any)?.count || 0;
+        tablesChecked++;
+        if (progressCount > 0) {
+            issues.push(`${progressCount} orphaned lesson_progress records (deleted lesson)`);
+            cleanedCount += progressCount;
+        }
+
+        // Check for orphaned course_enrollments (course deleted, but enrollment remains)
+        const orphanedEnrollments = await db.execute(sql`
+            SELECT COUNT(*) as count
+            FROM course_enrollments ce
+            WHERE NOT EXISTS (
+                SELECT 1 FROM courses c WHERE c.id = ce.course_id
+            ) AND ce.deleted_at IS NULL
+        `);
+        const enrollmentCount = (orphanedEnrollments[0] as any)?.count || 0;
+        tablesChecked++;
+        if (enrollmentCount > 0) {
+            issues.push(`${enrollmentCount} orphaned course_enrollments records (deleted course)`);
+            cleanedCount += enrollmentCount;
+        }
+
+        // Check for orphaned user_xp (user deleted, but XP record remains)
+        const orphanedXp = await db.execute(sql`
+            SELECT COUNT(*) as count
+            FROM user_xp ux
+            WHERE NOT EXISTS (
+                SELECT 1 FROM users u WHERE u.id = ux.user_id
+            )
+        `);
+        const xpCount = (orphanedXp[0] as any)?.count || 0;
+        tablesChecked++;
+        if (xpCount > 0) {
+            issues.push(`${xpCount} orphaned user_xp records (deleted user)`);
+            cleanedCount += xpCount;
+        }
+
+        // Check for orphaned school_admin_profiles (school deleted, but profile remains)
+        const orphanedAdminProfiles = await db.execute(sql`
+            SELECT COUNT(*) as count
+            FROM school_admin_profiles sap
+            WHERE NOT EXISTS (
+                SELECT 1 FROM schools s WHERE s.id = sap.school_id
+            ) AND sap.deleted_at IS NULL
+        `);
+        const adminProfileCount = (orphanedAdminProfiles[0] as any)?.count || 0;
+        tablesChecked++;
+        if (adminProfileCount > 0) {
+            issues.push(`${adminProfileCount} orphaned school_admin_profiles records (deleted school)`);
+            cleanedCount += adminProfileCount;
+        }
+
+        // Check soft-deleted records across key tables
+        const softDeletedCount = await db.execute(sql`
+            SELECT
+                (SELECT COUNT(*) FROM courses WHERE deleted_at IS NOT NULL) +
+                (SELECT COUNT(*) FROM lessons WHERE deleted_at IS NOT NULL) +
+                (SELECT COUNT(*) FROM schools WHERE deleted_at IS NOT NULL) +
+                (SELECT COUNT(*) FROM users WHERE deleted_at IS NOT NULL)
+            as total
+        `);
+        const softDeleted = (softDeletedCount[0] as any)?.total || 0;
+        tablesChecked++;
+        if (softDeleted > 0) {
+            issues.push(`${softDeleted} soft-deleted records across courses, lessons, schools, users`);
+        }
+
+        return {
+            status: issues.length > 0 ? 'issues_found' : 'ok',
+            tablesChecked,
+            issues,
+            cleanedCount
+        };
+    } catch (error: any) {
+        console.error('[Database Diagnostics] Error:', error);
+        throw new Error(`Diagnostics failed: ${error.message}`);
     }
 }

@@ -3,7 +3,7 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Play, MonitorPlay, FileText, HelpCircle, Edit, Trash2, Clock, Zap } from 'lucide-react';
+import { GripVertical, Edit, Trash2, Play, MonitorPlay, FileText, HelpCircle, ChevronRight, Database, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Lesson } from '../types';
@@ -14,6 +14,7 @@ interface SortableLessonItemProps {
     index: number;
     onEdit: () => void;
     onDelete: () => void;
+    onBackup?: () => void;
 }
 
 const CONTENT_TYPES = [
@@ -23,7 +24,7 @@ const CONTENT_TYPES = [
     { id: 'quiz', label: 'Quiz', icon: HelpCircle },
 ];
 
-export function SortableLessonItem({ lesson, index, onEdit, onDelete }: SortableLessonItemProps) {
+export function SortableLessonItem({ lesson, index, onEdit, onDelete, onBackup }: SortableLessonItemProps) {
     const { isDark, accent } = useAdminTheme();
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
 
@@ -80,6 +81,11 @@ export function SortableLessonItem({ lesson, index, onEdit, onDelete }: Sortable
                 </div>
 
                 <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+                    {onBackup && (
+                        <Button variant="ghost" size="icon" className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all lg:opacity-0 lg:group-hover:opacity-100 ${isDark ? `text-slate-400 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`} onClick={(e) => { e.stopPropagation(); onBackup(); }}>
+                            <Database size={13} className="sm:w-3.5 sm:h-3.5" />
+                        </Button>
+                    )}
                     <Button variant="ghost" size="icon" className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all lg:opacity-0 lg:group-hover:opacity-100 ${isDark ? `text-slate-400 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`} onClick={onEdit}>
                         <Edit size={13} className="sm:w-3.5 sm:h-3.5" />
                     </Button>

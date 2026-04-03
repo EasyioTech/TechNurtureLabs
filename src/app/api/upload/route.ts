@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadFile, getAssetType, s3Client, isCloudflareConfigured } from '@/lib/storage';
+import { uploadFile, getAssetType, s3Client, isCloudflareConfigured, getFolderPrefix } from '@/lib/storage';
 import { db } from '@/lib/db';
 import { mediaAssets } from '@/db/schema';
 import { verifySession } from '@/lib/auth';
@@ -125,6 +125,8 @@ export async function POST(request: NextRequest) {
             result.mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
             result.mimeType === 'application/vnd.ms-powerpoint';
 
+        const correctFolder = getFolderPrefix(file.type);
+
         // Persist to media library
         const [asset] = await db.insert(mediaAssets).values({
             file_name: fileName,
@@ -136,12 +138,10 @@ export async function POST(request: NextRequest) {
             storage_type: result.storageType,
             asset_type: assetType,
             uploaded_by: uploadedBy || undefined,
-            folder: folderHint,
+            folder: correctFolder,
             // Videos are handled via Cloudflare Stream, no server-side processing needed
             processing_status: 'completed',
         } as any).returning();
-
-
 
 
 

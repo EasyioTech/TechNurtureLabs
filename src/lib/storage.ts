@@ -256,9 +256,8 @@ export async function getSignedDownloadUrl(key: string, expiresIn: number = 300,
 // Helpers
 // ─────────────────────────────────────────────
 
-/** Determine folder prefix from MIME type and optional context */
-function getFolderPrefix(mimeType: string, context?: StorageContext, folderHint?: string): string {
-    // Simplify to top-level folders based strictly on type
+/** Determine folder prefix from MIME type strictly based on type */
+export function getFolderPrefix(mimeType: string): string {
     if (mimeType.startsWith('image/') || mimeType === 'image/x-icon' || mimeType === 'image/vnd.microsoft.icon') {
         return 'images';
     }
@@ -395,7 +394,7 @@ export async function uploadFile(
     }
 
     const ext = path.extname(originalFilename);
-    const folder = getFolderPrefix(mimeType, context, folderHint);
+    const folder = getFolderPrefix(mimeType);
     const fileName = `${uuidv4()}${ext}`;
 
     // ── Attempt R2 upload ──────────────────────────────────────────────

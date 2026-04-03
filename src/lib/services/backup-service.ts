@@ -27,6 +27,19 @@ export interface CourseBackupData {
     mediaAssets: typeof schema.mediaAssets.$inferSelect[];
 }
 
+export interface LessonBackupData {
+    version: string;
+    timestamp: string;
+    lesson: typeof schema.lessons.$inferSelect & {
+        quiz?: typeof schema.quizzes.$inferSelect & {
+            questions: (typeof schema.quizQuestions.$inferSelect & {
+                options: typeof schema.quizOptions.$inferSelect[];
+            })[];
+        };
+    };
+    mediaAsset?: typeof schema.mediaAssets.$inferSelect;
+}
+
 export async function exportAllCourses(): Promise<CourseBackupData> {
     // 1. Fetch all classes
     const classes = await db.query.classes.findMany();
@@ -48,7 +61,6 @@ export async function exportAllCourses(): Promise<CourseBackupData> {
                 }
             },
             quizzes: {
-                // Quizzes can be top-level too if not linked to lesson
                 where: (quizzes, { isNull }) => isNull(quizzes.lesson_id),
                 with: {
                     questions: {
@@ -65,9 +77,6 @@ export async function exportAllCourses(): Promise<CourseBackupData> {
     // 3. Collect all referenced media asset IDs
     const assetIds = new Set<string>();
     allCourses.forEach(course => {
-        if (course.thumbnail_url?.includes('/api/media/')) {
-            // Might be a media asset ID or path
-        }
         course.lessons.forEach(lesson => {
             if (lesson.asset_id) assetIds.add(lesson.asset_id);
         });
@@ -88,13 +97,107 @@ export async function exportAllCourses(): Promise<CourseBackupData> {
     };
 }
 
-export async function uploadBackupToR2(backupData: CourseBackupData): Promise<string> {
+export async function exportLesson(lessonId: string): Promise<LessonBackupData> {
+    const lesson = await db.query.lessons.findFirst({
+        where: eq(schema.lessons.id, lessonId),
+        with: {
+            quiz: {
+                with: {
+                    questions: {
+                        with: {
+                            options: true
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!lesson) throw new Error("Lesson not found");
+
+    const mediaAsset = lesson.asset_id 
+        ? await db.query.mediaAssets.findFirst({ where: eq(schema.mediaAssets.id, lesson.asset_id) })
+        : undefined;
+
+    return {
+        version: '1.0',
+        timestamp: new Date().toISOString(),
+        lesson,
+        mediaAsset
+    };
+}
+
+export async function exportCourse(courseId: string): Promise<CourseBackupData> {
+    const course = await db.query.courses.findFirst({
+        where: eq(schema.courses.id, courseId),
+        with: {
+            lessons: {
+                with: {
+                    quiz: {
+                        with: {
+                            questions: {
+                                with: {
+                                    options: true
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            quizzes: {
+                where: (quizzes, { isNull }) => isNull(quizzes.lesson_id),
+                with: {
+                    questions: {
+                        with: {
+                            options: true
+                        }
+                    }
+                }
+            },
+            classMapping: true
+        }
+    });
+
+    if (!course) throw new Error("Course not found");
+
+    const assetIds = new Set<string>();
+    course.lessons.forEach(lesson => {
+        if (lesson.asset_id) assetIds.add(lesson.asset_id);
+    });
+
+    const mediaAssets = assetIds.size > 0 
+        ? await db.query.mediaAssets.findMany({
+            where: inArray(schema.mediaAssets.id, Array.from(assetIds))
+          })
+        : [];
+
+    return {
+        version: '1.0',
+        timestamp: new Date().toISOString(),
+        classes: [], 
+        courses: [course as any],
+        mediaAssets
+    };
+}
+
+export async function uploadBackupToR2(backupData: any, type: 'course' | 'lesson' = 'course'): Promise<string> {
     if (!isCloudflareConfigured || !s3Client) {
         throw new Error("R2 is not configured. Cannot save backup.");
     }
 
     const payload = JSON.stringify(backupData);
-    const fileName = `backups/courses/all_courses_${new Date().getTime()}.json`;
+    const prefix = type === 'course' ? 'courses' : 'lessons';
+    
+    let baseName = 'backup';
+    if (type === 'course') {
+        const bd = backupData as CourseBackupData;
+        baseName = bd.courses.length === 1 ? bd.courses[0].title.replace(/\s+/g, '_').toLowerCase() : 'all_courses';
+    } else {
+        const bd = backupData as LessonBackupData;
+        baseName = bd.lesson.title.replace(/\s+/g, '_').toLowerCase();
+    }
+
+    const fileName = `backups/${prefix}/${baseName}_${new Date().getTime()}.json`;
 
     const command = new PutObjectCommand({
         Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
@@ -107,7 +210,7 @@ export async function uploadBackupToR2(backupData: CourseBackupData): Promise<st
     return fileName;
 }
 
-export async function downloadBackupFromR2(fileName: string): Promise<CourseBackupData> {
+export async function downloadBackupFromR2(fileName: string): Promise<any> {
     if (!isCloudflareConfigured || !s3Client) {
         throw new Error("R2 is not configured.");
     }
@@ -125,97 +228,136 @@ export async function downloadBackupFromR2(fileName: string): Promise<CourseBack
 }
 
 export async function restoreBackup(backupData: CourseBackupData, superAdminId: string) {
-    return await db.transaction(async (tx) => {
-        // 1. Restore Classes (or map existing)
-        const classMap = new Map<string, string>(); // oldId -> newId
-        for (const cls of backupData.classes) {
-            const existingClass = await tx.query.classes.findFirst({
-                where: eq(schema.classes.level, cls.level)
-            });
+    console.log(`[Backup Service] Starting system restore for ${backupData.courses.length} courses...`);
+    let coursesCount = 0;
+    let lessonsCount = 0;
+    let assetsCount = 0;
+    let quizzesCount = 0;
 
+    return await db.transaction(async (tx) => {
+        // 1. Restore Classes
+        console.log(`[Backup Service] Step 1: Restoring ${backupData.classes.length} classes...`);
+        const classMap = new Map<string, string>();
+        for (const cls of backupData.classes) {
+            const existingClass = await tx.query.classes.findFirst({ where: eq(schema.classes.level, cls.level) });
             if (existingClass) {
                 classMap.set(cls.id, existingClass.id);
             } else {
-                const [newCls] = await tx.insert(schema.classes).values({
-                    name: cls.name,
-                    level: cls.level,
-                }).returning();
+                const [newCls] = await tx.insert(schema.classes).values({ name: cls.name, level: cls.level }).returning();
                 classMap.set(cls.id, newCls.id);
             }
         }
 
         // 2. Restore Media Assets
-        const assetMap = new Map<string, string>(); // oldId -> newId
+        console.log(`[Backup Service] Step 2: Restoring ${backupData.mediaAssets.length} media assets...`);
+        const assetMap = new Map<string, string>();
         for (const asset of backupData.mediaAssets) {
-            const [newAsset] = await tx.insert(schema.mediaAssets).values({
-                ...asset,
-                id: undefined, // Let DB generate new
-                created_at: new Date(),
-                updated_at: new Date()
-            }).returning();
-            assetMap.set(asset.id, newAsset.id);
+            const existingAsset = await tx.query.mediaAssets.findFirst({ where: eq(schema.mediaAssets.file_path, asset.file_path) });
+            if (existingAsset) {
+                assetMap.set(asset.id, existingAsset.id);
+            } else {
+                const [newAsset] = await tx.insert(schema.mediaAssets).values({
+                    ...asset,
+                    id: undefined,
+                    created_at: new Date(),
+                    updated_at: new Date()
+                }).returning();
+                assetMap.set(asset.id, newAsset.id);
+                assetsCount++;
+            }
         }
 
         // 3. Restore Courses
         for (const courseData of backupData.courses) {
-            // Check if course slug already exists
-            const existingCourse = await tx.query.courses.findFirst({
-                where: eq(schema.courses.slug, courseData.slug)
-            });
+            let courseId: string;
+            const existingCourse = await tx.query.courses.findFirst({ where: eq(schema.courses.slug, courseData.slug) });
 
             if (existingCourse) {
-                console.log(`[Backup] Skipping course ${courseData.slug} - already exists`);
-                continue;
+                await tx.update(schema.courses).set({
+                    title: courseData.title,
+                    description: courseData.description,
+                    thumbnail_url: courseData.thumbnail_url,
+                    is_published: courseData.is_published,
+                    all_classes: courseData.all_classes,
+                    total_lessons: courseData.total_lessons,
+                    total_xp: courseData.total_xp,
+                    category: courseData.category,
+                    topics: courseData.topics,
+                    updated_at: new Date(),
+                }).where(eq(schema.courses.id, existingCourse.id));
+                courseId = existingCourse.id;
+            } else {
+                const [newCourse] = await tx.insert(schema.courses).values({
+                    title: courseData.title,
+                    slug: courseData.slug,
+                    description: courseData.description,
+                    thumbnail_url: courseData.thumbnail_url,
+                    is_published: courseData.is_published,
+                    all_classes: courseData.all_classes,
+                    total_lessons: courseData.total_lessons,
+                    total_xp: courseData.total_xp,
+                    category: courseData.category,
+                    topics: courseData.topics,
+                    created_by: superAdminId,
+                }).returning();
+                courseId = newCourse.id;
+                coursesCount++;
             }
-
-            const [newCourse] = await tx.insert(schema.courses).values({
-                title: courseData.title,
-                slug: courseData.slug,
-                description: courseData.description,
-                thumbnail_url: courseData.thumbnail_url,
-                is_published: courseData.is_published,
-                all_classes: courseData.all_classes,
-                total_lessons: courseData.total_lessons,
-                total_xp: courseData.total_xp,
-                category: courseData.category,
-                topics: courseData.topics,
-                created_by: superAdminId,
-            }).returning();
+            console.log(`[Backup Service] Processed Course: ${courseData.title} (ID: ${courseId})`);
 
             // 4. Restore Class Mapping
             for (const mapping of courseData.classMapping) {
                 const newClassId = classMap.get(mapping.class_id);
                 if (newClassId) {
                     await tx.insert(schema.courseClassMapping).values({
-                        course_id: newCourse.id,
+                        course_id: courseId,
                         class_id: newClassId,
                         is_active: mapping.is_active
+                    }).onConflictDoUpdate({
+                        target: [schema.courseClassMapping.course_id, schema.courseClassMapping.class_id],
+                        set: { is_active: mapping.is_active, deleted_at: null }
                     });
                 }
             }
 
             // 5. Restore Lessons
             for (const lessonData of courseData.lessons) {
-                const [newLesson] = await tx.insert(schema.lessons).values({
-                    course_id: newCourse.id,
+                const existingLesson = await tx.query.lessons.findFirst({
+                    where: (lessons, { and, eq }) => and(eq(lessons.course_id, courseId), eq(lessons.title, lessonData.title))
+                });
+
+                let lessonId: string;
+                const lessonPayload = {
+                    course_id: courseId,
                     title: lessonData.title,
                     description: lessonData.description,
                     content_type: lessonData.content_type,
                     content_url: lessonData.content_url,
                     content_items: lessonData.content_items,
-                    asset_id: lessonData.asset_id ? assetMap.get(lessonData.asset_id) : null,
+                    asset_id: lessonData.asset_id ? (assetMap.get(lessonData.asset_id) || lessonData.asset_id) : null,
                     sequence_order: lessonData.sequence_order,
                     duration_minutes: lessonData.duration_minutes,
                     xp_reward: lessonData.xp_reward,
                     is_published: lessonData.is_published,
-                }).returning();
+                    updated_at: new Date(),
+                    deleted_at: null,
+                };
 
-                // 6. Restore Lesson Quizzes
+                if (existingLesson) {
+                    await tx.update(schema.lessons).set(lessonPayload).where(eq(schema.lessons.id, existingLesson.id));
+                    lessonId = existingLesson.id;
+                } else {
+                    const [nl] = await tx.insert(schema.lessons).values({ ...lessonPayload, updated_at: undefined }).returning();
+                    lessonId = nl.id;
+                }
+
                 if (lessonData.quiz) {
                     const quiz = lessonData.quiz;
-                    const [newQuiz] = await tx.insert(schema.quizzes).values({
-                        lesson_id: newLesson.id,
-                        course_id: newCourse.id,
+                    const existingQuiz = await tx.query.quizzes.findFirst({ where: eq(schema.quizzes.lesson_id, lessonId) });
+                    let quizId: string;
+                    const quizPayload = {
+                        lesson_id: lessonId,
+                        course_id: courseId,
                         title: quiz.title,
                         description: quiz.description,
                         time_limit_secs: quiz.time_limit_secs,
@@ -223,12 +365,22 @@ export async function restoreBackup(backupData: CourseBackupData, superAdminId: 
                         max_attempts: quiz.max_attempts,
                         xp_reward: quiz.xp_reward,
                         is_published: quiz.is_published,
-                    }).returning();
+                        updated_at: new Date(),
+                        deleted_at: null,
+                    };
 
-                    // 7. Restore Quiz Questions
+                    if (existingQuiz) {
+                        await tx.update(schema.quizzes).set(quizPayload).where(eq(schema.quizzes.id, existingQuiz.id));
+                        quizId = existingQuiz.id;
+                    } else {
+                        const [nq] = await tx.insert(schema.quizzes).values({ ...quizPayload, updated_at: undefined }).returning();
+                        quizId = nq.id;
+                    }
+
+                    await tx.delete(schema.quizQuestions).where(eq(schema.quizQuestions.quiz_id, quizId));
                     for (const qData of quiz.questions) {
                         const [newQ] = await tx.insert(schema.quizQuestions).values({
-                            quiz_id: newQuiz.id,
+                            quiz_id: quizId,
                             question_text: qData.question_text,
                             question_type: qData.question_type,
                             explanation: qData.explanation,
@@ -237,7 +389,6 @@ export async function restoreBackup(backupData: CourseBackupData, superAdminId: 
                             sequence_order: qData.sequence_order,
                         }).returning();
 
-                        // 8. Restore Quiz Options
                         for (const opt of qData.options) {
                             await tx.insert(schema.quizOptions).values({
                                 question_id: newQ.id,
@@ -246,44 +397,118 @@ export async function restoreBackup(backupData: CourseBackupData, superAdminId: 
                                 sequence_order: opt.sequence_order
                             });
                         }
+                        quizzesCount++;
                     }
                 }
+                lessonsCount++;
+            }
+        }
+
+        console.log(`[Backup Service] Restore completed: ${coursesCount} courses, ${lessonsCount} lessons, ${assetsCount} assets, ${quizzesCount} quizzes.`);
+        return { success: true, coursesCount, lessonsCount, assetsCount, quizzesCount };
+    });
+}
+
+export async function restoreLessonBackup(backupData: LessonBackupData, targetCourseId: string) {
+    return await db.transaction(async (tx) => {
+        const { lesson, mediaAsset } = backupData;
+        
+        let assetId = null;
+        if (mediaAsset) {
+            const existingAsset = await tx.query.mediaAssets.findFirst({ where: eq(schema.mediaAssets.file_path, mediaAsset.file_path) });
+            if (existingAsset) {
+                assetId = existingAsset.id;
+            } else {
+                const [na] = await tx.insert(schema.mediaAssets).values({
+                    ...mediaAsset,
+                    id: undefined,
+                    created_at: new Date(),
+                    updated_at: new Date()
+                }).returning();
+                assetId = na.id;
+            }
+        }
+
+        console.log(`[Backup Service] Restoring lesson "${lesson.title}" into course ID ${targetCourseId}`);
+        const existingLesson = await tx.query.lessons.findFirst({
+            where: (l, { and, eq }) => and(eq(l.course_id, targetCourseId), eq(l.title, lesson.title))
+        });
+
+        const lessonPayload = {
+            course_id: targetCourseId,
+            title: lesson.title,
+            description: lesson.description,
+            content_type: lesson.content_type,
+            content_url: lesson.content_url,
+            content_items: lesson.content_items,
+            asset_id: assetId || lesson.asset_id,
+            sequence_order: lesson.sequence_order,
+            duration_minutes: lesson.duration_minutes,
+            xp_reward: lesson.xp_reward,
+            is_published: lesson.is_published,
+            updated_at: new Date(),
+            deleted_at: null,
+        };
+
+        let lessonId: string;
+        if (existingLesson) {
+            await tx.update(schema.lessons).set(lessonPayload).where(eq(schema.lessons.id, existingLesson.id));
+            lessonId = existingLesson.id;
+        } else {
+            const [nl] = await tx.insert(schema.lessons).values({ ...lessonPayload, updated_at: undefined }).returning();
+            lessonId = nl.id;
+        }
+
+        if (lesson.quiz) {
+            const quiz = lesson.quiz;
+            const existingQuiz = await tx.query.quizzes.findFirst({ where: eq(schema.quizzes.lesson_id, lessonId) });
+            let quizId: string;
+            
+            const quizPayload = {
+                lesson_id: lessonId,
+                course_id: targetCourseId,
+                title: quiz.title,
+                description: quiz.description,
+                time_limit_secs: quiz.time_limit_secs,
+                pass_percentage: quiz.pass_percentage,
+                max_attempts: quiz.max_attempts,
+                xp_reward: quiz.xp_reward,
+                is_published: quiz.is_published,
+                updated_at: new Date(),
+                deleted_at: null,
+            };
+
+            if (existingQuiz) {
+                await tx.update(schema.quizzes).set(quizPayload).where(eq(schema.quizzes.id, existingQuiz.id));
+                quizId = existingQuiz.id;
+            } else {
+                const [nq] = await tx.insert(schema.quizzes).values({ ...quizPayload, updated_at: undefined }).returning();
+                quizId = nq.id;
             }
 
-            // Restore Top-level quizzes? (If any)
-            for (const quizData of courseData.quizzes) {
-                 const [newQuiz] = await tx.insert(schema.quizzes).values({
-                    course_id: newCourse.id,
-                    title: quizData.title,
-                    description: quizData.description,
-                    time_limit_secs: quizData.time_limit_secs,
-                    pass_percentage: quizData.pass_percentage,
-                    max_attempts: quizData.max_attempts,
-                    xp_reward: quizData.xp_reward,
-                    is_published: quizData.is_published,
+            await tx.delete(schema.quizQuestions).where(eq(schema.quizQuestions.quiz_id, quizId));
+            for (const q of quiz.questions) {
+                const [newQ] = await tx.insert(schema.quizQuestions).values({
+                    quiz_id: quizId,
+                    question_text: q.question_text,
+                    question_type: q.question_type,
+                    explanation: q.explanation,
+                    points: q.points,
+                    time_limit_secs: q.time_limit_secs,
+                    sequence_order: q.sequence_order
                 }).returning();
 
-                for (const qData of quizData.questions) {
-                    const [newQ] = await tx.insert(schema.quizQuestions).values({
-                        quiz_id: newQuiz.id,
-                        question_text: qData.question_text,
-                        question_type: qData.question_type,
-                        explanation: qData.explanation,
-                        points: qData.points,
-                        time_limit_secs: qData.time_limit_secs,
-                        sequence_order: qData.sequence_order,
-                    }).returning();
-
-                    for (const opt of qData.options) {
-                        await tx.insert(schema.quizOptions).values({
-                            question_id: newQ.id,
-                            option_text: opt.option_text,
-                            is_correct: opt.is_correct,
-                            sequence_order: opt.sequence_order
-                        });
-                    }
+                for (const opt of q.options) {
+                    await tx.insert(schema.quizOptions).values({
+                        question_id: newQ.id,
+                        option_text: opt.option_text,
+                        is_correct: opt.is_correct,
+                        sequence_order: opt.sequence_order
+                    });
                 }
             }
         }
+        console.log(`[Backup Service] Lesson restore completed successfully`);
+        return { success: true };
     });
 }
