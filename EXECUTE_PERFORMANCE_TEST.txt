@@ -1,0 +1,334 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║               EXECUTE PERFORMANCE TEST: 500 SCHOOLS                        ║
+║                                                                              ║
+║            Corrected Architecture (NO Teachers - 3 User Types Only)         ║
+║                                                                              ║
+║                           Date: 2026-04-03                                  ║
+║                    Status: READY TO EXECUTE                                ║
+║                                                                              ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+═════════════════════════════════════════════════════════════════════════════
+STEP-BY-STEP EXECUTION GUIDE
+═════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Open Terminal 1 and Start Database Infrastructure
+─────────────────────────────────────────────────────────
+
+$ cd /c/Users/cristy\'s/TechNurtureLabs
+$ npm run infra:up
+
+Expected output:
+  Creating LMS_postgres...
+  Creating LMS_redis...
+  ✓ PostgreSQL is ready at localhost:5433
+  ✓ Redis is ready at localhost:6379
+
+Time: ~10 seconds
+Status: Wait for "Done" message
+
+
+STEP 2: Seed the Database (Still in Terminal 1)
+───────────────────────────────────────────────
+
+Wait 5 seconds after infra:up completes, then run:
+
+$ npm run db:seed:courses
+
+Expected output:
+  Loading courses seed data...
+  Created: Math, Science, English, History, Geography, etc.
+  ✓ Courses seeded
+
+Time: ~1-2 minutes
+Status: Wait for completion
+
+
+STEP 3: Seed 500 Schools with Students (Still in Terminal 1)
+─────────────────────────────────────────────────────────────
+
+$ npm run db:seed:500
+
+Expected output:
+  ╔════════════════════════════════════════════════════════════╗
+  ║   500 SCHOOLS SEEDING - NO TEACHERS                       ║
+  ║   500 Schools × 5-10 Students = 3,750-5,000 Users        ║
+  ╚════════════════════════════════════════════════════════════╝
+
+  📚 Found 50 global classes and 45 published courses
+
+  ✅ Created 50 schools | 1,250 students | 100 schools/sec
+  ✅ Created 100 schools | 2,500 students | 50 schools/sec
+  ...
+  ✅ Created 500 schools | 3,750-5,000 students | 25 schools/sec
+
+  ╔════════════════════════════════════════════════════════════╗
+  ║              SEEDING COMPLETE - SUMMARY                   ║
+  ╚════════════════════════════════════════════════════════════╝
+
+  📊 CREATED:
+     • Schools: 500
+     • School Admins: 500
+     • Students: 3,750-5,000
+     • Enrollments: 50,000+
+
+  ⏱️  TIME TAKEN: ~300-600s (5-10 minutes)
+
+  🔐 CREDENTIALS (All users):
+     • Username: Email address
+     • Password: admin123
+
+  📧 LOGIN EXAMPLES:
+     • admin@school1.local / admin123
+     • student1-1@school1.local / admin123
+     • student500-10@school500.local / admin123
+
+Time: 5-10 minutes
+Status: Wait for "SEEDING COMPLETE" message
+
+
+STEP 4: Open Terminal 2 and Start Development Server
+────────────────────────────────────────────────────
+
+$ cd /c/Users/cristy\'s/TechNurtureLabs
+$ npm run dev
+
+Expected output:
+  > next dev --turbopack
+
+   ▲ Next.js 15.x
+   - Local:        http://localhost:3000
+   - Environments: .env.local
+
+  ✓ Ready in 10.5s
+
+Time: ~15 seconds
+Status: Wait for "Ready in X.Xs"
+
+
+STEP 5: Open Terminal 3 and Run Performance Test
+─────────────────────────────────────────────────
+
+$ cd /c/Users/cristy\'s/TechNurtureLabs
+$ npm run test:perf:simple
+
+Expected output:
+  ╔════════════════════════════════════════════════════════════╗
+  ║   PERFORMANCE TEST - 500 Schools, 5-10 Students Each      ║
+  ╚════════════════════════════════════════════════════════════╝
+
+  ℹ️  Checking if app is running at http://localhost:3000...
+  ✅ App is running
+  ℹ️  Testing authentication...
+  ✅ Login successful
+
+  ℹ️  Testing API endpoints...
+  ✅ User Profile (/api/auth/me) - 200
+  ✅ Courses (/api/student/courses) - 200
+  ✅ Leaderboard (/api/student/leaderboard) - 200
+  ✅ Achievements (/api/student/achievements) - 200
+
+  ℹ️  Running concurrent load test...
+  (Progress: 50 concurrent users making requests)
+  ✅ Concurrent load test complete
+
+  ╔════════════════════════════════════════════════════════════╗
+  ║                    TEST SUMMARY                           ║
+  ╚════════════════════════════════════════════════════════════╝
+
+  Concurrent Users: 50
+  Test Duration: 60s
+  Database: 500 schools, 3,750-5,000 students
+
+  ✅ Performance test completed successfully!
+
+Time: 5 minutes
+Status: Test complete when you see "✅ Performance test completed"
+
+
+═════════════════════════════════════════════════════════════════════════════
+TOTAL EXECUTION TIME
+═════════════════════════════════════════════════════════════════════════════
+
+Infrastructure startup:     ~10 seconds
+Course seeding:            ~1-2 minutes
+School & student seeding:  ~5-10 minutes
+Dev server startup:        ~15 seconds
+Performance test:          ~5 minutes
+─────────────────────────────────────────
+TOTAL:                     ~15-20 minutes
+
+
+═════════════════════════════════════════════════════════════════════════════
+WHAT GETS CREATED
+═════════════════════════════════════════════════════════════════════════════
+
+Database Records:
+  ✅ 500 Schools
+  ✅ 500 School Admins (1 per school)
+  ✅ 3,750-5,000 Students (5-10 per school)
+  ✅ 500 Academic Sessions (1 per school)
+  ✅ 1,500 Class Mappings (3 per school)
+  ✅ 50,000+ Enrollments
+  ✅ 50,000+ Student Academic Records
+
+User Accounts Created:
+  ✅ School Admins: 500
+  ✅ Students: 3,750-5,000
+  ✅ Total User Accounts: 4,250-5,500
+
+All users have password: admin123
+
+
+═════════════════════════════════════════════════════════════════════════════
+LOGIN CREDENTIALS FORMAT
+═════════════════════════════════════════════════════════════════════════════
+
+School Admins:
+  Email pattern: admin@school[1-500].local
+  Password: admin123
+  Examples:
+    - admin@school1.local / admin123
+    - admin@school100.local / admin123
+    - admin@school500.local / admin123
+
+Students:
+  Email pattern: student[school_id]-[number]@school[school_id].local
+  Password: admin123
+  Examples:
+    - student1-1@school1.local / admin123  (1st student in School 1)
+    - student1-5@school1.local / admin123  (5th student in School 1)
+    - student500-10@school500.local / admin123 (10th student in School 500)
+
+
+═════════════════════════════════════════════════════════════════════════════
+PROJECT ARCHITECTURE (3 USERS ONLY - NO TEACHERS)
+═════════════════════════════════════════════════════════════════════════════
+
+1. SUPER ADMIN (Platform Level)
+   - Creates courses
+   - Manages payment plans
+   - System-wide settings
+   - Email: superadmin@technurture.local
+
+2. SCHOOL ADMIN (School Level)
+   - Manages one school
+   - Manages students in their school
+   - Manages school subscriptions
+   - Email: admin@school[1-500].local
+
+3. STUDENT (Learner)
+   - Takes lessons
+   - Earns XP
+   - Completes quizzes
+   - Views leaderboard
+   - Email: student[id]-[num]@school[id].local
+
+NO TEACHERS, INSTRUCTORS, OR TEACHING STAFF
+
+
+═════════════════════════════════════════════════════════════════════════════
+SCHOOL ISOLATION MODEL
+═════════════════════════════════════════════════════════════════════════════
+
+Each school is a complete TENANT with:
+  ✓ Own admin account
+  ✓ Own students
+  ✓ Own academic sessions
+  ✓ Own class assignments
+  ✓ Own course enrollments
+  ✓ Own XP/scores (isolated from other schools)
+
+Security:
+  ✓ Student A (School 1) cannot see Student B (School 1) in leaderboard
+  ✓ Student A (School 1) cannot see any data from School 2
+  ✓ Admin A (School 1) cannot see students from School 2
+  ✓ All queries filtered by school_id
+
+
+═════════════════════════════════════════════════════════════════════════════
+EXPECTED PERFORMANCE RESULTS
+═════════════════════════════════════════════════════════════════════════════
+
+After Phase 6 indexes are deployed:
+
+Single Request Performance:
+  • Login: <100ms
+  • Get Profile: <100ms
+  • Get Courses: <150ms
+  • Get Leaderboard: <200ms
+  • Get Achievements: <150ms
+
+Load Test (50 concurrent users):
+  • Success Rate: >99%
+  • Error Rate: <0.1%
+  • Average Latency: <150ms
+  • p95 Latency: <300ms
+
+Database:
+  • Connections Used: <50/200
+  • Cache Hit Rate: >80%
+  • Memory Stable: Yes
+
+
+═════════════════════════════════════════════════════════════════════════════
+TROUBLESHOOTING
+═════════════════════════════════════════════════════════════════════════════
+
+Issue: "PostgreSQL connection refused"
+Solution: Make sure "npm run infra:up" completed successfully
+
+Issue: "No courses found"
+Solution: Run "npm run db:seed:courses" before "npm run db:seed:500"
+
+Issue: "Database already exists"
+Solution: This is OK, the script checks for existing records and skips them
+
+Issue: "App not running at http://localhost:3000"
+Solution: Make sure "npm run dev" is running in Terminal 2
+
+Issue: "Port 3000 already in use"
+Solution: Kill the existing process or use PORT=3001 npm run dev
+
+Issue: "Test failed with 401 unauthorized"
+Solution: Wait for db seeding to complete fully, then try again
+
+
+═════════════════════════════════════════════════════════════════════════════
+FILES CREATED FOR THIS TEST
+═════════════════════════════════════════════════════════════════════════════
+
+Documentation:
+  ✅ UNDERSTANDING_PROJECT_STRUCTURE.md
+     Complete explanation of the 3-user architecture
+
+  ✅ EXECUTE_PERFORMANCE_TEST.txt (this file)
+     Step-by-step execution guide
+
+  ✅ RUN_PERFORMANCE_TEST.md
+     Commands and expected outputs
+
+Script:
+  ✅ scripts/seed-500-schools-correct.ts
+     Creates 500 schools with proper architecture
+
+package.json:
+  ✅ Updated npm run db:seed:500 to use correct script
+
+
+═════════════════════════════════════════════════════════════════════════════
+READY TO EXECUTE
+═════════════════════════════════════════════════════════════════════════════
+
+All files prepared ✅
+Architecture understood ✅
+Script corrected ✅
+Commands ready ✅
+
+Follow the 5 steps above to execute the test.
+
+Expected total time: 15-20 minutes
+Expected result: All tests pass ✅
+
+═════════════════════════════════════════════════════════════════════════════

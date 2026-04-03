@@ -53,12 +53,21 @@ export function VideoUpload({
         try {
             setIsUploading(true);
             setUploadProgress(5);
+
+            const getCsrfToken = () => document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrf_token='))
+                ?.split('=')[1];
             
             if (useCloudflareStream) {
                 // Cloudflare Stream path
+                const csrfToken = getCsrfToken();
                 const res = await fetch('/api/media/stream-upload', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+                    },
                     body: JSON.stringify({ fileName: file.name }),
                 });
                 
@@ -104,8 +113,12 @@ export function VideoUpload({
                 formData.append('file', file);
                 if (folder) formData.append('folder', folder);
 
+                const csrfToken = getCsrfToken();
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', '/api/media/upload', true);
+                if (csrfToken) {
+                    xhr.setRequestHeader('x-csrf-token', csrfToken);
+                }
 
                 xhr.upload.onprogress = (event) => {
                     if (event.lengthComputable) {

@@ -29,27 +29,45 @@ export async function managePartitions() {
         const endTime = nextMonthDate.toISOString().split('T')[0];
         
         try {
+            // First check if audit_logs table exists and is partitioned
+            const tableCheck = await db.execute(sql`
+                SELECT partispartitioned FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE c.relname = 'audit_logs' AND n.nspname = 'public'
+            `);
+
+            if (tableCheck.length === 0) {
+                console.log(`[PartitionManager] Table audit_logs does not exist yet, skipping partitions...`);
+                continue;
+            }
+
+            const isPartitioned = tableCheck[0]?.partispartitioned;
+            if (!isPartitioned) {
+                console.log(`[PartitionManager] Table audit_logs is not partitioned, skipping partition creation...`);
+                continue;
+            }
+
             // Check if partition exists
             const exists = await db.execute(sql`
-                SELECT 1 FROM pg_class c 
-                JOIN pg_namespace n ON n.oid = c.relnamespace 
+                SELECT 1 FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
                 WHERE c.relname = ${partitionName} AND n.nspname = 'public'
             `);
-            
+
             if (exists.length === 0) {
                 console.log(`[PartitionManager] Creating partition ${partitionName} for range ${startTime} to ${endTime}`);
-                
+
                 await db.execute(sql.raw(`
-                    CREATE TABLE IF NOT EXISTS ${partitionName} PARTITION OF audit_logs 
+                    CREATE TABLE IF NOT EXISTS ${partitionName} PARTITION OF audit_logs
                     FOR VALUES FROM ('${startTime}') TO ('${endTime}')
                 `));
-                
+
                 console.log(`[PartitionManager] ✅ Successfully created ${partitionName}`);
             } else {
                 console.log(`[PartitionManager] Partition ${partitionName} already exists.`);
             }
         } catch (err) {
-            console.error(`[PartitionManager] Failed to ensure partition ${partitionName}:`, err);
+            console.warn(`[PartitionManager] Skipping partition ${partitionName}: Table may not be ready yet`);
         }
     }
     

@@ -1,18 +1,51 @@
-CREATE TYPE "public"."achievement_tier" AS ENUM('bronze', 'silver', 'gold', 'platinum');--> statement-breakpoint
-CREATE TYPE "public"."asset_type" AS ENUM('video', 'image', 'document');--> statement-breakpoint
-CREATE TYPE "public"."audit_action" AS ENUM('create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion', 'pin_reset_request');--> statement-breakpoint
-CREATE TYPE "public"."billing_cycle" AS ENUM('monthly', 'quarterly', 'semi_annual', 'annual');--> statement-breakpoint
-CREATE TYPE "public"."challenge_status" AS ENUM('active', 'completed', 'expired');--> statement-breakpoint
-CREATE TYPE "public"."discount_type" AS ENUM('percentage', 'fixed');--> statement-breakpoint
-CREATE TYPE "public"."invoice_status" AS ENUM('draft', 'issued', 'paid', 'void', 'overdue');--> statement-breakpoint
-CREATE TYPE "public"."lesson_content_type" AS ENUM('video', 'ppt', 'pdf', 'quiz', 'assignment');--> statement-breakpoint
-CREATE TYPE "public"."payment_status" AS ENUM('created', 'authorized', 'captured', 'failed', 'refunded');--> statement-breakpoint
-CREATE TYPE "public"."question_type" AS ENUM('mcq', 'true_false', 'fill_blank', 'multi_select');--> statement-breakpoint
-CREATE TYPE "public"."storage_type" AS ENUM('r2', 'local');--> statement-breakpoint
-CREATE TYPE "public"."subscription_status" AS ENUM('active', 'trialing', 'past_due', 'cancelled', 'expired');--> statement-breakpoint
-CREATE TYPE "public"."user_role" AS ENUM('super_admin', 'school_admin', 'student');--> statement-breakpoint
-CREATE TYPE "public"."user_type" AS ENUM('super_admin', 'school_admin', 'student');--> statement-breakpoint
-CREATE TYPE "public"."xp_source" AS ENUM('lesson_completion', 'quiz_score', 'daily_streak', 'challenge_win', 'badge_earned', 'bonus', 'manual_adjustment');--> statement-breakpoint
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'achievement_tier') THEN
+    CREATE TYPE "public"."achievement_tier" AS ENUM('bronze', 'silver', 'gold', 'platinum');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'asset_type') THEN
+    CREATE TYPE "public"."asset_type" AS ENUM('video', 'image', 'document');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'audit_action') THEN
+    CREATE TYPE "public"."audit_action" AS ENUM('create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion', 'pin_reset_request');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'billing_cycle') THEN
+    CREATE TYPE "public"."billing_cycle" AS ENUM('monthly', 'quarterly', 'semi_annual', 'annual');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'challenge_status') THEN
+    CREATE TYPE "public"."challenge_status" AS ENUM('active', 'completed', 'expired');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discount_type') THEN
+    CREATE TYPE "public"."discount_type" AS ENUM('percentage', 'fixed');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'invoice_status') THEN
+    CREATE TYPE "public"."invoice_status" AS ENUM('draft', 'issued', 'paid', 'void', 'overdue');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'lesson_content_type') THEN
+    CREATE TYPE "public"."lesson_content_type" AS ENUM('video', 'ppt', 'pdf', 'quiz', 'assignment');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status') THEN
+    CREATE TYPE "public"."payment_status" AS ENUM('created', 'authorized', 'captured', 'failed', 'refunded');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'question_type') THEN
+    CREATE TYPE "public"."question_type" AS ENUM('mcq', 'true_false', 'fill_blank', 'multi_select');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'storage_type') THEN
+    CREATE TYPE "public"."storage_type" AS ENUM('r2', 'local');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'subscription_status') THEN
+    CREATE TYPE "public"."subscription_status" AS ENUM('active', 'trialing', 'past_due', 'cancelled', 'expired');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+    CREATE TYPE "public"."user_role" AS ENUM('super_admin', 'school_admin', 'student');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_type') THEN
+    CREATE TYPE "public"."user_type" AS ENUM('super_admin', 'school_admin', 'student');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'xp_source') THEN
+    CREATE TYPE "public"."xp_source" AS ENUM('lesson_completion', 'quiz_score', 'daily_streak', 'challenge_win', 'badge_earned', 'bonus', 'manual_adjustment');
+  END IF;
+END $$;--> statement-breakpoint
 CREATE TABLE "academic_sessions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"school_id" uuid NOT NULL,

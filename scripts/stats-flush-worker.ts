@@ -89,26 +89,30 @@ async function run() {
         process.exit(1);
     }
 
-    let lastPartitionCheck = 0;
-    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    // Note: Partition management is disabled because audit_logs is not yet set up
+    // as a partitioned table in the migrations. This will be enabled once
+    // the schema migration creates audit_logs with PARTITION BY RANGE.
+    // let lastPartitionCheck = 0;
+    // const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
     while (true) {
         try {
-            // 1. Flush metrics (every 60s)
+            // 1. Flush metrics (every 5 minutes)
             await flushTimeSpent();
 
             // 2. Perform daily maintenance (Partitioning, etc.)
-            const now = Date.now();
-            if (now - lastPartitionCheck > ONE_DAY_MS) {
-                console.log('[FlushWorker] Starting daily scheduled maintenance...');
-                await managePartitions();
-                lastPartitionCheck = now;
-            }
+            // Temporarily disabled - will be enabled in Phase 7
+            // const now = Date.now();
+            // if (now - lastPartitionCheck > ONE_DAY_MS) {
+            //     console.log('[FlushWorker] Starting daily scheduled maintenance...');
+            //     await managePartitions();
+            //     lastPartitionCheck = now;
+            // }
         } catch (err) {
             console.error('[FlushWorker] Iteration failure:', err);
         }
 
-        // Sleep for 5 minutes (300 seconds) between flush cycles (Quick Win #5)
+        // Sleep for 5 minutes (300 seconds) between flush cycles
         await new Promise(resolve => setTimeout(resolve, 300000));
     }
 }

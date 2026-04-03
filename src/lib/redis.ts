@@ -32,13 +32,13 @@ export const redis =
             reconnectOnError: (err: Error) => {
                 return err.message.includes('READONLY') || err.message.includes('ECONNRESET');
             },
-            // Don't queue commands while disconnected — fail immediately so callers
-            // can catch and fall back to the database instead of waiting indefinitely.
-            enableOfflineQueue: false,
+            // Allow queuing commands while disconnected — helps handle transient
+            // connection hiccups without immediate failure.
+            enableOfflineQueue: true,
             // Fast timeout: surface failures quickly so fallback logic kicks in
             connectTimeout: 5000,
             // Limit per-command retries so a single call doesn't block for seconds
-            maxRetriesPerRequest: 2,
+            maxRetriesPerRequest: 10, // Increased to give some breathing room for the queue
         })
     );
 

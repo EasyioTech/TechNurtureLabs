@@ -1,0 +1,440 @@
+ Network technurture_net Creating 
+ Network technurture_net Created 
+ Volume technurturelabs_caddy_config Creating 
+ Volume technurturelabs_caddy_config Created 
+ Volume technurturelabs_storage_data Creating 
+ Volume technurturelabs_storage_data Created 
+ Volume technurturelabs_postgres_data Creating 
+ Volume technurturelabs_postgres_data Created 
+ Volume technurturelabs_redis_data Creating 
+ Volume technurturelabs_redis_data Created 
+ Volume technurturelabs_caddy_data Creating 
+ Volume technurturelabs_caddy_data Created 
+ Container LMS_postgres Creating 
+ Container LMS_redis Creating 
+ Container LMS_redis Created 
+ Container LMS_postgres Created 
+ Container LMS_stats_worker Creating 
+ Container LMS_app Creating 
+ Container LMS_event_worker Creating 
+ Container LMS_event_worker Created 
+ Container LMS_stats_worker Created 
+ Container LMS_app Created 
+ Container LMS_caddy Creating 
+ Container LMS_caddy Created 
+Attaching to LMS_app, LMS_caddy, LMS_event_worker, LMS_postgres, LMS_redis, LMS_stats_worker
+ Container LMS_redis Starting 
+ Container LMS_postgres Starting 
+LMS_redis  | 1:C 03 Apr 2026 08:33:23.433 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+LMS_redis  | 1:C 03 Apr 2026 08:33:23.433 * Redis version=7.4.8, bits=64, commit=00000000, modified=0, pid=1, just started
+LMS_redis  | 1:C 03 Apr 2026 08:33:23.433 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/redis.conf
+LMS_redis  | 1:M 03 Apr 2026 08:33:23.434 * monotonic clock: POSIX clock_gettime
+LMS_redis  | 1:M 03 Apr 2026 08:33:23.436 * Running mode=standalone, port=6379.
+LMS_redis  | 1:M 03 Apr 2026 08:33:23.437 * Server initialized
+LMS_redis  | 1:M 03 Apr 2026 08:33:23.437 * Ready to accept connections tcp
+ Container LMS_redis Started 
+ Container LMS_postgres Started 
+ Container LMS_redis Waiting 
+ Container LMS_postgres Waiting 
+ Container LMS_redis Waiting 
+ Container LMS_redis Waiting 
+ Container LMS_postgres Waiting 
+ Container LMS_postgres Waiting 
+LMS_postgres  | The files belonging to this database system will be owned by user "postgres".
+LMS_postgres  | This user must also own the server process.
+LMS_postgres  | 
+LMS_postgres  | The database cluster will be initialized with locale "en_US.utf8".
+LMS_postgres  | The default database encoding has accordingly been set to "UTF8".
+LMS_postgres  | The default text search configuration will be set to "english".
+LMS_postgres  | 
+LMS_postgres  | Data page checksums are disabled.
+LMS_postgres  | 
+LMS_postgres  | fixing permissions on existing directory /var/lib/postgresql/data ... ok
+LMS_postgres  | creating subdirectories ... ok
+LMS_postgres  | selecting dynamic shared memory implementation ... posix
+LMS_postgres  | selecting default max_connections ... 100
+LMS_postgres  | selecting default shared_buffers ... 128MB
+LMS_postgres  | selecting default time zone ... Etc/UTC
+LMS_postgres  | creating configuration files ... ok
+LMS_postgres  | running bootstrap script ... ok
+LMS_postgres  | performing post-bootstrap initialization ... ok
+LMS_postgres  | syncing data to disk ... ok
+LMS_postgres  | 
+LMS_postgres  | 
+LMS_postgres  | Success. You can now start the database server using:
+LMS_postgres  | 
+LMS_postgres  |     pg_ctl -D /var/lib/postgresql/data -l logfile start
+LMS_postgres  | 
+LMS_postgres  | initdb: warning: enabling "trust" authentication for local connections
+LMS_postgres  | initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+LMS_postgres  | waiting for server to start....2026-04-03 08:33:25.226 UTC [48] LOG:  starting PostgreSQL 15.17 (Debian 15.17-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+LMS_postgres  | 2026-04-03 08:33:25.234 UTC [48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+LMS_postgres  | 2026-04-03 08:33:25.261 UTC [51] LOG:  database system was shut down at 2026-04-03 08:33:24 UTC
+LMS_postgres  | 2026-04-03 08:33:25.274 UTC [48] LOG:  database system is ready to accept connections
+LMS_postgres  |  done
+LMS_postgres  | server started
+LMS_postgres  | CREATE DATABASE
+LMS_postgres  | 
+LMS_postgres  | 
+LMS_postgres  | /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+LMS_postgres  | 
+LMS_postgres  | 2026-04-03 08:33:25.682 UTC [48] LOG:  received fast shutdown request
+LMS_postgres  | waiting for server to shut down....2026-04-03 08:33:25.692 UTC [48] LOG:  aborting any active transactions
+LMS_postgres  | 2026-04-03 08:33:25.695 UTC [48] LOG:  background worker "logical replication launcher" (PID 54) exited with exit code 1
+LMS_postgres  | 2026-04-03 08:33:25.696 UTC [49] LOG:  shutting down
+LMS_postgres  | 2026-04-03 08:33:25.704 UTC [49] LOG:  checkpoint starting: shutdown immediate
+LMS_postgres  | 2026-04-03 08:33:25.859 UTC [49] LOG:  checkpoint complete: wrote 922 buffers (5.6%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.070 s, sync=0.061 s, total=0.163 s; sync files=301, longest=0.009 s, average=0.001 s; distance=4239 kB, estimate=4239 kB
+LMS_postgres  | 2026-04-03 08:33:25.871 UTC [48] LOG:  database system is shut down
+LMS_postgres  |  done
+LMS_postgres  | server stopped
+LMS_postgres  | 
+LMS_postgres  | PostgreSQL init process complete; ready for start up.
+LMS_postgres  | 
+LMS_postgres  | 2026-04-03 08:33:25.922 UTC [1] LOG:  starting PostgreSQL 15.17 (Debian 15.17-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+LMS_postgres  | 2026-04-03 08:33:25.922 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+LMS_postgres  | 2026-04-03 08:33:25.922 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+LMS_postgres  | 2026-04-03 08:33:25.935 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+LMS_postgres  | 2026-04-03 08:33:25.951 UTC [64] LOG:  database system was shut down at 2026-04-03 08:33:25 UTC
+LMS_postgres  | 2026-04-03 08:33:25.964 UTC [1] LOG:  database system is ready to accept connections
+ Container LMS_redis Healthy 
+ Container LMS_postgres Healthy 
+ Container LMS_postgres Healthy 
+ Container LMS_event_worker Starting 
+ Container LMS_redis Healthy 
+ Container LMS_redis Healthy 
+ Container LMS_app Starting 
+ Container LMS_postgres Healthy 
+ Container LMS_stats_worker Starting 
+LMS_event_worker  | 🚀 TechNurture LMS - Starting application...
+LMS_event_worker  | ⏳ Waiting for database to be ready...
+ Container LMS_event_worker Started 
+LMS_app           | 🚀 TechNurture LMS - Starting application...
+LMS_app           | ⏳ Waiting for database to be ready...
+LMS_stats_worker  | 🚀 TechNurture LMS - Starting application...
+LMS_stats_worker  | ⏳ Waiting for database to be ready...
+ Container LMS_app Started 
+ Container LMS_app Waiting 
+ Container LMS_stats_worker Started 
+LMS_event_worker  | ✅ Database is ready
+LMS_event_worker  | ⏳ Waiting for Redis to be ready...
+LMS_app           | ✅ Database is ready
+LMS_app           | ⏳ Waiting for Redis to be ready...
+LMS_stats_worker  | ✅ Database is ready
+LMS_stats_worker  | ⏳ Waiting for Redis to be ready...
+LMS_app           | ✅ Redis is ready
+LMS_event_worker  | ✅ Redis is ready
+LMS_event_worker  | 🎯 Starting worker process: npx tsx scripts/event-worker.ts
+LMS_app           | 🔄 Running database migrations...
+LMS_app           | Found migration script, running migrations natively via Drizzle...
+LMS_stats_worker  | ✅ Redis is ready
+LMS_stats_worker  | 🎯 Starting worker process: npx tsx scripts/stats-flush-worker.ts
+LMS_app           | Connecting to database...
+LMS_app           | Database URL: postgresql:***@db:5432/technurturelabs
+LMS_app           | Testing database connection...
+LMS_app           | ✅ Database connection successful
+LMS_app           | Running migrations from drizzle folder...
+LMS_stats_worker  | --- Stats Flush Worker Started ---
+LMS_stats_worker  | [FlushWorker] Waiting for Redis... (attempt 1/30)
+LMS_stats_worker  | [FlushWorker] Redis is ready
+LMS_stats_worker  | [FlushWorker] Starting daily scheduled maintenance...
+LMS_stats_worker  | [PartitionManager] Starting maintenance check...
+LMS_stats_worker  | [PartitionManager] Creating partition audit_logs_p2026_04 for range 2026-04-01 to 2026-05-01
+LMS_postgres      | 2026-04-03 08:33:36.905 UTC [88] ERROR:  relation "audit_logs" does not exist
+LMS_postgres      | 2026-04-03 08:33:36.905 UTC [88] STATEMENT:  
+LMS_postgres      | 	                    CREATE TABLE IF NOT EXISTS audit_logs_p2026_04 PARTITION OF audit_logs 
+LMS_postgres      | 	                    FOR VALUES FROM ('2026-04-01') TO ('2026-05-01')
+LMS_postgres      | 	                
+LMS_stats_worker  | [PartitionManager] Failed to ensure partition audit_logs_p2026_04: DrizzleQueryError: Failed query: 
+LMS_stats_worker  |                     CREATE TABLE IF NOT EXISTS audit_logs_p2026_04 PARTITION OF audit_logs 
+LMS_stats_worker  |                     FOR VALUES FROM ('2026-04-01') TO ('2026-05-01')
+LMS_stats_worker  |                 
+LMS_stats_worker  | params: 
+LMS_stats_worker  |     at PostgresJsPreparedQuery.queryWithCache (/app/node_modules/src/pg-core/session.ts:73:11)
+LMS_stats_worker  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+LMS_stats_worker  |     at async managePartitions (/app/scripts/partition-worker.ts:42:17)
+LMS_stats_worker  |     at async run (/app/scripts/stats-flush-worker.ts:104:17) {
+LMS_stats_worker  |   query: '\n' +
+LMS_stats_worker  |     '                    CREATE TABLE IF NOT EXISTS audit_logs_p2026_04 PARTITION OF audit_logs \n' +
+LMS_stats_worker  |     "                    FOR VALUES FROM ('2026-04-01') TO ('2026-05-01')\n" +
+LMS_stats_worker  |     '                ',
+LMS_stats_worker  |   params: [],
+LMS_stats_worker  |   cause: PostgresError: relation "audit_logs" does not exist
+LMS_stats_worker  |       at ErrorResponse (/app/node_modules/postgres/cjs/src/connection.js:815:30)
+LMS_stats_worker  |       at handle (/app/node_modules/postgres/cjs/src/connection.js:489:6)
+LMS_stats_worker  |       at Socket.data (/app/node_modules/postgres/cjs/src/connection.js:324:9)
+LMS_stats_worker  |       at Socket.emit (node:events:524:28)
+LMS_stats_worker  |       at addChunk (node:internal/streams/readable:561:12)
+LMS_stats_worker  |       at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+LMS_stats_worker  |       at Readable.push (node:internal/streams/readable:392:5)
+LMS_stats_worker  |       at TCP.onStreamRead (node:internal/stream_base_commons:191:23) {
+LMS_stats_worker  |     severity_local: 'ERROR',
+LMS_stats_worker  |     severity: 'ERROR',
+LMS_stats_worker  |     code: '42P01',
+LMS_stats_worker  |     file: 'namespace.c',
+LMS_stats_worker  |     line: '433',
+LMS_stats_worker  |     routine: 'RangeVarGetRelidExtended'
+LMS_stats_worker  |   }
+LMS_stats_worker  | }
+LMS_stats_worker  | [PartitionManager] Creating partition audit_logs_p2026_05 for range 2026-05-01 to 2026-06-01
+LMS_postgres      | 2026-04-03 08:33:36.922 UTC [88] ERROR:  relation "audit_logs" does not exist
+LMS_postgres      | 2026-04-03 08:33:36.922 UTC [88] STATEMENT:  
+LMS_postgres      | 	                    CREATE TABLE IF NOT EXISTS audit_logs_p2026_05 PARTITION OF audit_logs 
+LMS_postgres      | 	                    FOR VALUES FROM ('2026-05-01') TO ('2026-06-01')
+LMS_postgres      | 	                
+LMS_stats_worker  | [PartitionManager] Failed to ensure partition audit_logs_p2026_05: DrizzleQueryError: Failed query: 
+LMS_stats_worker  |                     CREATE TABLE IF NOT EXISTS audit_logs_p2026_05 PARTITION OF audit_logs 
+LMS_stats_worker  |                     FOR VALUES FROM ('2026-05-01') TO ('2026-06-01')
+LMS_stats_worker  |                 
+LMS_stats_worker  | params: 
+LMS_stats_worker  |     at PostgresJsPreparedQuery.queryWithCache (/app/node_modules/src/pg-core/session.ts:73:11)
+LMS_stats_worker  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+LMS_stats_worker  |     at async managePartitions (/app/scripts/partition-worker.ts:42:17)
+LMS_stats_worker  |     at async run (/app/scripts/stats-flush-worker.ts:104:17) {
+LMS_stats_worker  |   query: '\n' +
+LMS_stats_worker  |     '                    CREATE TABLE IF NOT EXISTS audit_logs_p2026_05 PARTITION OF audit_logs \n' +
+LMS_stats_worker  |     "                    FOR VALUES FROM ('2026-05-01') TO ('2026-06-01')\n" +
+LMS_stats_worker  |     '                ',
+LMS_stats_worker  |   params: [],
+LMS_stats_worker  |   cause: PostgresError: relation "audit_logs" does not exist
+LMS_stats_worker  |       at ErrorResponse (/app/node_modules/postgres/cjs/src/connection.js:815:30)
+LMS_stats_worker  |       at handle (/app/node_modules/postgres/cjs/src/connection.js:489:6)
+LMS_stats_worker  |       at Socket.data (/app/node_modules/postgres/cjs/src/connection.js:324:9)
+LMS_stats_worker  |       at Socket.emit (node:events:524:28)
+LMS_stats_worker  |       at addChunk (node:internal/streams/readable:561:12)
+LMS_stats_worker  |       at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+LMS_stats_worker  |       at Readable.push (node:internal/streams/readable:392:5)
+LMS_stats_worker  |       at TCP.onStreamRead (node:internal/stream_base_commons:191:23) {
+LMS_stats_worker  |     severity_local: 'ERROR',
+LMS_stats_worker  |     severity: 'ERROR',
+LMS_stats_worker  |     code: '42P01',
+LMS_stats_worker  |     file: 'namespace.c',
+LMS_stats_worker  |     line: '433',
+LMS_stats_worker  |     routine: 'RangeVarGetRelidExtended'
+LMS_stats_worker  |   }
+LMS_stats_worker  | }
+LMS_stats_worker  | [PartitionManager] Creating partition audit_logs_p2026_06 for range 2026-06-01 to 2026-07-01
+LMS_postgres      | 2026-04-03 08:33:36.928 UTC [88] ERROR:  relation "audit_logs" does not exist
+LMS_postgres      | 2026-04-03 08:33:36.928 UTC [88] STATEMENT:  
+LMS_postgres      | 	                    CREATE TABLE IF NOT EXISTS audit_logs_p2026_06 PARTITION OF audit_logs 
+LMS_postgres      | 	                    FOR VALUES FROM ('2026-06-01') TO ('2026-07-01')
+LMS_postgres      | 	                
+LMS_stats_worker  | [PartitionManager] Failed to ensure partition audit_logs_p2026_06: DrizzleQueryError: Failed query: 
+LMS_stats_worker  |                     CREATE TABLE IF NOT EXISTS audit_logs_p2026_06 PARTITION OF audit_logs 
+LMS_stats_worker  |                     FOR VALUES FROM ('2026-06-01') TO ('2026-07-01')
+LMS_stats_worker  |                 
+LMS_stats_worker  | params: 
+LMS_stats_worker  |     at PostgresJsPreparedQuery.queryWithCache (/app/node_modules/src/pg-core/session.ts:73:11)
+LMS_stats_worker  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+LMS_stats_worker  |     at async managePartitions (/app/scripts/partition-worker.ts:42:17)
+LMS_stats_worker  |     at async run (/app/scripts/stats-flush-worker.ts:104:17) {
+LMS_stats_worker  |   query: '\n' +
+LMS_stats_worker  |     '                    CREATE TABLE IF NOT EXISTS audit_logs_p2026_06 PARTITION OF audit_logs \n' +
+LMS_stats_worker  |     "                    FOR VALUES FROM ('2026-06-01') TO ('2026-07-01')\n" +
+LMS_stats_worker  |     '                ',
+LMS_stats_worker  |   params: [],
+LMS_stats_worker  |   cause: PostgresError: relation "audit_logs" does not exist
+LMS_stats_worker  |       at ErrorResponse (/app/node_modules/postgres/cjs/src/connection.js:815:30)
+LMS_stats_worker  |       at handle (/app/node_modules/postgres/cjs/src/connection.js:489:6)
+LMS_stats_worker  |       at Socket.data (/app/node_modules/postgres/cjs/src/connection.js:324:9)
+LMS_stats_worker  |       at Socket.emit (node:events:524:28)
+LMS_stats_worker  |       at addChunk (node:internal/streams/readable:561:12)
+LMS_stats_worker  |       at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+LMS_stats_worker  |       at Readable.push (node:internal/streams/readable:392:5)
+LMS_stats_worker  |       at TCP.onStreamRead (node:internal/stream_base_commons:191:23) {
+LMS_stats_worker  |     severity_local: 'ERROR',
+LMS_stats_worker  |     severity: 'ERROR',
+LMS_stats_worker  |     code: '42P01',
+LMS_stats_worker  |     file: 'namespace.c',
+LMS_stats_worker  |     line: '433',
+LMS_stats_worker  |     routine: 'RangeVarGetRelidExtended'
+LMS_stats_worker  |   }
+LMS_stats_worker  | }
+LMS_stats_worker  | [PartitionManager] Creating partition audit_logs_p2026_07 for range 2026-07-01 to 2026-08-01
+LMS_postgres      | 2026-04-03 08:33:36.932 UTC [88] ERROR:  relation "audit_logs" does not exist
+LMS_postgres      | 2026-04-03 08:33:36.932 UTC [88] STATEMENT:  
+LMS_postgres      | 	                    CREATE TABLE IF NOT EXISTS audit_logs_p2026_07 PARTITION OF audit_logs 
+LMS_postgres      | 	                    FOR VALUES FROM ('2026-07-01') TO ('2026-08-01')
+LMS_postgres      | 	                
+LMS_stats_worker  | [PartitionManager] Failed to ensure partition audit_logs_p2026_07: DrizzleQueryError: Failed query: 
+LMS_stats_worker  |                     CREATE TABLE IF NOT EXISTS audit_logs_p2026_07 PARTITION OF audit_logs 
+LMS_stats_worker  |                     FOR VALUES FROM ('2026-07-01') TO ('2026-08-01')
+LMS_stats_worker  |                 
+LMS_stats_worker  | params: 
+LMS_stats_worker  |     at PostgresJsPreparedQuery.queryWithCache (/app/node_modules/src/pg-core/session.ts:73:11)
+LMS_stats_worker  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+LMS_stats_worker  |     at async managePartitions (/app/scripts/partition-worker.ts:42:17)
+LMS_stats_worker  |     at async run (/app/scripts/stats-flush-worker.ts:104:17) {
+LMS_stats_worker  |   query: '\n' +
+LMS_stats_worker  |     '                    CREATE TABLE IF NOT EXISTS audit_logs_p2026_07 PARTITION OF audit_logs \n' +
+LMS_stats_worker  |     "                    FOR VALUES FROM ('2026-07-01') TO ('2026-08-01')\n" +
+LMS_stats_worker  |     '                ',
+LMS_stats_worker  |   params: [],
+LMS_stats_worker  |   cause: PostgresError: relation "audit_logs" does not exist
+LMS_stats_worker  |       at ErrorResponse (/app/node_modules/postgres/cjs/src/connection.js:815:30)
+LMS_stats_worker  |       at handle (/app/node_modules/postgres/cjs/src/connection.js:489:6)
+LMS_stats_worker  |       at Socket.data (/app/node_modules/postgres/cjs/src/connection.js:324:9)
+LMS_stats_worker  |       at Socket.emit (node:events:524:28)
+LMS_stats_worker  |       at addChunk (node:internal/streams/readable:561:12)
+LMS_stats_worker  |       at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+LMS_stats_worker  |       at Readable.push (node:internal/streams/readable:392:5)
+LMS_stats_worker  |       at TCP.onStreamRead (node:internal/stream_base_commons:191:23) {
+LMS_stats_worker  |     severity_local: 'ERROR',
+LMS_stats_worker  |     severity: 'ERROR',
+LMS_stats_worker  |     code: '42P01',
+LMS_stats_worker  |     file: 'namespace.c',
+LMS_stats_worker  |     line: '433',
+LMS_stats_worker  |     routine: 'RangeVarGetRelidExtended'
+LMS_stats_worker  |   }
+LMS_stats_worker  | }
+LMS_stats_worker  | [PartitionManager] Maintenance complete.
+LMS_event_worker  | --- Platform Event Worker (BullMQ) Started ---
+LMS_app           | ✅ Migrations completed successfully
+LMS_app           | Database connection closed
+LMS_app           | npm notice
+LMS_app           | npm notice New major version of npm available! 10.8.2 -> 11.12.1
+LMS_app           | npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+LMS_app           | npm notice To update run: npm install -g npm@11.12.1
+LMS_app           | npm notice
+LMS_app           | ✅ Database migrations completed successfully
+LMS_app           | 🌱 Seeding default database data...
+LMS_app           | 
+LMS_app           | > technurture-labs@1.0.0 db:seed
+LMS_app           | > npx tsx scripts/seed.ts
+LMS_app           | 
+LMS_app           | 🚀 Starting Comprehensive Seed...
+LMS_app           |    - Seeding Classes...
+LMS_app           |    - Seeding Payment Plans (Updated Tiers)...
+LMS_app           |    - Seeding Platform Settings...
+LMS_app           |    - Seeding Super Admin...
+LMS_app           |    ✅ Super admin created.
+LMS_app           |       Email:    admin@technurture.com
+LMS_app           |       Password: AdminPassword123!
+LMS_app           |       ⚠️  Change this password immediately after first login!
+LMS_app           | ✅ Seeding Complete.
+LMS_app           | npm notice
+LMS_app           | npm notice New major version of npm available! 10.8.2 -> 11.12.1
+LMS_app           | npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+LMS_app           | npm notice To update run: npm install -g npm@11.12.1
+LMS_app           | npm notice
+LMS_app           | npm notice
+LMS_app           | npm notice New major version of npm available! 10.8.2 -> 11.12.1
+LMS_app           | npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+LMS_app           | npm notice To update run: npm install -g npm@11.12.1
+LMS_app           | npm notice
+LMS_app           | ✅ Database seeding completed successfully
+LMS_app           | 🎯 Starting application server...
+LMS_app           | ▲ Next.js 16.2.2
+LMS_app           | - Local:         http://localhost:3000
+LMS_app           | - Network:       http://0.0.0.0:3000
+LMS_app           | ✓ Ready in 0ms
+LMS_app           | [RateLimit] Redis error: Error: Stream isn't writeable and enableOfflineQueue options is false
+LMS_app           |     at EventEmitter.sendCommand (.next/server/chunks/_037-h.p._.js:139:88404)
+LMS_app           |     at EventEmitter.eval (.next/server/chunks/_037-h.p._.js:139:15024)
+LMS_app           |     at t (.next/server/chunks/[root-of-the-server]__0hd-z1f._.js:1:915)
+LMS_app           |     at s (.next/server/chunks/[root-of-the-server]__0hd-z1f._.js:7:207)
+LMS_app           |     at re (.next/server/chunks/[root-of-the-server]__03-de9f._.js:18:62529)
+LMS_app           |     at async handler (.next/server/chunks/[root-of-the-server]__03-de9f._.js:18:64700)
+LMS_app           |     at async (.next/server/chunks/[root-of-the-server]__03-de9f._.js:18:36678)
+LMS_app           |     at async tv (.next/server/chunks/[root-of-the-server]__03-de9f._.js:18:33268)
+ Container LMS_app Healthy 
+ Container LMS_caddy Starting 
+ Container LMS_caddy Started 
+LMS_caddy         | {"level":"info","ts":1775205226.3055906,"msg":"maxprocs: Leaving GOMAXPROCS=8: CPU quota undefined"}
+LMS_caddy         | {"level":"info","ts":1775205226.3056543,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":15026083430,"previous":9223372036854775807}
+LMS_caddy         | {"level":"info","ts":1775205226.3056626,"msg":"using config from file","file":"/etc/caddy/Caddyfile"}
+LMS_caddy         | {"level":"info","ts":1775205226.3056664,"msg":"adapted config to JSON","adapter":"caddyfile"}
+LMS_caddy         | {"level":"warn","ts":1775205226.3056703,"msg":"Caddyfile input is not formatted; run 'caddy fmt --overwrite' to fix inconsistencies","adapter":"caddyfile","file":"/etc/caddy/Caddyfile","line":8}
+LMS_caddy         | {"level":"info","ts":1775205226.312052,"logger":"admin","msg":"admin endpoint started","address":"localhost:2019","enforce_origin":false,"origins":["//localhost:2019","//[::1]:2019","//127.0.0.1:2019"]}
+LMS_caddy         | {"level":"info","ts":1775205226.3125496,"logger":"http.auto_https","msg":"server is listening only on the HTTPS port but has no TLS connection policies; adding one to enable TLS","server_name":"srv0","https_port":443}
+LMS_caddy         | {"level":"info","ts":1775205226.3126123,"logger":"http.auto_https","msg":"enabling automatic HTTP->HTTPS redirects","server_name":"srv0"}
+LMS_caddy         | {"level":"warn","ts":1775205226.312626,"logger":"http.auto_https","msg":"server is listening only on the HTTP port, so no automatic HTTPS will be applied to this server","server_name":"srv1","http_port":80}
+LMS_caddy         | {"level":"info","ts":1775205226.3127832,"logger":"tls.cache.maintenance","msg":"started background certificate maintenance","cache":"0x940c8aef780"}
+LMS_caddy         | {"level":"info","ts":1775205226.31356,"logger":"http","msg":"enabling HTTP/3 listener","addr":":443"}
+LMS_caddy         | {"level":"info","ts":1775205226.3137703,"msg":"failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 7168 kiB, got: 416 kiB). See https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes for details."}
+LMS_caddy         | {"level":"info","ts":1775205226.3140466,"logger":"http.log","msg":"server running","name":"srv0","protocols":["h1","h2","h3"]}
+LMS_caddy         | {"level":"warn","ts":1775205226.3141558,"logger":"http","msg":"HTTP/2 skipped because it requires TLS","network":"tcp","addr":":80"}
+LMS_caddy         | {"level":"warn","ts":1775205226.3141649,"logger":"http","msg":"HTTP/3 skipped because it requires TLS","network":"tcp","addr":":80"}
+LMS_caddy         | {"level":"info","ts":1775205226.31417,"logger":"http.log","msg":"server running","name":"srv1","protocols":["h1","h2","h3"]}
+LMS_caddy         | {"level":"info","ts":1775205226.3141787,"logger":"http","msg":"enabling automatic TLS certificate management","domains":["*.technurturelms.in","www.technurturelms.in","technurturelms.in"]}
+LMS_caddy         | {"level":"info","ts":1775205226.3145554,"msg":"autosaved config (load with --resume flag)","file":"/config/caddy/autosave.json"}
+LMS_caddy         | {"level":"info","ts":1775205226.314575,"msg":"serving initial configuration"}
+LMS_caddy         | {"level":"info","ts":1775205226.3243647,"logger":"tls.obtain","msg":"acquiring lock","identifier":"*.technurturelms.in"}
+LMS_caddy         | {"level":"info","ts":1775205226.3243647,"logger":"tls.obtain","msg":"acquiring lock","identifier":"technurturelms.in"}
+LMS_caddy         | {"level":"info","ts":1775205226.329679,"logger":"tls","msg":"cleaning storage unit","storage":"FileStorage:/data/caddy"}
+LMS_caddy         | {"level":"info","ts":1775205226.341417,"logger":"tls.obtain","msg":"lock acquired","identifier":"*.technurturelms.in"}
+LMS_caddy         | {"level":"info","ts":1775205226.3414416,"logger":"tls.obtain","msg":"lock acquired","identifier":"technurturelms.in"}
+LMS_caddy         | {"level":"info","ts":1775205226.341554,"logger":"tls.obtain","msg":"obtaining certificate","identifier":"technurturelms.in"}
+LMS_caddy         | {"level":"info","ts":1775205226.3415837,"logger":"tls.obtain","msg":"obtaining certificate","identifier":"*.technurturelms.in"}
+LMS_caddy         | {"level":"info","ts":1775205226.342266,"logger":"http","msg":"creating new account because no account for configured email is known to us","email":"","ca":"https://acme-v02.api.letsencrypt.org/directory","error":"open /data/caddy/acme/acme-v02.api.letsencrypt.org-directory/users/default/default.json: no such file or directory"}
+LMS_caddy         | {"level":"info","ts":1775205226.3424082,"logger":"http","msg":"ACME account has empty status; registering account with ACME server","contact":[],"location":""}
+LMS_caddy         | {"level":"info","ts":1775205226.3467574,"logger":"http","msg":"creating new account because no account for configured email is known to us","email":"","ca":"https://acme-v02.api.letsencrypt.org/directory","error":"open /data/caddy/acme/acme-v02.api.letsencrypt.org-directory/users/default/default.json: no such file or directory"}
+LMS_caddy         | {"level":"info","ts":1775205226.346872,"logger":"http","msg":"ACME account has empty status; registering account with ACME server","contact":[],"location":""}
+LMS_caddy         | {"level":"info","ts":1775205226.357442,"logger":"tls","msg":"finished cleaning storage units"}
+LMS_caddy         | {"level":"info","ts":1775205226.3659701,"logger":"http","msg":"creating new account because no account for configured email is known to us","email":"","ca":"https://acme-v02.api.letsencrypt.org/directory","error":"open /data/caddy/acme/acme-v02.api.letsencrypt.org-directory/users/default/default.json: no such file or directory"}
+LMS_caddy         | {"level":"info","ts":1775205228.0614262,"logger":"http","msg":"new ACME account registered","contact":[],"status":"valid"}
+LMS_caddy         | {"level":"info","ts":1775205228.0918312,"logger":"http","msg":"waiting on internal rate limiter","identifiers":["*.technurturelms.in"],"ca":"https://acme-v02.api.letsencrypt.org/directory","account":""}
+LMS_caddy         | {"level":"info","ts":1775205228.091923,"logger":"http","msg":"done waiting on internal rate limiter","identifiers":["*.technurturelms.in"],"ca":"https://acme-v02.api.letsencrypt.org/directory","account":""}
+LMS_caddy         | {"level":"info","ts":1775205228.0919645,"logger":"http","msg":"using ACME account","account_id":"https://acme-v02.api.letsencrypt.org/acme/acct/3205424281","account_contact":[]}
+LMS_caddy         | {"level":"info","ts":1775205228.3561141,"logger":"http","msg":"account has already been registered; reloaded","contact":[],"status":"valid","location":"https://acme-v02.api.letsencrypt.org/acme/acct/3205424281"}
+LMS_caddy         | {"level":"info","ts":1775205228.3562644,"logger":"http","msg":"waiting on internal rate limiter","identifiers":["technurturelms.in"],"ca":"https://acme-v02.api.letsencrypt.org/directory","account":""}
+LMS_caddy         | {"level":"info","ts":1775205228.356314,"logger":"http","msg":"done waiting on internal rate limiter","identifiers":["technurturelms.in"],"ca":"https://acme-v02.api.letsencrypt.org/directory","account":""}
+LMS_caddy         | {"level":"info","ts":1775205228.3563638,"logger":"http","msg":"using ACME account","account_id":"https://acme-v02.api.letsencrypt.org/acme/acct/3205424281","account_contact":[]}
+LMS_caddy         | {"level":"error","ts":1775205229.1399157,"logger":"tls.obtain","msg":"could not get certificate from issuer","identifier":"*.technurturelms.in","issuer":"acme-v02.api.letsencrypt.org-directory","error":"[*.technurturelms.in] solving challenges: *.technurturelms.in: no solvers available for remaining challenges (configured=[http-01 tls-alpn-01] offered=[dns-01] remaining=[dns-01]) (order=https://acme-v02.api.letsencrypt.org/acme/order/3205424281/496914327281) (ca=https://acme-v02.api.letsencrypt.org/directory)"}
+LMS_caddy         | {"level":"error","ts":1775205229.1400135,"logger":"tls.obtain","msg":"will retry","error":"[*.technurturelms.in] Obtain: [*.technurturelms.in] solving challenges: *.technurturelms.in: no solvers available for remaining challenges (configured=[http-01 tls-alpn-01] offered=[dns-01] remaining=[dns-01]) (order=https://acme-v02.api.letsencrypt.org/acme/order/3205424281/496914327281) (ca=https://acme-v02.api.letsencrypt.org/directory)","attempt":1,"retrying_in":60,"elapsed":2.798560503,"max_duration":2592000}
+LMS_caddy         | {"level":"info","ts":1775205229.3920512,"msg":"trying to solve challenge","identifier":"technurturelms.in","challenge_type":"http-01","ca":"https://acme-v02.api.letsencrypt.org/directory"}
+LMS_caddy         | {"level":"error","ts":1775205231.415747,"msg":"challenge failed","identifier":"technurturelms.in","challenge_type":"http-01","problem":{"type":"urn:ietf:params:acme:error:unauthorized","title":"","detail":"187.127.132.137: Invalid response from https://technurturelms.in/.well-known/acme-challenge/GEo42ax8aN0s_wJmq68wR26HraQiPejmVIfWjZy1tSo: 404","instance":"","subproblems":null},"stacktrace":"github.com/mholt/acmez/v3.(*Client).pollAuthorization\n\tgithub.com/mholt/acmez/v3@v3.1.6/client.go:570\ngithub.com/mholt/acmez/v3.(*Client).solveChallenges\n\tgithub.com/mholt/acmez/v3@v3.1.6/client.go:391\ngithub.com/mholt/acmez/v3.(*Client).ObtainCertificate\n\tgithub.com/mholt/acmez/v3@v3.1.6/client.go:149\ngithub.com/caddyserver/certmagic.(*ACMEIssuer).doIssue\n\tgithub.com/caddyserver/certmagic@v0.25.2/acmeissuer.go:498\ngithub.com/caddyserver/certmagic.(*ACMEIssuer).Issue\n\tgithub.com/caddyserver/certmagic@v0.25.2/acmeissuer.go:391\ngithub.com/caddyserver/caddy/v2/modules/caddytls.(*ACMEIssuer).Issue\n\tgithub.com/caddyserver/caddy/v2@v2.11.2/modules/caddytls/acmeissuer.go:292\ngithub.com/caddyserver/certmagic.(*Config).obtainCert.func2\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:662\ngithub.com/caddyserver/certmagic.doWithRetry\n\tgithub.com/caddyserver/certmagic@v0.25.2/async.go:104\ngithub.com/caddyserver/certmagic.(*Config).obtainCert\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:736\ngithub.com/caddyserver/certmagic.(*Config).ObtainCertAsync\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:532\ngithub.com/caddyserver/certmagic.(*Config).manageOne.func1\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:415\ngithub.com/caddyserver/certmagic.(*jobManager).worker\n\tgithub.com/caddyserver/certmagic@v0.25.2/async.go:73"}
+LMS_caddy         | {"level":"error","ts":1775205231.4159663,"msg":"validating authorization","identifier":"technurturelms.in","problem":{"type":"urn:ietf:params:acme:error:unauthorized","title":"","detail":"187.127.132.137: Invalid response from https://technurturelms.in/.well-known/acme-challenge/GEo42ax8aN0s_wJmq68wR26HraQiPejmVIfWjZy1tSo: 404","instance":"","subproblems":null},"order":"https://acme-v02.api.letsencrypt.org/acme/order/3205424281/496914329091","attempt":1,"max_attempts":3,"stacktrace":"github.com/mholt/acmez/v3.(*Client).ObtainCertificate\n\tgithub.com/mholt/acmez/v3@v3.1.6/client.go:165\ngithub.com/caddyserver/certmagic.(*ACMEIssuer).doIssue\n\tgithub.com/caddyserver/certmagic@v0.25.2/acmeissuer.go:498\ngithub.com/caddyserver/certmagic.(*ACMEIssuer).Issue\n\tgithub.com/caddyserver/certmagic@v0.25.2/acmeissuer.go:391\ngithub.com/caddyserver/caddy/v2/modules/caddytls.(*ACMEIssuer).Issue\n\tgithub.com/caddyserver/caddy/v2@v2.11.2/modules/caddytls/acmeissuer.go:292\ngithub.com/caddyserver/certmagic.(*Config).obtainCert.func2\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:662\ngithub.com/caddyserver/certmagic.doWithRetry\n\tgithub.com/caddyserver/certmagic@v0.25.2/async.go:104\ngithub.com/caddyserver/certmagic.(*Config).obtainCert\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:736\ngithub.com/caddyserver/certmagic.(*Config).ObtainCertAsync\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:532\ngithub.com/caddyserver/certmagic.(*Config).manageOne.func1\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:415\ngithub.com/caddyserver/certmagic.(*jobManager).worker\n\tgithub.com/caddyserver/certmagic@v0.25.2/async.go:73"}
+LMS_caddy         | {"level":"info","ts":1775205233.1266294,"msg":"trying to solve challenge","identifier":"technurturelms.in","challenge_type":"tls-alpn-01","ca":"https://acme-v02.api.letsencrypt.org/directory"}
+LMS_caddy         | {"level":"error","ts":1775205234.0010037,"msg":"challenge failed","identifier":"technurturelms.in","challenge_type":"tls-alpn-01","problem":{"type":"urn:ietf:params:acme:error:tls","title":"","detail":"187.127.132.137: remote error: tls: internal error","instance":"","subproblems":null},"stacktrace":"github.com/mholt/acmez/v3.(*Client).pollAuthorization\n\tgithub.com/mholt/acmez/v3@v3.1.6/client.go:570\ngithub.com/mholt/acmez/v3.(*Client).solveChallenges\n\tgithub.com/mholt/acmez/v3@v3.1.6/client.go:391\ngithub.com/mholt/acmez/v3.(*Client).ObtainCertificate\n\tgithub.com/mholt/acmez/v3@v3.1.6/client.go:149\ngithub.com/caddyserver/certmagic.(*ACMEIssuer).doIssue\n\tgithub.com/caddyserver/certmagic@v0.25.2/acmeissuer.go:498\ngithub.com/caddyserver/certmagic.(*ACMEIssuer).Issue\n\tgithub.com/caddyserver/certmagic@v0.25.2/acmeissuer.go:391\ngithub.com/caddyserver/caddy/v2/modules/caddytls.(*ACMEIssuer).Issue\n\tgithub.com/caddyserver/caddy/v2@v2.11.2/modules/caddytls/acmeissuer.go:292\ngithub.com/caddyserver/certmagic.(*Config).obtainCert.func2\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:662\ngithub.com/caddyserver/certmagic.doWithRetry\n\tgithub.com/caddyserver/certmagic@v0.25.2/async.go:104\ngithub.com/caddyserver/certmagic.(*Config).obtainCert\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:736\ngithub.com/caddyserver/certmagic.(*Config).ObtainCertAsync\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:532\ngithub.com/caddyserver/certmagic.(*Config).manageOne.func1\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:415\ngithub.com/caddyserver/certmagic.(*jobManager).worker\n\tgithub.com/caddyserver/certmagic@v0.25.2/async.go:73"}
+LMS_caddy         | {"level":"error","ts":1775205234.0011387,"msg":"validating authorization","identifier":"technurturelms.in","problem":{"type":"urn:ietf:params:acme:error:tls","title":"","detail":"187.127.132.137: remote error: tls: internal error","instance":"","subproblems":null},"order":"https://acme-v02.api.letsencrypt.org/acme/order/3205424281/496914340641","attempt":2,"max_attempts":3,"stacktrace":"github.com/mholt/acmez/v3.(*Client).ObtainCertificate\n\tgithub.com/mholt/acmez/v3@v3.1.6/client.go:165\ngithub.com/caddyserver/certmagic.(*ACMEIssuer).doIssue\n\tgithub.com/caddyserver/certmagic@v0.25.2/acmeissuer.go:498\ngithub.com/caddyserver/certmagic.(*ACMEIssuer).Issue\n\tgithub.com/caddyserver/certmagic@v0.25.2/acmeissuer.go:391\ngithub.com/caddyserver/caddy/v2/modules/caddytls.(*ACMEIssuer).Issue\n\tgithub.com/caddyserver/caddy/v2@v2.11.2/modules/caddytls/acmeissuer.go:292\ngithub.com/caddyserver/certmagic.(*Config).obtainCert.func2\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:662\ngithub.com/caddyserver/certmagic.doWithRetry\n\tgithub.com/caddyserver/certmagic@v0.25.2/async.go:104\ngithub.com/caddyserver/certmagic.(*Config).obtainCert\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:736\ngithub.com/caddyserver/certmagic.(*Config).ObtainCertAsync\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:532\ngithub.com/caddyserver/certmagic.(*Config).manageOne.func1\n\tgithub.com/caddyserver/certmagic@v0.25.2/config.go:415\ngithub.com/caddyserver/certmagic.(*jobManager).worker\n\tgithub.com/caddyserver/certmagic@v0.25.2/async.go:73"}
+LMS_caddy         | {"level":"error","ts":1775205234.0012074,"logger":"tls.obtain","msg":"could not get certificate from issuer","identifier":"technurturelms.in","issuer":"acme-v02.api.letsencrypt.org-directory","error":"HTTP 400 urn:ietf:params:acme:error:tls - 187.127.132.137: remote error: tls: internal error"}
+LMS_caddy         | {"level":"error","ts":1775205234.0012507,"logger":"tls.obtain","msg":"will retry","error":"[technurturelms.in] Obtain: [technurturelms.in] solving challenge: technurturelms.in: [technurturelms.in] authorization failed: HTTP 400 urn:ietf:params:acme:error:tls - 187.127.132.137: remote error: tls: internal error (ca=https://acme-v02.api.letsencrypt.org/directory)","attempt":1,"retrying_in":60,"elapsed":7.659793357,"max_duration":2592000}
+LMS_caddy         | {"level":"info","ts":1775205274.92662,"msg":"shutting down apps, then terminating","signal":"SIGTERM"}
+LMS_caddy         | {"level":"warn","ts":1775205274.926686,"msg":"exiting; byeee!! 👋","signal":"SIGTERM"}
+LMS_caddy         | {"level":"info","ts":1775205274.9268506,"logger":"http","msg":"servers shutting down with eternal grace period"}
+LMS_caddy         | {"level":"info","ts":1775205274.9289718,"logger":"tls.obtain","msg":"releasing lock","identifier":"technurturelms.in"}
+LMS_caddy         | {"level":"info","ts":1775205274.9292045,"logger":"tls.obtain","msg":"releasing lock","identifier":"*.technurturelms.in"}
+LMS_caddy         | {"level":"error","ts":1775205274.929577,"msg":"unable to clean up lock in storage backend","signal":"SIGTERM","storage":"FileStorage:/data/caddy","lock_key":"issue_cert_*.technurturelms.in","error":"remove /data/caddy/locks/issue_cert_wildcard_.technurturelms.in.lock: no such file or directory"}
+LMS_caddy         | {"level":"error","ts":1775205274.9296596,"msg":"unable to clean up lock in storage backend","signal":"SIGTERM","storage":"FileStorage:/data/caddy","lock_key":"issue_cert_technurturelms.in","error":"remove /data/caddy/locks/issue_cert_technurturelms.in.lock: no such file or directory"}
+LMS_caddy         | {"level":"info","ts":1775205274.9297833,"logger":"admin","msg":"stopped previous server","address":"localhost:2019"}
+LMS_caddy         | {"level":"info","ts":1775205274.929823,"msg":"shutdown complete","signal":"SIGTERM","exit_code":0}
+LMS_event_worker  | npm error path /app
+LMS_event_worker  | npm error command failed
+LMS_event_worker  | npm error signal SIGTERM
+LMS_event_worker  | npm error command sh -c tsx scripts/event-worker.ts
+LMS_event_worker  | npm notice
+LMS_event_worker  | npm notice New major version of npm available! 10.8.2 -> 11.12.1
+LMS_event_worker  | npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+LMS_event_worker  | npm notice To update run: npm install -g npm@11.12.1
+LMS_event_worker  | npm notice
+LMS_event_worker  | npm error Log files were not written due to an error writing to the directory: /nonexistent/.npm/_logs
+LMS_event_worker  | npm error You can rerun the command with `--loglevel=verbose` to see the logs in your terminal
+LMS_stats_worker  | npm error path /app
+LMS_stats_worker  | npm error command failed
+LMS_stats_worker  | npm error signal SIGTERM
+LMS_stats_worker  | npm error command sh -c tsx scripts/stats-flush-worker.ts
+LMS_stats_worker  | npm notice
+LMS_stats_worker  | npm notice New major version of npm available! 10.8.2 -> 11.12.1
+LMS_stats_worker  | npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+LMS_stats_worker  | npm notice To update run: npm install -g npm@11.12.1
+LMS_stats_worker  | npm notice
+LMS_stats_worker  | npm error Log files were not written due to an error writing to the directory: /nonexistent/.npm/_logs
+LMS_stats_worker  | npm error You can rerun the command with `--loglevel=verbose` to see the logs in your terminal
+[KLMS_caddy exited with code 0
+[KLMS_event_worker exited with code 1
+[KLMS_stats_worker exited with code 1
+[KLMS_app exited with code 143
+LMS_redis         | 1:signal-handler (1775205276) Received SIGTERM scheduling shutdown...
+LMS_postgres      | 2026-04-03 08:34:36.380 UTC [1] LOG:  received fast shutdown request
+LMS_postgres      | 2026-04-03 08:34:36.393 UTC [1] LOG:  aborting any active transactions
+LMS_postgres      | 2026-04-03 08:34:36.398 UTC [1] LOG:  background worker "logical replication launcher" (PID 67) exited with exit code 1
+LMS_postgres      | 2026-04-03 08:34:36.402 UTC [62] LOG:  shutting down
+LMS_postgres      | 2026-04-03 08:34:36.417 UTC [62] LOG:  checkpoint starting: shutdown immediate
+LMS_redis         | 1:M 03 Apr 2026 08:34:36.446 * User requested shutdown...
+LMS_redis         | 1:M 03 Apr 2026 08:34:36.446 * Saving the final RDB snapshot before exiting.
+LMS_redis         | 1:M 03 Apr 2026 08:34:36.490 * DB saved on disk
+LMS_redis         | 1:M 03 Apr 2026 08:34:36.490 # Redis is now ready to exit, bye bye...
+LMS_postgres      | 2026-04-03 08:34:36.874 UTC [62] LOG:  checkpoint complete: wrote 306 buffers (1.9%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.050 s, sync=0.380 s, total=0.473 s; sync files=322, longest=0.022 s, average=0.002 s; distance=2189 kB, estimate=2189 kB
+LMS_postgres      | 2026-04-03 08:34:36.887 UTC [1] LOG:  database system is shut down
+[KLMS_redis exited with code 0
+[KLMS_postgres exited with code 0

@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # ----------------------------
+  # PostgreSQL Database (for testing)
+  # ----------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: LMS_postgres_test
+    restart: on-failure
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: technurturelabs_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    tmpfs:
+      - /var/run/postgresql
+
+  # ----------------------------
+  # Redis Cache (for testing)
+  # ----------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: LMS_redis_test
+    restart: on-failure
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+
+  # ----------------------------
+  # Next.js App (for testing)
+  # ----------------------------
+  app:
+    image: technurturelabs-app:latest
+    container_name: LMS_app_test
+    restart: on-failure
+    expose:
+      - "3000"
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:admin@db:5432/technurturelabs_test
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=test-secret-key-min-32-chars-long-security
+      - APP_ENCRYPTION_KEY=test-encryption-key-min-32-chars-long-key
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - NODE_OPTIONS=--max-old-space-size=2048
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - storage_test_data:/app/local_storage
+
+networks:
+  default:
+    name: technurture_test_net
+    driver: bridge
+
+volumes:
+  postgres_test_data:
+  redis_test_data:
+  storage_test_data:

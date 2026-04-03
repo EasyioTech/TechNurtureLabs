@@ -105,6 +105,12 @@ export function MediaLibraryPicker({
     React.useEffect(() => { activeFolderRef.current    = activeFolder;    }, [activeFolder]);
     React.useEffect(() => { debouncedSearchRef.current = debouncedSearch; }, [debouncedSearch]);
 
+    // Helper to get CSRF token from cookies
+    const getCsrfToken = () => document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrf_token='))
+        ?.split('=')[1];
+
     // Debounce search
     React.useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(search), 500);
@@ -137,7 +143,7 @@ export function MediaLibraryPicker({
             uploadStore.updateTask(uploadId, { isLocalVisible: true });
         }
         return () => {
-            uploadStore.updateTask(uploadId, { isLocalVisible: false });
+            if (uploadId) uploadStore.updateTask(uploadId, { isLocalVisible: false });
         };
     }, [uploadId, isUploading]);
 
@@ -283,9 +289,13 @@ export function MediaLibraryPicker({
         
         setLoading(true);
         try {
+            const csrfToken = getCsrfToken();
             const res = await fetch('/api/media/library/bulk-delete', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+                },
                 body: JSON.stringify({ ids: selectedIds })
             });
             if (!res.ok) throw new Error('Bulk delete failed');
@@ -306,7 +316,13 @@ export function MediaLibraryPicker({
         if (!confirm(`Delete "${asset.original_name}"? This cannot be undone.`)) return;
         setDeletingId(asset.id);
         try {
-            const res = await fetch(`/api/media/library/${asset.id}`, { method: 'DELETE' });
+            const csrfToken = getCsrfToken();
+            const res = await fetch(`/api/media/library/${asset.id}`, { 
+                method: 'DELETE',
+                headers: {
+                    ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+                }
+            });
             if (!res.ok) throw new Error('Delete failed');
             setAssets(prev => prev.filter(a => a.id !== asset.id));
             toast.success('Asset deleted');

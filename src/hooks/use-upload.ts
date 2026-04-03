@@ -75,14 +75,25 @@ export function useUpload(options?: UploadOptions) {
         });
 
         return new Promise(async (resolve, reject) => {
+            // Helper to get CSRF token from cookies
+            const getCsrfToken = () => document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrf_token='))
+                ?.split('=')[1];
+
             // 🚀 LARGE FILE OPTIMIZATION
             // If the file is > 50MB, use Presigned URL flow to avoid Next.js memory limits (unless local storage is preferred)
             if (file.size > 50 * 1024 * 1024 && additionalData.storagePreference !== 'local') {
                 try {
                     console.log('[Upload] Large file detected, switching to Direct R2 flow...');
+                    const csrfToken = getCsrfToken();
+
                     const presignRes = await fetch('/api/media/presign', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+                        },
                         body: JSON.stringify({
                             fileName: file.name,
                             fileType: file.type,
@@ -249,7 +260,11 @@ export function useUpload(options?: UploadOptions) {
                 uploadStore.removeTask(uploadId);
             });
 
+            const csrfToken = getCsrfToken();
             xhr.open('POST', '/api/upload');
+            if (csrfToken) {
+                xhr.setRequestHeader('x-csrf-token', csrfToken);
+            }
             xhr.send(formData);
         });
     }, [options, uploadId, abort, reset, retry]);
