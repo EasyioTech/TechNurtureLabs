@@ -143,8 +143,10 @@ export async function middleware(request: NextRequest) {
   // ─── 0.2 CSRF VALIDATION (Double-Submit Cookie Pattern) ──────────────────
   // Validate CSRF tokens on state-changing requests (POST, PUT, PATCH, DELETE)
   const isMutatingMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
-  // Exempt: login/logout endpoints (unauthenticated), payment webhooks (external)
-  const isCsrfExempt = url.pathname.startsWith('/api/auth/') || url.pathname === '/api/payment/verify';
+  // Exempt: login/logout endpoints (unauthenticated), payment endpoints (external/pre-auth), webhooks
+  const isCsrfExempt = url.pathname.startsWith('/api/auth/') ||
+                       url.pathname === '/api/payment/verify' ||
+                       url.pathname === '/api/payment/create-order';
 
   if (isApi && isMutatingMethod && !isCsrfExempt && sessionToken) {
     const submittedCsrf = request.headers.get('x-csrf-token');
