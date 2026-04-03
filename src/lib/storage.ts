@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
@@ -116,6 +116,49 @@ export async function getObjectStream(key: string, range?: string) {
         contentRange: response.ContentRange,
         acceptRanges: response.AcceptRanges,
     };
+}
+
+/**
+ * Fetches an object from R2 as a Buffer.
+ */
+export async function getObject(key: string): Promise<Buffer> {
+    if (!s3Client || !isCloudflareConfigured) {
+        throw new Error("Storage provider not configured.");
+    }
+
+    const command = new GetObjectCommand({
+        Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+        Key: key,
+    });
+
+    const response = await s3Client.send(command);
+    if (!response.Body) {
+        throw new Error(`Object ${key} has no body`);
+    }
+
+    const stream = response.Body as any;
+    const chunks = [];
+    for await (const chunk of stream) {
+        chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+}
+
+/**
+ * Lists objects in a specific R2 folder.
+ */
+export async function listFiles(prefix: string) {
+    if (!s3Client || !isCloudflareConfigured) {
+        return [];
+    }
+
+    const command = new ListObjectsV2Command({
+        Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+        Prefix: prefix,
+    });
+
+    const response = await s3Client.send(command);
+    return response.Contents || [];
 }
 
 /**

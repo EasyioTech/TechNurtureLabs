@@ -11,17 +11,23 @@ import { type SystemHealthData } from '../../types';
 import { useAdminTheme, t } from '../../theme-context';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { performBackupAction, listBackupsAction, restoreFromBackupAction } from '../../actions/backup-actions';
 
 export function SystemHealthTab() {
     const { isDark, accent } = useAdminTheme();
     const [data, setData] = useState<SystemHealthData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [backups, setBackups] = useState<any[]>([]);
+    const [isBackingUp, setIsBackingUp] = useState(false);
+    const [isRestoring, setIsRestoring] = useState<string | null>(null);
 
     const fetchData = async (silent = false) => {
         if (!silent) setLoading(true);
         try {
             const fetched = await getSystemHealth();
             setData(fetched);
+            const backupList = await listBackupsAction();
+            setBackups(backupList);
         } catch (err) {
             toast.error("Failed to fetch Engine metrics");
         } finally {
@@ -535,8 +541,104 @@ export function SystemHealthTab() {
                             </p>
                         </div>
                     </div>
-                </div >
-            </div >
-        </div >
+                </div>
+            </div>
+
+            {/* Course Backup & Disaster Recovery Section */}
+            <div className={`rounded-[2.5rem] p-8 border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-white shadow-xl shadow-black/5'} relative overflow-hidden mt-10`}>
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+                    <div className="flex items-center gap-3 relative z-10">
+                        <ShieldAlert className={accent.text} size={24} />
+                        <div>
+                            <h3 className={`text-lg font-black tracking-tight ${t.textPrimary(isDark)}`}>Course Backup & Disaster Recovery</h3>
+                            <p className={`text-[10px] font-bold ${t.textMuted(isDark)} uppercase tracking-widest mt-1`}>
+                                Cloudflare R2 Persistent Storage
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={async () => {
+                            setIsBackingUp(true);
+                            const res = await performBackupAction();
+                            if (res.success) {
+                                toast.success("Course metadata backed up to R2");
+                                fetchData(true);
+                            } else {
+                                toast.error(res.error || "Backup failed");
+                            }
+                            setIsBackingUp(false);
+                        }}
+                        disabled={isBackingUp}
+                        className={`rounded-2xl px-6 py-6 h-auto font-black uppercase tracking-widest text-xs gap-3 ${accent.bg} hover:opacity-90 shadow-lg shadow-black/20`}
+                    >
+                        {isBackingUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                        Trigger Course Backup
+                    </Button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 relative z-10">
+                    <div className={`p-8 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-white/5' : 'bg-neutral-50/50'}`}>
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-2">
+                                <Clock size={16} className={accent.text} />
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Available R2 Backups</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            {backups.length > 0 ? (
+                                backups.map((b) => (
+                                    <div key={b.key} className={`flex items-center justify-between p-4 rounded-2xl border ${t.border(isDark)} ${isDark ? 'hover:bg-white/5' : 'hover:bg-white'} transition-colors`}>
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-white/5 text-white' : 'bg-white border text-black'}`}>
+                                                <Database size={18} />
+                                            </div>
+                                            <div>
+                                                <p className={`text-[11px] font-black ${t.textPrimary(isDark)}`}>{b.key.split('/').pop()}</p>
+                                                <p className={`text-[9px] font-bold ${t.textMuted(isDark)} uppercase mt-0.5`}>
+                                                    {(b.size / 1024).toFixed(1)} KB • {new Date(b.lastModified).toLocaleString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={async () => {
+                                                if (confirm("WARNING: This will restore courses from this backup. Existing courses with the same slugs will be skipped. Restore now?")) {
+                                                    setIsRestoring(b.key);
+                                                    const res = await restoreFromBackupAction(b.key);
+                                                    if (res.success) {
+                                                        toast.success("Restore complete");
+                                                    } else {
+                                                        toast.error(res.error || "Restore failed");
+                                                    }
+                                                    setIsRestoring(null);
+                                                }
+                                            }}
+                                            disabled={!!isRestoring}
+                                            className={`rounded-xl border-2 font-black text-[9px] px-4 py-2 h-auto uppercase tracking-wider ${t.btnOutline(isDark)}`}
+                                        >
+                                            {isRestoring === b.key ? <RefreshCw size={12} className="animate-spin" /> : "RESTORE ENGINE"}
+                                        </Button>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-10 opacity-30 grayscale">
+                                    <Database size={32} className="mx-auto mb-4" />
+                                    <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>No backups found in R2</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className={`p-6 rounded-[2rem] border border-dashed ${t.border(isDark)} flex items-start gap-4`}>
+                        <Info className={t.textMuted(isDark)} size={16} />
+                        <p className={`text-[9px] font-bold leading-relaxed ${t.textMuted(isDark)}`}>
+                            Course backups include all curriculum data: <span className="text-emerald-500 font-black">Courses, Lessons, Quizzes, Questions, and Class Assignments</span>. Restoration is safe and will not overwrite courses that already exist in the database with the same unique slugs.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
