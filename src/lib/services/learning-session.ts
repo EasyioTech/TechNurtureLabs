@@ -43,70 +43,76 @@ export async function initLessonSession(context: SessionContext) {
 
     if (!enrollment) throw new Error("Student not enrolled in this course");
 
-    // 2. Invalidate previous active sessions within a single atomic transaction
-    // This prevents race condition where:
-    //   - Request A: invalidates old session
-    //   - Request B: creates new session (concurrent)
-    //   - Request A: creates new session (now 2 active sessions exist)
-    // Solution: Create new token FIRST, then invalidate old ones referencing the new token
+    // 2. ATOMIC TRANSACTION: Invalidate old + Create new in single DB transaction
+    // This prevents race condition where parallel requests create multiple valid sessions
+    // Transaction ensures: old sessions are marked invalid BEFORE new session is visible
     const token = crypto.randomUUID();
+    let newSession: any;
+    let progress: any;
 
-    await db.update(lessonSessions)
-        .set({ is_active: false })
-        .where(and(
-            eq(lessonSessions.user_id, userId),
-            eq(lessonSessions.lesson_id, lessonId),
-            eq(lessonSessions.is_active, true)
-        ));
+    await db.transaction(async (tx) => {
+        // Step 1: Invalidate all previous active sessions atomically
+        await tx.update(lessonSessions)
+            .set({ is_active: false })
+            .where(and(
+                eq(lessonSessions.user_id, userId),
+                eq(lessonSessions.lesson_id, lessonId),
+                eq(lessonSessions.is_active, true)
+            ));
 
-    // 3. Clear Redis cache for old sessions (async, non-critical)
-    const oldSessions = await db.query.lessonSessions.findMany({
-        where: and(
-            eq(lessonSessions.user_id, userId),
-            eq(lessonSessions.lesson_id, lessonId),
-            sql`session_token != ${token}`  // Don't delete the one we're about to create
-        ),
-        limit: 10
+        // Step 2: Ensure lesson_progress record exists (Atomic UPSERT)
+        const progressResult = await tx.insert(lessonProgress).values({
+            user_id: userId,
+            lesson_id: lessonId,
+            enrollment_id: enrollment.id,
+            session_id: enrollment.session_id,
+            school_id: enrollment.school_id,
+            updated_at: new Date()
+        } as any).onConflictDoUpdate({
+            target: [lessonProgress.user_id, lessonProgress.lesson_id, lessonProgress.enrollment_id],
+            set: { updated_at: new Date() }
+        }).returning();
+        progress = progressResult[0];
+
+        // Step 3: Create new session record (within same transaction)
+        const newSessionResult = await tx.insert(lessonSessions).values({
+            user_id: userId,
+            lesson_id: lessonId,
+            session_token: token,
+            device_hash: deviceHash,
+            user_agent: userAgent,
+            ip_hash: ipHash,
+            ip_address: ipAddress,
+            is_active: true,
+            last_nonce: 0,
+            last_playback_time: Math.floor((progress?.last_position_secs || 0)),
+            total_verified_seconds: Math.floor((progress?.verified_watch_seconds || 0))
+        } as any).returning();
+        newSession = newSessionResult[0];
     });
-
-    for (const s of oldSessions) {
-        await redis.del(`learning:session:${s.session_token}`).catch(() => {});  // Best-effort cleanup
-    }
-
-    // 5. Ensure lesson_progress record exists (Atomic UPSERT)
-    // We do this now so the verified progress has a concrete row to sync to.
-    const [progress] = await db.insert(lessonProgress).values({
-        user_id: userId,
-        lesson_id: lessonId,
-        enrollment_id: enrollment.id,
-        session_id: enrollment.session_id,
-        school_id: enrollment.school_id,
-        updated_at: new Date()
-    } as any).onConflictDoUpdate({
-        target: [lessonProgress.user_id, lessonProgress.lesson_id, lessonProgress.enrollment_id],
-        set: { updated_at: new Date() }
-    }).returning();
 
     const startPosition = Math.floor(progress?.last_position_secs || 0);
     const startVerified = Math.floor(progress?.verified_watch_seconds || 0);
 
-    // 6. Create record in Postgres
-    const [newSession] = await db.insert(lessonSessions).values({
-        user_id: userId,
-        lesson_id: lessonId,
-        session_token: token,
-        device_hash: deviceHash,
-        user_agent: userAgent,
-        ip_hash: ipHash,
-        ip_address: ipAddress,
-        is_active: true,
-        last_nonce: 0,
-        last_playback_time: startPosition,
-        total_verified_seconds: startVerified
-    } as any).returning();
+    // 3. Async cleanup: Delete old session tokens from Redis (non-critical, non-blocking)
+    // Get list of old tokens to clean up
+    db.query.lessonSessions.findMany({
+        where: and(
+            eq(lessonSessions.user_id, userId),
+            eq(lessonSessions.lesson_id, lessonId),
+            sql`session_token != ${token}`,
+            eq(lessonSessions.is_active, false)  // Only get the ones we just invalidated
+        ),
+        limit: 10
+    }).then(oldSessions => {
+        for (const s of oldSessions) {
+            redis.del(`learning:session:${s.session_token}`).catch(() => {});
+        }
+    }).catch(() => {});
 
-    // 7. Initialize Redis state for the aggregator
-    await redis.set(`learning:session:${token}`, JSON.stringify({
+    // 4. Initialize Redis state for the aggregator (best-effort, non-blocking)
+    // If Redis is down, session still works from DB; this is just an optimization
+    redis.set(`learning:session:${token}`, JSON.stringify({
         userId,
         lessonId,
         enrollmentId: enrollment.id,
@@ -119,8 +125,11 @@ export async function initLessonSession(context: SessionContext) {
         verifiedSeconds: startVerified,
         deviceHash,
         ipHash,
-        isFirstHeartbeat: true 
-    }), 'EX', 3600 * 4); 
+        isFirstHeartbeat: true
+    }), 'EX', 3600 * 4).catch(err => {
+        // Redis unavailable but session is already created in DB — acceptable
+        console.warn(`[Learning Session] Redis init failed for token ${token}:`, err instanceof Error ? err.message : err);
+    }); 
 
     return newSession;
 }

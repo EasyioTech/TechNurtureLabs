@@ -7,21 +7,33 @@ import { rateLimitService } from '@/lib/services/rate-limit';
 
 export async function GET(req: NextRequest) {
     try {
-        // SECURITY: Rate limit to prevent user enumeration via activity tracking
+        // SECURITY: Rate limit by IP to prevent user enumeration via activity tracking
         const ip = req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || '127.0.0.1';
-        const { allowed } = await rateLimitService.check({
-            key: `auth-me:${ip}`,
-            limit: 60,
-            windowSeconds: 60  // 60 requests per minute per IP
+        const { allowed: ipAllowed } = await rateLimitService.check({
+            key: `auth-me:ip:${ip}`,
+            limit: 100,
+            windowSeconds: 60  // 100 requests per minute per IP (aggregate)
         });
 
-        if (!allowed) {
+        if (!ipAllowed) {
             return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
         }
 
         const session = await verifySession();
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // SECURITY: Also rate limit per authenticated user to prevent polling
+        // Even if IP limit is high, individual users can't spam their own /auth/me
+        const { allowed: userAllowed } = await rateLimitService.check({
+            key: `auth-me:user:${session.userId}`,
+            limit: 30,
+            windowSeconds: 60  // 30 requests per minute per user
+        });
+
+        if (!userAllowed) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
         }
 
         let user: any = null;
@@ -97,20 +109,38 @@ export async function GET(req: NextRequest) {
         }
 
         const { password_hash, ...safeUser } = user;
-        // SECURITY: Handle XP as bigint to prevent overflow
-        // cumulative_xp is stored as bigint; convert safely preserving precision
-        const totalXp = typeof safeUser.cumulative_xp === 'bigint'
-            ? Number(safeUser.cumulative_xp)
-            : Number(safeUser.cumulative_xp || 0);
-        const level = Math.floor(totalXp / 1000) + 1;
+
+        // SECURITY: Handle XP safely to prevent precision loss on large numbers
+        // cumulative_xp is stored as bigint in DB. JavaScript numbers lose precision above 2^53.
+        // Return as string to preserve full precision for frontend calculation.
+        let totalXpString = '0';
+        let totalXpNumber = 0;
+
+        if (safeUser.cumulative_xp) {
+            // Get value as string to preserve full precision
+            const xpValue = safeUser.cumulative_xp;
+            if (typeof xpValue === 'bigint') {
+                totalXpString = xpValue.toString();
+                totalXpNumber = Number(xpValue);
+            } else if (typeof xpValue === 'number') {
+                totalXpNumber = xpValue;
+                totalXpString = Math.floor(xpValue).toString();
+            } else {
+                totalXpNumber = parseInt(String(xpValue)) || 0;
+                totalXpString = totalXpNumber.toString();
+            }
+        }
+
+        // Level calculation: use the safe numeric value for display
+        const level = Math.max(1, Math.floor(totalXpNumber / 1000) + 1);
 
         return NextResponse.json({
             user: {
                 ...safeUser,
+                cumulative_xp: totalXpString,  // Return as string for precision
                 role: userType,
                 full_name: `${safeUser.first_name || ''} ${safeUser.last_name || ''}`.trim() || 'User',
-                total_xp: totalXp,
-                level: Math.max(1, level),  // Ensure level is at least 1
+                level,
             },
             role: userType
         });

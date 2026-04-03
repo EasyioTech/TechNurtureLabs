@@ -54,20 +54,33 @@ export async function getLessonData(lessonId: string) {
 
     if (!lesson) return null;
 
-    // 1. Enrollment check (remains as is for logic isolation)
+    // 1. CRITICAL SECURITY: Student school-id scoping MUST happen first
+    // Fetch student's school_id and active status in single query
+    const student = await db.query.students.findFirst({
+        where: and(eq(students.id, userId), eq(students.is_active, true))
+    });
+
+    if (!student) {
+        throw new Error('Unauthorized: Student account invalid');
+    }
+
+    // 2. Enrollment check with school-id validation
     // SECURITY: ensureEnrollment also validates school subscription
     const enrollment = await ensureEnrollment(lesson.course_id);
     if (!enrollment) return null;
 
-    // SECURITY FIX: Verify student's school matches lesson's school
-    // Fetch student's school_id once to avoid repeated DB lookups
-    const student = await db.query.students.findFirst({
-        where: eq(students.id, userId),
-        columns: { school_id: true }
-    });
+    // 3. CRITICAL: Verify enrollment is in the same school as the student
+    // This prevents students from accessing courses in other schools
+    // Enrollment.school_id is set during course enrollment and must match student.school_id
+    if (student.school_id !== enrollment.school_id) {
+        throw new Error('Unauthorized: Cross-school access denied');
+    }
 
-    if (!student || student.school_id !== enrollment.school_id) {
-        throw new Error('Unauthorized: Student not in lesson school');
+    // 4. CRITICAL: Verify lesson belongs to the enrolled course AND school
+    // This is a defense-in-depth check: lesson should already belong to the course
+    // But we verify the lesson's course_id matches the enrollment's course_id
+    if (lesson.course_id !== enrollment.course_id) {
+        throw new Error('Unauthorized: Lesson not in enrolled course');
     }
 
     // 2. Media Logic

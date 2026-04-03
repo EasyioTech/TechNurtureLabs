@@ -15,6 +15,12 @@ async function handleStream(req: NextRequest, context: { params: Promise<{ lesso
         const searchParams = req.nextUrl.searchParams;
         const token = searchParams.get('token');
 
+        // SECURITY: Validate lessonId is a valid UUID format
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!lessonId || !uuidRegex.test(lessonId)) {
+            return new NextResponse('Invalid lesson ID format', { status: 400 });
+        }
+
         if (!token) {
             return new NextResponse('Missing session token', { status: 401 });
         }

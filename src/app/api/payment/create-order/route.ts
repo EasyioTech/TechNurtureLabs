@@ -24,14 +24,7 @@ const razorpay = (!isBuild && serverEnv.RAZORPAY_KEY_ID && serverEnv.RAZORPAY_KE
     key_secret: serverEnv.RAZORPAY_KEY_SECRET,
 }) : null;
 
-if (!isBuild) {
-    if (serverEnv.RAZORPAY_KEY_ID) console.log('[Razorpay] KEY_ID found:', serverEnv.RAZORPAY_KEY_ID.substring(0, 20) + '...');
-    else console.error('[Razorpay] KEY_ID NOT found');
-    if (serverEnv.RAZORPAY_KEY_SECRET) console.log('[Razorpay] KEY_SECRET found, length:', serverEnv.RAZORPAY_KEY_SECRET.length);
-    else console.error('[Razorpay] KEY_SECRET NOT found');
-    if (razorpay) console.log('[Razorpay] Instance initialized successfully');
-    else console.error('[Razorpay] Instance is NULL');
-}
+// Note: Razorpay configuration checked at startup, log output removed from production endpoint
 
 export async function POST(req: NextRequest) {
     try {
@@ -87,17 +80,18 @@ export async function POST(req: NextRequest) {
             const now = new Date();
 
             // CRITICAL FIX #9: Atomic check + increment prevents race conditions
-            // The WHERE clause is evaluated atomically with the UPDATE, ensuring
-            // that if current_uses reaches max_uses, subsequent requests will fail
-            // (WHERE condition will be false for future requests)
-            const [promo] = await db
-                .select()
-                .from(promoCodes)
+            // Use database UPDATE with WHERE clause to ensure atomicity:
+            // 1. Only updates if conditions are met (not expired, has capacity, is active)
+            // 2. Returns the UPDATED row
+            // 3. If conditions fail, returns empty array — promo is invalid/exhausted
+            const [updatedPromo] = await db
+                .update(promoCodes)
+                .set({ current_uses: sql`current_uses + 1` })
                 .where(
                     and(
                         eq(promoCodes.id, promo_code_id),
                         eq(promoCodes.is_active, true),
-                        // max_uses IS NULL means unlimited; otherwise must have capacity
+                        // max_uses IS NULL means unlimited; otherwise must have capacity BEFORE increment
                         or(
                             isNull(promoCodes.max_uses),
                             sql`${promoCodes.current_uses} < ${promoCodes.max_uses}`
@@ -107,10 +101,10 @@ export async function POST(req: NextRequest) {
                         // validity window: valid_until IS NULL or now <= valid_until
                         or(isNull(promoCodes.valid_until), gte(promoCodes.valid_until, now))
                     )
-                );
+                )
+                .returning();
 
-            if (promo) {
-                const updatedPromo = promo; 
+            if (updatedPromo) {
                 // SECURITY: Validate discount calculation to prevent negative amounts
                 if (updatedPromo.discount_type === 'percentage') {
                     const percentage = Number(updatedPromo.discount_value);
@@ -135,13 +129,14 @@ export async function POST(req: NextRequest) {
                     discount_value: updatedPromo.discount_value,
                     discount_amount: discountAmount,
                 };
-                logger.info('[Create Order] Promo code applied', {
+                logger.info('[Create Order] Promo code applied atomically', {
                     code: updatedPromo.code,
                     discount: discountAmount,
-                    final_amount: finalAmount
+                    final_amount: finalAmount,
+                    total_uses: updatedPromo.current_uses
                 });
             } else {
-                // Code is invalid, expired, or exhausted — reject the request
+                // Code is invalid, expired, exhausted, or inactive — reject the request
                 logger.warn('[Create Order] Promo code invalid/expired/exhausted', { promo_code_id });
                 return NextResponse.json(
                     { error: 'Promo code is invalid, expired, or has reached its usage limit.' },
@@ -222,14 +217,13 @@ export async function POST(req: NextRequest) {
                 fullError: JSON.stringify(rpError).substring(0, 200)
             };
             logger.error('[Create Order] Razorpay API error', errorDetails);
-            console.error('[Create Order] Razorpay full error:', errorDetails);
             return NextResponse.json(
                 { error: 'Failed to create payment order. Please try again.' },
                 { status: 502 }
             );
         }
     } catch (error: any) {
-        console.error('Create order error:', error);
-        return NextResponse.json({ error: error.message || 'Failed to create order' }, { status: 500 });
+        logger.error('[Create Order] Unexpected error', { message: error?.message });
+        return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
     }
 }
