@@ -102,8 +102,9 @@ export async function POST(req: NextRequest) {
             await db.insert(auditLogs).values({
                 school_id: school_id,
                 user_id: session.userId,
-                action: 'payment_fraud_attempt',
-                details: { orderId: razorpay_order_id, reason: 'school_id_mismatch' }
+                action: 'payment',
+                entity_type: 'payment_fraud',
+                metadata: { orderId: razorpay_order_id, reason: 'school_id_mismatch', fraud_type: 'school_mismatch' }
             });
             return NextResponse.json(
                 { success: false, error: 'Unauthorized' },
@@ -160,8 +161,9 @@ export async function POST(req: NextRequest) {
             await db.insert(auditLogs).values({
                 school_id: transaction.school_id,
                 user_id: session.userId,
-                action: 'payment_fraud_attempt',
-                details: { orderId: razorpay_order_id, reason: 'amount_mismatch', expected: expectedAmountPaise, received: paymentDetails.amount }
+                action: 'payment',
+                entity_type: 'payment_fraud',
+                metadata: { orderId: razorpay_order_id, reason: 'amount_mismatch', expected: expectedAmountPaise, received: paymentDetails.amount, fraud_type: 'amount_tampering' }
             });
             return NextResponse.json(
                 { success: false, error: 'Payment amount mismatch' },
@@ -261,10 +263,13 @@ export async function POST(req: NextRequest) {
             school_id: transaction.school_id,
             user_id: session.userId,
             action: 'payment',
-            details: {
+            entity_type: 'payment_transaction',
+            entity_id: transaction.id,
+            metadata: {
                 orderId: razorpay_order_id,
                 amount: transaction.amount,
-                subscriptionId: transaction.subscription_id
+                subscriptionId: transaction.subscription_id,
+                status: 'captured'
             }
         });
 
