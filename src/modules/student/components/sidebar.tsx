@@ -17,7 +17,8 @@ import {
     LogOut as LogOutIcon,
     Palette,
     Microscope,
-    Beaker
+    Beaker,
+    Award
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
     { icon: Beaker, label: 'My Library', href: '/student/courses' },
     { icon: Target, label: 'Challenges', href: '/student/challenges' },
     { icon: Trophy, label: 'Achievements', href: '/student/achievements' },
+    { icon: Award, label: 'Certificates', href: '/student/certificates' },
     { icon: User, label: 'Profile', href: '/student/profile' },
     { icon: Settings, label: 'Settings', href: '/student/settings' },
 ];

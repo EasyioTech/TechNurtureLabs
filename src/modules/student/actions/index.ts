@@ -38,11 +38,17 @@ import {
     updateDailyChallengeProgress
 } from './challenge-actions';
 
-import { 
-    updateNotificationPreferences, 
-    updateAppearanceSettings, 
-    updatePrivacySettings 
+import {
+    updateNotificationPreferences,
+    updateAppearanceSettings,
+    updatePrivacySettings
 } from './settings-actions';
+
+import {
+    getStudentCertificates,
+    hasCertificateForCourse,
+    getCertificateForCourse
+} from './certificate-actions';
 
 // Export all actions
 export {
@@ -82,5 +88,10 @@ export {
     // Settings
     updateNotificationPreferences,
     updateAppearanceSettings,
-    updatePrivacySettings
+    updatePrivacySettings,
+
+    // Certificates
+    getStudentCertificates,
+    hasCertificateForCourse,
+    getCertificateForCourse
 };

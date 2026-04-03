@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { CourseDetailsHeader } from '@/modules/student/components/course/course-header';
 import { LessonRow } from '@/modules/student/components/course/lesson-row';
+import { CertificateViewer } from '@/modules/student/components/certificate-viewer';
+import { motion } from 'framer-motion';
 import {
   BookOpen, Clock, Star, Trophy, Zap,
-  ArrowRight, ShieldCheck, Target, Layers, Award
+  ArrowRight, ShieldCheck, Target, Layers, Award, Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -16,11 +18,19 @@ interface CourseDetailsClientProps {
     course: any;
     lessons: any[];
     enrolledCount: number;
+    certificate?: any | null;
   }
 }
 
 export function CourseDetailsClient({ initialData }: CourseDetailsClientProps) {
-  const { course, lessons, enrolledCount } = initialData;
+  const { course, lessons, enrolledCount, certificate } = initialData;
+  const [studentName, setStudentName] = useState('Student');
+
+  useEffect(() => {
+    // Get student name from session or local storage
+    const name = typeof window !== 'undefined' ? localStorage.getItem('studentName') : null;
+    if (name) setStudentName(name);
+  }, []);
 
   const completedCount = lessons.filter(l => l.status === 'completed').length;
   const totalXP = lessons.reduce((acc, l) => acc + (l.xp_reward || 0), 0);
@@ -110,11 +120,37 @@ export function CourseDetailsClient({ initialData }: CourseDetailsClientProps) {
                 </Link>
               )}
               {progress === 100 && (
-                <div className="mt-3 flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100">
-                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-500 shadow-sm">
-                    <Trophy size={16} />
+                <div className="mt-3 space-y-3">
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                    <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-500 shadow-sm">
+                      <Trophy size={16} />
+                    </div>
+                    <p className="text-xs font-black text-emerald-700 uppercase tracking-widest">Course Mastered!</p>
                   </div>
-                  <p className="text-xs font-black text-emerald-700 uppercase tracking-widest">Course Mastered!</p>
+                  {certificate && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 space-y-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-amber-500 shadow-md">
+                          <Award size={18} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-amber-800 uppercase tracking-widest">Certificate Awarded</p>
+                          <p className="text-[9px] text-amber-600 font-semibold">Code: {certificate.verification_code}</p>
+                        </div>
+                      </div>
+                      <CertificateViewer
+                        studentName={studentName}
+                        certificateTitle={certificate.certificate_title}
+                        courseTitle={course?.title || 'Course'}
+                        verificationCode={certificate.verification_code}
+                        issuedDate={certificate.issued_at}
+                      />
+                    </motion.div>
+                  )}
                 </div>
               )}
             </div>
@@ -206,14 +242,28 @@ export function CourseDetailsClient({ initialData }: CourseDetailsClientProps) {
               )}
 
               {progress === 100 && (
-                <div className="mt-4 p-4 rounded-[1.5rem] bg-emerald-50 border border-emerald-100 flex items-center gap-3 animate-in fade-in duration-300">
-                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-emerald-500 shadow-sm">
-                    <Trophy size={20} />
+                <div className="mt-4 space-y-3 animate-in fade-in duration-300">
+                  <div className="p-4 rounded-[1.5rem] bg-emerald-50 border border-emerald-100 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-emerald-500 shadow-sm">
+                      <Trophy size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-emerald-800 uppercase tracking-widest">Course Mastered</p>
+                      <p className="text-[8px] font-bold text-emerald-600/70 uppercase mt-0.5">All lessons complete</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[9px] font-black text-emerald-800 uppercase tracking-widest">Course Mastered</p>
-                    <p className="text-[8px] font-bold text-emerald-600/70 uppercase mt-0.5">All lessons complete</p>
-                  </div>
+
+                  {certificate && (
+                    <div className="p-4 rounded-[1.5rem] bg-amber-50 border border-amber-100 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-amber-500 shadow-sm">
+                        <Award size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[9px] font-black text-amber-800 uppercase tracking-widest">Certificate Earned</p>
+                        <p className="text-[8px] font-bold text-amber-600/70 uppercase mt-0.5 truncate">{certificate.certificate_title}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </section>

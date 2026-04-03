@@ -1,5 +1,5 @@
 import React from 'react';
-import { getCourseDetailsData } from '@/modules/student/actions';
+import { getCourseDetailsData, getCertificateForCourse } from '@/modules/student/actions';
 import { CourseDetailsClient } from '@/modules/student/components/course/course-details-client';
 import { verifySession } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
@@ -13,19 +13,23 @@ export default async function CourseDetailsPage({ params }: { params: Promise<{ 
     }
 
     const { courseId } = await params;
-    
+
     let initialData;
     try {
         const data = await getCourseDetailsData(courseId);
-        
+
         if (!data || !data.course) {
             notFound();
         }
 
+        // Fetch certificate if student has completed the course
+        const certificate = await getCertificateForCourse(courseId);
+
         initialData = {
             course: data.course,
             lessons: data.lessons || [],
-            enrolledCount: data.enrolledCount || 0
+            enrolledCount: data.enrolledCount || 0,
+            certificate: certificate || null
         };
     } catch (error) {
         console.error('Failed to fetch course details:', error);

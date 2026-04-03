@@ -137,10 +137,16 @@ export function AchievementsClient({ initialData }: AchievementsClientProps) {
                     {/* Operational Gallery */}
                     <div className="lg:col-span-8 space-y-8 lg:space-y-12">
                         <section className="bg-white rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 border border-slate-100 shadow-2xl shadow-slate-200/40">
-                             <h2 className="text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tighter mb-10 pb-6 border-b border-slate-50 flex items-center justify-between">
-                                Achievement Gallery
-                                <span className="text-[10px] font-black text-slate-300 tracking-[0.4em] uppercase">Badge Tier</span>
-                             </h2>
+                             <div className="mb-10 pb-6 border-b border-slate-50">
+                                <h2 className="text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tighter mb-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Trophy size={32} className="text-indigo-600" />
+                                        Achievement Gallery
+                                    </div>
+                                    <span className="text-[10px] font-black text-slate-400 tracking-[0.4em] uppercase">Collect Badges</span>
+                                </h2>
+                                <p className="text-[11px] font-semibold text-slate-500">Earn badges across different tiers as you progress through your learning journey</p>
+                             </div>
 
                              <div className="space-y-20">
                                 <AchievementSection title="Starter Achievements" badges={beginnerBadges} />
@@ -192,14 +198,38 @@ function MasteryStat({ label, value, icon: Icon, color }: any) {
 
 function AchievementSection({ title, badges }: { title: string; badges: any[] }) {
     if (badges.length === 0) return null;
+
+    const getTierColor = (tier: string) => {
+        const colors: Record<string, string> = {
+            bronze: 'text-orange-600',
+            silver: 'text-slate-500',
+            gold: 'text-amber-600',
+            platinum: 'text-indigo-600'
+        };
+        return colors[tier] || 'text-slate-500';
+    };
+
+    const getTierEmoji = (tier: string) => {
+        const emojis: Record<string, string> = {
+            bronze: '🥉',
+            silver: '🥈',
+            gold: '🥇',
+            platinum: '✨'
+        };
+        return emojis[tier] || '⭐';
+    };
+
     return (
-        <div>
-            <div className="flex items-center gap-6 mb-10">
-                <div className="h-px flex-1 bg-slate-50" />
-                <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">{title}</h3>
-                <div className="h-px flex-1 bg-slate-50" />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="flex items-center gap-6 mb-12">
+                <div className="h-px flex-1 bg-gradient-to-r from-slate-50 to-transparent" />
+                <div className="text-center">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">{title}</p>
+                    <p className="text-xl font-black text-slate-900 tracking-tight">{badges.length} Badge{badges.length > 1 ? 's' : ''}</p>
+                </div>
+                <div className="h-px flex-1 bg-gradient-to-l from-slate-50 to-transparent" />
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-12">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 md:gap-x-8 gap-y-14 md:gap-y-16">
                 {badges.map((a: any) => (
                     <AchievementBadge
                         key={a.id}
@@ -212,7 +242,7 @@ function AchievementSection({ title, badges }: { title: string; badges: any[] })
                     />
                 ))}
             </div>
-        </div>
+        </motion.div>
     );
 }
 

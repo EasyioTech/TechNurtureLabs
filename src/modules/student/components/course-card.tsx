@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Play, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Play, ChevronRight, CheckCircle2, Award } from 'lucide-react';
 import Link from 'next/link';
 import { handleThumbnailError } from '@/lib/media-client';
 
@@ -12,6 +12,7 @@ interface Course {
   thumbnail: string;
   totalLessons: number;
   completedLessons: number;
+  hasCertificate?: boolean;
 }
 
 const COLOR_THEMES = [
@@ -28,6 +29,7 @@ export function CourseCard({ course }: { course: Course }) {
     ? (course.completedLessons / course.totalLessons) * 100
     : 0;
   const isComplete = progress === 100 && course.totalLessons > 0;
+  const hasCertificate = course.hasCertificate && isComplete;
 
   const hash = course.title.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
   const theme = COLOR_THEMES[hash % COLOR_THEMES.length];
@@ -76,7 +78,12 @@ export function CourseCard({ course }: { course: Course }) {
 
           {/* Completion badge */}
           {isComplete && (
-            <div className="absolute top-3 right-3">
+            <div className="absolute top-3 right-3 flex flex-col gap-2">
+              {hasCertificate && (
+                <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center shadow-lg hover:scale-110 transition-transform" title="Certificate Available">
+                  <Award size={16} className="text-white" />
+                </div>
+              )}
               <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg">
                 <CheckCircle2 size={16} className="text-white" />
               </div>

@@ -128,8 +128,8 @@ export function ChallengeItem({
                                     </span>
                                 )}
                             </div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Progress: {progress}{unit} / {total}{unit}
+                            <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest">
+                                {getChallengeBriefing(title)} • {progress}{unit}/{total}{unit}
                             </p>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
@@ -194,4 +194,23 @@ function Badge({ label, sub, color, bg, border }: any) {
             </div>
         </div>
     );
+}
+
+function getChallengeBriefing(title: string): string {
+    const briefings: Record<string, string> = {
+        'complete quiz': 'Answer all questions correctly',
+        'finish lesson': 'Complete the entire lesson content',
+        'reading time': 'Spend focused time learning',
+        'earn xp': 'Accumulate experience points',
+        'maintain streak': 'Keep your daily learning streak',
+        'watch video': 'Watch educational content',
+        'submit work': 'Complete and submit assignments',
+        'practice': 'Practice with exercises'
+    };
+
+    const titleLower = title.toLowerCase();
+    for (const [key, value] of Object.entries(briefings)) {
+        if (titleLower.includes(key)) return value;
+    }
+    return 'Complete this challenge';
 }

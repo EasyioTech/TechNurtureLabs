@@ -31,6 +31,7 @@ export type DailyChallenge = {
     icon: string;
     current_progress: number;
     is_completed: boolean;
+    description?: string;
 };
 
 export type Achievement = {

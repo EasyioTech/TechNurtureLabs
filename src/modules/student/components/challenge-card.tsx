@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Award, Zap, CheckCircle2 } from 'lucide-react';
+import { Award, Zap, CheckCircle2, Sparkles } from 'lucide-react';
 
 interface ChallengeCardProps {
     title: string;
@@ -9,86 +9,110 @@ interface ChallengeCardProps {
     icon: any;
     unit?: string;
     color: string;
+    description?: string;
 }
 
-export function ChallengeCard({ title, progress, total, reward, icon: Icon, unit = '', color }: ChallengeCardProps) {
+export function ChallengeCard({ title, progress, total, reward, icon: Icon, unit = '', color, description }: ChallengeCardProps) {
     const percentage = Math.min((progress / total) * 100, 100);
     const isComplete = progress >= total;
 
-    const themes: Record<string, { bg: string, text: string, accent: string, glow: string }> = {
-        amber: { bg: 'bg-amber-500/10', text: 'text-amber-500', accent: 'bg-amber-500', glow: 'shadow-amber-500/20' },
-        sky: { bg: 'bg-sky-500/10', text: 'text-sky-500', accent: 'bg-sky-500', glow: 'shadow-sky-500/20' },
-        violet: { bg: 'bg-violet-500/10', text: 'text-violet-500', accent: 'bg-violet-500', glow: 'shadow-violet-500/20' },
-        emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', accent: 'bg-emerald-500', glow: 'shadow-emerald-500/20' },
-        indigo: { bg: 'bg-indigo-500/10', text: 'text-indigo-500', accent: 'bg-indigo-500', glow: 'shadow-indigo-500/20' },
+    const themes: Record<string, { bg: string, text: string, accent: string, glow: string, border: string }> = {
+        amber: { bg: 'bg-amber-500/10', text: 'text-amber-500', accent: 'bg-amber-500', glow: 'shadow-amber-500/20', border: 'border-amber-100' },
+        sky: { bg: 'bg-sky-500/10', text: 'text-sky-500', accent: 'bg-sky-500', glow: 'shadow-sky-500/20', border: 'border-sky-100' },
+        violet: { bg: 'bg-violet-500/10', text: 'text-violet-500', accent: 'bg-violet-500', glow: 'shadow-violet-500/20', border: 'border-violet-100' },
+        emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', accent: 'bg-emerald-500', glow: 'shadow-emerald-500/20', border: 'border-emerald-100' },
+        indigo: { bg: 'bg-indigo-500/10', text: 'text-indigo-500', accent: 'bg-indigo-500', glow: 'shadow-indigo-500/20', border: 'border-indigo-100' },
     };
 
     const theme = themes[color] || themes.indigo;
 
     return (
-        <motion.div 
-            whileHover={{ y: -5 }}
-            className={`relative group h-full bg-white rounded-[2rem] p-6 border border-slate-100 transition-all duration-500 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] ${isComplete ? 'ring-2 ring-emerald-500/20 border-emerald-100' : ''}`}
+        <motion.div
+            whileHover={{ y: -8 }}
+            className={`relative group h-full bg-white rounded-[2.5rem] p-8 border transition-all duration-500 hover:shadow-2xl hover:shadow-slate-300/20 ${
+                isComplete ? 'ring-2 ring-emerald-500/30 border-emerald-200' : `border-slate-100 ${theme.border}`
+            }`}
         >
             {/* Background Accent Gradient */}
-            <div className={`absolute top-0 right-0 w-32 h-32 ${theme.bg} rounded-full blur-3xl -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none`} />
+            <div className={`absolute top-0 right-0 w-40 h-40 ${theme.bg} rounded-full blur-3xl -mr-20 -mt-20 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none`} />
 
-            <div className="flex items-start justify-between mb-6">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${theme.bg} ${theme.text} shadow-inner group-hover:scale-110 transition-transform duration-500`}>
-                    <Icon size={24} strokeWidth={2.5} />
+            <div className="flex items-start justify-between mb-7 relative z-10">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${theme.bg} ${theme.text} shadow-md group-hover:scale-125 transition-transform duration-500`}>
+                    <motion.div animate={isComplete ? { rotate: 360 } : { scale: [1, 1.05, 1] }} transition={{ duration: 3, repeat: Infinity }}>
+                        <Icon size={28} strokeWidth={2.5} />
+                    </motion.div>
                 </div>
-                
-                <div className={`flex flex-col items-end`}>
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-full font-black text-[9px] uppercase tracking-widest shadow-xl">
-                        <Zap size={10} className="text-amber-400 fill-amber-400" />
+
+                <div className={`flex flex-col items-end gap-2`}>
+                    <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white rounded-full font-black text-[9px] uppercase tracking-widest shadow-lg hover:shadow-xl"
+                    >
+                        <Zap size={11} className="text-amber-400 fill-amber-400" />
                         +{reward} XP
-                    </div>
+                    </motion.div>
                     {isComplete && (
-                        <div className="mt-2 flex items-center gap-1 text-emerald-500 font-black text-[8px] uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                           <CheckCircle2 size={8} /> Completed
-                        </div>
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="flex items-center gap-1.5 text-emerald-600 font-black text-[8px] uppercase tracking-widest bg-emerald-100 px-3 py-1 rounded-lg border border-emerald-200"
+                        >
+                           <CheckCircle2 size={10} fill="currentColor" /> UNLOCKED
+                        </motion.div>
                     )}
                 </div>
             </div>
 
-            <div className="mb-6">
-                <h4 className="text-base font-black text-slate-900 tracking-tighter leading-[1.1] uppercase mb-2">
+            <div className="mb-7 relative z-10">
+                <h4 className="text-lg font-black text-slate-950 tracking-tighter leading-snug uppercase mb-3">
                     {title}
                 </h4>
-                <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-black text-slate-900 tracking-tighter">{progress}</span>
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{unit}</span>
-                    <span className="mx-1.5 text-slate-200 font-light">/</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{total}{unit}</span>
+                {description && (
+                    <p className="text-[11px] font-semibold text-slate-600 leading-relaxed mb-4">
+                        {description}
+                    </p>
+                )}
+                <div className="flex items-baseline gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 inline-block">
+                    <span className="text-lg font-black text-slate-950 tracking-tight">{progress}</span>
+                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{unit}</span>
+                    <span className="text-slate-300 font-light">/</span>
+                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">{total}{unit}</span>
                 </div>
             </div>
 
-            <div className="space-y-3">
-                <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
-                    <span className="text-slate-400">Completion</span>
-                    <span className={isComplete ? 'text-emerald-500' : 'text-slate-900'}>{Math.round(percentage)}%</span>
+            <div className="space-y-4 relative z-10">
+                <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Progress</span>
+                    <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className={`text-[11px] font-black tracking-tight ${isComplete ? 'text-emerald-600' : 'text-slate-900'}`}
+                    >
+                        {Math.round(percentage)}%
+                    </motion.span>
                 </div>
-                
-                <div className="h-3 bg-slate-50 rounded-full p-0.5 border border-slate-100 overflow-hidden relative">
+
+                <div className="h-4 bg-slate-100 rounded-2xl p-1 border border-slate-200 overflow-hidden relative">
                     <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${percentage}%` }}
-                        transition={{ duration: 1, ease: 'easeOut' }}
-                        className={`h-full rounded-full relative ${isComplete ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : `${theme.accent} ${theme.glow}`}`}
+                        transition={{ duration: 1.2, ease: 'easeOut' }}
+                        className={`h-full rounded-xl relative ${isComplete ? 'bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_20px_rgba(16,185,129,0.6)]' : `bg-gradient-to-r from-${color}-400 to-${color}-600 ${theme.glow}`}`}
                     >
-                        {/* Animated gloss effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent w-full h-full -translate-x-full animate-[shimmer_2s_infinite]" />
+                        <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
                     </motion.div>
                 </div>
             </div>
 
-            {/* Hover Footer Action */}
-            {!isComplete && (
-                <div className="mt-6 pt-5 border-t border-slate-50 flex items-center justify-between opacity-50 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Objective in progress</span>
-                    <Award size={12} className="text-slate-300 group-hover:text-indigo-400 transition-colors" />
-                </div>
-            )}
+            {/* Bottom Action Area */}
+            <div className="mt-7 pt-6 border-t border-slate-100 flex items-center justify-between relative z-10">
+                <span className={`text-[9px] font-black uppercase tracking-widest ${isComplete ? 'text-emerald-600' : 'text-slate-500'}`}>
+                    {isComplete ? '✓ Completed' : 'In Progress'}
+                </span>
+                <motion.div animate={!isComplete ? { x: [0, 5, 0] } : {}} transition={{ duration: 2, repeat: Infinity }}>
+                    {isComplete ? <Sparkles size={14} className="text-emerald-500" /> : <Award size={14} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />}
+                </motion.div>
+            </div>
         </motion.div>
     );
 }

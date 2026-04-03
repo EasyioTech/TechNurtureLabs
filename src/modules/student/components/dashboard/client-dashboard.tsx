@@ -263,15 +263,15 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
             </div>
 
             {/* 4. Daily Goals (Missions) - Before Performance Stats */}
-            <section className="lg:hidden bg-white rounded-3xl p-5 border border-slate-100 shadow-sm">
+            <section className="lg:hidden bg-gradient-to-br from-white to-indigo-50/30 rounded-3xl p-5 border border-indigo-100/50 shadow-sm">
               <div className="flex items-center justify-between mb-5">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 tracking-tight leading-none uppercase flex items-center gap-2">
-                    Mission Protocols
+                    <span className="text-lg">⚡</span> Daily Missions
                     <Wand2 size={12} className="text-indigo-500 animate-pulse" />
                   </h3>
-                  <p className="text-[10px] font-medium text-slate-400 mt-1 flex items-center gap-1">
-                    <Clock size={10} /> Resets in {resetTime}
+                  <p className="text-[10px] font-medium text-slate-500 mt-1 flex items-center gap-1">
+                    <Clock size={10} className="text-indigo-500" /> Resets in {resetTime}
                   </p>
                 </div>
                 <Link href="/student/challenges">
@@ -291,6 +291,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                     reward={challenge.xp_reward}
                     icon={getChallengeIcon(challenge.icon)}
                     color="indigo"
+                    description={challenge.description}
                     isCompact={true}
                   />
                 ))}
@@ -406,15 +407,15 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
             </div>
 
             {/* Daily Goals */}
-            <section className="bg-white rounded-3xl p-5 border border-slate-100 shadow-md">
+            <section className="bg-gradient-to-br from-white to-indigo-50/40 rounded-3xl p-5 border border-indigo-100/60 shadow-md hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-between mb-5">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 tracking-tight leading-none uppercase flex items-center gap-2">
-                    Mission Protocols
+                    <span className="text-lg">⚡</span> Daily Missions
                     <Wand2 size={12} className="text-indigo-500 animate-pulse" />
                   </h3>
-                  <p className="text-[10px] font-medium text-slate-400 mt-1 flex items-center gap-1">
-                    <Clock size={10} /> Resets in {resetTime}
+                  <p className="text-[10px] font-medium text-slate-500 mt-1 flex items-center gap-1">
+                    <Clock size={10} className="text-indigo-500" /> Resets in {resetTime}
                   </p>
                 </div>
                 <Link href="/student/challenges">
@@ -435,6 +436,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
                       reward={challenge.xp_reward}
                       icon={getChallengeIcon(challenge.icon)}
                       color="indigo"
+                      description={challenge.description}
                       isCompact={true}
                     />
                   );
