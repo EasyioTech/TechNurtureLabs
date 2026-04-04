@@ -12,6 +12,7 @@ import { LogIn, ArrowLeft, Loader2, GraduationCap, CheckCircle2, Eye, EyeOff, Ar
 import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { StudentLoginSidebar } from '@/components/registration/StudentLoginSidebar';
 import { GlobalLogo } from '@/modules/shared/components/global-logo';
+import { getPlatformSettings } from "@/components/landing/actions";
 
 export default function StudentLoginPage() {
   const { signIn } = useAuth();
