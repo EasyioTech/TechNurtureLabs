@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { StudentCertificate } from '@/modules/student/actions/certificate-actions';
 import { CertificateTemplate } from '../certificate-template';
-import { Download, Eye, Loader2 } from 'lucide-react';
+import { Download, Eye, Loader2, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
