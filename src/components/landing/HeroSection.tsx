@@ -7,7 +7,7 @@ import { ArrowRight, Play, CheckCircle2, Sparkles } from 'lucide-react';
 
 export const HeroSection = ({ settings }: { settings?: any }) => {
     return (
-        <section className="relative z-10 pt-28 pb-8 sm:pt-12 sm:pb-12 lg:pt-32 lg:pb-20 overflow-hidden bg-slate-50 lg:min-h-screen flex items-center">
+        <section className="relative z-10 pt-28 pb-12 md:pt-40 md:pb-24 lg:pt-32 lg:pb-20 overflow-hidden bg-slate-50 lg:min-h-screen flex items-center">
 
             {/* Precision Grid Background */}
             <div
@@ -15,34 +15,34 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                 style={{ backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '40px 40px' }}
             />
 
-            {/* Ambient glow - scaled for mobile */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 sm:w-96 sm:h-96 lg:w-[900px] lg:h-[450px] bg-blue-100/60 rounded-full blur-3xl sm:blur-[80px] lg:blur-[130px] pointer-events-none -z-10 animate-pulse-subtle" />
+            {/* Ambient glow - scaled for devices */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 md:w-[600px] md:h-[600px] lg:w-[900px] lg:h-[450px] bg-blue-100/60 rounded-full blur-3xl md:blur-[100px] lg:blur-[130px] pointer-events-none -z-10 animate-pulse-subtle" />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 w-full">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
-                    {/* Mobile: Single Column Layout - Content flows vertically */}
-                    <div className="lg:hidden flex flex-col items-start text-left w-full pt-8 sm:pt-0">
+                    {/* Mobile & Tablet: Content Flows Vertically */}
+                    <div className="lg:hidden flex flex-col items-center text-center max-w-2xl mx-auto">
 
-                        {/* Capsule - Top */}
-                        <div className="mb-4 sm:mb-6">
-                            <div className="inline-flex items-center gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md bg-white border border-slate-200 shadow-sm">
+                        {/* Capsule - Top (Separating from Logo) */}
+                        <div className="mb-6 md:mb-10">
+                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white border border-slate-200 shadow-sm">
                                 {settings?.logo_url ? (
-                                    <img src={settings.logo_url} alt="Logo" className="w-3 h-3 sm:w-4 sm:h-4 object-contain" />
+                                    <img src={settings.logo_url} alt="Logo" className="w-4 h-4 object-contain" />
                                 ) : (
-                                    <Sparkles size={12} className="text-blue-600" />
+                                    <Sparkles size={14} className="text-blue-600" />
                                 )}
-                                <span className="text-[10px] sm:text-xs font-bold text-slate-700 uppercase tracking-widest">{settings?.platform_name || 'TechNurture'} Labs</span>
+                                <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">{settings?.platform_name || 'TechNurture'} Labs</span>
                             </div>
                         </div>
 
-                        {/* Illustration - Below Capsule (Larger on mobile) */}
-                        <div className="relative w-full h-64 sm:h-80 mb-6 sm:mb-8">
+                        {/* Illustration - Key focus for tablet */}
+                        <div className="relative w-full h-64 sm:h-80 md:h-[450px] mb-8 md:mb-12">
                             <motion.div
-                                initial={{ opacity: 0, x: 16, y: 8 }}
-                                animate={{ opacity: 1, x: 0, y: 0 }}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.9, ease: [0.21, 0.47, 0.32, 0.98] }}
-                                className="relative z-10 w-full h-full group flex items-center justify-center"
+                                className="relative z-10 w-full h-full group flex items-center justify-center px-4"
                             >
                                 <img
                                     src="/assets/gaming-hero.svg"
@@ -53,52 +53,52 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                                     className="w-full h-full object-contain pointer-events-none mix-blend-multiply opacity-90 transition-transform duration-700 group-hover:scale-[1.02]"
                                 />
                             </motion.div>
-                            <div className="absolute inset-0 bg-blue-100/30 rounded-full blur-[100px] -z-10" />
+                            <div className="absolute inset-0 bg-blue-100/30 rounded-full blur-[80px] md:blur-[120px] -z-10" />
                         </div>
 
-                        {/* Heading - Below Illustration */}
-                        <div className="mb-3 sm:mb-4">
-                            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight leading-tight sm:leading-[1.2] text-slate-900">
+                        {/* Heading - Bigger on Tablet (md) */}
+                        <div className="mb-4 md:mb-6 px-2">
+                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-tight md:leading-[1.15] text-slate-900">
                                 The online learning platform{' '}
-                                <span className="text-blue-600">students actually love.</span>
+                                <span className="text-blue-600 block md:inline">students actually love.</span>
                             </h1>
                         </div>
 
                         {/* Description */}
-                        <div className="mb-4 sm:mb-6">
-                            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
+                        <div className="mb-6 md:mb-10 max-w-xl mx-auto">
+                            <p className="text-xs sm:text-sm md:text-base text-slate-600 leading-relaxed font-medium">
                                 Gamified LMS for K-12 schools across India — courses in IoT, embedded systems, full-stack development, and skill-based programming, with real-time analytics and school-wide student management.
                             </p>
                         </div>
 
                         {/* Buttons & Trust Signals */}
-                        <div className="w-full">
-                            <div className="flex flex-row gap-2.5 items-center">
+                        <div className="w-full max-w-md">
+                            <div className="flex flex-row gap-3 items-center">
                                 <Link href="#demo" className="flex-1">
-                                    <button className="w-full flex items-center justify-center gap-1.5 bg-white text-slate-700 font-semibold px-3 py-2.5 rounded-lg shadow-sm border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-xs cursor-pointer whitespace-nowrap">
-                                        <span className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-blue-600 shrink-0">
-                                            <Play size={5} className="text-white ml-0.5 fill-current" />
+                                    <button className="w-full flex items-center justify-center gap-2 bg-white text-slate-700 font-semibold px-4 py-3 rounded-xl shadow-sm border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm cursor-pointer whitespace-nowrap">
+                                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 shrink-0">
+                                            <Play size={8} className="text-white ml-0.5 fill-current" />
                                         </span>
-                                        Demo
+                                        Watch Demo
                                     </button>
                                 </Link>
                                 <Link href="/register/school" className="flex-1">
-                                    <button className="w-full flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold px-3 py-2.5 rounded-lg shadow-lg shadow-slate-900/20 transition-colors text-xs cursor-pointer whitespace-nowrap">
+                                    <button className="w-full flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white font-semibold px-4 py-3 rounded-xl shadow-lg shadow-slate-900/20 transition-all text-sm cursor-pointer whitespace-nowrap">
                                         Register School
                                     </button>
                                 </Link>
                             </div>
 
-                            <div className="flex flex-col gap-1.5 sm:gap-0 sm:flex-row sm:flex-wrap items-start sm:items-center sm:gap-x-4 gap-y-1 sm:gap-y-1.5 mt-4 sm:mt-6 text-[10px] sm:text-xs text-slate-500 font-medium">
-                                <div className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500 shrink-0" /> No credit card</div>
-                                <div className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500 shrink-0" /> Free trial</div>
-                                <div className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500 shrink-0" /> UDISE verified</div>
+                            <div className="flex flex-row flex-wrap justify-center items-center gap-x-6 gap-y-2 mt-8 text-[11px] md:text-xs text-slate-500 font-medium border-t border-slate-100 pt-6">
+                                <div className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> No credit card</div>
+                                <div className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> Free trial</div>
+                                <div className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> UDISE verified</div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Desktop: Two Column Layout (unchanged) */}
-                    <div className="hidden lg:flex flex-col items-start text-left justify-center">
+                    {/* Desktop: Two Column Layout (Large Viewports Only) */}
+                    <div className="hidden lg:flex flex-col items-start text-left justify-center pr-8">
 
                         <div className="mb-6">
                             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white border border-slate-200 shadow-sm">
@@ -112,7 +112,7 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                         </div>
 
                         <div className="mb-6">
-                            <h1 className="text-7xl font-bold tracking-tight leading-[1.05] text-slate-900">
+                            <h1 className="text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] text-slate-900">
                                 The online learning platform{' '}
                                 <span className="text-blue-600">students actually love.</span>
                             </h1>
@@ -175,5 +175,6 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                 </div>
             </div>
         </section>
+
     );
 };

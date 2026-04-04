@@ -1,14 +1,12 @@
 'use client';
 
-import React, { forwardRef, useEffect, useState } from 'react';
+import React, { forwardRef } from 'react';
 import { format } from 'date-fns';
 
 let QRCode: any = null;
 
-// Dynamically import QRCode only on client side
 if (typeof window !== 'undefined') {
     try {
-        // @ts-ignore
         QRCode = require('qrcode.react').default;
     } catch (e) {
         QRCode = null;
@@ -34,164 +32,131 @@ export const CertificateTemplate = forwardRef<HTMLDivElement, CertificateTemplat
             <div
                 ref={ref}
                 style={{
-                    width: '1200px',
-                    height: '800px',
+                    width: '1400px',
+                    height: '750px',
                     margin: '0 auto',
-                    padding: '60px 80px',
-                    background: 'linear-gradient(135deg, #ffffff 0%, #f8f9ff 50%, #f0f4ff 100%)',
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    padding: '50px 70px',
+                    background: '#ffffff',
+                    fontFamily: 'Georgia, serif',
                     position: 'relative',
                     overflow: 'hidden',
                     boxSizing: 'border-box',
+                    border: '3px solid #2c2c2c',
                 }}
             >
-                {/* Decorative background elements */}
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: '-200px',
-                        right: '-200px',
-                        width: '600px',
-                        height: '600px',
-                        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%)',
-                        borderRadius: '50%',
-                        zIndex: 0,
-                    }}
-                />
-                <div
-                    style={{
-                        position: 'absolute',
-                        bottom: '-100px',
-                        left: '-100px',
-                        width: '400px',
-                        height: '400px',
-                        background: 'radial-gradient(circle, rgba(34, 197, 94, 0.08) 0%, transparent 70%)',
-                        borderRadius: '50%',
-                        zIndex: 0,
-                    }}
-                />
-
-                {/* Top decorative border */}
+                {/* Top border */}
                 <div
                     style={{
                         position: 'absolute',
                         top: 0,
                         left: 0,
                         right: 0,
-                        height: '6px',
-                        background: 'linear-gradient(90deg, #6366f1 0%, #ec4899 50%, #f59e0b 100%)',
+                        height: '4px',
+                        background: '#2c2c2c',
                         zIndex: 2,
                     }}
                 />
 
-                {/* Main content container */}
+                {/* Main content */}
                 <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    {/* Header section */}
-                    <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                        {/* School/Organization name */}
+
+                    {/* Header */}
+                    <div style={{ textAlign: 'center', marginBottom: '10px' }}>
                         <div
                             style={{
-                                fontSize: '14px',
-                                fontWeight: '700',
-                                letterSpacing: '2px',
-                                color: '#64748b',
+                                fontSize: '10px',
+                                fontWeight: '600',
+                                letterSpacing: '4px',
+                                color: '#2c2c2c',
                                 textTransform: 'uppercase',
-                                marginBottom: '8px',
-                                textDecoration: 'underline',
-                                textDecorationColor: '#6366f1',
-                                textDecorationThickness: '3px',
-                                textUnderlineOffset: '6px',
+                                marginBottom: '15px',
+                                fontFamily: 'system-ui, sans-serif',
                             }}
                         >
                             {schoolName}
                         </div>
 
-                        {/* Certificate title */}
                         <h1
                             style={{
-                                fontSize: '56px',
-                                fontWeight: '900',
-                                color: '#1e293b',
-                                margin: '16px 0',
-                                letterSpacing: '-1px',
+                                fontSize: '42px',
+                                fontWeight: '400',
+                                color: '#000000',
+                                margin: '0 0 8px 0',
+                                letterSpacing: '3px',
                                 lineHeight: '1.1',
                             }}
                         >
-                            Certificate of
+                            CERTIFICATE OF
                         </h1>
                         <h2
                             style={{
-                                fontSize: '48px',
-                                fontWeight: '900',
-                                background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                                margin: '0 0 8px 0',
-                                letterSpacing: '-0.5px',
+                                fontSize: '36px',
+                                fontWeight: '400',
+                                color: '#000000',
+                                margin: '0 0 15px 0',
+                                letterSpacing: '1px',
                             }}
                         >
                             {certificateTitle}
                         </h2>
 
-                        {/* Decorative line */}
                         <div
                             style={{
-                                width: '200px',
-                                height: '3px',
-                                background: 'linear-gradient(90deg, transparent, #6366f1, transparent)',
-                                margin: '24px auto',
+                                width: '250px',
+                                height: '1px',
+                                background: '#2c2c2c',
+                                margin: '15px auto',
                             }}
                         />
                     </div>
 
-                    {/* Main certificate content */}
-                    <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                    {/* Body */}
+                    <div style={{ textAlign: 'center', marginBottom: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                         <p
                             style={{
-                                fontSize: '18px',
-                                color: '#64748b',
-                                marginBottom: '24px',
-                                fontWeight: '500',
+                                fontSize: '15px',
+                                color: '#2c2c2c',
+                                marginBottom: '15px',
+                                fontWeight: '400',
+                                fontFamily: 'system-ui, sans-serif',
                             }}
                         >
-                            This certificate is proudly presented to
+                            This is to certify that
                         </p>
 
-                        {/* Student name */}
                         <div
                             style={{
-                                fontSize: '44px',
-                                fontWeight: '900',
-                                color: '#1e293b',
-                                margin: '24px 0',
-                                paddingBottom: '12px',
-                                borderBottom: '3px solid #6366f1',
-                                letterSpacing: '-0.5px',
+                                fontSize: '32px',
+                                fontWeight: '400',
+                                color: '#000000',
+                                margin: '15px 0',
+                                paddingBottom: '8px',
+                                borderBottom: '2px solid #2c2c2c',
+                                letterSpacing: '1px',
                             }}
                         >
                             {studentName}
                         </div>
 
-                        {/* Achievement description */}
                         <p
                             style={{
-                                fontSize: '18px',
-                                color: '#64748b',
-                                marginTop: '32px',
-                                marginBottom: '12px',
-                                fontWeight: '500',
+                                fontSize: '14px',
+                                color: '#2c2c2c',
+                                marginTop: '20px',
+                                marginBottom: '8px',
+                                fontWeight: '400',
+                                fontFamily: 'system-ui, sans-serif',
                             }}
                         >
-                            For successfully completing the course
+                            has successfully completed the course
                         </p>
 
-                        {/* Course title */}
                         <div
                             style={{
-                                fontSize: '24px',
-                                fontWeight: '800',
-                                color: '#6366f1',
-                                margin: '12px 0 32px 0',
+                                fontSize: '20px',
+                                fontWeight: '400',
+                                color: '#000000',
+                                margin: '8px 0 20px 0',
                                 letterSpacing: '0.5px',
                             }}
                         >
@@ -200,138 +165,136 @@ export const CertificateTemplate = forwardRef<HTMLDivElement, CertificateTemplat
 
                         <p
                             style={{
-                                fontSize: '14px',
-                                color: '#94a3b8',
-                                marginTop: '24px',
-                                lineHeight: '1.6',
+                                fontSize: '12px',
+                                color: '#555555',
+                                marginTop: '15px',
+                                lineHeight: '1.5',
+                                fontFamily: 'system-ui, sans-serif',
                             }}
                         >
-                            This certificate recognizes achievement and commitment to continuous learning
+                            In recognition of academic excellence and diligent effort
                         </p>
                     </div>
 
-                    {/* Bottom section with date, verification code, and QR code */}
+                    {/* Footer */}
                     <div
                         style={{
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'flex-end',
-                            marginTop: '40px',
-                            paddingTop: '20px',
-                            borderTop: '1px dashed #cbd5e1',
+                            marginTop: '20px',
+                            paddingTop: '15px',
+                            borderTop: '1px solid #2c2c2c',
                         }}
                     >
-                        {/* Left side - Date and signature area */}
+                        {/* Left - Date */}
                         <div style={{ flex: 1, textAlign: 'center' }}>
                             <p
                                 style={{
-                                    fontSize: '12px',
-                                    color: '#94a3b8',
+                                    fontSize: '10px',
+                                    color: '#2c2c2c',
                                     textTransform: 'uppercase',
                                     letterSpacing: '1px',
-                                    marginBottom: '8px',
+                                    marginBottom: '6px',
+                                    fontWeight: '400',
+                                    fontFamily: 'system-ui, sans-serif',
                                 }}
                             >
                                 Date Awarded
                             </p>
                             <p
                                 style={{
-                                    fontSize: '16px',
-                                    fontWeight: '600',
-                                    color: '#1e293b',
-                                    marginBottom: '12px',
+                                    fontSize: '13px',
+                                    fontWeight: '400',
+                                    color: '#000000',
+                                    marginBottom: '10px',
+                                    fontFamily: 'system-ui, sans-serif',
                                 }}
                             >
                                 {formattedDate}
                             </p>
-                            <div style={{ height: '2px', background: '#cbd5e1', width: '80%', margin: '12px auto' }} />
+                            <div style={{ height: '1px', background: '#2c2c2c', width: '50%', margin: '8px auto' }} />
                             <p
                                 style={{
-                                    fontSize: '11px',
-                                    color: '#94a3b8',
-                                    marginTop: '8px',
-                                    fontWeight: '600',
+                                    fontSize: '9px',
+                                    color: '#2c2c2c',
+                                    marginTop: '6px',
+                                    fontWeight: '400',
                                     textTransform: 'uppercase',
+                                    fontFamily: 'system-ui, sans-serif',
                                 }}
                             >
-                                Administrator
+                                Authorized By
                             </p>
                         </div>
 
-                        {/* Right side - Verification code and QR code */}
-                        <div style={{ flex: 1, textAlign: 'center' }}>
+                        {/* Right - QR & Verification */}
+                        <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                            {/* QR Code - larger and more visible */}
                             <div
+                                id="qr-code-container"
                                 style={{
+                                    padding: '6px',
+                                    background: 'white',
+                                    border: '2px solid #2c2c2c',
                                     display: 'flex',
                                     justifyContent: 'center',
                                     alignItems: 'center',
-                                    gap: '20px',
+                                    width: '80px',
+                                    height: '80px',
+                                    marginBottom: '10px',
                                 }}
                             >
-                                {/* QR Code Placeholder - will render on client side */}
-                                <div
-                                    id="qr-code-container"
+                                {QRCode && typeof window !== 'undefined' ? (
+                                    <QRCode
+                                        value={verificationCode}
+                                        size={80}
+                                        level="H"
+                                        includeMargin={false}
+                                        bgColor="#ffffff"
+                                        fgColor="#000000"
+                                    />
+                                ) : (
+                                    <div
+                                        style={{
+                                            fontSize: '10px',
+                                            color: '#2c2c2c',
+                                            fontWeight: '400',
+                                        }}
+                                    >
+                                        QR CODE
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Verification Code */}
+                            <div style={{ textAlign: 'center' }}>
+                                <p
                                     style={{
-                                        padding: '8px',
-                                        background: 'white',
-                                        border: '2px solid #6366f1',
-                                        borderRadius: '8px',
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        width: '80px',
-                                        height: '80px',
+                                        fontSize: '9px',
+                                        color: '#2c2c2c',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '1px',
+                                        marginBottom: '3px',
+                                        fontWeight: '400',
+                                        fontFamily: 'system-ui, sans-serif',
                                     }}
                                 >
-                                    {QRCode ? (
-                                        <QRCode
-                                            value={verificationCode}
-                                            size={80}
-                                            level="M"
-                                            includeMargin={false}
-                                            bgColor="#ffffff"
-                                            fgColor="#6366f1"
-                                        />
-                                    ) : (
-                                        <div
-                                            style={{
-                                                fontSize: '10px',
-                                                color: '#6366f1',
-                                                fontWeight: 'bold',
-                                                textAlign: 'center',
-                                            }}
-                                        >
-                                            QR CODE
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Verification info */}
-                                <div style={{ textAlign: 'left' }}>
-                                    <p
-                                        style={{
-                                            fontSize: '11px',
-                                            color: '#94a3b8',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '1px',
-                                            marginBottom: '4px',
-                                            fontWeight: '600',
-                                        }}
-                                    >
-                                        Verification Code
-                                    </p>
-                                    <p
-                                        style={{
-                                            fontSize: '14px',
-                                            fontWeight: '800',
-                                            color: '#1e293b',
-                                            fontFamily: 'monospace',
-                                            letterSpacing: '1px',
-                                        }}
-                                    >
-                                        {verificationCode}
-                                    </p>
-                                </div>
+                                    Verification
+                                </p>
+                                <p
+                                    style={{
+                                        fontSize: '11px',
+                                        fontWeight: '400',
+                                        color: '#000000',
+                                        fontFamily: 'monospace',
+                                        letterSpacing: '0.5px',
+                                        wordBreak: 'break-all',
+                                        maxWidth: '120px',
+                                    }}
+                                >
+                                    {verificationCode}
+                                </p>
                             </div>
                         </div>
                     </div>

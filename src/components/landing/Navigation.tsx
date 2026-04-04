@@ -75,25 +75,25 @@ export const Navigation = ({ settings }: { settings?: any }) => {
                     ? "bg-white/85 backdrop-blur-2xl border-b border-slate-900/[0.06] py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                     : "bg-transparent border-b border-transparent py-4"
             )}>
-                <div className="max-w-7xl mx-auto px-6">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
                     <div className="flex items-center justify-between">
 
                         {/* Logo */}
-                        <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+                        <Link href="/" className="flex items-center gap-2 md:gap-3 group shrink-0">
                             {settings?.logo_url ? (
                                 <img
                                     src={settings.logo_url}
                                     alt="Logo"
-                                    className="h-8 w-auto object-contain transition-transform group-hover:scale-[1.02]"
-                                    style={{ height: settings?.logo_height ? `${settings.logo_height}px` : '32px' }}
+                                    className="h-8 md:h-9 w-auto object-contain transition-transform group-hover:scale-[1.02]"
+                                    style={{ height: settings?.logo_height ? `${settings.logo_height}px` : undefined }}
                                 />
                             ) : (
-                                <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
+                                <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-slate-900 flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
                                     <Sparkles className="text-white" size={16} />
                                 </div>
                             )}
                             {settings?.show_platform_name !== false && (
-                                <span className="text-lg font-black text-slate-900 tracking-tight">
+                                <span className="text-lg md:text-xl font-black text-slate-900 tracking-tight whitespace-nowrap">
                                     {settings?.platform_name || 'TechNurture'}
                                 </span>
                             )}

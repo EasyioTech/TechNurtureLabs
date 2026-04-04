@@ -71,10 +71,10 @@ export function CertificateViewer({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setIsViewerOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors font-semibold text-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-lg border border-slate-300 hover:bg-slate-50 transition-colors font-semibold text-sm"
                 >
                     <Eye size={16} />
-                    View Certificate
+                    View
                 </motion.button>
 
                 <motion.button
@@ -82,7 +82,7 @@ export function CertificateViewer({
                     whileTap={{ scale: 0.95 }}
                     onClick={handleDownloadPDF}
                     disabled={isDownloading}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isDownloading ? (
                         <>
@@ -92,7 +92,7 @@ export function CertificateViewer({
                     ) : (
                         <>
                             <Download size={16} />
-                            Download PDF
+                            Download
                         </>
                     )}
                 </motion.button>
@@ -106,40 +106,42 @@ export function CertificateViewer({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => setIsViewerOpen(false)}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
                     >
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
                             onClick={e => e.stopPropagation()}
-                            className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-auto relative"
+                            className="bg-white rounded-lg shadow-2xl w-full h-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col relative"
                         >
                             {/* Close button */}
                             <button
                                 onClick={() => setIsViewerOpen(false)}
-                                className="sticky top-4 right-4 z-10 ml-auto flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-lg hover:bg-slate-50 transition-colors border border-slate-200"
+                                className="absolute top-4 right-4 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-lg hover:bg-slate-50 transition-colors border border-slate-200"
                             >
                                 <X size={20} className="text-slate-600" />
                             </button>
 
-                            {/* Certificate content */}
-                            <div className="flex justify-center p-6 bg-slate-50">
-                                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                                    <CertificateTemplate
-                                        ref={certificateRef}
-                                        studentName={studentName}
-                                        certificateTitle={certificateTitle}
-                                        courseTitle={courseTitle}
-                                        verificationCode={verificationCode}
-                                        issuedDate={issuedDate}
-                                        schoolName={schoolName}
-                                    />
+                            {/* Certificate content - proper landscape - responsive */}
+                            <div className="flex-1 overflow-auto flex items-center justify-center p-2 sm:p-4 bg-slate-100">
+                                <div className="bg-white w-full" style={{ aspectRatio: '1400/750', maxHeight: '85vh' }}>
+                                    <div style={{ transform: 'scale(1)', width: '100%', height: '100%', transformOrigin: 'top center' }}>
+                                        <CertificateTemplate
+                                            ref={certificateRef}
+                                            studentName={studentName}
+                                            certificateTitle={certificateTitle}
+                                            courseTitle={courseTitle}
+                                            verificationCode={verificationCode}
+                                            issuedDate={issuedDate}
+                                            schoolName={schoolName}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Download button at bottom */}
-                            <div className="sticky bottom-0 bg-white border-t border-slate-200 p-4 flex items-center justify-end gap-3">
+                            {/* Action buttons at bottom */}
+                            <div className="bg-white border-t border-slate-200 p-4 flex items-center justify-end gap-3">
                                 <button
                                     onClick={() => setIsViewerOpen(false)}
                                     className="px-6 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors font-semibold"
@@ -149,7 +151,7 @@ export function CertificateViewer({
                                 <button
                                     onClick={handleDownloadPDF}
                                     disabled={isDownloading}
-                                    className="flex items-center gap-2 px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {isDownloading ? (
                                         <>
@@ -159,7 +161,7 @@ export function CertificateViewer({
                                     ) : (
                                         <>
                                             <Download size={16} />
-                                            Download Certificate
+                                            Download PDF
                                         </>
                                     )}
                                 </button>
