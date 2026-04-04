@@ -196,12 +196,12 @@ function LoginHeatmap({ heatmap }: { heatmap: number[][] }) {
 
             <div className="relative overflow-x-auto pb-4 custom-scrollbar">
                 <div className="pr-4">
-                    {/* Hour labels */}
+                    {/* Hour labels — aligned with heatmap grid */}
                     <div className="flex gap-1.5 mb-3">
                         <div className="w-12 flex-shrink-0" />
-                        <div className="flex flex-1 gap-1.5">
+                        <div className="flex gap-1.5" style={{ width: 'calc(24 * 1.5rem + 23 * 0.375rem)' }}>
                             {HOURS.map((h, i) => (
-                                <div key={i} className={`flex-1 text-center text-[9px] font-black uppercase tracking-tighter transition-all duration-500 ${i % 3 === 0 ? 'opacity-100' : 'opacity-20'} ${t.textMuted(isDark)}`}>
+                                <div key={i} className={`w-6 text-center text-[9px] font-black uppercase tracking-tighter transition-all duration-500 ${i % 3 === 0 ? 'opacity-100' : 'opacity-20'} ${t.textMuted(isDark)}`}>
                                     {h}
                                 </div>
                             ))}
@@ -215,18 +215,18 @@ function LoginHeatmap({ heatmap }: { heatmap: number[][] }) {
                                 <div className={`w-12 flex-shrink-0 text-[11px] font-black uppercase text-right pr-3 ${t.textMuted(isDark)} group-hover/row:text-cyan-400 transition-colors`}>
                                     {day}
                                 </div>
-                                <div className="flex flex-1 gap-1.5 items-center">
+                                <div className="flex gap-1.5 items-center" style={{ width: 'calc(24 * 1.5rem + 23 * 0.375rem)' }}>
                                     {heatmap[dow].map((count, hour) => (
                                         <motion.div
                                             key={hour}
                                             initial={{ opacity: 0, scale: 0.8 }}
                                             animate={{ opacity: 1, scale: 1 }}
-                                            whileHover={{ scale: 1.3, zIndex: 10 }}
+                                            whileHover={{ scale: 1.3, zIndex: 50 }}
                                             transition={{ delay: 0.5 + (dow * 0.05) + (hour * 0.01), type: 'spring', stiffness: 400, damping: 25 }}
-                                            className={`w-6 h-6 rounded-full transition-all duration-300 cursor-pointer ${cellColor(count)} border relative group/cell flex-1 flex items-center justify-center`}
+                                            className={`w-6 h-6 rounded-full transition-all duration-300 cursor-pointer ${cellColor(count)} border relative group/cell`}
                                         >
-                                            {/* Minimal Tooltip */}
-                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 rounded-lg bg-neutral-900 text-white text-[10px] font-black whitespace-nowrap opacity-0 group-hover/cell:opacity-100 pointer-events-none transition-all translate-y-1 group-hover/cell:translate-y-0 z-50 shadow-2xl border border-white/10">
+                                            {/* Popover Tooltip — positioned above with proper z-index stacking */}
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-1.5 rounded-lg bg-neutral-900 text-white text-[10px] font-black whitespace-nowrap opacity-0 group-hover/cell:opacity-100 pointer-events-none transition-all translate-y-2 group-hover/cell:translate-y-0 shadow-2xl border border-white/10" style={{ zIndex: 9999 }}>
                                                 {count} LOGINS • {day}, {HOURS[hour]}
                                             </div>
                                         </motion.div>

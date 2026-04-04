@@ -4,6 +4,7 @@ import { superAdmins } from '@/db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
 import { createSession } from '@/lib/auth';
 import { rateLimitService } from '@/lib/services/rate-limit';
+import { analyticsService } from '@/lib/services/analytics-service';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
@@ -66,6 +67,10 @@ export async function POST(request: NextRequest) {
 
     await db.update(superAdmins).set({ last_active_at: new Date() }).where(eq(superAdmins.id, admin.id));
     await createSession({ userId: admin.id, userType: 'super_admin' });
+
+    // Track login heatmap — fire-and-forget, zero latency impact
+    const now = new Date();
+    analyticsService.trackLoginHour(now.getDay(), now.getHours()).catch(() => {});
 
     const { password_hash, ...adminData } = admin;
 
