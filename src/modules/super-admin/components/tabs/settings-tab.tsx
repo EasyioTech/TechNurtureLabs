@@ -159,7 +159,18 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
             const formData = new FormData();
             formData.append('file', file);
             formData.append('type', type);
-            const res = await fetch('/api/branding/upload', { method: 'POST', body: formData });
+
+            // Get CSRF token from cookies
+            const csrfToken = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrf_token='))
+                ?.split('=')[1];
+
+            const res = await fetch('/api/branding/upload', {
+                method: 'POST',
+                body: formData,
+                headers: csrfToken ? { 'x-csrf-token': csrfToken } : {}
+            });
             const data = await res.json();
             if (data.success) {
                 setUrl(data.url + '?v=' + Date.now()); // cache-bust preview
@@ -177,9 +188,18 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
     const handleBrandingRemove = async (type: 'logo' | 'favicon') => {
         const setUrl = type === 'logo' ? setLogoUrl : setFaviconUrl;
         try {
+            // Get CSRF token from cookies
+            const csrfToken = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrf_token='))
+                ?.split('=')[1];
+
             const res = await fetch('/api/branding/upload', {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+                },
                 body: JSON.stringify({ type }),
             });
             const data = await res.json();

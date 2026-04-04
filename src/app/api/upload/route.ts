@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { mediaAssets } from '@/db/schema';
 import { verifySession } from '@/lib/auth';
 import { rateLimitService } from '@/lib/services/rate-limit';
+import { processImage } from '@/lib/image-processor';
 import path from 'path';
 
 // 50 MB in bytes — hard cap for a single upload request body
@@ -15,7 +16,7 @@ const ALLOWED_MIME_TYPES = new Set([
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     'application/vnd.ms-powerpoint',
-    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/heic', 'image/heif',
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/heic', 'image/heif', 'image/bmp', 'image/tiff',
     'audio/mpeg', 'audio/ogg', 'audio/wav',
 ]);
 
@@ -108,11 +109,14 @@ export async function POST(request: NextRequest) {
 
         const folderHint = targetFolder || (context ? context.type : 'library');
 
-        const buffer = Buffer.from(await file.arrayBuffer());
+        // Process image: auto-convert to WebP for optimal web delivery
+        const rawBuffer = Buffer.from(await file.arrayBuffer());
+        const { buffer, mimeType: processedMimeType, filename: processedFilename } = await processImage(rawBuffer, file.type, file.name);
+
         const result = await uploadFile(
             buffer,
-            file.name,
-            file.type,
+            processedFilename,
+            processedMimeType,
             context,
             storagePreference || undefined,
             folderHint
