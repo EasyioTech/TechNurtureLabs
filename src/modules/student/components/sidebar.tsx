@@ -23,6 +23,7 @@ import {
 import { useAuth } from '@/components/providers/auth-provider';
 import { AnimatePresence, motion } from 'framer-motion';
 import { GlobalLogo } from '@/modules/shared/components/global-logo';
+import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
     { icon: Microscope, label: 'Dashboard', href: '/student' },
