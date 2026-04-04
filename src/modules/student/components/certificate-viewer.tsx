@@ -1,175 +1,225 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { CertificateTemplate } from './certificate-template';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { Download, Eye, Loader2, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Download, Eye, X, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
-interface CertificateViewerProps {
-    studentName: string;
-    certificateTitle: string;
-    courseTitle: string;
-    verificationCode: string;
-    issuedDate: Date | string;
-    schoolName?: string;
+interface Props {
+  studentName: string;
+  certificateTitle: string;
+  courseTitle: string;
+  verificationCode: string;
+  issuedDate: Date | string;
+  schoolName?: string;
 }
 
 export function CertificateViewer({
-    studentName,
-    certificateTitle,
-    courseTitle,
-    verificationCode,
-    issuedDate,
-    schoolName,
-}: CertificateViewerProps) {
-    const certificateRef = useRef<HTMLDivElement>(null);
-    const [isViewerOpen, setIsViewerOpen] = useState(false);
-    const [isDownloading, setIsDownloading] = useState(false);
+  studentName,
+  certificateTitle,
+  courseTitle,
+  verificationCode,
+  issuedDate,
+  schoolName,
+}: Props) {
+  const certificateRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-    const handleDownloadPDF = async () => {
-        if (!certificateRef.current) return;
+  const [isOpen, setIsOpen] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-        setIsDownloading(true);
-        try {
-            const element = certificateRef.current;
-            const canvas = await html2canvas(element, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: '#ffffff',
-            });
+  // 🔹 AUTO SCALE (fit to viewport)
+  useEffect(() => {
+    if (!isOpen) return;
 
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: 'landscape',
-                unit: 'mm',
-                format: 'a4',
-            });
+    const updateScale = () => {
+      if (!containerRef.current) return;
 
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth = pdfWidth;
-            const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      const vw = containerRef.current.clientWidth;
+      const vh = containerRef.current.clientHeight;
 
-            pdf.addImage(imgData, 'PNG', 0, (pdfHeight - imgHeight) / 2, imgWidth, imgHeight);
-            pdf.save(`${courseTitle.replace(/\s+/g, '_')}_Certificate.pdf`);
-        } catch (error) {
-            console.error('Error generating PDF:', error);
-            alert('Failed to download certificate. Please try again.');
-        } finally {
-            setIsDownloading(false);
-        }
+      const certWidth = 1200;
+      const certHeight = 675;
+
+      const scaleX = vw / certWidth;
+      const scaleY = vh / certHeight;
+
+      const newScale = Math.min(scaleX, scaleY) * 0.9; // padding factor
+      setScale(newScale);
     };
 
-    return (
-        <div className="w-full">
-            {/* Action buttons */}
-            <div className="flex items-center gap-3">
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setIsViewerOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-lg border border-slate-300 hover:bg-slate-50 transition-colors font-semibold text-sm"
-                >
-                    <Eye size={16} />
-                    View
-                </motion.button>
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, [isOpen]);
 
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleDownloadPDF}
-                    disabled={isDownloading}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {isDownloading ? (
-                        <>
-                            <Loader2 size={16} className="animate-spin" />
-                            Downloading...
-                        </>
-                    ) : (
-                        <>
-                            <Download size={16} />
-                            Download
-                        </>
-                    )}
-                </motion.button>
+  // 🔹 ESC to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    if (isOpen) window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isOpen]);
+
+  // 🔹 DOWNLOAD PDF
+  const handleDownloadPDF = async () => {
+    if (!certificateRef.current) return;
+
+    setIsDownloading(true);
+    try {
+      const canvas = await html2canvas(certificateRef.current, {
+        scale: 3, // HIGH QUALITY
+        backgroundColor: '#ffffff',
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      const margin = 10;
+      const usableWidth = pdfWidth - margin * 2;
+      const usableHeight = pdfHeight - margin * 2;
+
+      const imgRatio = canvas.width / canvas.height;
+      let imgWidth = usableWidth;
+      let imgHeight = imgWidth / imgRatio;
+
+      if (imgHeight > usableHeight) {
+        imgHeight = usableHeight;
+        imgWidth = imgHeight * imgRatio;
+      }
+
+      const x = (pdfWidth - imgWidth) / 2;
+      const y = (pdfHeight - imgHeight) / 2;
+
+      pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+      pdf.save(`${courseTitle.replace(/\s+/g, '_')}_Certificate.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate PDF');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  return (
+    <div>
+      {/* ACTIONS */}
+      <div className="flex gap-3">
+        <button
+          onClick={handleDownloadPDF}
+          disabled={isDownloading}
+          className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-md text-sm"
+        >
+          <Download size={16} />
+          {isDownloading ? 'Generating...' : 'Download'}
+        </button>
+
+        <button
+          onClick={() => setIsOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 border rounded-md text-sm"
+        >
+          <Eye size={16} />
+          Preview
+        </button>
+      </div>
+
+      {/* MODAL */}
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex flex-col">
+          {/* HEADER */}
+          <div className="flex justify-between items-center p-4 bg-white border-b">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setScale(s => s * 1.2)}
+                className="p-2 border rounded"
+              >
+                <ZoomIn size={16} />
+              </button>
+
+              <button
+                onClick={() => setScale(s => s / 1.2)}
+                className="p-2 border rounded"
+              >
+                <ZoomOut size={16} />
+              </button>
+
+              <button
+                onClick={() => setScale(1)}
+                className="p-2 border rounded"
+              >
+                <RotateCcw size={16} />
+              </button>
             </div>
 
-            {/* Certificate Preview Modal */}
-            <AnimatePresence>
-                {isViewerOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setIsViewerOpen(false)}
-                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            onClick={e => e.stopPropagation()}
-                            className="bg-white rounded-lg shadow-2xl w-full h-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col relative"
-                        >
-                            {/* Close button */}
-                            <button
-                                onClick={() => setIsViewerOpen(false)}
-                                className="absolute top-4 right-4 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-lg hover:bg-slate-50 transition-colors border border-slate-200"
-                            >
-                                <X size={20} className="text-slate-600" />
-                            </button>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-2 border rounded"
+            >
+              <X size={18} />
+            </button>
+          </div>
 
-                            {/* Certificate content - proper landscape - responsive */}
-                            <div className="flex-1 overflow-auto flex items-center justify-center p-2 sm:p-4 bg-slate-100">
-                                <div className="bg-white w-full" style={{ aspectRatio: '1400/750', maxHeight: '85vh' }}>
-                                    <div style={{ transform: 'scale(1)', width: '100%', height: '100%', transformOrigin: 'top center' }}>
-                                        <CertificateTemplate
-                                            ref={certificateRef}
-                                            studentName={studentName}
-                                            certificateTitle={certificateTitle}
-                                            courseTitle={courseTitle}
-                                            verificationCode={verificationCode}
-                                            issuedDate={issuedDate}
-                                            schoolName={schoolName}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+          {/* VIEWPORT */}
+          <div
+            ref={containerRef}
+            className="flex-1 overflow-hidden flex items-center justify-center bg-gray-100"
+          >
+            <div
+              style={{
+                transform: `scale(${scale})`,
+                transformOrigin: 'center',
+                transition: 'transform 0.2s ease',
+              }}
+            >
+              <div
+                ref={certificateRef}
+                style={{
+                  width: '1200px',
+                  height: '675px',
+                }}
+              >
+                <CertificateTemplate
+                  studentName={studentName}
+                  certificateTitle={certificateTitle}
+                  courseTitle={courseTitle}
+                  verificationCode={verificationCode}
+                  issuedDate={issuedDate}
+                  schoolName={schoolName}
+                />
+              </div>
+            </div>
+          </div>
 
-                            {/* Action buttons at bottom */}
-                            <div className="bg-white border-t border-slate-200 p-4 flex items-center justify-end gap-3">
-                                <button
-                                    onClick={() => setIsViewerOpen(false)}
-                                    className="px-6 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors font-semibold"
-                                >
-                                    Close
-                                </button>
-                                <button
-                                    onClick={handleDownloadPDF}
-                                    disabled={isDownloading}
-                                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isDownloading ? (
-                                        <>
-                                            <Loader2 size={16} className="animate-spin" />
-                                            Downloading...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Download size={16} />
-                                            Download PDF
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+          {/* FOOTER */}
+          <div className="p-4 bg-white border-t flex justify-end gap-3">
+            <button
+              onClick={() => setIsOpen(false)}
+              className="px-4 py-2 border rounded"
+            >
+              Close
+            </button>
+
+            <button
+              onClick={handleDownloadPDF}
+              disabled={isDownloading}
+              className="px-4 py-2 bg-black text-white rounded"
+            >
+              {isDownloading ? 'Generating...' : 'Download PDF'}
+            </button>
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 }

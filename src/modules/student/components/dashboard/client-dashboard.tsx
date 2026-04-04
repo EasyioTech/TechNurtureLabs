@@ -26,6 +26,7 @@ interface ClientDashboardProps {
     activities: any[];
     challenges: DailyChallenge[];
     platformSettings: any;
+    lastActiveCourse?: Course | null;
   }
 }
 
@@ -40,7 +41,7 @@ function calcResetTime(): string {
 }
 
 export function ClientDashboard({ initialData }: ClientDashboardProps) {
-  const { profile, stats, school, courses, achievements, activities, challenges, platformSettings } = initialData;
+  const { profile, stats, school, courses, achievements, activities, challenges, platformSettings, lastActiveCourse } = initialData;
   const [resetTime, setResetTime] = useState('');
 
   if (!profile) return null;
@@ -59,7 +60,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
   }, []);
 
   const levelProgress = Math.min(100, ((stats.xp % 1000) / 1000) * 100);
-  const lastCourse = courses[0];
+  const lastCourse = lastActiveCourse || courses[0];
 
   const [barWidth, setBarWidth] = useState(0);
   useEffect(() => {
