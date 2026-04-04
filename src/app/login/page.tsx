@@ -11,8 +11,7 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { LogIn, ArrowLeft, Loader2, GraduationCap, CheckCircle2, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { PrimaryButton } from '@/components/landing/PrimaryButton';
 import { StudentLoginSidebar } from '@/components/registration/StudentLoginSidebar';
-import { getPlatformSettings } from '@/components/landing/actions';
-import { AnimatePresence } from 'framer-motion';
+import { GlobalLogo } from '@/modules/shared/components/global-logo';
 
 export default function StudentLoginPage() {
   const { signIn } = useAuth();
@@ -126,17 +125,8 @@ export default function StudentLoginPage() {
             Back
           </Link>
 
-          <div className="mb-6 lg:hidden flex items-center gap-3">
-            {platformSettings?.logo_url ? (
-              <div className="w-10 h-10 flex items-center justify-center">
-                <img src={platformSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
-              </div>
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-900/10">
-                <GraduationCap className="text-white" size={20} />
-              </div>
-            )}
-            <span className="text-xl font-bold tracking-tight text-slate-900">{platformSettings?.platform_name || 'TechNurture'}</span>
+          <div className="mb-8 lg:hidden">
+            <GlobalLogo settings={platformSettings} size="auto" />
           </div>
 
           <AnimatePresence mode="wait">

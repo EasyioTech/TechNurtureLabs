@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sparkles, ArrowUpRight, Mail, MapPin } from 'lucide-react';
+import { GlobalLogo } from '@/modules/shared/components/global-logo';
 
 const footerLinks = {
     platform: [
@@ -53,30 +53,13 @@ export const Footer = ({ settings }: { settings?: any }) => {
 
                         {/* Brand Column */}
                         <div className="lg:col-span-4 space-y-4 sm:space-y-6">
-                            <div className="flex items-center gap-2 sm:gap-3">
-                                {settings?.logo_url ? (
-                                    <div
-                                        className="flex items-center justify-center"
-                                        style={{ height: settings?.logo_height ? `${Math.min(settings.logo_height, 28)}px` : '28px' }}
-                                    >
-                                        <img
-                                            src={settings.logo_url}
-                                            alt="Platform Logo"
-                                            className="w-auto h-full object-contain"
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-slate-900 flex items-center justify-center text-white shrink-0 shadow-sm">
-                                        <Sparkles size={14} className="sm:block hidden" />
-                                        <Sparkles size={12} className="sm:hidden" />
-                                    </div>
-                                )}
-                                {settings?.show_platform_name !== false && (
-                                    <span className="text-base sm:text-xl font-black tracking-tight text-slate-900">
-                                        {settings?.platform_name || 'TechNurture'}
-                                    </span>
-                                )}
-                            </div>
+                            <Link href="/">
+                                <GlobalLogo 
+                                    settings={settings} 
+                                    size="sm" // Smaller in footer
+                                    forceHeight={28}
+                                />
+                            </Link>
 
                             <p className="text-xs sm:text-sm leading-relaxed font-medium text-slate-400 max-w-sm">
                                 Redefining K-12 education through immersive learning — making knowledge acquisition engaging, personalized, and measurable.

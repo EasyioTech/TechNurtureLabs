@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 
+import { GlobalLogo } from '@/modules/shared/components/global-logo';
+
 interface StudentHeaderProps {
     profile?: { full_name: string; email: string };
     school?: { name: string; logo_url?: string | null };
@@ -34,6 +36,13 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
 
     const logoUrl = school?.logo_url || settings?.logo_url;
     const displayName = school?.name || settings?.platform_name || 'TechNurture';
+
+    // Global Logo Settings Override for Header Context
+    const headerLogoSettings = {
+        ...settings,
+        logo_url: logoUrl,
+        platform_name: displayName,
+    };
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
@@ -66,27 +75,13 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
 
                     {/* ── Left: Logo ── */}
                     <Link href="/student" className="flex items-center gap-2.5 flex-shrink-0 select-none">
-                        {logoUrl ? (
-                            <div className="flex items-center justify-center overflow-hidden flex-shrink-0">
-                                <img
-                                    src={logoUrl}
-                                    alt={displayName}
-                                    className="object-contain"
-                                    style={{ height: `${settings?.logo_height || 36}px`, width: 'auto', maxHeight: '44px' }}
-                                />
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-center overflow-hidden flex-shrink-0">
-                                <img
-                                    src="/science_1837996.png"
-                                    alt={displayName}
-                                    className="h-9 w-9 object-contain"
-                                />
-                            </div>
-                        )}
+                        <GlobalLogo 
+                            settings={headerLogoSettings}
+                            size="auto"
+                            className="mr-1"
+                        />
                         {(!school || settings?.show_platform_name !== false) && (
-                            <div className="hidden min-[480px]:block leading-none max-w-[150px] sm:max-w-[200px]">
-                                <p className="text-[15px] sm:text-base font-extrabold text-slate-800 tracking-tight truncate">{displayName}</p>
+                            <div className="hidden min-[480px]:flex flex-col justify-center -ml-1">
                                 <p className="text-[10px] font-semibold text-indigo-500 tracking-wide uppercase">Student Portal</p>
                             </div>
                         )}
@@ -187,16 +182,7 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                             {/* Top */}
                             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 font-sans">
                                 <div className="flex items-center gap-2.5">
-                                    {logoUrl ? (
-                                        <div className="w-8 h-8 flex items-center justify-center overflow-hidden">
-                                            <img src={logoUrl} alt={displayName} className="w-full h-full object-contain" />
-                                        </div>
-                                    ) : (
-                                        <div className="w-8 h-8 flex items-center justify-center overflow-hidden">
-                                            <img src="/science_1837996.png" alt={displayName} className="w-full h-full object-contain" />
-                                        </div>
-                                    )}
-                                    <span className="font-extrabold text-slate-800 text-[15px] tracking-tight truncate max-w-[150px]">{displayName}</span>
+                                    <GlobalLogo settings={headerLogoSettings} size="sm" />
                                 </div>
                                 <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg bg-slate-50 text-slate-500 active:scale-95">
                                     <X size={18} />

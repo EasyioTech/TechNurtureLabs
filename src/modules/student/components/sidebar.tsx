@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { AnimatePresence, motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { GlobalLogo } from '@/modules/shared/components/global-logo';
 
 const NAV_ITEMS = [
     { icon: Microscope, label: 'Dashboard', href: '/student' },
@@ -69,17 +69,17 @@ export function StudentSidebar({
     const initials = profile?.full_name
         ?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'ST';
 
+    // Global Logo Settings Override for Sidebar Context
+    const sidebarLogoSettings = {
+        ...settings,
+        logo_url: logoUrl,
+        platform_name: displayName,
+        logo_layout: isCollapsed ? 'icon_only' : (settings?.logo_layout || 'landscape'),
+    };
+
     return (
         <aside
             className={cn(
-                /*
-                 * Removed backdrop-blur-md — the sidebar sits over a static background,
-                 * not over moving content, so blur provides no visual benefit but costs
-                 * a full composited layer + per-frame GPU texture sampling.
-                 * bg-white instead of bg-white/95 (no transparency needed without blur).
-                 * transition-[width] instead of transition-all — only the width property
-                 * participates in the transition, cutting layout recalculations on collapse.
-                 */
                 "hidden lg:flex flex-col h-screen bg-white border-r border-slate-200/60 fixed top-0 left-0 z-50 transition-[width] duration-300 ease-out overflow-hidden",
                 isCollapsed ? "w-24" : "w-64"
             )}
@@ -87,31 +87,15 @@ export function StudentSidebar({
             {/* Logo Section */}
             <div className={cn("p-6 flex items-center relative", isCollapsed ? "justify-center" : "justify-between")}>
                 <Link href="/student" className="flex items-center gap-4 select-none group">
-                    <div className="relative">
-                        {/*
-                          * Replaced motion.div layout — layout animations recalculate the
-                          * position of every descendant on each frame. A simple
-                          * transition-transform handles the hover scale at zero layout cost.
-                          */}
-                        <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-200">
-                            {logoUrl ? (
-                                <img src={logoUrl} alt={displayName} className="w-10 h-10 object-contain" />
-                            ) : (
-                                <img src="/science_1837996.png" alt={displayName} className="w-10 h-10 object-contain" />
-                            )}
-                        </div>
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
-                    </div>
+                    <GlobalLogo 
+                        settings={sidebarLogoSettings}
+                        size="md"
+                        forceHeight={isCollapsed ? 32 : 36}
+                    />
 
                     {!isCollapsed && (
-                        /*
-                         * Replaced motion.div with a plain div + CSS animate-in.
-                         * The CSS animation runs on the GPU compositor thread and
-                         * does not trigger JS-driven layout recalculations.
-                         */
-                        <div className="min-w-0 animate-in fade-in slide-in-from-left-2 duration-200">
-                            <p className="text-base font-black text-slate-800 tracking-tight leading-tight truncate">{displayName}</p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="flex flex-col justify-center -ml-1">
+                             <div className="flex items-center gap-1.5 mt-0.5">
                                 <Zap size={10} className="text-indigo-500 fill-indigo-500" />
                                 <p className="text-[9px] font-bold text-slate-400 tracking-[0.1em] uppercase">Student Portal</p>
                             </div>

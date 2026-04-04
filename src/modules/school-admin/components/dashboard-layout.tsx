@@ -18,6 +18,8 @@ import { Badge } from '@/components/ui/badge';
 import { SchoolProfileModal } from './school-profile-modal';
 import { useAuth } from '@/components/providers/auth-provider';
 
+import { GlobalLogo } from '@/modules/shared/components/global-logo';
+
 const NAV_ITEMS = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard, href: '/school-admin' },
     { id: 'students', label: 'Students', icon: Users, href: '/school-admin/students' },
@@ -113,6 +115,12 @@ export function SchoolDashboardLayout({ children, schoolId, schoolName: initialS
         setIsMobileMenuOpen(false);
     }, [pathname]);
 
+    // Global Logo Settings Override for Sidebar Context
+    const sidebarLogoSettings = {
+        ...platformSettings,
+        logo_layout: isSidebarOpen ? (platformSettings?.logo_layout || 'landscape') : 'icon_only',
+    };
+
     return (
         <div className={`min-h-screen flex ${ts.pageBg(isDark)} ${isDark ? 'text-slate-200' : 'text-slate-900'} antialiased selection:bg-indigo-500/10`}>
 
@@ -125,17 +133,16 @@ export function SchoolDashboardLayout({ children, schoolId, schoolName: initialS
                 {/* Sidebar Header */}
                 <div className={`h-20 flex items-center mb-4 transition-all duration-500 ${isSidebarOpen ? 'px-6' : 'px-0 justify-center'}`}>
                     <Link href="/school-admin" className="flex items-center gap-3 group">
-                        <div className={`w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20 group-hover:scale-110 transition-transform duration-300 overflow-hidden flex-shrink-0`}>
-                            {platformSettings?.logo_url
-                                ? <img src={platformSettings.logo_url} className="w-full h-full object-cover" alt="Logo" />
-                                : <GraduationCap size={22} strokeWidth={2.5} />
-                            }
-                        </div>
+                        <GlobalLogo 
+                            settings={sidebarLogoSettings}
+                            size="auto"
+                            forceHeight={isSidebarOpen ? 36 : 40}
+                            isDark={isDark}
+                        />
                         {isSidebarOpen && (
-                            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col">
-                                <span className={`font-black tracking-tighter leading-none text-xl ${ts.textPrimary(isDark)}`}>TechNurture</span>
-                                <span className="text-[9px] uppercase tracking-[0.2em] font-black text-indigo-500 mt-1">LMS PORTAL</span>
-                            </motion.div>
+                             <div className="flex flex-col justify-center -ml-1">
+                                 <span className="text-[9px] uppercase tracking-[0.2em] font-black text-indigo-500 mt-1">LMS PORTAL</span>
+                             </div>
                         )}
                     </Link>
                 </div>
@@ -211,11 +218,8 @@ export function SchoolDashboardLayout({ children, schoolId, schoolName: initialS
                             {/* Mobile header */}
                             <div className={`h-20 flex items-center justify-between px-6 border-b flex-shrink-0 ${ts.border(isDark)}`}>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
-                                        <GraduationCap size={22} strokeWidth={2.5} />
-                                    </div>
+                                    <GlobalLogo settings={platformSettings} size="sm" isDark={isDark} />
                                     <div className="flex flex-col">
-                                        <span className={`font-black tracking-tight leading-none ${ts.textPrimary(isDark)}`}>TechNurture</span>
                                         <span className="text-[10px] uppercase font-bold text-indigo-500 mt-0.5">Portal</span>
                                     </div>
                                 </div>

@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
+import { GlobalLogo } from '@/modules/shared/components/global-logo';
+
 interface FeatureItem {
     icon: React.ReactNode;
     label: string;
@@ -61,27 +63,22 @@ export const AuthSidebar = ({
                 {/* Header */}
                 <header>
                     <Link href="/" className="flex items-center gap-3 group w-fit">
-                        {settings?.logo_url ? (
-                            <div
-                                className="flex items-center justify-center"
-                                style={{ height: settings?.logo_height ? `${settings.logo_height}px` : '36px' }}
-                            >
-                                <img src={settings.logo_url} alt="Logo" className="w-auto h-full object-contain" />
-                            </div>
-                        ) : (
-                            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-                                {portalIcon}
-                            </div>
-                        )}
-                        {settings?.show_platform_name !== false && (
-                            <div>
-                                <span className="text-lg font-black tracking-tight text-slate-900 block leading-none">
-                                    {settings?.platform_name || 'TechNurture'}
-                                </span>
-                                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.15em] mt-0.5 block">
-                                    {portalLabel}
-                                </span>
-                            </div>
+                        <GlobalLogo 
+                            settings={settings} 
+                            size="auto"
+                            nameClassName="flex flex-col"
+                        />
+                        {/* If the layout is portrait, this might need adjustment, 
+                            but GlobalLogo handles landscape/icon/portrait internally now. 
+                            If there's a portal label, we manually append it if it's not icon only */}
+                        {settings?.logo_layout !== 'icon_only' && (
+                             <div className="flex flex-col justify-center -ml-1">
+                                 {/* The name is inside GlobalLogo, we can pass portalLabel as a suffix if we want, 
+                                     but for now let's just add the sub-label if settings allow it */}
+                                 <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.15em] mt-2 block">
+                                     {portalLabel}
+                                 </span>
+                             </div>
                         )}
                     </Link>
                 </header>

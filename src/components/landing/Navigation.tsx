@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Sparkles, Menu, X, ArrowRight, GraduationCap, School, LogIn, UserCircle, Briefcase } from 'lucide-react';
+import { GlobalLogo } from '@/modules/shared/components/global-logo';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -79,24 +80,11 @@ export const Navigation = ({ settings }: { settings?: any }) => {
                     <div className="flex items-center justify-between">
 
                         {/* Logo */}
-                        <Link href="/" className="flex items-center gap-2 md:gap-3 group shrink-0">
-                            {settings?.logo_url ? (
-                                <img
-                                    src={settings.logo_url}
-                                    alt="Logo"
-                                    className="h-8 md:h-9 w-auto object-contain transition-transform group-hover:scale-[1.02]"
-                                    style={{ height: settings?.logo_height ? `${settings.logo_height}px` : undefined }}
-                                />
-                            ) : (
-                                <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-slate-900 flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
-                                    <Sparkles className="text-white" size={16} />
-                                </div>
-                            )}
-                            {settings?.show_platform_name !== false && (
-                                <span className="text-lg md:text-xl font-black text-slate-900 tracking-tight whitespace-nowrap">
-                                    {settings?.platform_name || 'TechNurture'}
-                                </span>
-                            )}
+                        <Link href="/" className="shrink-0">
+                            <GlobalLogo 
+                                settings={settings} 
+                                size="auto" // Respect DB height in navigation
+                            />
                         </Link>
 
                         {/* Center Nav Links — pill-style with active indicator */}
