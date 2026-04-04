@@ -75,6 +75,10 @@ export function EditAdminProfileModal({ schoolId, adminProfile, isOpen, onClose,
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="edit-admin-title"
+                    aria-describedby="edit-admin-description"
                     className={`relative w-full max-w-md overflow-hidden rounded-[32px] border shadow-2xl ${ts.card(isDark)}`}
                 >
                     <div className={`px-8 py-6 border-b flex items-center justify-between ${ts.border(isDark)}`}>
@@ -83,8 +87,8 @@ export function EditAdminProfileModal({ schoolId, adminProfile, isOpen, onClose,
                                 <User size={20} />
                             </div>
                             <div>
-                                <h3 className={`text-xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>Edit Admin Profile</h3>
-                                <p className={`text-[12px] font-bold ${ts.textMuted(isDark)}`}>Update your personal information</p>
+                                <h3 id="edit-admin-title" className={`text-xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>Edit Admin Profile</h3>
+                                <p id="edit-admin-description" className={`text-[12px] font-bold ${ts.textMuted(isDark)}`}>Update your personal information</p>
                             </div>
                         </div>
                         <button onClick={onClose} className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-white/5 text-slate-500' : 'hover:bg-slate-100 text-slate-400'}`}>

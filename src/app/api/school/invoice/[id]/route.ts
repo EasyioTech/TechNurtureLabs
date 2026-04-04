@@ -7,10 +7,10 @@ import { logger } from '@/lib/logger';
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const invoiceId = params.id;
+        const { id: invoiceId } = await params;
         
         // 1. Fetch invoice first to get school_id
         const invoice = await db.query.invoices.findFirst({
@@ -77,14 +77,20 @@ export async function GET(
                     <button onclick="window.print()" style="background: #4f46e5; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer;">Print / Download PDF</button>
                 </div>
                 <div class="invoice-box">
-                    <div class="header">
-                        <div class="logo">TECH NURTURE LABS</div>
-                        <div class="invoice-info">
-                            <h1>INVOICE</h1>
-                            <p style="margin: 5px 0; font-weight: 700;">#${invoice.invoice_number}</p>
-                            <p style="margin: 0; color: #64748b;">Issued: ${new Date(invoice.issued_at).toLocaleDateString()}</p>
-                        </div>
-                    </div>
+            {/* Metadata (Hidden for print) */}
+            <div id="invoice-metadata" style="display: none;" aria-hidden="true">
+                Invoice Number: ${invoice.invoice_number}
+                Issue Date: ${invoice.issued_at ? new Date(invoice.issued_at).toISOString() : 'N/A'}
+            </div>
+
+            <div class="header">
+                <div class="logo">TECH NURTURE LABS</div>
+                <div class="invoice-info">
+                    <h1>INVOICE</h1>
+                    <p style="margin: 5px 0; font-weight: 700;">#${invoice.invoice_number}</p>
+                    <p style="margin: 0; color: #64748b;">Issued: ${invoice.issued_at ? new Date(invoice.issued_at).toLocaleDateString() : 'N/A'}</p>
+                </div>
+            </div>
 
                     <div class="details">
                         <div>

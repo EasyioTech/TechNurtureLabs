@@ -166,9 +166,15 @@ export async function middleware(request: NextRequest) {
         return response;
       }
     } catch (e) {
-      // JWT verification failed (expired, invalid, etc.)
-      // verifySession action will handle rotation if refresh token is valid.
-      // Don't revoke here — let normal auth flow handle it.
+      // JWT verification failed (expired, invalid, or malformed)
+      // Redirect to login instead of allowing potential 401 errors down the line
+      const isSuperAdminPath = url.pathname.startsWith('/super-admin');
+      const loginPath = isSuperAdminPath ? '/super-admin/login' : '/school-portal/login';
+      
+      const response = NextResponse.redirect(new URL(`${loginPath}?expired=true&from=${encodeURIComponent(url.pathname)}`, request.url));
+      response.cookies.delete('session');
+      response.cookies.delete('refresh_token');
+      return response;
     }
   }
 

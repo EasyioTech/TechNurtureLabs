@@ -124,6 +124,9 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="school-profile-title"
                     className={`relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-[32px] border shadow-2xl ${ts.card(isDark)}`}
                 >
                     {/* Header */}
@@ -133,7 +136,7 @@ export function SchoolProfileModal({ schoolId, profile, isOpen, onClose, onUpdat
                                 <Building2 size={20} />
                             </div>
                             <div>
-                                <h3 className={`text-xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>Edit Institution Profile</h3>
+                                <h3 id="school-profile-title" className={`text-xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>Edit Institution Profile</h3>
                                 <p className={`text-[12px] font-bold ${ts.textMuted(isDark)}`}>Manage your institution's public information</p>
                             </div>
                         </div>

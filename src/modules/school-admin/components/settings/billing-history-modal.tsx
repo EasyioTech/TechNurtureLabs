@@ -58,7 +58,13 @@ export function BillingHistoryModal({ schoolId, isOpen, onClose }: BillingHistor
             />
 
             {/* Modal */}
-            <div className={`relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-[28px] sm:rounded-[32px] border shadow-2xl transition-all duration-300 ${ts.card(isDark)}`}>
+            <div 
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="billing-history-title"
+                aria-describedby="billing-history-description"
+                className={`relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-[28px] sm:rounded-[32px] border shadow-2xl transition-all duration-300 ${ts.card(isDark)}`}
+            >
                 {/* Header */}
                 <div className={`px-6 sm:px-8 py-6 border-b flex items-center justify-between gap-4 ${ts.border(isDark)}`}>
                     <div className="flex items-center gap-3 sm:gap-4 min-w-0">
@@ -66,11 +72,11 @@ export function BillingHistoryModal({ schoolId, isOpen, onClose }: BillingHistor
                             <Receipt size={20} />
                         </div>
                         <div className="min-w-0">
-                            <h3 className={`text-lg sm:text-xl font-black tracking-tight truncate ${ts.textPrimary(isDark)}`}>Billing History</h3>
-                            <p className={`text-[12px] font-bold truncate ${ts.textMuted(isDark)}`}>Review and download your invoices</p>
+                            <h3 id="billing-history-title" className={`text-lg sm:text-xl font-black tracking-tight truncate ${ts.textPrimary(isDark)}`}>Billing History</h3>
+                            <p id="billing-history-description" className={`text-[12px] font-bold truncate ${ts.textMuted(isDark)}`}>Review and download your invoices</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className={`p-2 rounded-xl transition-colors flex-shrink-0 ${isDark ? 'hover:bg-white/5 text-slate-500' : 'hover:bg-slate-100 text-slate-400'}`}>
+                    <button onClick={onClose} aria-label="Close dialog" className={`p-2 rounded-xl transition-colors flex-shrink-0 ${isDark ? 'hover:bg-white/5 text-slate-500' : 'hover:bg-slate-100 text-slate-400'}`}>
                         <X size={20} />
                     </button>
                 </div>

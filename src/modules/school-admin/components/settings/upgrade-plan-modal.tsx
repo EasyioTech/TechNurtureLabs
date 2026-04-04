@@ -153,6 +153,9 @@ export function UpgradePlanModal({ schoolId, currentPlanName, isOpen, onClose, o
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="upgrade-title"
                     className={`relative w-full max-w-5xl rounded-[40px] border shadow-2xl transition-all duration-500 my-auto overflow-hidden ${ts.card(isDark)}`}
                 >
                     {/* Processing Overlay */}
@@ -195,7 +198,7 @@ export function UpgradePlanModal({ schoolId, currentPlanName, isOpen, onClose, o
                         <div className={`w-14 h-14 rounded-[22px] flex items-center justify-center shadow-2xl ${isDark ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-600 text-white'}`}>
                             <Zap size={28} fill="currentColor" />
                         </div>
-                        <div>
+                        <div id="upgrade-title">
                             <h3 className={`text-2xl font-black tracking-tighter ${ts.textPrimary(isDark)}`}>Upgrade Institution</h3>
                             <p className={`text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500 mt-0.5`}>Enterprise Solutions</p>
                         </div>
@@ -227,7 +230,7 @@ export function UpgradePlanModal({ schoolId, currentPlanName, isOpen, onClose, o
                                             onClick={() => !isCurrent && setSelectedPlan(plan.id)}
                                             className={`relative flex flex-col p-8 rounded-[36px] border transition-all duration-700 cursor-pointer overflow-hidden ${isCurrent ? 'opacity-60 border-transparent bg-slate-500/5' :
                                                 isSelected ? `border-indigo-500 ring-4 ring-indigo-500/10 ${isDark ? 'bg-indigo-500/10 shadow-2xl shadow-indigo-500/20' : 'bg-white shadow-2xl shadow-indigo-500/10'}` :
-                                                    `${isDark ? 'border-white/5 bg-white/5 hover:border-white/20' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`
+                                                    `${isDark ? 'border-white/5 bg-[#1a1d26] hover:border-white/20' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`
                                                 }`}
                                         >
                                             <div className="absolute top-0 right-0 p-8 opacity-5">
