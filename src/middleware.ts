@@ -148,6 +148,9 @@ export async function middleware(request: NextRequest) {
                        url.pathname === '/api/admin/login' ||
                        url.pathname === '/api/admin/register' ||
                        url.pathname === '/api/media/stream-upload' ||
+                       url.pathname === '/api/media/register' ||
+                       url.pathname === '/api/media/sync' ||
+                       url.pathname === '/api/branding/upload' ||
                        url.pathname === '/api/payment/verify' ||
                        url.pathname === '/api/payment/create-order';
 
