@@ -34,6 +34,7 @@ import { SettingsTab } from './tabs/settings-tab';
 import { PromoCodesTab } from './tabs/promo-codes-tab';
 import { SystemHealthTab } from './tabs/system-health-tab';
 import { LibraryTab } from './tabs/library-tab';
+import { CertificationsTab } from './tabs/certifications-tab';
 import { GlobalLogo } from '@/modules/shared/components/global-logo';
 
 import {
