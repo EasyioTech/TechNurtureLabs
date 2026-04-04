@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { handleThumbnailError } from '@/lib/media-client';
-import { Plus, Save, Edit, Trash2, BookOpen, Layers, AlertOctagon, Database, RefreshCw, Clock, ShieldAlert, Info } from 'lucide-react';
+import { Plus, Save, Edit, Trash2, BookOpen, Layers, AlertOctagon, Database, RefreshCw } from 'lucide-react';
 import { SortableLessonItem } from '../lesson-item-sortable';
 import { CourseDialog } from '../course-dialog';
 import { LessonDialog } from '../lesson-dialog';
@@ -29,9 +29,6 @@ import {
     performCourseBackupAction,
     listBackupsAction,
     restoreFromBackupAction,
-    performInstantSaveAction,
-    checkForRestorePointAction,
-    deleteRestorePointAction
 } from '../../actions/backup-actions';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -78,21 +75,11 @@ export function CourseBuilderTab({
     const [isBackingUp, setIsBackingUp] = useState(false);
     const [isRestoring, setIsRestoring] = useState<string | null>(null);
     const [showBackupsDialog, setShowBackupsDialog] = useState(false);
-    const [restorePoint, setRestorePoint] = useState<{ key: string, timestamp: Date } | null>(null);
-    const [showRestorePrompt, setShowRestorePrompt] = useState(false);
     const [selectedBackupPreview, setSelectedBackupPreview] = useState<any>(null);
     const [showBackupPreview, setShowBackupPreview] = useState(false);
 
 
     useEffect(() => { setIsDirtyOrder(false); }, [selectedCourse?.id]);
-
-    useEffect(() => { setIsDirtyOrder(false); }, [selectedCourse?.id]);
-
-    const fetchBackups = async () => {
-        const data = await listBackupsAction('course');
-        setBackups(data);
-    };
-
 
     const fetchBackups = async () => {
         const data = await listBackupsAction('course');
