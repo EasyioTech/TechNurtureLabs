@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { GlobalLogo } from '@/modules/shared/components/global-logo';
+import { Mail, Phone } from "lucide-react";
 
 const footerLinks = {
     platform: [
