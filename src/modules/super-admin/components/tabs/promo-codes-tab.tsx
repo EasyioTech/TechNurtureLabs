@@ -55,11 +55,11 @@ export function PromoCodesTab({
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ scale: 1.02 }}
                             className={`relative rounded-[2rem] overflow-hidden border-2 transition-all duration-500 group
-                                ${isDark ? 'bg-neutral-900 border-white/[0.05] hover:border-white/10' : 'bg-white border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl'}`}
+                                ${isDark ? 'bg-white/[0.03] border-white/[0.05] hover:border-white/10 hover:bg-white/[0.04]' : 'bg-white border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl'}`}
                         >
                             {/* Ticket Notch Effect */}
-                            <div className={`absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full ${isDark ? 'bg-neutral-950' : 'bg-slate-50'} border-r-2 ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`} />
-                            <div className={`absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full ${isDark ? 'bg-neutral-950' : 'bg-slate-50'} border-l-2 ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`} />
+                            <div className={`absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full ${isDark ? 'bg-[#09090b]' : 'bg-slate-50'} border-r-2 ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`} />
+                            <div className={`absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full ${isDark ? 'bg-[#09090b]' : 'bg-slate-50'} border-l-2 ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`} />
                             
                             <div className="p-8">
                                 <div className="flex justify-between items-start mb-6">
@@ -117,14 +117,14 @@ export function PromoCodesTab({
                                 </div>
                             </div>
 
-                            <div className={`flex border-t ${isDark ? 'border-white/[0.05] bg-white/[0.02]' : 'border-slate-100 bg-slate-50/50'}`}>
+                            <div className={`flex border-t ${isDark ? 'border-white/[0.03] bg-white/[0.01]' : 'border-slate-100 bg-slate-50/50'}`}>
                                 <button
                                     onClick={() => { setEditingCode(code); setShowDialog(true); }}
                                     className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-black/5 transition-colors ${t.textPrimary(isDark)}`}
                                 >
                                     Review
                                 </button>
-                                <div className={`w-[1px] ${isDark ? 'bg-white/[0.05]' : 'bg-slate-100'}`} />
+                                <div className={`w-[1px] ${isDark ? 'bg-white/[0.03]' : 'bg-slate-100'}`} />
                                 <button
                                     onClick={() => onDeletePromoCode(code.id)}
                                     className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-500/5 transition-colors"

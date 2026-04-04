@@ -139,11 +139,7 @@ export function SchoolDashboardLayout({ children, schoolId, schoolName: initialS
                             forceHeight={isSidebarOpen ? 36 : 40}
                             isDark={isDark}
                         />
-                        {isSidebarOpen && (
-                             <div className="flex flex-col justify-center -ml-1">
-                                 <span className="text-[9px] uppercase tracking-[0.2em] font-black text-indigo-500 mt-1">LMS PORTAL</span>
-                             </div>
-                        )}
+                        
                     </Link>
                 </div>
 

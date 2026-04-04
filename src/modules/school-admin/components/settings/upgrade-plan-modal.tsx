@@ -6,7 +6,13 @@ import { X, Zap, Check, ChevronRight, Loader2, Sparkles, Building2, ShieldCheck,
 import { Button } from '@/components/ui/button';
 import { useSchoolTheme, ts } from '../../theme-context';
 import { toast } from 'sonner';
-import { getAvailablePlans, upgradeSchoolPlan } from '../../actions';
+import { getAvailablePlans } from '../../actions';
+
+declare global {
+    interface Window {
+        Razorpay: any;
+    }
+}
 
 interface UpgradePlanModalProps {
     schoolId: string;
@@ -22,13 +28,21 @@ export function UpgradePlanModal({ schoolId, currentPlanName, isOpen, onClose, o
     const [plans, setPlans] = useState<any[]>([]);
     const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
-    const [simulatingPayment, setSimulatingPayment] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             fetchPlans();
+            loadRazorpayScript();
         }
     }, [isOpen]);
+
+    const loadRazorpayScript = () => {
+        if (window.Razorpay) return;
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        document.body.appendChild(script);
+    };
 
     const fetchPlans = async () => {
         setLoading(true);
@@ -38,7 +52,7 @@ export function UpgradePlanModal({ schoolId, currentPlanName, isOpen, onClose, o
 
             // Auto-select next best plan or current one
             const currentIdx = data.findIndex(p => p.name.toLowerCase() === (currentPlanName?.toLowerCase() || ''));
-            if (currentIdx < data.length - 1) {
+            if (currentIdx !== -1 && currentIdx < data.length - 1) {
                 setSelectedPlan(data[currentIdx + 1].id);
             } else if (data.length > 0) {
                 setSelectedPlan(data[data.length - 1].id);
@@ -52,30 +66,70 @@ export function UpgradePlanModal({ schoolId, currentPlanName, isOpen, onClose, o
 
     const handleUpgrade = async () => {
         if (!selectedPlan) return;
-        
-        // Step 1: Start Razorpay Simulation
-        setSimulatingPayment(true);
-        
-        // Artificial delay for "Payment Gateway" feel
-        await new Promise(r => setTimeout(r, 2500));
-        
         setProcessing(true);
+
         try {
-            const res = await upgradeSchoolPlan(schoolId, selectedPlan);
-            if (res.success) {
-                // Keep simulation for a bit to show "Success"
-                await new Promise(r => setTimeout(r, 1000));
-                toast.success('Institution plan upgraded successfully!');
-                if (onUpdate) onUpdate();
-                onClose();
-            } else {
-                setSimulatingPayment(false);
-                toast.error(res.error || 'Could not complete upgrade');
-            }
-        } catch (err) {
-            setSimulatingPayment(false);
-            toast.error('Could not initiate upgrade');
-        } finally {
+            // 1. Create Order
+            const orderRes = await fetch('/api/payment/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan_id: selectedPlan }),
+            });
+
+            const orderData = await orderRes.json();
+            if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create order');
+
+            // 2. Open Razorpay Checkout
+            const options = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                amount: orderData.amount,
+                currency: orderData.currency,
+                name: 'Tech Nurture Labs',
+                description: `Upgrade to ${orderData.plan.name} Plan`,
+                order_id: orderData.order_id,
+                handler: async (response: any) => {
+                    try {
+                        setProcessing(true);
+                        const verifyRes = await fetch('/api/payment/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                ...response,
+                                school_id: schoolId,
+                            }),
+                        });
+
+                        const verifyData = await verifyRes.json();
+                        if (verifyData.success) {
+                            toast.success('Institution plan upgraded successfully!');
+                            if (onUpdate) onUpdate();
+                            onClose();
+                        } else {
+                            throw new Error(verifyData.error || 'Verification failed');
+                        }
+                    } catch (err: any) {
+                        toast.error(err.message || 'Payment verification failed');
+                    } finally {
+                        setProcessing(false);
+                    }
+                },
+                prefill: {
+                    name: '', // Optional: Fill from admin profile
+                    email: '',
+                },
+                theme: {
+                    color: isDark ? '#6366f1' : '#4f46e5',
+                },
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response: any) {
+                toast.error(response.error.description || 'Payment failed');
+                setProcessing(false);
+            });
+            rzp.open();
+        } catch (err: any) {
+            toast.error(err.message || 'Could not initiate upgrade');
             setProcessing(false);
         }
     };
@@ -101,9 +155,9 @@ export function UpgradePlanModal({ schoolId, currentPlanName, isOpen, onClose, o
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
                     className={`relative w-full max-w-5xl rounded-[40px] border shadow-2xl transition-all duration-500 my-auto overflow-hidden ${ts.card(isDark)}`}
                 >
-                    {/* Razorpay Simulation Overlay */}
+                    {/* Processing Overlay */}
                     <AnimatePresence>
-                        {simulatingPayment && (
+                        {processing && (
                             <motion.div 
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
@@ -123,24 +177,14 @@ export function UpgradePlanModal({ schoolId, currentPlanName, isOpen, onClose, o
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-center gap-2">
                                             <img src="https://razorpay.com/favicon.png" className="w-5 h-5" alt="Razorpay" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Secure Razorpay Checkout</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Secure Razorpay Network</span>
                                         </div>
                                         <h3 className={`text-2xl font-black tracking-tight ${ts.textPrimary(isDark)}`}>
-                                            {processing ? 'Confirming Enrollment...' : 'Processing Secure Payment'}
+                                            Synchronizing Transaction...
                                         </h3>
                                         <p className={`text-sm font-bold ${ts.textSecondary(isDark)}`}>
-                                            Scaling {selectedPlanData?.name || 'Plan'} for your institution. Do not close or refresh this window.
+                                            Connecting to secure payment gateway. Please wait while we process your request.
                                         </p>
-                                    </div>
-
-                                    <div className={`p-4 rounded-2xl border flex items-center gap-4 ${ts.card(isDark)}`}>
-                                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                                            <Lock size={20} />
-                                        </div>
-                                        <div className="text-left font-black tracking-tight">
-                                            <p className={`text-[10px] uppercase opacity-50 ${ts.textPrimary(isDark)}`}>Amount Due</p>
-                                            <p className={`text-lg ${ts.textPrimary(isDark)}`}>₹{selectedPlanData?.price || 0}</p>
-                                        </div>
                                     </div>
                                 </div>
                             </motion.div>
@@ -259,17 +303,17 @@ export function UpgradePlanModal({ schoolId, currentPlanName, isOpen, onClose, o
                             <Button
                                 variant="ghost"
                                 onClick={onClose}
-                                disabled={simulatingPayment}
+                                disabled={processing}
                                 className={`flex-1 sm:flex-none rounded-2xl h-14 px-10 font-black text-[13px] ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100'}`}
                             >
                                 Not Now
                             </Button>
                             <Button
-                                disabled={!selectedPlan || simulatingPayment || loading}
+                                disabled={!selectedPlan || processing || loading}
                                 onClick={handleUpgrade}
                                 className={`flex-[2] sm:flex-none rounded-2xl h-14 px-12 font-black text-[14px] group ${ts.btnPrimary(isDark)} shadow-2xl shadow-indigo-500/30`}
                             >
-                                {simulatingPayment ? <Loader2 className="animate-spin mr-3" /> : <CreditCard size={20} className="mr-3" />}
+                                {processing ? <Loader2 className="animate-spin mr-3" /> : <CreditCard size={20} className="mr-3" />}
                                 Complete Payment
                                 <ChevronRight className="ml-3 group-hover:translate-x-1 transition-transform" size={18} />
                             </Button>

@@ -195,13 +195,13 @@ function LoginHeatmap({ heatmap }: { heatmap: number[][] }) {
             </div>
 
             <div className="relative overflow-x-auto pb-4 custom-scrollbar">
-                <div className="pr-4 min-w-max">
+                <div className="min-w-[800px] px-2">
                     {/* Hour labels — aligned with heatmap grid */}
-                    <div className="flex gap-1.5 mb-3">
-                        <div className="w-12 flex-shrink-0" />
-                        <div className="flex gap-1.5" style={{ width: 'calc(24 * 1.5rem + 23 * 0.375rem)' }}>
+                    <div className="flex mb-4">
+                        <div className="w-16 flex-shrink-0" /> {/* Match day label width */}
+                        <div className="flex-1 grid grid-cols-24 gap-1 sm:gap-2 pr-2">
                             {HOURS.map((h, i) => (
-                                <div key={i} className={`w-6 flex-shrink-0 text-center text-[9px] font-black uppercase tracking-tighter transition-all duration-500 ${i % 3 === 0 ? 'opacity-100' : 'opacity-20'} ${t.textMuted(isDark)}`}>
+                                <div key={i} className={`text-center text-[9px] font-black uppercase tracking-tighter transition-all duration-500 ${i % 3 === 0 ? 'opacity-100' : 'opacity-20'} ${t.textMuted(isDark)}`}>
                                     {h}
                                 </div>
                             ))}
@@ -209,27 +209,36 @@ function LoginHeatmap({ heatmap }: { heatmap: number[][] }) {
                     </div>
 
                     {/* Heatmap Grid */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-3">
                         {DAYS.map((day, dow) => (
-                            <div key={dow} className="flex items-center gap-1.5 group/row">
-                                <div className={`w-12 flex-shrink-0 text-[11px] font-black uppercase text-right pr-3 ${t.textMuted(isDark)} group-hover/row:text-cyan-400 transition-colors`}>
+                            <div key={dow} className="flex items-center group/row">
+                                <div className={`w-16 flex-shrink-0 text-[11px] font-black uppercase text-left pr-4 ${t.textMuted(isDark)} group-hover/row:text-cyan-400 transition-colors`}>
                                     {day}
                                 </div>
-                                <div className="flex gap-1.5 items-center" style={{ width: 'calc(24 * 1.5rem + 23 * 0.375rem)' }}>
+                                <div className="flex-1 grid grid-cols-24 gap-1 sm:gap-2 pr-2">
                                     {heatmap[dow].map((count, hour) => (
-                                        <motion.div
-                                            key={hour}
-                                            initial={{ opacity: 0, scale: 0.8 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            whileHover={{ scale: 1.3, zIndex: 50 }}
-                                            transition={{ delay: 0.5 + (dow * 0.05) + (hour * 0.01), type: 'spring', stiffness: 400, damping: 25 }}
-                                            className={`w-6 h-6 flex-shrink-0 rounded-full transition-all duration-300 cursor-pointer ${cellColor(count)} border relative group/cell`}
-                                        >
-                                            {/* Popover Tooltip — positioned above with proper z-index stacking */}
-                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-1.5 rounded-lg bg-neutral-900 text-white text-[10px] font-black whitespace-nowrap opacity-0 group-hover/cell:opacity-100 pointer-events-none transition-all translate-y-2 group-hover/cell:translate-y-0 shadow-2xl border border-white/10" style={{ zIndex: 9999 }}>
-                                                {count} LOGINS • {day}, {HOURS[hour]}
-                                            </div>
-                                        </motion.div>
+                                        <div key={hour} className="flex items-center justify-center">
+                                            <motion.div
+                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                whileHover={{ scale: 1.4, zIndex: 50 }}
+                                                transition={{ delay: 0.5 + (dow * 0.05) + (hour * 0.01), type: 'spring', stiffness: 400, damping: 25 }}
+                                                className={`w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 rounded-full transition-all duration-300 cursor-pointer ${cellColor(count)} border relative group/cell shadow-sm hover:shadow-xl`}
+                                            >
+                                                {/* Vertical Guide Line on Hover */}
+                                                <div className="absolute top-[100%] left-1/2 -translate-x-1/2 w-[1px] h-20 bg-cyan-400/0 group-hover/cell:bg-cyan-400/20 transition-all pointer-events-none z-[-1]" />
+                                                <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 w-[1px] h-20 bg-cyan-400/0 group-hover/cell:bg-cyan-400/20 transition-all pointer-events-none z-[-1]" />
+
+                                                {/* Popover Tooltip */}
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 px-3 py-2 rounded-xl bg-neutral-900 border border-white/10 text-white shadow-2xl opacity-0 group-hover/cell:opacity-100 pointer-events-none transition-all translate-y-2 group-hover/cell:translate-y-0 z-[100]">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className="text-[14px] font-black leading-none">{count}</span>
+                                                        <span className="text-[8px] font-bold uppercase tracking-widest text-neutral-400 whitespace-nowrap">Logins • {day} {HOURS[hour]}</span>
+                                                    </div>
+                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 border-r border-b border-white/10 rotate-45 -translate-y-1" />
+                                                </div>
+                                            </motion.div>
+                                        </div>
                                     ))}
                                 </div>
                             </div>

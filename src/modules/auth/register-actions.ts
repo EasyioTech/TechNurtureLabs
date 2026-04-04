@@ -151,6 +151,41 @@ export async function registerStudent(formData: any) {
                 return { success: true, user: existingGlobally, isExisting: true };
             }
 
+            // ─── STUDENT LIMIT VALIDATION ───────────────────────────────────────
+            // Check if school has an active subscription with max_students limit
+            const subscription = await tx.query.schoolSubscriptions.findFirst({
+                where: and(
+                    eq(schoolSubscriptions.school_id, validatedData.school_id),
+                    eq(schoolSubscriptions.status, 'active')
+                ),
+                with: { plan: true }
+            });
+
+            if (subscription && subscription.plan && subscription.plan.max_students !== null) {
+                const maxStudents = subscription.plan.max_students;
+
+                // Count current students in this school
+                const studentCount = await tx.select({
+                    count: sql<number>`cast(count(*) as integer)`
+                }).from(students).where(
+                    and(
+                        eq(students.school_id, validatedData.school_id),
+                        isNull(students.deleted_at)
+                    )
+                );
+
+                const currentCount = studentCount[0]?.count || 0;
+
+                // If limit is reached, reject registration
+                if (currentCount >= maxStudents) {
+                    return {
+                        success: false,
+                        error: `Your school has reached its student limit of ${maxStudents} for the current plan. To add more students, please upgrade your subscription plan. Contact your school administrator for more information.`,
+                        errorCode: 'STUDENT_LIMIT_EXCEEDED'
+                    };
+                }
+            }
+
             const hashedPassword = await bcrypt.hash(validatedData.password, 10);
             // Only include email/phone if defined — omitting them lets Postgres default to NULL,
             // preventing the empty-string unique constraint collision bug.

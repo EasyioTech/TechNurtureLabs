@@ -322,6 +322,42 @@ export async function verifyStudentAction(userId: string, isVerified: boolean) {
     if (!student) throw new Error('Student not found');
 
     if (isVerified) {
+        // ─── STUDENT LIMIT VALIDATION ───────────────────────────────────────
+        // Check if school's active subscription has a max_students limit
+        const subscription = await db.query.schoolSubscriptions.findFirst({
+            where: and(
+                eq(schoolSubscriptions.school_id, student.school_id),
+                eq(schoolSubscriptions.status, 'active')
+            ),
+            with: { plan: true }
+        });
+
+        if (subscription && subscription.plan && subscription.plan.max_students !== null) {
+            const maxStudents = subscription.plan.max_students;
+
+            // Count already verified students in this school (excluding the current student)
+            const verifiedCount = await db.select({
+                count: sql<number>`cast(count(*) as integer)`
+            }).from(students).where(
+                and(
+                    eq(students.school_id, student.school_id),
+                    eq(students.is_verified, true),
+                    isNull(students.deleted_at)
+                )
+            );
+
+            const currentVerifiedCount = verifiedCount[0]?.count || 0;
+
+            // If limit is reached, reject verification
+            if (currentVerifiedCount >= maxStudents) {
+                throw new Error(
+                    `Your school has reached its student limit of ${maxStudents} for the current plan. ` +
+                    `To verify more students, please upgrade your subscription plan. ` +
+                    `Contact support for more information.`
+                );
+            }
+        }
+
         const [updated] = await db.update(students)
             .set({ is_verified: true, updated_at: new Date() })
             .where(eq(students.id, userId))

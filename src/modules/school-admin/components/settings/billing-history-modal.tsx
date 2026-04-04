@@ -127,10 +127,10 @@ export function BillingHistoryModal({ schoolId, isOpen, onClose }: BillingHistor
                                     <Button
                                         variant="ghost"
                                         className={`w-full sm:w-auto rounded-xl h-10 px-4 font-black text-[12px] gap-2 border flex items-center justify-center transition-colors ${isDark ? 'border-white/10 text-slate-100 hover:bg-white/5' : 'border-slate-200 text-slate-800 hover:bg-slate-50'}`}
-                                        onClick={() => toast.info('Invoice download starting...')}
+                                        onClick={() => window.open(`/api/school/invoice/${invoice.id}`, '_blank') || toast.info('Generating document...')}
                                     >
                                         <Download size={14} />
-                                        <span className="truncate">Download</span>
+                                        <span className="truncate">Download PDF</span>
                                     </Button>
                                 </div>
                             ))}

@@ -157,7 +157,10 @@ export async function middleware(request: NextRequest) {
 
       if (!sessionExists) {
         // Session is actually revoked or expired (not just infra failure)
-        const response = NextResponse.redirect(new URL('/login?revoked=true', request.url));
+        const isSuperAdminPath = url.pathname.startsWith('/super-admin');
+        const loginPath = isSuperAdminPath ? '/super-admin/login' : '/school-portal/login';
+        
+        const response = NextResponse.redirect(new URL(`${loginPath}?revoked=true&from=${encodeURIComponent(url.pathname)}`, request.url));
         response.cookies.delete('session');
         response.cookies.delete('refresh_token');
         return response;

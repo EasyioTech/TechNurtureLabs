@@ -29,7 +29,7 @@ import { fetchApprovedSchools, registerStudent, checkIdentifierExists } from '@/
 import { toast } from 'sonner';
 import {
   ArrowLeft, ArrowRight, Loader2, Check, ChevronsUpDown, Search,
-  Eye, EyeOff, User, School, Lock, Phone, Mail, GraduationCap,
+  Eye, EyeOff, User, School, Lock, Phone, Mail, GraduationCap, AlertCircle, CheckCircle2,
 } from 'lucide-react';
 import { StudentRegistrationSidebar } from '@/components/registration/StudentRegistrationSidebar';
 import { ManIcon, WomanIcon } from '@/components/registration/GenderIcons';
@@ -88,11 +88,29 @@ export default function StudentRegistrationPage() {
     setLoadingSchools(false);
   }
 
+  const [studentLimitInfo, setStudentLimitInfo] = useState<any>(null);
+  const [checkingLimit, setCheckingLimit] = useState(false);
+
+  const checkStudentLimit = async (schoolId: string) => {
+    setCheckingLimit(true);
+    try {
+      const res = await fetch(`/api/admin/check-student-limit?school_id=${schoolId}`);
+      const data = await res.json();
+      setStudentLimitInfo(data);
+    } catch (err) {
+      console.error('Failed to check student limit:', err);
+      setStudentLimitInfo(null);
+    } finally {
+      setCheckingLimit(false);
+    }
+  };
+
   const handleSchoolChange = (schoolId: string) => {
     const school = schools.find(s => s.id === schoolId);
     setSelectedSchool(school || null);
     setFormData(prev => ({ ...prev, school_id: schoolId, class_id: '' }));
     setErrors(prev => ({ ...prev, school_id: '' }));
+    checkStudentLimit(schoolId);
   };
 
   // ── Validation per step ───────────────────────────────────────
@@ -474,6 +492,54 @@ export default function StudentRegistrationPage() {
                     )}
                     {errors.school_id && <p className="text-xs text-rose-500 font-semibold ml-1">{errors.school_id}</p>}
                   </div>
+
+                  {/* Student Limit Warning */}
+                  <AnimatePresence>
+                    {selectedSchool && studentLimitInfo && !studentLimitInfo.can_add && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-4"
+                      >
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="text-rose-500 mt-0.5 shrink-0" size={20} />
+                          <div>
+                            <p className="text-sm font-bold text-rose-900 mb-1">
+                              Registration Limit Reached
+                            </p>
+                            <p className="text-xs text-rose-700 leading-relaxed">
+                              {studentLimitInfo.message}
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Student Limit Info (Success) */}
+                  <AnimatePresence>
+                    {selectedSchool && studentLimitInfo && studentLimitInfo.can_add && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-4"
+                      >
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2 className="text-emerald-600 mt-0.5 shrink-0" size={20} />
+                          <div>
+                            <p className="text-sm font-bold text-emerald-900 mb-0.5">
+                              Plan: {studentLimitInfo.plan_name}
+                            </p>
+                            <p className="text-xs text-emerald-700 font-medium">
+                              {studentLimitInfo.message}
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Class selection */}
                   <AnimatePresence>
