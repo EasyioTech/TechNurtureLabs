@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
                 // Check if this file already exists in our DB
                 const existing = await db.query.mediaAssets.findFirst({
                     where: and(
-                        eq(mediaAssets.path, file.Key),
+                        eq(mediaAssets.file_path, file.Key),
                         eq(mediaAssets.storage_type, 'r2')
                     )
                 });
@@ -62,9 +62,8 @@ export async function POST(req: NextRequest) {
                         file_size: file.Size || 0,
                         asset_type: assetType,
                         storage_type: 'r2',
-                        path: file.Key,
+                        file_path: file.Key,
                         folder: folder,
-                        is_public: true,
                         created_at: file.LastModified || new Date(),
                     });
                     addedCount++;
