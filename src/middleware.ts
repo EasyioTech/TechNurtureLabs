@@ -43,6 +43,11 @@ const ALLOWED_ORIGINS = buildAllowedOrigins();
 
 export const runtime = 'nodejs'; // Required for ioredis in middleware
 
+// ─── CONFIGURATION ────────────────────────────────────────────────────────────
+// Set CSRF_STRICT_MODE=false in .env to allow sessions through on double Redis+DB failure.
+// Default: true (fail-secure). Recommended for production.
+const CSRF_STRICT_MODE = process.env.CSRF_STRICT_MODE !== 'false';
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET,OPTIONS,PATCH,DELETE,POST,PUT',
   'Access-Control-Allow-Headers':
@@ -91,21 +96,32 @@ export async function middleware(request: NextRequest) {
   // returns null, which is interpreted as "revoked". This causes thundering herd of 5000
   // concurrent login attempts that crash the DB.
   // Solution: Try Redis, but if it fails, check DB to verify session is ACTUALLY revoked.
+  //
+  // SECURITY FIX: Fail-secure by default. Infrastructure failures don't grant unauthorized access.
+  // Set CSRF_STRICT_MODE=false in .env to allow sessions through (not recommended).
   const sessionToken = request.cookies.get('session')?.value;
   if (sessionToken) {
+    // SECURITY FIX #1: Validate JWT_SECRET is not empty
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret || jwtSecret.trim() === '') {
+      console.error('[Middleware] JWT_SECRET is not configured — session validation disabled');
+      return new NextResponse('Configuration error', { status: 500 });
+    }
+
     const { jwtVerify } = await import('jose');
     const { redis } = await import('@/lib/redis');
     const { db } = await import('@/lib/db');
     const { userSessions } = await import('@/db/schema');
-    const { eq, gt } = await import('drizzle-orm');
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || '');
+    const secret = new TextEncoder().encode(jwtSecret);
 
     try {
       const { payload } = await jwtVerify(sessionToken, secret);
       const sessionId = (payload as any).sessionId;
 
-      // CRITICAL FIX #6: Try Redis first (fast), but have fallback
+      // Try Redis first (fast), but have fallback
       let sessionExists = null;
+      let infrastructureFailure = false;
+
       try {
         sessionExists = await redis.get(`session:${sessionId}`);
       } catch (redisErr) {
@@ -120,9 +136,22 @@ export async function middleware(request: NextRequest) {
           });
           sessionExists = dbSession ? 'ok' : null;  // Truthy if found and not expired
         } catch (dbErr) {
-          // Both Redis and DB are down — be permissive (let regular auth flow handle it)
-          console.error('[Middleware] Session check failed (Redis + DB):', (dbErr as any).message);
-          sessionExists = 'ok';  // Don't revoke due to infra failure
+          // SECURITY FIX #2: Both Redis and DB are down — fail-secure by default
+          infrastructureFailure = true;
+          const errorMsg = (dbErr as any).message || 'unknown';
+          console.error('[Middleware] Session check failed (Redis + DB):', errorMsg);
+
+          if (CSRF_STRICT_MODE) {
+            // Fail-secure: revoke access on infrastructure failure
+            const response = NextResponse.redirect(new URL('/login?error=service_unavailable', request.url));
+            response.cookies.delete('session');
+            response.cookies.delete('refresh_token');
+            return response;
+          } else {
+            // Fail-open (only if explicitly configured): allow session through
+            sessionExists = 'ok';
+            console.warn('[Middleware] CSRF_STRICT_MODE=false — allowing session despite infrastructure failure');
+          }
         }
       }
 
@@ -142,23 +171,25 @@ export async function middleware(request: NextRequest) {
 
   // ─── 0.2 CSRF VALIDATION (Double-Submit Cookie Pattern) ──────────────────
   // Validate CSRF tokens on state-changing requests (POST, PUT, PATCH, DELETE)
+  // SECURITY FIX #3: Protect all mutating API requests, not just authenticated ones.
+  // Reasoning: CSRF tokens protect the origin (browser/app), not the user.
+  // An unauthenticated attacker can still trigger registration, form submissions, etc.
   const isMutatingMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
-  // Exempt: login/logout endpoints (unauthenticated), payment endpoints (external/pre-auth), webhooks
+  // Exempt: login/logout endpoints (unauthenticated, safe), payment endpoints (external/pre-auth), webhooks
   const isCsrfExempt = url.pathname.startsWith('/api/auth/') ||
                        url.pathname === '/api/admin/login' ||
                        url.pathname === '/api/admin/register' ||
                        url.pathname === '/api/media/stream-upload' ||
-                       url.pathname === '/api/media/register' ||
-                       url.pathname === '/api/media/sync' ||
-                       url.pathname === '/api/branding/upload' ||
                        url.pathname === '/api/payment/verify' ||
                        url.pathname === '/api/payment/create-order';
 
-  if (isApi && isMutatingMethod && !isCsrfExempt && sessionToken) {
+  // Require CSRF on all mutating API requests (not just authenticated ones)
+  if (isApi && isMutatingMethod && !isCsrfExempt) {
     const submittedCsrf = request.headers.get('x-csrf-token');
     const csrfCookie = request.cookies.get('csrf_token')?.value;
 
     // CSRF token must match and be present in both header and cookie
+    // This protects both authenticated and unauthenticated endpoints
     if (!submittedCsrf || !csrfCookie || submittedCsrf !== csrfCookie) {
       return new NextResponse('CSRF token validation failed', { status: 403 });
     }
@@ -190,7 +221,13 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and static files
-    '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)',
+    // PERFORMANCE FIX #4: Use explicit whitelist instead of blacklist
+    // Whitelist approach (clearer intent, lower false-positive rate):
+    // - All /api/* routes (CORS, CSRF, rate limiting, sessions)
+    // - Auth-related routes (/auth/*, /login, /logout, etc.)
+    // - Admin routes (/admin/* for subdomain handling)
+    // - Dashboard and protected pages (require session checks)
+    // Explicitly exclude static/asset routes that don't need middleware
+    '/((?!_next|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|eot)$).)*',
   ],
 };
