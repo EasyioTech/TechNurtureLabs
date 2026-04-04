@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAdminTheme, t } from '../../theme-context';
 import { toast } from 'sonner';
-import { Loader2, Video, Save, Link2, UploadCloud, Film, GraduationCap, Plus, Trash2, Hash, X, ImageIcon, Activity } from 'lucide-react';
+import { Loader2, Video, Save, Link2, UploadCloud, Film, GraduationCap, Plus, Trash2, Hash, X, ImageIcon, Activity, HardDrive, Database, Server, RefreshCw } from 'lucide-react';
 import { VideoUpload } from '@/modules/shared/components/video-upload';
 import { Palette, Shield, Activity as ActivityIcon, Settings2, Smartphone, Key, AlertCircle, CheckCircle, Columns, Rows, Square, Lock } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
@@ -17,6 +17,16 @@ import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } 
 import { fetchAllClasses, createClass, deleteClass, ensureDefaultClasses, syncPlatformMetrics, runDatabaseDiagnostics } from '@/modules/super-admin/actions';
 import { DiagnosticsResult } from '@/modules/super-admin/types';
 import { SystemHealthTab } from './system-health-tab';
+import { getSystemHealth } from '@/modules/super-admin/actions/redis-monitoring';
+
+// ─── Utility: Format bytes to human-readable size ──────────────────────────────
+function formatBytes(bytes: number, decimals = 1): string {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
+}
 
 export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref) {
     const { isDark, accent } = useAdminTheme();
@@ -64,6 +74,13 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
     const [syncing, setSyncing] = useState(false);
     const [diagnosing, setDiagnosing] = useState(false);
     const [diagResults, setDiagResults] = useState<DiagnosticsResult | null>(null);
+
+    // Storage Usage States
+    const [storageData, setStorageData] = useState<any>(null);
+    const [systemHealth, setSystemHealth] = useState<any>(null);
+    const [storageLoading, setStorageLoading] = useState(false);
+    const [storageError, setStorageError] = useState<string | null>(null);
+    const [r2Scanning, setR2Scanning] = useState(false);
 
     const loadClasses = async () => {
         setClassesLoading(true);
@@ -116,6 +133,41 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
             toast.error(err.message || 'Error deleting class');
         } finally {
             setDeletingClassId(null);
+        }
+    };
+
+    // Storage Usage Fetchers
+    const fetchStorageData = async () => {
+        setStorageLoading(true);
+        setStorageError(null);
+        try {
+            const [storageRes, healthData] = await Promise.all([
+                fetch('/api/admin/storage-usage').then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
+                }),
+                getSystemHealth(),
+            ]);
+            setStorageData(storageRes);
+            setSystemHealth(healthData);
+        } catch (e: any) {
+            setStorageError(e.message || 'Failed to load storage data');
+        } finally {
+            setStorageLoading(false);
+        }
+    };
+
+    const handleScanR2 = async () => {
+        setR2Scanning(true);
+        try {
+            const res = await fetch('/api/admin/storage-usage?scanR2=true');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setStorageData(data);
+        } catch (e: any) {
+            toast.error('R2 scan failed: ' + (e.message || 'Unknown error'));
+        } finally {
+            setR2Scanning(false);
         }
     };
 
@@ -251,6 +303,9 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
 
         // Load classes
         loadClasses();
+
+        // Load storage and system health data
+        fetchStorageData();
     }, []);
 
 
@@ -1094,6 +1149,322 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
                         </Button>
                     </div>
                 </div>
+            </div>
+
+            {/* Storage Usage Divider */}
+            <div className="border-t border-dashed border-white/[0.07]" />
+
+            {/* Storage Usage Section */}
+            <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
+                <div className="flex items-center gap-4 mb-8">
+                    <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
+                        <HardDrive className={accent.text} size={28} />
+                    </div>
+                    <div className="flex-1">
+                        <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Storage Usage</h2>
+                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Server storage allocation across all services</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => fetchStorageData()}
+                            disabled={storageLoading}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 disabled:opacity-50' : 'bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50'}`}
+                        >
+                            <RefreshCw size={13} className={storageLoading ? 'animate-spin' : ''} />
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+
+                {/* Error state */}
+                {storageError && (
+                    <div className={`mb-6 p-4 rounded-2xl border ${isDark ? 'bg-rose-500/10 border-rose-500/20' : 'bg-rose-50 border-rose-100'}`}>
+                        <p className={`text-sm font-bold ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>{storageError}</p>
+                        <button
+                            type="button"
+                            onClick={() => fetchStorageData()}
+                            className={`mt-2 text-xs font-black uppercase tracking-widest ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-500'}`}
+                        >
+                            Retry
+                        </button>
+                    </div>
+                )}
+
+                {/* Loading skeleton */}
+                {storageLoading && !storageData && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {[0, 1, 2, 3].map(i => (
+                            <div key={i} className={`p-6 rounded-[1.5rem] border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50/80'} animate-pulse`}>
+                                <div className={`h-4 w-1/2 rounded-full mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-slate-200'}`} />
+                                <div className={`h-8 w-1/3 rounded-full mb-6 ${isDark ? 'bg-white/[0.08]' : 'bg-slate-200'}`} />
+                                <div className={`h-2 w-full rounded-full mb-3 ${isDark ? 'bg-white/[0.08]' : 'bg-slate-200'}`} />
+                                <div className={`h-2 w-4/5 rounded-full mb-3 ${isDark ? 'bg-white/[0.08]' : 'bg-slate-200'}`} />
+                                <div className={`h-2 w-3/5 rounded-full ${isDark ? 'bg-white/[0.08]' : 'bg-slate-200'}`} />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Data cards */}
+                {storageData && systemHealth && !storageLoading && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                        {/* ── R2 Bucket ────────────────────────────────────────────────────── */}
+                        <div className={`p-6 rounded-[1.5rem] border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50/80'}`}>
+                            <div className="flex items-center justify-between mb-1">
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>R2 Bucket</span>
+                                {!storageData.r2?.scanned && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleScanR2()}
+                                        disabled={r2Scanning}
+                                        className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 disabled:opacity-50' : 'bg-slate-200 hover:bg-slate-300 text-slate-600 disabled:opacity-50'}`}
+                                    >
+                                        {r2Scanning ? <RefreshCw size={10} className="animate-spin" /> : null}
+                                        {r2Scanning ? 'Scanning…' : 'Scan R2'}
+                                    </button>
+                                )}
+                                {storageData.r2?.scanned && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleScanR2()}
+                                        disabled={r2Scanning}
+                                        className={`flex items-center gap-1 text-[9px] font-bold ${t.textMuted(isDark)} hover:opacity-80 transition-opacity`}
+                                    >
+                                        <RefreshCw size={9} className={r2Scanning ? 'animate-spin' : ''} />
+                                        Re-scan
+                                    </button>
+                                )}
+                            </div>
+
+                            {!storageData.r2?.configured && (
+                                <p className={`text-xs font-medium mt-2 ${t.textMuted(isDark)}`}>R2 not configured</p>
+                            )}
+
+                            {storageData.r2?.configured && !storageData.r2?.scanned && (
+                                <div className={`mt-4 p-4 rounded-xl border border-dashed ${isDark ? 'border-white/[0.08]' : 'border-slate-200'} text-center`}>
+                                    <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Click "Scan R2" to analyze bucket usage</p>
+                                    <p className={`text-[9px] mt-1 ${t.textMuted(isDark)} opacity-60`}>May take a few seconds for large buckets</p>
+                                </div>
+                            )}
+
+                            {storageData.r2?.configured && storageData.r2?.scanned && (() => {
+                                const r2 = storageData.r2;
+                                const maxFolder = Math.max(r2.byFolder.images.bytes, r2.byFolder.videos.bytes, r2.byFolder.documents.bytes, 1);
+                                const folders = [
+                                    { key: 'images', label: 'Images', data: r2.byFolder.images },
+                                    { key: 'videos', label: 'Videos', data: r2.byFolder.videos },
+                                    { key: 'documents', label: 'Documents', data: r2.byFolder.documents },
+                                ];
+                                return (
+                                    <>
+                                        <p className={`text-2xl font-black ${t.textPrimary(isDark)} mt-1 mb-5`}>
+                                            {formatBytes(r2.totalBytes)}
+                                            <span className={`text-sm font-bold ml-2 ${t.textMuted(isDark)}`}>used</span>
+                                        </p>
+                                        <div className="space-y-3">
+                                            {folders.map(({ label, data }) => {
+                                                const pct = (data.bytes / maxFolder) * 100;
+                                                return (
+                                                    <div key={label}>
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className={`text-[10px] font-bold ${t.textSecondary(isDark)}`}>{label}</span>
+                                                            <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>{formatBytes(data.bytes)}</span>
+                                                        </div>
+                                                        <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'}`}>
+                                                            <motion.div
+                                                                className={`h-full rounded-full ${accent.bg}`}
+                                                                initial={{ width: 0 }}
+                                                                animate={{ width: `${Math.min(pct, 100)}%` }}
+                                                                transition={{ duration: 0.8, ease: 'easeOut' }}
+                                                                style={t.barGlow(isDark, accent)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <p className={`text-[10px] font-bold mt-4 ${t.textMuted(isDark)}`}>
+                                            {r2.objectCount.toLocaleString()} objects total
+                                        </p>
+                                    </>
+                                );
+                            })()}
+                        </div>
+
+                        {/* ── Database ──────────────────────────────────────────────────────── */}
+                        <div className={`p-6 rounded-[1.5rem] border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50/80'}`}>
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Database</span>
+                            <p className={`text-2xl font-black ${t.textPrimary(isDark)} mt-1 mb-5`}>
+                                {systemHealth.database?.totalSize || 'Unknown'}
+                                <span className={`text-sm font-bold ml-2 ${t.textMuted(isDark)}`}>total size</span>
+                            </p>
+                            {(() => {
+                                const assets = storageData.db?.mediaAssets ?? [];
+                                const byType: Record<string, { count: number; bytes: number }> = {
+                                    video: { count: 0, bytes: 0 },
+                                    image: { count: 0, bytes: 0 },
+                                    document: { count: 0, bytes: 0 },
+                                };
+                                for (const row of assets) {
+                                    if (byType[row.asset_type]) {
+                                        byType[row.asset_type].count += row.count;
+                                        byType[row.asset_type].bytes += row.totalBytes;
+                                    }
+                                }
+                                const maxBytes = Math.max(...Object.values(byType).map(v => v.bytes), 1);
+                                const totalCount = Object.values(byType).reduce((s, v) => s + v.count, 0);
+                                const typeRows = [
+                                    { key: 'video', label: 'Videos' },
+                                    { key: 'image', label: 'Images' },
+                                    { key: 'document', label: 'Documents' },
+                                ];
+                                return (
+                                    <div className="space-y-3">
+                                        {typeRows.map(({ key, label }) => {
+                                            const d = byType[key];
+                                            const pct = (d.bytes / maxBytes) * 100;
+                                            return (
+                                                <div key={key}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className={`text-[10px] font-bold ${t.textSecondary(isDark)}`}>
+                                                            {label} <span className={`${t.textMuted(isDark)}`}>({d.count})</span>
+                                                        </span>
+                                                        <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>{formatBytes(d.bytes)}</span>
+                                                    </div>
+                                                    <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'}`}>
+                                                        <motion.div
+                                                            className={`h-full rounded-full ${accent.bg}`}
+                                                            initial={{ width: 0 }}
+                                                            animate={{ width: `${Math.min(pct, 100)}%` }}
+                                                            transition={{ duration: 0.8, ease: 'easeOut' }}
+                                                            style={t.barGlow(isDark, accent)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        <p className={`text-[10px] font-bold mt-1 ${t.textMuted(isDark)}`}>
+                                            {totalCount.toLocaleString()} assets in media library
+                                        </p>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
+                        {/* ── Redis Cache ───────────────────────────────────────────────────── */}
+                        <div className={`p-6 rounded-[1.5rem] border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50/80'}`}>
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Redis Cache</span>
+                            {(() => {
+                                const redis = systemHealth.redis;
+                                const usedBytes = parseInt(redis.used_memory || '0', 10);
+                                const maxBytes = parseInt(redis.maxmemory || '0', 10);
+                                const pct = maxBytes > 0 ? Math.min((usedBytes / maxBytes) * 100, 100) : 0;
+                                const fragRatio = redis.mem_fragmentation_ratio ?? 1;
+                                const fragHigh = fragRatio > 1.5;
+                                return (
+                                    <>
+                                        <p className={`text-2xl font-black ${t.textPrimary(isDark)} mt-1 mb-5`}>
+                                            {redis.used_memory_human}
+                                            {redis.maxmemory_human && redis.maxmemory_human !== 'Unlimited' && (
+                                                <span className={`text-sm font-bold ml-2 ${t.textMuted(isDark)}`}>/ {redis.maxmemory_human}</span>
+                                            )}
+                                        </p>
+                                        {maxBytes > 0 && (
+                                            <div className="mb-3">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className={`text-[10px] font-bold ${t.textSecondary(isDark)}`}>Memory used</span>
+                                                    <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>{pct.toFixed(1)}%</span>
+                                                </div>
+                                                <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'}`}>
+                                                    <motion.div
+                                                        className={`h-full rounded-full ${pct > 85 ? 'bg-rose-500' : accent.bg}`}
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${pct}%` }}
+                                                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                                                        style={t.barGlow(isDark, accent)}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-2 mt-4">
+                                            <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Frag ratio:</span>
+                                            <span className={`text-[10px] font-black ${fragHigh ? 'text-amber-500' : t.textPrimary(isDark)}`}>
+                                                {fragRatio.toFixed(2)}
+                                                {fragHigh && ' ⚠'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Hit rate:</span>
+                                            <span className={`text-[10px] font-black ${t.textPrimary(isDark)}`}>{redis.hit_ratio?.toFixed(1)}%</span>
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+
+                        {/* ── Server RAM + Node.js Heap ─────────────────────────────────────── */}
+                        <div className={`p-6 rounded-[1.5rem] border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50/80'}`}>
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Server RAM &amp; Node.js Heap</span>
+                            {(() => {
+                                const srv = systemHealth.server;
+                                const ramPct = srv.memUsagePercent ?? 0;
+                                const heapPct = srv.heapUsagePercent ?? 0;
+                                const totalGb = (srv.totalMemMb / 1024).toFixed(1);
+                                const usedGb = (srv.usedMemMb / 1024).toFixed(1);
+                                return (
+                                    <>
+                                        <p className={`text-2xl font-black ${t.textPrimary(isDark)} mt-1 mb-5`}>
+                                            {usedGb} GB
+                                            <span className={`text-sm font-bold ml-2 ${t.textMuted(isDark)}`}>/ {totalGb} GB</span>
+                                        </p>
+                                        {/* RAM progress */}
+                                        <div className="mb-3">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className={`text-[10px] font-bold ${t.textSecondary(isDark)}`}>RAM used</span>
+                                                <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>{ramPct.toFixed(1)}%</span>
+                                            </div>
+                                            <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'}`}>
+                                                <motion.div
+                                                    className={`h-full rounded-full ${ramPct > 85 ? 'bg-rose-500' : accent.bg}`}
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${Math.min(ramPct, 100)}%` }}
+                                                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                                                    style={t.barGlow(isDark, accent)}
+                                                />
+                                            </div>
+                                        </div>
+                                        {/* Heap progress */}
+                                        <div className="mb-3">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className={`text-[10px] font-bold ${t.textSecondary(isDark)}`}>
+                                                    Node.js Heap
+                                                </span>
+                                                <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>
+                                                    {srv.heapUsedMb} MB / {srv.heapTotalMb} MB
+                                                </span>
+                                            </div>
+                                            <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'}`}>
+                                                <motion.div
+                                                    className={`h-full rounded-full ${heapPct > 85 ? 'bg-rose-500' : accent.bg}`}
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${Math.min(heapPct, 100)}%` }}
+                                                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                                                    style={t.barGlow(isDark, accent)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>
+                                            {heapPct.toFixed(1)}% heap used
+                                        </p>
+                                    </>
+                                );
+                            })()}
+                        </div>
+
+                    </div>
+                )}
             </div>
 
             {/* Infrastructure Health Section */}
