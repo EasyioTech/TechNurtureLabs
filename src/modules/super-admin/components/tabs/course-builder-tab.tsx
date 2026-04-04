@@ -86,36 +86,11 @@ export function CourseBuilderTab({
 
     useEffect(() => { setIsDirtyOrder(false); }, [selectedCourse?.id]);
 
-    // Auto-save & Restore Point Check
-    useEffect(() => {
-        const checkRestore = async () => {
-            const res = await checkForRestorePointAction();
-            if (res.hasRestorePoint && res.key && res.timestamp) {
-                setRestorePoint({ key: res.key, timestamp: new Date(res.timestamp) });
-                setShowRestorePrompt(true);
-            }
-        };
-        checkRestore();
+    useEffect(() => { setIsDirtyOrder(false); }, [selectedCourse?.id]);
 
-        const interval = setInterval(async () => {
-            console.log('[Auto-Save] Triggering periodic backup...');
-            await performInstantSaveAction();
-        }, 5 * 60 * 1000); // Every 5 minutes
-
-        return () => clearInterval(interval);
-    }, []);
-
-    const handleApplyRestorePoint = async () => {
-        if (!restorePoint) return;
-        await handleRestore(restorePoint.key);
-        setShowRestorePrompt(false);
-    };
-
-    const handleDiscardRestorePoint = async () => {
-        if (!restorePoint) return;
-        await deleteRestorePointAction(restorePoint.key);
-        setRestorePoint(null);
-        setShowRestorePrompt(false);
+    const fetchBackups = async () => {
+        const data = await listBackupsAction('course');
+        setBackups(data);
     };
 
 
@@ -306,7 +281,7 @@ export function CourseBuilderTab({
                         </DialogContent>
                     </Dialog>
 
-                    {/* Secondary Actions: Backup & Quick Save */}
+                    {/* Secondary Action: Backup */}
                     <Button
                         size="sm"
                         disabled={isBackingUp}
@@ -319,23 +294,6 @@ export function CourseBuilderTab({
                         <span className="whitespace-nowrap">Backup</span>
                     </Button>
 
-                    <Button
-                        size="sm"
-                        disabled={isBackingUp}
-                        onClick={async () => {
-                            toast.loading("Quick saving...");
-                            const res = await performInstantSaveAction();
-                            toast.dismiss();
-                            if (res.success) toast.success(res.message);
-                            else toast.error(res.error);
-                        }}
-                        title="Quick auto-save snapshot"
-                        className={`h-10 px-3 sm:px-5 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
-                            ${isDark ? 'bg-violet-600 hover:bg-violet-700' : 'bg-violet-500 hover:bg-violet-600'} text-white hover:shadow-lg shadow-md`}
-                    >
-                        <Clock size={14} />
-                        <span className="whitespace-nowrap">Quick Save</span>
-                    </Button>
 
                     {/* Backup Preview Modal */}
                     <BackupPreviewModal
@@ -564,38 +522,6 @@ export function CourseBuilderTab({
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Restore Point Prompt */}
-            <AlertDialog open={showRestorePrompt} onOpenChange={setShowRestorePrompt}>
-                <AlertDialogContent className={`rounded-3xl border-0 p-8 max-w-sm ${isDark ? 'bg-[#151921]' : 'bg-white'}`}>
-                    <div className="flex flex-col items-center text-center space-y-4">
-                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center shadow-lg animate-pulse ${isDark ? 'bg-amber-500/10 text-amber-500' : 'bg-amber-50 text-amber-600'}`}>
-                            <ShieldAlert size={32} />
-                        </div>
-                        <AlertDialogTitle className={`text-xl font-black tracking-tight ${t.textPrimary(isDark)}`}>
-                            Restore Point Detected
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className={`text-sm font-medium ${t.textMuted(isDark)}`}>
-                            We found a recent auto-save from {restorePoint?.timestamp.toLocaleTimeString()}. Would you like to restore your last session's state?
-                        </AlertDialogDescription>
-                        
-                        <div className="flex flex-col w-full gap-2 pt-4">
-                            <Button
-                                onClick={handleApplyRestorePoint}
-                                className={`w-full h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg ${accent.bg} text-slate-900 ${accent.bgHover}`}
-                            >
-                                Restore Session
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                onClick={handleDiscardRestorePoint}
-                                className={`w-full h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] ${t.textMuted(isDark)}`}
-                            >
-                                Discard & Continue
-                            </Button>
-                        </div>
-                    </div>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }

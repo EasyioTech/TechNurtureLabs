@@ -640,47 +640,4 @@ export async function restoreLessonBackup(backupData: LessonBackupData, targetCo
     });
 }
 
-export async function performInstantSave() {
-    if (!isCloudflareConfigured || !s3Client) {
-        throw new Error("R1/R2 is not configured. Cannot perform auto-save.");
-    }
-    const data = await exportAllCourses();
-
-    // Skip if no changes detected
-    const lastBackup = await getLastBackupHash();
-    const currentHash = calculateBackupHash(data);
-
-    if (lastBackup && lastBackup.hash === currentHash) {
-        return {
-            success: true,
-            count: data.courses.length,
-            fileName: lastBackup.fileName,
-            message: `No changes detected. Using existing auto-save.`
-        };
-    }
-
-    // Create new instant save
-    const payload = JSON.stringify(data);
-    const finalKey = `backups/courses/instant_save_${new Date().getTime()}.json`;
-
-    const command = new PutObjectCommand({
-        Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
-        Key: finalKey,
-        Body: Buffer.from(payload),
-        ContentType: 'application/json',
-        Metadata: {
-            'backup-hash': currentHash,
-            'backup-timestamp': new Date().toISOString(),
-        }
-    });
-
-    await s3Client.send(command);
-
-    return {
-        success: true,
-        count: data.courses.length,
-        fileName: finalKey,
-        message: `Auto-save created (${data.courses.length} courses).`
-    };
-}
 
