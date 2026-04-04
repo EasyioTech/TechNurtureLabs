@@ -91,7 +91,7 @@ export function CourseBuilderTab({
         const res = await performBackupAction();
         if (res.success) {
             if (res.isNew) {
-                toast.success("✅ New backup created successfully");
+                toast.success(" New backup created successfully");
             } else {
                 toast.success("✓ No changes detected - using existing backup");
             }

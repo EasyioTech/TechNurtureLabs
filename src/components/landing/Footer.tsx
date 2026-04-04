@@ -9,7 +9,7 @@ const footerLinks = {
     platform: [
         { label: 'Features', href: '#features' },
         { label: 'Product Demo', href: '#demo' },
-        { label: 'Pricing', href: '/pricing' },
+        { label: 'Pricing', href: '#pricing' },
         { label: 'Reviews', href: '#testimonials' },
     ],
     company: [

@@ -150,13 +150,33 @@ export const analyticsService = {
     },
 
     // ─────────────────────────────────────────────────────────────
-    // LOGIN FREQUENCY HEATMAP  (7 days × 24 hours)
+    // PLATFORM ACTIVITY HEATMAP (7 days × 24 hours)
     // dow: 0=Sun … 6=Sat   hour: 0-23
-    // Counters never expire — they represent all-time login patterns.
+    // Counters never expire — they represent all-time activity patterns.
     // ─────────────────────────────────────────────────────────────
     async trackLoginHour(dow: number, hour: number): Promise<void> {
         try {
             await redis.incr(hmKey(dow, hour));
+        } catch (_) { /* non-critical */ }
+    },
+
+    /**
+     * Tracks an active user session into the heatmap, but only once per hour per user.
+     * Prevents heatmap bloat from heartbeats while correctly registering continuous activity.
+     */
+    async trackActiveUserHour(userId: string): Promise<void> {
+        try {
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 10);
+            const hour = now.getHours();
+            const dow = now.getDay();
+            
+            const guardKey = `hm:seen:${userId}:${dateStr}:${hour}`;
+            // Track once per hour per user. 3600s TTL.
+            const isFirst = await redis.set(guardKey, '1', 'EX', 3600, 'NX');
+            if (!isFirst) return;
+            
+            await this.trackLoginHour(dow, hour);
         } catch (_) { /* non-critical */ }
     },
 

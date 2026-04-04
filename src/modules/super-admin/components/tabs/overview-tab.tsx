@@ -195,13 +195,13 @@ function LoginHeatmap({ heatmap }: { heatmap: number[][] }) {
             </div>
 
             <div className="relative overflow-x-auto pb-4 custom-scrollbar">
-                <div className="pr-4">
+                <div className="pr-4 min-w-max">
                     {/* Hour labels — aligned with heatmap grid */}
                     <div className="flex gap-1.5 mb-3">
                         <div className="w-12 flex-shrink-0" />
                         <div className="flex gap-1.5" style={{ width: 'calc(24 * 1.5rem + 23 * 0.375rem)' }}>
                             {HOURS.map((h, i) => (
-                                <div key={i} className={`w-6 text-center text-[9px] font-black uppercase tracking-tighter transition-all duration-500 ${i % 3 === 0 ? 'opacity-100' : 'opacity-20'} ${t.textMuted(isDark)}`}>
+                                <div key={i} className={`w-6 flex-shrink-0 text-center text-[9px] font-black uppercase tracking-tighter transition-all duration-500 ${i % 3 === 0 ? 'opacity-100' : 'opacity-20'} ${t.textMuted(isDark)}`}>
                                     {h}
                                 </div>
                             ))}
@@ -223,7 +223,7 @@ function LoginHeatmap({ heatmap }: { heatmap: number[][] }) {
                                             animate={{ opacity: 1, scale: 1 }}
                                             whileHover={{ scale: 1.3, zIndex: 50 }}
                                             transition={{ delay: 0.5 + (dow * 0.05) + (hour * 0.01), type: 'spring', stiffness: 400, damping: 25 }}
-                                            className={`w-6 h-6 rounded-full transition-all duration-300 cursor-pointer ${cellColor(count)} border relative group/cell`}
+                                            className={`w-6 h-6 flex-shrink-0 rounded-full transition-all duration-300 cursor-pointer ${cellColor(count)} border relative group/cell`}
                                         >
                                             {/* Popover Tooltip — positioned above with proper z-index stacking */}
                                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-1.5 rounded-lg bg-neutral-900 text-white text-[10px] font-black whitespace-nowrap opacity-0 group-hover/cell:opacity-100 pointer-events-none transition-all translate-y-2 group-hover/cell:translate-y-0 shadow-2xl border border-white/10" style={{ zIndex: 9999 }}>

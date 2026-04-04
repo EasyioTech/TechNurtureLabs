@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
         // Redis NX key, so subsequent heartbeats skip the extra Redis pipeline entirely.
         analyticsService.trackConcurrentUser(userId).catch(() => {});
         analyticsService.trackActiveUserOnce(userId).catch(() => {});
+        // Also capture continuous hour engagement for the User Pulse Heatmap
+        analyticsService.trackActiveUserHour(userId).catch(() => {});
 
         return NextResponse.json(result);
     } catch (error: any) {

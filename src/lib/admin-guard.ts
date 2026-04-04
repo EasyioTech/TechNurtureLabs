@@ -1,5 +1,7 @@
 'use server';
 
+import { redirect } from 'next/navigation';
+
 import { verifySession } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { schoolAdmins, students, classes } from '@/db/schema';
@@ -7,17 +9,14 @@ import { eq, and, sql } from 'drizzle-orm';
 
 /**
  * Auth guard for super-admin server actions.
- * Throws a plain Error('UNAUTHORIZED') instead of calling redirect().
- *
- * Why: redirect() inside a server action throws NEXT_REDIRECT which forces
- * an immediate browser navigation — even for transient Redis/DB blips.
- * Using throw allows the client hook's catch block to decide whether to
- * redirect (persistent auth failure) or show a toast and retry (transient).
+ * Automatically redirects to the admin portal login on failure
+ * to ensure users can re-authenticate.
  */
 export async function requireSuperAdmin() {
     const session = await verifySession();
+    // HARDENING: Check both role and userType to handle session rotation and legacy payload formats
     if (!session || (session.userType !== 'super_admin' && session.role !== 'super_admin')) {
-        throw new Error('UNAUTHORIZED');
+        redirect('/admin-portal/login?revoked=true');
     }
     return session;
 }
@@ -39,7 +38,7 @@ export async function requireSchoolAdmin(requestedSchoolId: string) {
     const session = await verifySession();
 
     if (!session || session.userType !== 'school_admin') {
-        throw new Error('UNAUTHORIZED');
+        redirect('/school-portal/login?revoked=true');
     }
 
     // CRITICAL: Verify the admin actually belongs to this school
@@ -56,7 +55,7 @@ export async function requireSchoolAdmin(requestedSchoolId: string) {
     });
 
     if (!admin) {
-        throw new Error('UNAUTHORIZED');
+        redirect('/school-portal/login?revoked=true');
     }
 
     return { session, admin };
@@ -74,7 +73,7 @@ export async function requireStudentInSchool(requestedSchoolId: string) {
     const session = await verifySession();
 
     if (!session || session.userType !== 'student') {
-        throw new Error('UNAUTHORIZED');
+        redirect('/login?revoked=true');
     }
 
     // Verify student belongs to this school
@@ -87,7 +86,7 @@ export async function requireStudentInSchool(requestedSchoolId: string) {
     });
 
     if (!student) {
-        throw new Error('UNAUTHORIZED');
+        redirect('/login?revoked=true');
     }
 
     return { session, student };

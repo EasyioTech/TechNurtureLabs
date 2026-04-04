@@ -32,7 +32,7 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                                 ) : (
                                     <Sparkles size={14} className="text-blue-600" />
                                 )}
-                                <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">{settings?.platform_name || 'TechNurture'} Labs</span>
+                                <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">{settings?.platform_name || 'TechNurture'}</span>
                             </div>
                         </div>
 

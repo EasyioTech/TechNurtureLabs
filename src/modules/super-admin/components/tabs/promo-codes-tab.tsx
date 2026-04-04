@@ -55,11 +55,11 @@ export function PromoCodesTab({
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ scale: 1.02 }}
                             className={`relative rounded-[2rem] overflow-hidden border-2 transition-all duration-500 group
-                                ${isDark ? 'bg-slate-900 border-white/[0.05] hover:border-white/10' : 'bg-white border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl'}`}
+                                ${isDark ? 'bg-neutral-900 border-white/[0.05] hover:border-white/10' : 'bg-white border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl'}`}
                         >
                             {/* Ticket Notch Effect */}
-                            <div className={`absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full ${isDark ? 'bg-slate-950' : 'bg-slate-50'} border-r-2 ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`} />
-                            <div className={`absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full ${isDark ? 'bg-slate-950' : 'bg-slate-50'} border-l-2 ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`} />
+                            <div className={`absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full ${isDark ? 'bg-neutral-950' : 'bg-slate-50'} border-r-2 ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`} />
+                            <div className={`absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full ${isDark ? 'bg-neutral-950' : 'bg-slate-50'} border-l-2 ${isDark ? 'border-white/[0.05]' : 'border-slate-100'}`} />
                             
                             <div className="p-8">
                                 <div className="flex justify-between items-start mb-6">
