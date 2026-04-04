@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,9 +43,13 @@ export function BackupPreviewModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className={`w-full max-w-md sm:max-w-lg border-0 p-0 overflow-hidden rounded-2xl sm:rounded-3xl ${
+            <DialogContent aria-describedby="dialog-description" className={`w-full max-w-md sm:max-w-lg border-0 p-0 overflow-hidden rounded-2xl sm:rounded-3xl ${
                 isDark ? 'bg-[#0a0d13]' : 'bg-white'
             }`}>
+                <DialogTitle className="sr-only">Preview Backup {fileName}</DialogTitle>
+                <DialogDescription id="dialog-description" className="sr-only">
+                    Preview and confirm restoring backup for {backupType}.
+                </DialogDescription>
                 {/* Header */}
                 <div className={`relative px-4 sm:px-6 pt-4 sm:pt-6 pb-4 sm:pb-6 border-b ${
                     isDark ? 'border-white/5' : 'border-slate-100'

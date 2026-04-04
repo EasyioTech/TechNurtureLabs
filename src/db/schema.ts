@@ -1,7 +1,7 @@
 import {
     pgTable, pgEnum,
     text, timestamp, boolean, integer, bigint, numeric, jsonb, uuid, date, inet,
-    uniqueIndex, index, check, primaryKey
+    uniqueIndex, index, check, primaryKey, unique
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
@@ -356,7 +356,7 @@ export const courseClassMapping = pgTable('course_class_mapping', {
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    uniqueIndex('uq_course_class')
+    unique('uq_course_class')
         .on(table.course_id, table.class_id),
 ]);
 
