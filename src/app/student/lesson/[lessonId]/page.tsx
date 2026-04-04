@@ -1,8 +1,9 @@
 import React from 'react';
 import { getLessonData, getCourseDetailsData, completeLessonAndReward } from '@/modules/student/actions';
 import { LessonClient } from '@/modules/student/components/lesson/lesson-client';
+import DatabaseMaintenance from '@/components/DatabaseMaintenance';
 import { verifySession } from '@/lib/auth';
-import { redirect, notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,8 @@ export default async function LessonPlayerPage({ params }: { params: Promise<{ l
     try {
         const lesson = await getLessonData(lessonId);
         if (!lesson) {
-            notFound();
+            // Show friendly empty state instead of 404
+            return <DatabaseMaintenance />;
         }
 
         const courseData = await getCourseDetailsData(lesson.course_id);
@@ -36,6 +38,7 @@ export default async function LessonPlayerPage({ params }: { params: Promise<{ l
         return <LessonClient initialData={initialData} completeLesson={completeLessonAction} />;
     } catch (error) {
         console.error('Failed to load lesson context:', error);
-        notFound();
+        // Show friendly empty state instead of 404
+        return <DatabaseMaintenance />;
     }
 }

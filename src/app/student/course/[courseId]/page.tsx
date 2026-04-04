@@ -1,8 +1,9 @@
 import React from 'react';
 import { getCourseDetailsData, getCertificateForCourse } from '@/modules/student/actions';
 import { CourseDetailsClient } from '@/modules/student/components/course/course-details-client';
+import DatabaseMaintenance from '@/components/DatabaseMaintenance';
 import { verifySession } from '@/lib/auth';
-import { redirect, notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,8 @@ export default async function CourseDetailsPage({ params }: { params: Promise<{ 
         const data = await getCourseDetailsData(courseId);
 
         if (!data || !data.course) {
-            notFound();
+            // Show friendly empty state instead of 404
+            return <DatabaseMaintenance />;
         }
 
         // Fetch certificate if student has completed the course
@@ -33,7 +35,8 @@ export default async function CourseDetailsPage({ params }: { params: Promise<{ 
         };
     } catch (error) {
         console.error('Failed to fetch course details:', error);
-        notFound();
+        // Show friendly empty state instead of 404
+        return <DatabaseMaintenance />;
     }
 
     return <CourseDetailsClient initialData={initialData} />;
