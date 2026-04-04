@@ -357,8 +357,7 @@ export const courseClassMapping = pgTable('course_class_mapping', {
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
     uniqueIndex('uq_course_class')
-        .on(table.course_id, table.class_id)
-        .where(sql`deleted_at IS NULL`),
+        .on(table.course_id, table.class_id),
 ]);
 
 export const lessons = pgTable('lessons', {
