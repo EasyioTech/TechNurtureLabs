@@ -153,15 +153,23 @@ export async function seedAchievementsData() {
         }
     ];
 
-    for (const ach of defaultAchievements) {
-        const existing = await db.query.achievements.findFirst({
-            where: eq(achievements.name, ach.name)
-        });
+    // PERFORMANCE: Batch fetch all achievements to avoid N+1 queries
+    const existingAchievements = await db.query.achievements.findMany();
+    const existingByName = new Map(existingAchievements.map(a => [a.name, a]));
 
-        if (!existing) {
-            await db.insert(achievements).values(ach as any);
-        } else {
-            // Update to ensure correct category and criteria if names match
+    // Separate into new and existing based on name
+    const toInsert = defaultAchievements.filter(ach => !existingByName.has(ach.name));
+    const toUpdate = defaultAchievements.filter(ach => existingByName.has(ach.name));
+
+    // Batch insert new achievements
+    if (toInsert.length > 0) {
+        await db.insert(achievements).values(toInsert as any);
+    }
+
+    // Batch update existing achievements
+    if (toUpdate.length > 0) {
+        for (const ach of toUpdate) {
+            const existing = existingByName.get(ach.name)!;
             await db.update(achievements)
                 .set({
                     category: ach.category,
