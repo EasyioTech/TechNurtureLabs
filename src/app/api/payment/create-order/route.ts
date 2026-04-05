@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
 
         let discountAmount = 0;
         let promoData = null;
+        let appliedPromoId: string | null = null;
 
         // SECURITY: Apply promo code if provided — with strong atomicity via atomic UPDATE
         if (promo_code_id) {
@@ -105,11 +106,14 @@ export async function POST(req: NextRequest) {
                 .returning();
 
             if (updatedPromo) {
+                appliedPromoId = updatedPromo.id;
                 // SECURITY: Validate discount calculation to prevent negative amounts
                 if (updatedPromo.discount_type === 'percentage') {
                     const percentage = Number(updatedPromo.discount_value);
                     if (percentage < 0 || percentage > 100) {
                         logger.error('[Create Order] Invalid percentage discount', { percentage, promo_code_id });
+                        // ROLLBACK: Decrement promo usage since we're rejecting
+                        await db.update(promoCodes).set({ current_uses: sql`current_uses - 1` }).where(eq(promoCodes.id, appliedPromoId));
                         return NextResponse.json({ error: 'Invalid discount' }, { status: 400 });
                     }
                     discountAmount = (finalAmount * percentage) / 100;
@@ -117,6 +121,8 @@ export async function POST(req: NextRequest) {
                     discountAmount = Number(updatedPromo.discount_value);
                     if (discountAmount < 0) {
                         logger.error('[Create Order] Negative fixed discount', { discountAmount, promo_code_id });
+                        // ROLLBACK: Decrement promo usage since we're rejecting
+                        await db.update(promoCodes).set({ current_uses: sql`current_uses - 1` }).where(eq(promoCodes.id, appliedPromoId));
                         return NextResponse.json({ error: 'Invalid discount' }, { status: 400 });
                     }
                 }
@@ -217,6 +223,17 @@ export async function POST(req: NextRequest) {
                 fullError: JSON.stringify(rpError).substring(0, 200)
             };
             logger.error('[Create Order] Razorpay API error', errorDetails);
+
+            // SECURITY: Rollback promo code usage if Razorpay fails
+            if (appliedPromoId) {
+                try {
+                    await db.update(promoCodes).set({ current_uses: sql`current_uses - 1` }).where(eq(promoCodes.id, appliedPromoId));
+                    logger.info('[Create Order] Promo code usage rolled back after Razorpay failure', { promo_code_id: appliedPromoId });
+                } catch (rollbackErr: any) {
+                    logger.error('[Create Order] Failed to rollback promo code usage', { promo_code_id: appliedPromoId, error: rollbackErr?.message });
+                }
+            }
+
             return NextResponse.json(
                 { error: 'Failed to create payment order. Please try again.' },
                 { status: 502 }
