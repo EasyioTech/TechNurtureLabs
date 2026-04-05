@@ -418,15 +418,18 @@ export async function invalidateAllStudentDashboardCaches() {
             columns: { id: true }
         });
 
-        let invalidatedCount = 0;
-        for (const student of allStudents) {
-            const cacheKey = `cache:student:${student.id}:dashboard`;
-            await redis.del(cacheKey);
-            invalidatedCount++;
+        // PERFORMANCE: Batch Redis deletions using pipeline to avoid O(n) round-trips
+        if (allStudents.length > 0) {
+            const pipeline = redis.pipeline();
+            for (const student of allStudents) {
+                const cacheKey = `cache:student:${student.id}:dashboard`;
+                pipeline.del(cacheKey);
+            }
+            await pipeline.exec();
         }
 
-        console.log(`[Cache Invalidation] Invalidated ${invalidatedCount} student dashboard caches`);
-        return { success: true, invalidatedCount };
+        console.log(`[Cache Invalidation] Invalidated ${allStudents.length} student dashboard caches`);
+        return { success: true, invalidatedCount: allStudents.length };
     } catch (error: any) {
         console.error('[Cache Invalidation] Error:', error);
         return { success: false, error: error.message };
