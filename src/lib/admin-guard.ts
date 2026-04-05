@@ -51,7 +51,8 @@ export async function requireSchoolAdmin(requestedSchoolId: string) {
             eq(schoolAdmins.is_active, true),
             // SECURITY: Also check not soft-deleted
             sql`${schoolAdmins.deleted_at} IS NULL`
-        )
+        ),
+        with: { school: true } as any
     });
 
     if (!admin) {
@@ -60,6 +61,34 @@ export async function requireSchoolAdmin(requestedSchoolId: string) {
 
     return { session, admin };
 }
+
+/**
+ * CRITICAL FIX: Verify any valid school admin session exists.
+ * Used for top-level layouts where school_id is not yet in parameters.
+ */
+export async function requireAnySchoolAdmin() {
+    const session = await verifySession();
+
+    if (!session || session.userType !== 'school_admin') {
+        redirect('/school-portal/login?revoked=true');
+    }
+
+    const admin = await db.query.schoolAdmins.findFirst({
+        where: and(
+            eq(schoolAdmins.id, session.userId),
+            eq(schoolAdmins.is_active, true),
+            sql`${schoolAdmins.deleted_at} IS NULL`
+        ),
+        with: { school: true } as any
+    });
+
+    if (!admin || !admin.school_id) {
+        redirect('/school-portal/login?revoked=true');
+    }
+
+    return { session, admin };
+}
+
 
 /**
  * CRITICAL FIX #2: Verify student belongs to the requested school.

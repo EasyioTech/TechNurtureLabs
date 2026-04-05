@@ -13,6 +13,7 @@ import {
   BookOpen, Trophy, Star, X, CheckCircle2 as CheckIcon,
   ArrowRight, ChevronRight, Home, Timer,
 } from 'lucide-react';
+import { LevelUpOverlay } from '@/modules/student/components/gamification/level-up-overlay';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -49,6 +50,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
   const isDocumentLesson = lesson.content_type === 'pdf' || lesson.content_type === 'ppt';
 
   // ── Timer ─────────────────────────────────────────────────────────────────
+  const [leveledUpInfo, setLeveledUpInfo] = useState<{ show: boolean; level: number }>({ show: false, level: 1 });
   // Only active when lesson has a duration and is not already complete
   const durationMinutes: number = lesson.duration_minutes ?? 0;
   const timerEnabled            = durationMinutes > 0 && !lessonComplete;
@@ -60,13 +62,11 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
       isAlreadyComplete: lessonComplete,
     });
 
-  // Allow "Mark Done" when: no timer set  OR  timer finished
-  const canMarkDone = !timerEnabled || timerDone || lessonComplete;
+  // Anti-Inspect Security: The button is only RENDERED if the timer is done.
+  // Standard canMarkDone logic
+  const canMarkProgress = !timerEnabled || timerDone || lessonComplete;
 
   // ── Accidental-navigation guard ────────────────────────────────────────────
-  // Active only while timer is running (started but not yet done)
-  // Removed forced pushState guard that trapped users.
-  // Standard beforeunload is kept for data safety, but history is NOT hijacked.
   useEffect(() => {
     if (!timerEnabled || !hasStarted || timerDone || lessonComplete) return;
 
@@ -84,12 +84,12 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
   // ── Listen for Mark Done triggered from the mobile bottom-nav ─────────────
   useEffect(() => {
     const handler = () => {
-      if (canMarkDone && !lessonComplete) handleComplete(false);
+      if (canMarkProgress && !lessonComplete) handleComplete(false);
     };
     window.addEventListener('tnl:mark-done-click', handler);
     return () => window.removeEventListener('tnl:mark-done-click', handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canMarkDone, lessonComplete]);
+  }, [canMarkProgress, lessonComplete]);
 
   // ── Broadcast lesson-completed so bottom-nav hides the Mark Done strip ────
   useEffect(() => {
@@ -103,8 +103,6 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
   }, [lessonComplete, docTotal]);
 
   // ── Passive time tracking (server-side, every 10 s) ───────────────────────
-  // Skips the call when the browser tab is hidden — no point tracking time the
-  // student isn't actually spending on the lesson.
   useEffect(() => {
     const interval = setInterval(() => {
       if (!lessonComplete && lesson.id && !document.hidden) {
@@ -121,6 +119,13 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
     isPerfect?: boolean,
   ) => {
     if (lessonComplete && !quizPercentage) { setShowCelebration(true); return; }
+    
+    // Final security check before calling server action
+    if (!canMarkProgress && !isVideo) {
+      toast.error('Please finish the required lesson time first');
+      return;
+    }
+
     try {
       setIsSaving(true);
       setShowCelebration(true);
@@ -129,6 +134,9 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
 
       if (res?.success || res?.alreadyCompleted) {
         setLessonComplete(true);
+        if (res?.leveledUp) {
+          setLeveledUpInfo({ show: true, level: res.newLevel || 1 });
+        }
         router.refresh();
         if (lesson.course_id) {
           const updatedCourse = await getCourseDetailsData(lesson.course_id, true);
@@ -151,7 +159,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
       setIsSaving(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lessonComplete, lesson.id, lesson.course_id]);
+  }, [lessonComplete, lesson.id, lesson.course_id, canMarkProgress]);
 
   const handlePageSelect = (p: number) => {
     if (p > docTotal || p < 1) return;
@@ -324,6 +332,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
             isFocusMode={false}
             onComplete={handleComplete}
             lessonComplete={lessonComplete}
+            isTimerLocked={!canMarkProgress}
             pageNumber={docPage}
             docMax={docMax}
             onDocStateChange={(total) => setDocTotal(total)}
@@ -382,8 +391,9 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                       </span>
                     </Link>
                   )
-                ) : canMarkDone ? (
+                ) : canMarkProgress ? (
                   <button
+                    id="lesson-complete-button"
                     onClick={() => handleComplete(false)}
                     disabled={isSaving}
                     className="flex items-center gap-2 h-12 px-6 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/30 disabled:opacity-60 hover:bg-indigo-700 active:scale-95 transition-all"
@@ -396,9 +406,12 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                     {isSaving ? 'Saving…' : 'Save Progress'}
                   </button>
                 ) : (
-                  <div className="flex items-center gap-2 h-12 px-6 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-not-allowed border border-slate-200/60 transition-all">
+                  <div 
+                    id="lesson-complete-locked"
+                    className="flex items-center gap-2 h-12 px-6 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-not-allowed border border-slate-200/60 transition-all select-none"
+                  >
                     <Timer size={16} />
-                    {hasStarted ? 'Locked' : 'Locked'}
+                    Locked
                   </div>
                 )}
               </div>
@@ -495,6 +508,13 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ─── Level Up Celebration ─── */}
+      <LevelUpOverlay 
+        show={leveledUpInfo.show} 
+        newLevel={leveledUpInfo.level} 
+        onClose={() => setLeveledUpInfo({ ...leveledUpInfo, show: false })} 
+      />
     </div>
   );
 }

@@ -4,6 +4,13 @@ This is the **Ultimate Developer's Handbook** for managing TechNurture Labs. It 
 
 ---
 
+## 🛡️ STRICT DEPLOYMENT PROTOCOL
+> [!IMPORTANT]
+> **RULE #1: NEVER deploy directly to Production.**
+> All changes **MUST** be deployed and verified on the **Staging Server** (`187.124.98.192`) before being pushed to **Production** (`187.127.132.137`).
+
+---
+
 ## 🏗️ 1. Local Development Suite
 Run these from `c:\Users\cristy's\TechNurtureLabs`.
 
@@ -16,6 +23,45 @@ Run these from `c:\Users\cristy's\TechNurtureLabs`.
 | **Deep Clean** | `Remove-Item -Recurse -Force .next, node_modules` | Fixes "weird" build or dependency bugs. |
 | **Lint Everything** | `npm run lint` | Ensures code style and types are perfect. |
 
+---
+
+## 🔑 1b. SSH Key Setup (No More Passwords!)
+To log into your VPS servers without entering a password every time, follow these steps on your **Local Computer (Windows)**:
+
+### 1. Generate Your Key Pair
+Open PowerShell and run:
+```powershell
+ssh-keygen -t ed25519 -f "$HOME\.ssh\id_technurture"
+# Press Enter for all prompts (no passphrase needed for simplicity)
+```
+
+### 2. Copy Key to VPS
+For **each** VPS (Production & Staging), run this command:
+```powershell
+# Run Once for Production (Real)
+Get-Content "$HOME\.ssh\id_technurture.pub" | ssh root@187.127.132.137 "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+
+# Run Once for Staging (Test)
+Get-Content "$HOME\.ssh\id_technurture.pub" | ssh root@187.124.98.192 "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+```
+
+### 3. (Optional) Create a Shortcut
+Create or edit `C:\Users\cristy's\.ssh\config` and add:
+```text
+Host prod
+  HostName 187.127.132.137
+  User root
+  IdentityFile ~/.ssh/id_technurture
+
+Host staging
+  HostName 187.124.98.192
+  User root
+  IdentityFile ~/.ssh/id_technurture
+```
+**Now you can just type:** `ssh prod` or `ssh staging` and you're in!
+
+---
+
 ### 🗄️ Database (Drizzle & PostgreSQL)
 | Action | Command |
 | :--- | :--- |
@@ -26,17 +72,40 @@ Run these from `c:\Users\cristy's\TechNurtureLabs`.
 
 ---
 
-## ☁️ 2. Production VPS Management
-**VPS IP:** `187.127.132.137` | **SSH:** `ssh root@187.127.132.137`
+## ☁️ 2. VPS Infrastructure Management
 
-### 🚀 The "Gold Standard" Deployment
-Follow this **EXACTLY** to avoid breaking production:
-1. **Local**: `git add . && git commit -m "feat: your change" && git push origin main`
-2. **VPS**: `cd /root/TechNurtureLabs && git pull origin main`
-3. **VPS (Build)**: `docker compose build app`
-4. **VPS (Deploy)**: `docker compose up -d app`
+> [!CAUTION]
+> **STRICT PROTOCOL**: Always test on **Staging** first. Never update **Production** until Staging is confirmed 100% flawless.
 
-### 📦 Docker Fleet Control
+| Environment | VPS IP | SSH Access | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Production** | `187.127.132.137` | `ssh prod` | **Live Traffic** |
+| **Staging** | `187.124.98.192` | `ssh staging` | **Pre-Production Testing** |
+
+---
+
+## 🚀 3. Deployment Pipelines
+
+To ensure stability, we now follow a **Staging-First** deployment strategy.
+
+### 🧪 Pipeline A: The Staging Deploy (Beta Testing)
+Use this to confirm your changes work "in the wild" before they hit the real students.
+1. **Local**: `git add . && git commit -m "feat: new feature" && git push origin main` 
+   *(Note: You can also use a dedicated `staging` branch if you prefer)*.
+2. **Staging VPS**: `cd /root/TechNurtureLabs && git pull origin main`
+3. **Staging VPS (Build)**: `docker compose build app`
+4. **Staging VPS (Deploy)**: `docker compose up -d app`
+5. **Verify**: Open your staging URL (or VPS IP) and test all critical flows.
+
+### 🏆 Pipeline B: The Production Deploy (The "Gold Standard")
+Only run this **AFTER** confirming success on the Staging VPS.
+1. **Production VPS**: `cd /root/TechNurtureLabs && git pull origin main`
+2. **Production VPS (Build)**: `docker compose build app`
+3. **Production VPS (Deploy)**: `docker compose up -d app`
+
+---
+
+## 📦 4. Docker Fleet Control
 | Operation | Command |
 | :--- | :--- |
 | **Status Dashboard** | `docker ps` |
@@ -49,7 +118,7 @@ Follow this **EXACTLY** to avoid breaking production:
 
 ---
 
-## 🕵️ 3. Advanced Debugging & Troubleshooting
+## 🕵️ 5. Advanced Debugging & Troubleshooting
 
 ### 🔍 Investigating Crashes
 | Scenario | Command on VPS |
@@ -83,7 +152,7 @@ docker exec -it LMS_postgres psql -U technurture_user -d technurture_db
 
 ---
 
-## 🆘 4. Emergency & Maintenance Utility
+## 🆘 6. Emergency & Maintenance Utility
 
 ### 🧹 Disk Space Cleanup (Very Important!)
 Docker builds consume a lot of space. Run this once a month:
@@ -114,7 +183,7 @@ docker compose up -d --build --force-recreate
 
 ---
 
-## 🔐 5. Security & Environment
+## 🔐 7. Security & Environment
 
 ### 📝 Updating Secrets (.env)
 1. **Local**: Edit `.env` or `.env.production`.
@@ -129,6 +198,47 @@ docker compose up -d --build --force-recreate
 To backup the production database to a file:
 ```bash
 docker exec LMS_postgres pg_dump -U technurture_user technurture_db > backup_$(date +%F).sql
+```
+
+---
+
+## 🛠️ 8. Initial Setup: Staging VPS
+If you've just bought a new VPS, follow these steps to prepare it for deployment:
+
+### ⚡ 1. Install Docker & Prerequisites
+Run this on your new VPS bash shell:
+```bash
+# Update system
+apt update && apt upgrade -y
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh
+# Final check
+docker --version && docker compose version
+```
+
+### 🧬 2. Clone Your Repository
+```bash
+# Set up working directory
+mkdir -p /root/TechNurtureLabs
+git clone [YOUR_REPO_URL] /root/TechNurtureLabs
+cd /root/TechNurtureLabs
+```
+
+### 📝 3. Environment Variables (Staging Mode)
+Copy the production template as a starting point:
+```bash
+cp .env.production .env
+nano .env
+```
+**CRITICAL**: In the `nano` editor, update these values:
+- `NEXT_PUBLIC_APP_URL` -> Set to your new VPS IP or staging subdomain.
+- `JWT_SECRET` -> Generate a new unique secret.
+- `APP_ENCRYPTION_KEY` -> Generate a new unique key.
+
+### 🍱 4. Launch the Environment
+```bash
+# Build and run the entire stack in the background
+docker compose up -d --build
 ```
 
 ---

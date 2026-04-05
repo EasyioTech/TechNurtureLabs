@@ -3,8 +3,8 @@ import { getPlatformSettings } from '@/components/landing/actions';
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
     const settings = await getPlatformSettings();
-    const name = settings?.platform_name ?? 'TechNurture Labs';
-    const short = name.length > 12 ? name.split(' ')[0] : name;
+    const name = (settings?.platform_name ?? 'TechNurture Labs') || 'TechNurture Labs';
+    const short = (name ?? '').length > 12 ? (name ?? '').split(' ')[0] : (name ?? '');
 
     return {
         name,

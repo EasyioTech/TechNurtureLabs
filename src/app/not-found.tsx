@@ -1,4 +1,4 @@
-import DatabaseMaintenance from '@/components/DatabaseMaintenance';
+import DatabaseMaintenance from '@/components/shared/DatabaseMaintenance';
 
 export default function NotFound() {
     return <DatabaseMaintenance />;

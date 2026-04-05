@@ -14,7 +14,9 @@ export type Course = {
     lesson_count?: number;
     enrolled_count?: number;
     all_classes: boolean;
+    classIds?: string[];
 };
+
 
 export type Lesson = {
     id: string;
@@ -48,6 +50,12 @@ export type PaymentPlan = {
     is_popular: boolean;
 };
 
+export type SchoolClass = {
+    id: string;
+    name: string;
+    level: number;
+};
+
 export type SchoolInfo = {
     id: string;
     name: string;
@@ -69,7 +77,11 @@ export type SchoolInfo = {
     plan_name?: string | null;
     student_count?: number;
     classIds?: string[];
+    // Form fields for registration/update
+    principal_name?: string;
+    password?: string;
 };
+
 
 export type Stats = {
     totalStudents: number;
@@ -186,3 +198,11 @@ export type DiagnosticsResult = {
     issues: string[];
     cleanedCount: number;
 };
+
+export type CourseClassMapping = {
+    id: string;
+    course_id: string;
+    class_id: string;
+    is_active: boolean;
+};
+

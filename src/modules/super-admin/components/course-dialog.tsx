@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Course } from '../types';
+import { Course, SchoolClass, CourseClassMapping } from '../types';
 import { useAdminTheme, t } from '../theme-context';
 import { BookOpen, ExternalLink, Zap, Eye, Library } from 'lucide-react';
 import { toast } from 'sonner';
@@ -23,13 +23,14 @@ interface CourseDialogProps {
     editingCourse: Partial<Course> | null;
     setEditingCourse: (course: Partial<Course> | null) => void;
     onSave: () => void;
-    classes: any[];
-    courseClassMappings: any[];
+    classes: SchoolClass[];
+    courseClassMappings: CourseClassMapping[];
 }
 
 export function CourseDialog({
     open, onOpenChange, editingCourse, setEditingCourse, onSave, classes, courseClassMappings
 }: CourseDialogProps) {
+
     const { isDark, accent } = useAdminTheme();
     const isEditing = !!editingCourse?.id;
 
@@ -54,8 +55,9 @@ export function CourseDialog({
             ? selectedClassIds.filter(id => id !== classId)
             : [...selectedClassIds, classId];
         setSelectedClassIds(newIds);
-        setEditingCourse({ ...editingCourse, classIds: newIds, all_classes: newIds.length === classes.length } as any);
+        setEditingCourse({ ...editingCourse, classIds: newIds, all_classes: newIds.length === classes.length });
     };
+
 
     return (
         <>

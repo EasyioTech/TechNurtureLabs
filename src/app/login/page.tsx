@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/components/providers/auth-provider';
 import { LogIn, ArrowLeft, Loader2, GraduationCap, CheckCircle2, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { PrimaryButton } from '@/components/landing/PrimaryButton';
-import { StudentLoginSidebar } from '@/components/registration/StudentLoginSidebar';
+import { StudentLoginSidebar } from '@/modules/auth/components/StudentLoginSidebar';
 import { GlobalLogo } from '@/modules/shared/components/global-logo';
 import { getPlatformSettings } from "@/components/landing/actions";
 

@@ -13,15 +13,25 @@ export async function GET(req: NextRequest) {
     try {
         // Use the DATABASE_URL from environment — never hardcode credentials
         const dbUrl = serverEnv.DATABASE_URL;
+        const appRolePassword = process.env.DATABASE_APP_ROLE_PASSWORD;
+
+        if (!appRolePassword) {
+            return NextResponse.json(
+                { error: 'DATABASE_APP_ROLE_PASSWORD environment variable is required' },
+                { status: 500 }
+            );
+        }
+
         // max: 1 is explicitly required by postgres.js when executing massive raw SQL scripts containing BEGIN/COMMIT blocks.
         const sql = postgres(dbUrl, { max: 1 });
 
         // 1. Force create the application role
+        // SECURITY: Password comes from environment variable, not hardcoded
         await sql.unsafe(`
             DO $$
             BEGIN
               IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'technurture_app') THEN
-                CREATE ROLE technurture_app WITH LOGIN PASSWORD 'technurture_secure_pass';
+                CREATE ROLE technurture_app WITH LOGIN PASSWORD '${appRolePassword}';
               END IF;
             END
             $$;

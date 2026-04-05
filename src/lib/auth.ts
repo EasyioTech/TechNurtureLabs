@@ -68,8 +68,10 @@ export async function createSession(payload: Omit<SessionPayload, 'sessionId' | 
     });
 
     // Mirror in Redis for fast verification (best-effort)
-    redis.set(`session:${sessionId}`, JSON.stringify(sessionData), 'EX', roleExpiry)
-        .catch(() => { /* Non-critical: Session will fall back to DB */ });
+    if (redis && (redis as any).status === 'ready') {
+        redis.set(`session:${sessionId}`, JSON.stringify(sessionData), 'EX', roleExpiry)
+            .catch(() => { /* Non-critical: Session will fall back to DB */ });
+    }
 
     // Create Access Token (JWT)
     const token = await new SignJWT(sessionData)
@@ -128,7 +130,7 @@ async function trackActivity(userId: string) {
     const key = `dau:${today}`;
     try {
         // Guard against closed connection
-        if (redis.status !== 'ready') {
+        if (!redis || (redis as any).status !== 'ready') {
             return;
         }
         await redis.sadd(key, userId);
@@ -171,14 +173,19 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
                 sessionData.role = sessionData.userType;
             }
 
-            // Check if session exists — Redis first, DB fallback if Redis is down.
-            // This ensures users aren't logged out during a Redis restart or blip.
+            // Check if session exists — Redis first, DB fallback if Redis is down/disabled.
             let sessionValid = false;
+            let exists: string | null = null;
+            
             try {
-                const exists = await redis.get(`session:${sessionData.sessionId}`);
-                sessionValid = !!exists;
-            } catch (redisErr) {
-                // Redis unavailable, fall back to DB for session check
+                if (redis && (redis as any).status === 'ready') {
+                    exists = await redis.get(`session:${sessionData.sessionId}`);
+                    sessionValid = !!exists;
+                }
+            } catch (redisErr) { /* fallback below */ }
+
+            // Fallback to Database if Redis didn't yield a result
+            if (!sessionValid) {
                 const dbSession = await db.query.userSessions.findFirst({
                     where: and(
                         eq(userSessions.id, sessionData.sessionId),
@@ -186,8 +193,9 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
                     )
                 });
                 sessionValid = !!(dbSession && !dbSession.revoked_at);
-                // Best-effort cache restore
-                if (sessionValid) {
+                
+                // Best-effort cache restore if we are in production or have Redis up
+                if (sessionValid && redis && (redis as any).status === 'ready') {
                     const roleExpiry = getSessionExpirySeconds(sessionData.userType);
                     redis.set(
                         `session:${sessionData.sessionId}`,
@@ -213,12 +221,12 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
     try {
         const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
 
-        // --- RACE CONDITION FIX: Rotation Grace Period ---
-        // If this token was JUST rotated by a parallel request, use the grace period data
-        // Silently skip the grace check if Redis is unavailable — worst case, the parallel
-        // request gets a 401 and retries, which is safe.
         let graceData: string | null = null;
-        try { graceData = await redis.get(`rotation_grace:${refreshTokenHash}`); } catch (_) {}
+        try { 
+            if (redis && (redis as any).status === 'ready') {
+                graceData = await redis.get(`rotation_grace:${refreshTokenHash}`); 
+            }
+        } catch (_) {}
         if (graceData) {
             const parsed = JSON.parse(graceData);
             // Set only the new access token cookie — refresh token is already in the
@@ -254,7 +262,11 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
         };
 
         let cachedData: string | null = null;
-        try { cachedData = await redis.get(`session:${sessionId}`); } catch (_) {}
+        try { 
+            if (redis && (redis as any).status === 'ready') {
+                cachedData = await redis.get(`session:${sessionId}`); 
+            }
+        } catch (_) {}
         const finalSessionData = cachedData ? JSON.parse(cachedData) : sessionData;
 
         if (!finalSessionData.role && finalSessionData.userType) {
@@ -298,18 +310,20 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
                 })
                 .where(eq(userSessions.id, sessionId));
             
-            await redis.expire(`session:${sessionId}`, roleExpiry);
+            if (redis && (redis as any).status === 'ready') {
+                await redis.expire(`session:${sessionId}`, roleExpiry);
 
-            // --- GRACE PERIOD: Prevent parallel request failures ---
-            // Store only the new access token and session data — NOT the refresh token.
-            // Storing the plaintext refresh token in Redis would expose it to any Redis breach.
-            // Parallel requests in the grace window get the new access token from here;
-            // the new refresh token is already set in the cookie by the first rotation.
-            await redis.set(`rotation_grace:${refreshTokenHash}`, JSON.stringify({
-                sessionData: finalSessionData,
-                newAccessToken,
-                // newRefreshToken intentionally omitted — sent via httpOnly cookie only
-            }), 'EX', 30); // 30 second grace period
+                // --- GRACE PERIOD: Prevent parallel request failures ---
+                // Store only the new access token and session data — NOT the refresh token.
+                // Storing the plaintext refresh token in Redis would expose it to any Redis breach.
+                // Parallel requests in the grace window get the new access token from here;
+                // the new refresh token is already set in the cookie by the first rotation.
+                await redis.set(`rotation_grace:${refreshTokenHash}`, JSON.stringify({
+                    sessionData: finalSessionData,
+                    newAccessToken,
+                    // newRefreshToken intentionally omitted — sent via httpOnly cookie only
+                }), 'EX', 30); // 30 second grace period
+            }
 
         } catch (cookieError) {
             // Read-only context (Layout/Page)
@@ -347,7 +361,9 @@ export async function destroySession() {
                 await db.update(userSessions)
                     .set({ revoked_at: new Date() })
                     .where(eq(userSessions.id, session.id));
-                await redis.del(`session:${session.id}`);
+                if (redis && (redis as any).status === 'ready') {
+                    await redis.del(`session:${session.id}`);
+                }
             }
         } catch (e) {
             // Ignore errors

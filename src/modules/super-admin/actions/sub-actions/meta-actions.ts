@@ -313,13 +313,17 @@ export async function syncPlatformMetrics() {
 
     const session = await requireSuperAdmin();
 
+    const redisAvailable = redis && (redis as any).status === 'ready';
+
     try {
         // M-10: Prevention of parallel metrics scan
-        const alreadyRunning = await redis.get(SYNC_LOCK_KEY);
-        if (alreadyRunning) {
-            return { success: false, error: "Metrics sync is already in progress. Please wait a few minutes." };
+        if (redisAvailable) {
+            const alreadyRunning = await redis.get(SYNC_LOCK_KEY);
+            if (alreadyRunning) {
+                return { success: false, error: "Metrics sync already in progress." };
+            }
+            await redis.setex(SYNC_LOCK_KEY, LOCK_EXPIRY, 'running');
         }
-        await redis.setex(SYNC_LOCK_KEY, LOCK_EXPIRY, 'running');
 
         const last30Days = [];
         const today = new Date();
@@ -420,12 +424,17 @@ export async function syncPlatformMetrics() {
             });
         }
 
-        await redis.del(SYNC_LOCK_KEY);
-        await redis.del(CACHE_KEY);
+        if (redisAvailable) {
+            await redis.del(SYNC_LOCK_KEY);
+            await redis.del(CACHE_KEY);
+        }
         return { success: true };
-    } catch (error) {
-        await redis.del(SYNC_LOCK_KEY);
-        return { success: false, error };
+    } catch (error: any) {
+        if (redisAvailable) {
+            await redis.del(SYNC_LOCK_KEY);
+        }
+        console.error("[syncPlatformMetrics] ERROR:", error.message || error);
+        return { success: false, error: error.message || "Metrics sync failed internally" };
     }
 }
 

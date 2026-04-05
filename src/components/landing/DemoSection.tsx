@@ -6,7 +6,7 @@ import { motion, useScroll, useTransform, useMotionValue } from 'framer-motion';
 import { Play, Pause, Youtube, Video } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import { CloudflareStreamPlayer } from '../video/cloudflare-stream-player';
+import { CloudflareStreamPlayer } from '@/modules/student/components/video/cloudflare-stream-player';
 
 const CustomVideoPlayer = ({ src, type, autoPlay = false }: { src: string, type: string, autoPlay?: boolean }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -53,11 +53,14 @@ const CustomVideoPlayer = ({ src, type, autoPlay = false }: { src: string, type:
     if (type === 'youtube') {
         let videoId = src;
         if (src.includes('v=')) {
-            videoId = src.split('v=')[1].split('&')[0];
+            const parts = src.split('v=');
+            videoId = (parts[1] ?? '').split('&')[0];
         } else if (src.includes('youtu.be/')) {
-            videoId = src.split('youtu.be/')[1].split('?')[0];
+            const parts = src.split('youtu.be/');
+            videoId = (parts[1] ?? '').split('?')[0];
         } else if (src.includes('embed/')) {
-            videoId = src.split('embed/')[1].split('?')[0];
+            const parts = src.split('embed/');
+            videoId = (parts[1] ?? '').split('?')[0];
         }
         
         // If it's an email or clearly not a YouTube ID, don't show the iframe
@@ -84,7 +87,16 @@ const CustomVideoPlayer = ({ src, type, autoPlay = false }: { src: string, type:
     }
 
     if (type === 'vimeo') {
-        const videoId = src.split('/').pop();
+        const videoId = (src.split('/').pop() ?? '').trim();
+        if (!videoId || videoId.length < 5) {
+            return (
+                <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center text-slate-400 gap-4 p-8 text-center">
+                     <Video className="w-12 h-12 opacity-20" />
+                     <span className="text-xs font-bold uppercase tracking-widest opacity-60">Invalid Vimeo URL in Platform Settings</span>
+                     <p className="text-[10px] opacity-40 max-w-[200px]">Current value: {src}</p>
+                </div>
+            );
+        }
         return (
             <iframe
                 src={`https://player.vimeo.com/video/${videoId}?autoplay=${autoPlay ? 1 : 0}&muted=1`}

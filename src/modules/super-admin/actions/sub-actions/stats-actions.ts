@@ -34,9 +34,12 @@ export async function fetchAdminStats(): Promise<Stats> {
 
     // 1. Attempt to fetch the rest from high-performance Redis counters
     const redisStats: any = await analyticsService.getGlobalStats();
-    const lastSync = Number(redisStats.last_sync || 0);
-    const CACHE_MINUTES = 15;
-    const isCacheWarm = redisStats.total_students && (Date.now() - lastSync < CACHE_MINUTES * 60 * 1000);
+    let isCacheWarm = false;
+    if (redisStats) {
+        const lastSync = Number(redisStats.last_sync || 0);
+        const CACHE_MINUTES = 15;
+        isCacheWarm = redisStats.total_students && (Date.now() - lastSync < CACHE_MINUTES * 60 * 1000);
+    }
 
     if (isCacheWarm) {
         const mrr = Number(redisStats.mrr || 0);

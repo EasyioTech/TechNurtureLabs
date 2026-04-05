@@ -1,20 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import {
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Building2, CheckCircle2, CreditCard, IndianRupee, Edit, Mail, MapPin, ArrowUpRight, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react';
-import { Stats, SchoolInfo, PaymentPlan } from '../../types';
-import { useAdminTheme, t } from '../../theme-context';
+import { SchoolInfo, Stats, PaymentPlan, SchoolClass } from '../../types';
+
+// Modular Components
+import { SchoolStats } from './schools/school-stats';
+import { SchoolList } from './schools/school-list';
+import { SchoolEditDialog } from './schools/school-edit-dialog';
 
 interface SchoolsTabProps {
     stats: Stats;
@@ -28,7 +19,8 @@ interface SchoolsTabProps {
     editingSchool: Partial<SchoolInfo> | null;
     setEditingSchool: (s: Partial<SchoolInfo> | null) => void;
     searchQuery?: string;
-    classes: any[];
+    classes: SchoolClass[];
+
     onSync?: () => void;
     page?: number;
     setPage?: (p: number) => void;
@@ -44,24 +36,24 @@ export function SchoolsTab({
     classes, onSync, page = 0, setPage, totalPages = 1,
     hasMore = false, loadingMore = false, onLoadMore
 }: SchoolsTabProps) {
-    const { isDark, accent } = useAdminTheme();
-    const [assignSchoolId, setAssignSchoolId] = useState<string | null>(null);
-    const [selectedPlanId, setSelectedPlanId] = useState<string>('');
 
-    // Intersection Observer for Infinite Scroll
-    const observer = React.useRef<IntersectionObserver | null>(null);
-    const lastElementRef = React.useCallback((node: HTMLDivElement | null) => {
-        if (loadingMore) return;
-        if (observer.current) observer.current.disconnect();
-        observer.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && hasMore && onLoadMore) {
-                onLoadMore();
-            }
-        });
-        if (node) observer.current.observe(node);
-    }, [loadingMore, hasMore, onLoadMore]);
+    function openEdit(school: SchoolInfo) { 
+        setEditingSchool({ ...school }); 
+        setShowEditDialog(true); 
+    }
 
-    // M-2: Server-side search handled by parent, filtering here is redundant but kept for safety if list isn't refreshed instantly
+    function handleSave() { 
+        if (editingSchool) { 
+            onSaveSchool(editingSchool); 
+        } 
+    }
+
+    function handleAssignPlan(schoolId: string, planId: string) {
+        if (onAssignPlan) {
+            onAssignPlan(schoolId, planId);
+        }
+    }
+
     const filteredSchools = searchQuery
         ? schoolsList.filter(s =>
             s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -70,316 +62,35 @@ export function SchoolsTab({
         )
         : schoolsList;
 
-    function openEdit(school: SchoolInfo) { setEditingSchool({ ...school }); setShowEditDialog(true); }
-    function handleSave() { if (editingSchool) { onSaveSchool(editingSchool); } }
-
-    function handleAssignPlan() {
-        if (assignSchoolId && selectedPlanId && onAssignPlan) {
-            onAssignPlan(assignSchoolId, selectedPlanId);
-            setAssignSchoolId(null);
-            setSelectedPlanId('');
-        }
-    }
-
-    const handleToggleClass = (classId: string) => {
-        if (!editingSchool) return;
-        const currentIds = (editingSchool as any).classIds || [];
-        const newIds = currentIds.includes(classId)
-            ? currentIds.filter((id: string) => id !== classId)
-            : [...currentIds, classId];
-        setEditingSchool({ ...editingSchool, classIds: newIds } as any);
-    };
-
     return (
         <div className="space-y-4">
-            {/* Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {[
-                    { value: (stats?.activeSchools || 0).toString(), label: 'Active Institutions', icon: Building2, badge: `of ${stats?.totalSchools || 0} TOTAL`, theme: 'accent' },
-                    { value: (stats?.activeSubscriptions || 0).toString(), label: 'Active Subscriptions', icon: CheckCircle2, badge: `${stats?.trialingSubscriptions || 0} TRIALS`, theme: 'accent' },
-                    { value: `\u20B9${(stats?.totalRevenue || 0).toLocaleString('en-IN')}`, label: 'Platform Revenue', icon: IndianRupee, badge: 'ALL-TIME', theme: 'accent' },
-                ].map((item, i) => {
-                    const activeTheme = isDark ? accent.softDark : accent.softLight;
-                    return (
-                        <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                            className={`rounded-[24px] border p-6 transition-all duration-300 shadow-lg shadow-black/5 flex flex-col justify-between group ${t.card(isDark)} ${t.cardHover(isDark)} ${t.cardHoverAccent(isDark, accent)}`}>
-                            <div className="flex justify-between items-start mb-4">
-                                <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>{item.label}</p>
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${activeTheme}`}>
-                                    <item.icon size={14} />
-                                </div>
-                            </div>
-                            <div>
-                                <p className={`text-3xl font-[900] tracking-tighter ${t.textPrimary(isDark)}`}>{item.value}</p>
-                                <span className={`inline-flex items-center gap-1 text-[10px] font-black mt-3 px-2.5 py-1 rounded-full ${t.accentBadge(isDark, accent)}`}>
-                                    <ArrowUpRight size={10} />{item.badge}
-                                </span>
-                            </div>
-                        </motion.div>
-                    );
-                })}
-            </div>
+            <SchoolStats stats={stats} />
 
-            {/* School List */}
-            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
-                className={`rounded-[24px] border overflow-hidden transition-all duration-300 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
-                <div className={`px-4 sm:px-6 py-4 sm:py-5 border-b ${t.border(isDark)} flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
-                    <div>
-                        <h3 className={`text-lg font-black tracking-tight ${t.textPrimary(isDark)}`}>School Directory</h3>
-                        <p className={`text-[11px] sm:text-[12px] font-medium ${t.textMuted(isDark)}`}>Manage all registered schools and partner organizations.</p>
-                    </div>
-                    <div className="flex items-center gap-3 self-end sm:self-auto">
-                        <Button type="button" size="sm"
-                            onClick={() => {
-                                setEditingSchool({ is_active: true, classIds: [] });
-                                setShowEditDialog(true);
-                            }}
-                            className={`rounded-xl gap-2 h-9 px-4 text-[10px] font-black shadow-lg transition-all
-                                ${isDark ? '' : 'shadow-black/5'} ${t.btnPrimary(isDark, accent)}`}
-                            style={isDark ? t.glowStyle(isDark, accent) : {}}>
-                            <Plus size={14} strokeWidth={3} /> REGISTER SCHOOL
-                        </Button>
-                        <Badge className={`text-[10px] font-black px-3 py-1 rounded-full ${isDark ? 'bg-white/[0.12] text-white shadow-lg shadow-black/20' : 'bg-slate-900 text-white shadow-md shadow-slate-200'}`}>
-                            PAGE {page + 1}
-                        </Badge>
-                    </div>
-                </div>
-                <div className={t.divider(isDark)}>
-                    {filteredSchools.map((school, i) => (
-                        <motion.div key={school.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.22 + i * 0.04 }}
-                            className={`px-4 sm:px-6 py-4 flex items-start sm:items-center gap-3 sm:gap-4 transition-all group ${t.cardHover(isDark)}`}>
-                            
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 mt-1 sm:mt-0">
-                                {school.logo_url ? (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <img src={school.logo_url} alt={school.name} className="w-full h-full object-contain" />
-                                    </div>
-                                ) : (
-                                    <div className={`w-full h-full rounded-full flex items-center justify-center text-[12px] sm:text-[14px] font-black
-                                        ${t.initialCircle(isDark, accent)}`}>
-                                        {school.name.charAt(0).toUpperCase()}
-                                    </div>
-                                )}
-                            </div>
+            <SchoolList 
+                schools={filteredSchools}
+                paymentPlans={paymentPlans}
+                onToggleStatus={onToggleStatus}
+                onEdit={openEdit}
+                onRegister={() => {
+                    setEditingSchool({ is_active: true, classIds: [] });
+                    setShowEditDialog(true);
+                }}
+                onAssignPlan={handleAssignPlan}
+                page={page}
+                searchQuery={searchQuery}
+                hasMore={hasMore}
+                loadingMore={loadingMore}
+                onLoadMore={onLoadMore || (() => {})}
+            />
 
-                            <div className="flex-1 min-w-0">
-                                <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-3">
-                                    <p className={`font-black text-sm sm:text-base tracking-tight truncate ${t.textPrimary(isDark)}`}>{school.name}</p>
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                        <Badge className={`text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-md ${school.plan_name ? t.accentSoft(isDark, accent) : (isDark ? 'bg-white/[0.1] text-slate-400 border border-white/[0.05]' : 'bg-slate-100 text-slate-400 border border-slate-200')}`}>
-                                            {school.plan_name ? school.plan_name.toUpperCase() : 'NO PLAN'}
-                                        </Badge>
-                                        <Badge className={`text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-md border ${school.is_active ? t.live(isDark) : t.danger(isDark)}`}>
-                                            {school.is_active ? 'ACTIVE' : 'INACTIVE'}
-                                        </Badge>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-1.5 mt-2 sm:mt-1.5">
-                                    <div className="flex items-center gap-1.5 overflow-hidden">
-                                        <Mail size={10} className={`flex-shrink-0 ${t.textMuted(isDark)}`} />
-                                        <span className={`text-[10px] sm:text-[11px] font-bold truncate ${t.textMuted(isDark)} mb-[-1px]`}>{school.email}</span>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        {school.city && (
-                                            <div className="flex items-center gap-1">
-                                                <MapPin size={10} className={`flex-shrink-0 ${t.textMuted(isDark)}`} />
-                                                <span className={`text-[10px] sm:text-[11px] font-bold ${t.textMuted(isDark)}`}>{school.city}</span>
-                                            </div>
-                                        )}
-                                        <div className="lg:hidden flex items-center gap-1">
-                                            <Users size={10} className={`flex-shrink-0 ${t.textSecondary(isDark)}`} /> 
-                                            <span className={`text-[10px] sm:text-[11px] font-black ${t.textSecondary(isDark)}`}>{(school.student_count || 0).toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="hidden lg:flex flex-col items-end min-w-[80px]">
-                                <p className={`text-[9px] font-black tracking-widest uppercase mb-0.5 ${t.textMuted(isDark)}`}>Students</p>
-                                <p className={`text-[11px] font-black ${t.textSecondary(isDark)}`}>{(school.student_count || 0).toLocaleString()}</p>
-                            </div>
-
-                            <div className="flex items-center gap-1 sm:gap-1.5 self-center sm:self-auto flex-shrink-0">
-                                {paymentPlans.length > 0 && onAssignPlan && (
-                                    <Popover open={assignSchoolId === school.id} onOpenChange={(open) => {
-                                        if (open) { setAssignSchoolId(school.id); setSelectedPlanId(school.plan_name ? (paymentPlans.find(p => p.name === school.plan_name)?.id || '') : ''); }
-                                        else { setAssignSchoolId(null); }
-                                    }}>
-                                        <PopoverTrigger asChild>
-                                            <Button type="button" variant="ghost" size="sm" className={`rounded-lg h-7 sm:h-8 px-2 sm:px-3 text-[9px] font-black lg:opacity-0 lg:group-hover:opacity-100 transition-all ${isDark ? 'text-sky-400 hover:bg-sky-400/10 hover:text-sky-400' : 'text-sky-600 hover:bg-sky-50'}`}>
-                                                <CreditCard size={11} className="sm:mr-1" /><span className="hidden sm:inline">PLAN</span>
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className={`w-72 rounded-2xl p-4 shadow-2xl border ${isDark ? 'bg-[#0f1219] border-white/10' : 'bg-white border-slate-200'}`} side="left">
-                                            <p className={`text-xs font-black uppercase tracking-widest mb-3 ${isDark ? accent.text : 'text-slate-900'}`}>Assign Subscription Plan</p>
-                                            <p className={`text-[11px] font-medium mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                For: <span className={`font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{school.name}</span>
-                                            </p>
-                                            <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-                                                <SelectTrigger className={`rounded-xl h-10 px-4 text-[12px] font-bold border-2 ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
-                                                    <SelectValue placeholder="Choose a plan..." />
-                                                </SelectTrigger>
-                                                <SelectContent className={`rounded-xl border ${isDark ? 'bg-[#0f1219] border-white/10' : 'bg-white border-slate-200'}`}>
-                                                    {paymentPlans.map(p => (
-                                                        <SelectItem key={p.id} value={p.id} className="text-[12px] font-bold cursor-pointer">
-                                                            {p.name}   ₹{p.price.toLocaleString()}/{p.billing_cycle}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <Button type="button" onClick={handleAssignPlan} disabled={!selectedPlanId}
-                                                className={`mt-4 w-full rounded-xl h-10 text-[11px] font-black border-0 disabled:opacity-40 ${t.btnPrimary(isDark, accent)}`}>
-                                                Assign Plan
-                                            </Button>
-                                        </PopoverContent>
-                                    </Popover>
-                                )}
-
-                                <Button type="button" variant="ghost" size="icon" className={`w-8 h-8 rounded-full lg:opacity-0 lg:group-hover:opacity-100 transition-all ${isDark ? `text-slate-500 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-300 hover:text-slate-800 hover:bg-slate-100'}`}
-                                    onClick={() => openEdit(school)}>
-                                    <Edit size={14} />
-                                </Button>
-                                <div className="scale-75 sm:scale-90 origin-right">
-                                    <Switch checked={school.is_active} onCheckedChange={(val) => onToggleStatus(school.id, val)} className={`data-[state=checked]:${accent.bg}`} />
-                                </div>
-                            </div>
-                        </motion.div>
-                    ))}
-
-                    {/* Loading indicator for Infinite Scroll */}
-                    <div ref={lastElementRef} className="py-8 flex flex-col items-center justify-center">
-                        {loadingMore ? (
-                            <div className="flex items-center gap-3">
-                                <div className={`w-5 h-5 border-2 border-t-transparent animate-spin rounded-full ${isDark ? 'border-sky-400' : 'border-sky-600'}`} />
-                                <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Fetching next institutions...</p>
-                            </div>
-                        ) : !hasMore && filteredSchools.length > 0 ? (
-                            <div className="flex flex-col items-center gap-1 opacity-40">
-                                <CheckCircle2 size={16} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
-                                <p className={`text-[9px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>End of Directory</p>
-                            </div>
-                        ) : null}
-                    </div>
-
-                    {filteredSchools.length === 0 && !loadingMore && (
-                        <div className="py-20 text-center">
-                            <Building2 size={32} className={`mx-auto mb-4 opacity-20 ${t.textMuted(isDark)}`} />
-                            <p className={`text-[12px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
-                                {searchQuery ? `No matches for "${searchQuery}"` : 'No institutions found'}
-                            </p>
-                        </div>
-                    )}
-                </div>
-            </motion.div>
-
-            {/* Edit Dialog */}
-            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-                <DialogContent className={`sm:max-w-[540px] rounded-[24px] border overflow-y-auto max-h-[90vh] shadow-2xl p-6 ${t.card(isDark)}`}>
-                    <DialogHeader className="mb-4">
-                        <DialogTitle className={`text-xl font-[1000] tracking-tight ${t.textPrimary(isDark)}`}>
-                            {editingSchool?.id ? 'Edit School Details' : 'Register New School'}
-                        </DialogTitle>
-                        <DialogDescription className="sr-only">
-                            {editingSchool?.id ? 'Update the details for the selected school.' : 'Fill in the information to register a new school.'}
-                        </DialogDescription>
-                    </DialogHeader>
-                    {editingSchool && (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>School Name</Label><Input value={editingSchool.name} onChange={e => setEditingSchool({ ...editingSchool, name: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Contact Email</Label><Input value={editingSchool.email} onChange={e => setEditingSchool({ ...editingSchool, email: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Admin Name</Label>
-                                    <Input 
-                                        value={(editingSchool as any).principal_name || ''} 
-                                        onChange={e => setEditingSchool({ ...editingSchool, principal_name: e.target.value } as any)} 
-                                        placeholder="Principal/Admin Full Name"
-                                        className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} 
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Password</Label>
-                                    <Input 
-                                        type="password"
-                                        value={(editingSchool as any).password || ''} 
-                                        onChange={e => setEditingSchool({ ...editingSchool, password: e.target.value } as any)} 
-                                        placeholder={editingSchool.id ? '•••••••• (leave blank to keep)' : 'Set portal password'}
-                                        className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} 
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Phone</Label><Input value={editingSchool.phone || ''} onChange={e => setEditingSchool({ ...editingSchool, phone: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Website</Label><Input value={editingSchool.website || ''} onChange={e => setEditingSchool({ ...editingSchool, website: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                            </div>
-                            <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Address</Label><Input value={editingSchool.address || ''} onChange={e => setEditingSchool({ ...editingSchool, address: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>City</Label><Input value={editingSchool.city || ''} onChange={e => setEditingSchool({ ...editingSchool, city: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>State</Label><Input value={editingSchool.state || ''} onChange={e => setEditingSchool({ ...editingSchool, state: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Pincode</Label><Input value={editingSchool.pincode || ''} onChange={e => setEditingSchool({ ...editingSchool, pincode: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Country</Label><Input value={editingSchool.country || 'IN'} onChange={e => setEditingSchool({ ...editingSchool, country: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                                <div className="space-y-2"><Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Logo URL</Label><Input value={editingSchool.logo_url || ''} onChange={e => setEditingSchool({ ...editingSchool, logo_url: e.target.value })} className={`rounded-full px-5 h-11 font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} /></div>
-                            </div>
-                            <div className="space-y-3 pt-2">
-                                <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${isDark ? 'bg-white/[0.02] border-white/10' : 'bg-slate-50 border-slate-200'}`}><Label className={`text-xs font-bold leading-normal ${t.textSecondary(isDark)}`}>Data Processing Consent</Label><Switch checked={editingSchool.data_processing_consent} onCheckedChange={v => setEditingSchool({ ...editingSchool, data_processing_consent: v })} className={`data-[state=checked]:${accent.bg}`} /></div>
-                                <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${isDark ? 'bg-white/[0.02] border-white/10' : 'bg-slate-50 border-slate-200'}`}><Label className={`text-xs font-bold leading-normal ${t.textSecondary(isDark)}`}>Guardian Consent</Label><Switch checked={editingSchool.minor_data_guardian_consent} onCheckedChange={v => setEditingSchool({ ...editingSchool, minor_data_guardian_consent: v })} className={`data-[state=checked]:${accent.bg}`} /></div>
-                                <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${(editingSchool.is_active ?? true) ? (isDark ? `border-${accent.name}-400/30 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-300/50 ${accent.softLight.split(' ')[0]}`) : (isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50')}`}><Label className={`text-xs font-bold leading-normal ${((editingSchool.is_active ?? true) && isDark) ? accent.text : t.textPrimary(isDark)}`}>Account Status</Label><Switch checked={editingSchool.is_active} onCheckedChange={v => setEditingSchool({ ...editingSchool, is_active: v })} className={`data-[state=checked]:${accent.bg}`} /></div>
-                            </div>
-
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between px-1">
-                                    <Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Offered Classes</Label>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                            const allIds = classes.map(g => g.id);
-                                            const currentIds = (editingSchool as any).classIds || [];
-                                            const newIds = currentIds.length === allIds.length ? [] : allIds;
-                                            setEditingSchool({ ...editingSchool, classIds: newIds } as any);
-                                        }}
-                                        className={`h-7 px-3 rounded-full text-[10px] font-black border-2 ${t.btnOutline(isDark)}`}
-                                    >
-                                        {((editingSchool as any).classIds?.length || 0) === classes.length ? 'DESELECT ALL' : 'SELECT ALL'}
-                                    </Button>
-                                </div>
-                                <div className={`p-4 rounded-[24px] border-2 flex flex-wrap gap-2 ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-slate-50'}`}>
-                                    {classes.map(cls => {
-                                        const isSelected = ((editingSchool as any).classIds || []).includes(cls.id);
-                                        return (
-                                            <button
-                                                key={cls.id}
-                                                type="button"
-                                                onClick={() => handleToggleClass(cls.id)}
-                                                className={`px-4 py-2 rounded-full text-[11px] font-black tracking-tight transition-all border-2
-                                                    ${isSelected
-                                                        ? (isDark ? `${accent.bg} text-slate-900 border-white shadow-lg` : `${accent.bg} text-slate-900 border-slate-900 shadow-lg`)
-                                                        : (isDark ? 'bg-white/[0.05] text-slate-400 border-white/10 hover:bg-white/10 hover:text-white' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100')}`}
-                                            >
-                                                Class {cls.name}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                <p className={`text-[10px] font-bold ${t.textMuted(isDark)} px-1`}>
-                                    Select the classes supported by this institution. This governs the available options for student registration.
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                    <DialogFooter className={`pt-6 border-t mt-6 ${t.border(isDark)}`}>
-                        <Button type="button" variant="ghost" onClick={() => setShowEditDialog(false)} className={`rounded-full h-11 px-7 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white hover:text-white' : 'hover:bg-slate-200 text-slate-700'}`}>Cancel</Button>
-                        <Button type="button" className={`rounded-full h-11 px-9 font-black text-sm shadow-xl transition-all border-0 ${t.btnPrimary(isDark, accent)}`} style={t.glowStyle(isDark, accent)} onClick={handleSave}>
-                            {editingSchool?.id ? 'Save Changes' : 'Register School'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <SchoolEditDialog 
+                open={showEditDialog}
+                onOpenChange={setShowEditDialog}
+                editingSchool={editingSchool}
+                setEditingSchool={setEditingSchool}
+                classes={classes}
+                onSave={handleSave}
+            />
         </div>
     );
 }

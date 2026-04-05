@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 export const dynamic = 'force-dynamic';
 import { getPlatformSettings } from "@/components/landing/actions";
 import "./globals.css";
-import ErrorReporter from "@/components/ErrorReporter";
+import ErrorReporter from "@/components/shared/ErrorReporter";
 import Script from "next/script";
 
 import { AuthProvider } from "@/components/providers/auth-provider";
@@ -11,7 +11,7 @@ import { Toaster } from 'sonner';
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getPlatformSettings();
   const platformName = settings?.platform_name ?? "TechNurture Labs";
-  const siteUrl = "https://technurturelms.in";
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://technurturelms.in";
 
   return {
     metadataBase: new URL(siteUrl),
@@ -92,7 +92,6 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: "/api/branding/favicon",
     },
     category: "education",
-    // PWA — tells mobile browsers this is installable
     applicationName: platformName,
     appleWebApp: {
       capable: true,
@@ -113,11 +112,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Google Search Console Verification */}
-        <meta name="google-site-verification" content="nHmVx6LzIXAO7EfpHmrxWoArW3oF0djeJOfxo7EyCgI" />
-        {/* PWA meta — must be in <head>, not expressible via Next.js Metadata API */}
-        <meta name="theme-color" content="#4f46e5" />
-        <meta name="mobile-web-app-capable" content="yes" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />

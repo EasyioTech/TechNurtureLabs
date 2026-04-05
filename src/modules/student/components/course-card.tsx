@@ -31,7 +31,8 @@ export function CourseCard({ course }: { course: Course }) {
   const isComplete = progress === 100 && course.totalLessons > 0;
   const hasCertificate = course.hasCertificate && isComplete;
 
-  const hash = course.title.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const title = course.title ?? '';
+  const hash = title.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
   const theme = COLOR_THEMES[hash % COLOR_THEMES.length];
 
   return (
@@ -55,7 +56,7 @@ export function CourseCard({ course }: { course: Course }) {
           {/* Course initial shown when there's no image */}
           {!course.thumbnail && (
             <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none">
-              <span className="text-6xl font-black text-white/10 uppercase">{course.title[0]}</span>
+              <span className="text-6xl font-black text-white/10 uppercase">{title[0] ?? '?'}</span>
             </div>
           )}
           {course.thumbnail && (
@@ -113,7 +114,7 @@ export function CourseCard({ course }: { course: Course }) {
         {/* ── Card body ── */}
         <div className="p-4 sm:p-5 flex-1 flex flex-col">
           <h4 className="font-black text-base sm:text-lg text-slate-900 tracking-tight leading-snug uppercase mb-1.5 line-clamp-2">
-            {course.title}
+            {title || 'Untitled Course'}
           </h4>
 
           <p className="text-[11px] sm:text-xs text-slate-400 font-medium line-clamp-2 leading-relaxed mb-4 flex-1">

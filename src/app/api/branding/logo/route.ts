@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
                 return new NextResponse(buffer, {
                     headers: {
                         'Content-Type': mimeType,
-                        'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
                     },
                 });
             }

@@ -50,9 +50,9 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                             </div>
                         </div>
                     </div>
-                    <div className="h-[280px] relative">
-                        {!mounted ? <div className="w-full h-[280px]" /> : <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                            <AreaChart data={engagementData}>
+                    <div className="h-[280px] w-full relative">
+                        {!mounted ? <div className="h-[280px] w-full" /> : <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={280} debounce={50}>
+                            <AreaChart data={engagementData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor={areaStroke} stopOpacity={0.15} />
@@ -92,8 +92,8 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                             <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Current market share across pricing tiers.</p>
                         </div>
                     </div>
-                    <div className="h-[200px] relative">
-                        {!mounted ? <div className="w-full h-[200px]" /> : <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+                    <div className="h-[200px] w-full relative">
+                        {!mounted ? <div className="h-[200px] w-full" /> : <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200} debounce={50}>
                             <PieChart>
                                 <Pie data={planDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value" strokeWidth={0}>
                                     {planDistribution.map((_, i) => (
@@ -133,9 +133,9 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                         LAST 30 DAYS
                     </div>
                 </div>
-                <div className="h-[240px] relative">
-                    {!mounted ? <div className="w-full h-[240px]" /> : <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                        <BarChart data={revenueData}>
+                <div className="h-[240px] w-full relative">
+                    {!mounted ? <div className="h-[240px] w-full" /> : <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240} debounce={50}>
+                        <BarChart data={revenueData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
                             <XAxis dataKey="month" stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />
                             <YAxis stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} tickFormatter={(val) => `₹${val >= 1000 ? (val / 1000).toFixed(1) + 'k' : val}`} />

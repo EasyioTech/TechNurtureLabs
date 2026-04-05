@@ -8,9 +8,42 @@ const STATS_CACHE_TTL = 604800; // 7 days (Prevents infinite keys for inactive u
 const LB_CACHE_TTL = 604800;    // 7 days (Leaderboards are lazy-synced on fetch)
 
 /**
- * Robust Gamification Service
- * Handles XP updates, Leaderboards (ZSET), and Progress Counters
+ * Leveling Logic: 
+ * We use an exponential curve to prevent XP inflation.
+ * Level 1: 0 - 500 XP
+ * Level 2: 500 - 1075 XP (+575)
+ * Level 3: 1075 - 1736 XP (+661)
+ * Formula: XP_to_reach_level_n = 500 * (1.15^(n-1) - 1) / (1.15 - 1)
  */
+export const BASE_LEVEL_XP = 500;
+export const XP_GROWTH_FACTOR = 1.15;
+
+export function getXpThresholdForLevel(level: number): number {
+    if (level <= 1) return 0;
+    // Geometric series sum: a(r^n - 1) / (r - 1)
+    return Math.floor(BASE_LEVEL_XP * (Math.pow(XP_GROWTH_FACTOR, level - 1) - 1) / (XP_GROWTH_FACTOR - 1));
+}
+
+export function calculateLevel(totalXp: number) {
+    let level = 1;
+    while (totalXp >= getXpThresholdForLevel(level + 1)) {
+        level++;
+    }
+    
+    const currentLevelThreshold = getXpThresholdForLevel(level);
+    const nextLevelThreshold = getXpThresholdForLevel(level + 1);
+    const xpInLevel = totalXp - currentLevelThreshold;
+    const xpNeededForNext = nextLevelThreshold - currentLevelThreshold;
+    const progress = Math.min(100, Math.floor((xpInLevel / xpNeededForNext) * 100));
+
+    return {
+        level,
+        xpInLevel,
+        xpNeededForNext,
+        progress,
+        nextLevelThreshold
+    };
+}
 
 export async function awardXP(
     userId: string,
@@ -20,96 +53,83 @@ export async function awardXP(
     options?: { skipEmit?: boolean }
 ) {
     try {
-        // SECURITY FIX #9: Validate XP amount is positive and reasonable
-        if (!Number.isFinite(xp) || xp < 0) {
-            console.error('[XP Award] Invalid XP amount:', { userId, xp });
-            return;
-        }
+        if (!Number.isFinite(xp) || xp <= 0) return { leveledUp: false, newLevel: 1 };
 
-        // SECURITY FIX #9: Prevent XP injection attacks via unreasonable amounts
-        // Max reasonable XP per action: 10,000 (100 lessons worth)
         if (xp > 10000) {
-            console.error('[XP Award] Unreasonably large XP amount:', { userId, xp, schoolId });
-            return;
+            console.error('[XP Award] Unreasonably large XP amount:', { userId, xp });
+            return { leveledUp: false, newLevel: 1 };
         }
 
-        // 1. Update database based on user type
-        let table: any = students;
-        if (userType === 'school_admin') table = schoolAdmins;
-        if (userType === 'super_admin') table = superAdmins;
+        // Only students earn XP in the current schema
+        if (userType !== 'student') return { leveledUp: false, newLevel: 1 };
 
-        // SECURITY FIX #9: For students, verify school_id matches
-        if (userType === 'student' && schoolId) {
-            const student = await db.query.students.findFirst({
-                where: and(eq(students.id, userId), eq(students.school_id, schoolId)),
-                columns: { id: true }
-            });
+        // Fetch current XP before update to check for level up
+        const student = await db.query.students.findFirst({
+            where: eq(students.id, userId),
+            columns: { cumulative_xp: true, school_id: true }
+        });
 
-            if (!student) {
-                console.error('[XP Award] Student not in school:', { userId, schoolId });
-                return; // Silently fail - prevents cross-school XP injection
-            }
-        }
+        if (!student) return { leveledUp: false, newLevel: 1 };
 
-        await db.update(table)
+        const oldXp = student.cumulative_xp || 0;
+        const newXp = oldXp + xp;
+        
+        const oldLevelData = calculateLevel(oldXp);
+        const newLevelData = calculateLevel(newXp);
+        const leveledUp = newLevelData.level > oldLevelData.level;
+
+        await db.update(students)
             .set({
                 cumulative_xp: sql`cumulative_xp + ${xp}`,
                 updated_at: new Date()
             })
-            .where(eq(table.id, userId));
+            .where(eq(students.id, userId));
 
-        // 2. Update Redis Leaderboards (ZSET)
         const pipeline = redis.pipeline();
-
-        // Update global leaderboard
         pipeline.zincrby('lb:global', xp, userId);
         pipeline.expire('lb:global', LB_CACHE_TTL);
 
-        // Update school leaderboard if available
-        if (schoolId) {
-            pipeline.zincrby(`lb:school:${schoolId}`, xp, userId);
-            pipeline.expire(`lb:school:${schoolId}`, LB_CACHE_TTL);
+        const targetSchoolId = schoolId || student.school_id;
+        if (targetSchoolId) {
+            pipeline.zincrby(`lb:school:${targetSchoolId}`, xp, userId);
+            pipeline.expire(`lb:school:${targetSchoolId}`, LB_CACHE_TTL);
         }
 
-        // Mark achievement data as "dirty" to trigger a re-check
         pipeline.setex(`user:${userId}:achievements_dirty`, 3600, '1');
-
-        // PRODUCTION GUARD: Prevent unbounded ZSET growth. Trim to top 1000.
         pipeline.zremrangebyrank('lb:global', 0, -1001);
-        if (schoolId) {
-            pipeline.zremrangebyrank(`lb:school:${schoolId}`, 0, -1001);
+        
+        if (targetSchoolId) {
+            pipeline.zremrangebyrank(`lb:school:${targetSchoolId}`, 0, -1001);
         }
 
         await pipeline.exec();
 
-        // Invalidate Student Dashboard Cache if student gains XP
-        if (userType === 'student') {
-            await invalidateStudentDashboardCache(userId);
-        }
+        await invalidateStudentDashboardCache(userId);
 
-        // 3. Emit event for background queue processing (achievement checks, leveling, etc.)
-        // Fire-and-forget — event emission is non-critical and must never block XP writes.
-        // CRITICAL FIX #8: Add proper error handling to async event emission
-        if (userType === 'student' && !options?.skipEmit) {
+        if (!options?.skipEmit) {
             import('./services/event-service')
                 .then(({ eventService }) =>
                     eventService.emit('student.xp_gained', {
                         userId,
-                        schoolId: schoolId ?? undefined,
+                        schoolId: targetSchoolId ?? undefined,
                         amount: xp,
                         timestamp: Date.now(),
-                    }).catch(err => {
-                        console.warn('[XP Event] Emission failed:', (err as any).message);
-                        // Non-critical: XP award succeeded in DB, event delivery is best-effort
-                    })
+                        leveledUp,
+                        newLevel: newLevelData.level
+                    }).catch(() => {})
                 )
-                .catch(err => {
-                    console.error('[XP Event] Dynamic import failed:', (err as any).message);
-                    // Non-critical: Event service unavailable, but XP was awarded
-                });
+                .catch(() => {});
         }
+
+        return {
+            leveledUp,
+            oldLevel: oldLevelData.level,
+            newLevel: newLevelData.level,
+            totalXp: newXp
+        };
     } catch (err) {
         console.error("Error awarding XP:", err);
+        return { leveledUp: false, newLevel: 1 };
     }
 }
 

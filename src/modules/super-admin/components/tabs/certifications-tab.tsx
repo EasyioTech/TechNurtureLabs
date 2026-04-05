@@ -80,9 +80,9 @@ export function CertificationsTab({
     };
 
     const filteredStudents = completedStudents.filter(s =>
-        s.full_name.toLowerCase().includes(search.toLowerCase()) ||
+        (s.full_name ?? '').toLowerCase().includes(search.toLowerCase()) ||
         (s.email ?? '').toLowerCase().includes(search.toLowerCase()) ||
-        s.school_name.toLowerCase().includes(search.toLowerCase())
+        (s.school_name ?? '').toLowerCase().includes(search.toLowerCase())
     );
 
     const filteredCourses = courses.filter(c =>
@@ -390,10 +390,10 @@ export function CertificationsTab({
                                 {/* Name & Avatar */}
                                 <div className="col-span-3 flex items-center gap-3 min-w-0 w-full md:w-auto">
                                     <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${isDark ? 'bg-white/[0.08] text-white' : 'bg-neutral-100 text-neutral-700'}`}>
-                                        {student.full_name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()}
+                                        {(student.full_name || 'S').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()}
                                     </div>
                                     <div className="min-w-0">
-                                        <p className={`text-sm font-black truncate ${t.textPrimary(isDark)}`}>{student.full_name}</p>
+                                        <p className={`text-sm font-black truncate ${t.textPrimary(isDark)}`}>{student.full_name || 'Unknown'}</p>
                                         <p className={`text-[10px] font-medium truncate ${t.textMuted(isDark)}`}>{student.email || '—'}</p>
                                     </div>
                                 </div>

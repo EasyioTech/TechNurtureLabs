@@ -93,7 +93,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
         <div className="hidden lg:flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tighter leading-none uppercase">
-              {greeting}, <span className="text-indigo-600">{profile.full_name.split(' ')[0]}</span>
+              {greeting}, <span className="text-indigo-600">{(profile.full_name || 'Student').split(' ')[0]}</span>
             </h1>
             <p className="text-slate-400 font-bold text-[11px] uppercase tracking-[0.2em] mt-3 flex items-center gap-2.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
@@ -113,7 +113,7 @@ export function ClientDashboard({ initialData }: ClientDashboardProps) {
         <div className="lg:hidden mb-6 pt-2">
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-2xl font-black text-slate-900 tracking-tighter leading-none uppercase">
-              {greeting}, <span className="text-indigo-600">{profile.full_name.split(' ')[0]}</span>
+              {greeting}, <span className="text-indigo-600">{(profile.full_name || 'Student').split(' ')[0]}</span>
             </h1>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Ready to crushed it today?</p>
           </motion.div>

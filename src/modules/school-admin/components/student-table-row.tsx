@@ -31,11 +31,11 @@ export function StudentTableRow({ student, index }: { student: Student; index: n
                 <div className="flex items-center gap-3">
                     <Avatar className="w-9 h-9">
                         <AvatarFallback className="bg-violet-100 text-violet-600 text-xs font-medium text-center flex items-center justify-center">
-                            {student.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            {(student.full_name || 'S').split(' ').map(n => n[0]).join('').toUpperCase()}
                         </AvatarFallback>
                     </Avatar>
                     <div>
-                        <p className="font-medium text-slate-800">{student.full_name}</p>
+                        <p className="font-medium text-slate-800">{student.full_name || 'Unknown'}</p>
                         <p className="text-xs text-slate-400">ID: {student.id.slice(0, 8)}</p>
                     </div>
                 </div>

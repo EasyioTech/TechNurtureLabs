@@ -25,7 +25,8 @@ const conn = globalForDb.conn ?? postgres(dbUrl, {
     // - Reserve 20 as safety margin
     // At 20: Database exhaustion at 200 concurrent users (unacceptable)
     // At 50: Database handles 500 concurrent users smoothly
-    max: 50,
+    // For development: use smaller pool to fail fast when DB is unreachable
+    max: process.env.NODE_ENV === 'production' ? 50 : 5,
 
     // CRITICAL FIX #5: Reduced idle_timeout from 30s to 10s
     // Release idle connections faster so they're available for new requests
@@ -33,7 +34,8 @@ const conn = globalForDb.conn ?? postgres(dbUrl, {
     idle_timeout: 10,
 
     // Fail fast on initial connect — surfaces misconfigured DATABASE_URL immediately
-    connect_timeout: 10,
+    // In development, timeout faster (3s) to avoid hanging on failed connections
+    connect_timeout: process.env.NODE_ENV === 'production' ? 10 : 3,
 
     // CRITICAL FIX #5: Reduced max_lifetime from 1800s to 600s (10 minutes)
     // Recycle connections more frequently to avoid stale state

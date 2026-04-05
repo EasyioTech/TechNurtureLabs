@@ -194,50 +194,36 @@ function LoginHeatmap({ heatmap }: { heatmap: number[][] }) {
                 </div>
             </div>
 
-            <div className="relative overflow-x-auto pb-4 custom-scrollbar">
-                <div className="min-w-[800px] px-2">
+            <div className="relative overflow-hidden no-scrollbar">
+                <div className="w-full px-2">
                     {/* Hour labels — aligned with heatmap grid */}
                     <div className="flex mb-4">
-                        <div className="w-16 flex-shrink-0" /> {/* Match day label width */}
-                        <div className="flex-1 grid grid-cols-24 gap-1 sm:gap-2 pr-2">
+                        <div className="w-12 sm:w-16 flex-shrink-0" /> {/* Match day label width */}
+                        <div className="flex-1 grid grid-cols-24 gap-0.5 sm:gap-2 pr-2">
                             {HOURS.map((h, i) => (
-                                <div key={i} className={`text-center text-[9px] font-black uppercase tracking-tighter transition-all duration-500 ${i % 3 === 0 ? 'opacity-100' : 'opacity-20'} ${t.textMuted(isDark)}`}>
+                                <div key={i} className={`text-center text-[8px] sm:text-[9px] font-black uppercase tracking-tighter transition-all duration-500 ${i % 3 === 0 ? 'opacity-100' : 'opacity-20'} ${t.textMuted(isDark)}`}>
                                     {h}
                                 </div>
                             ))}
                         </div>
                     </div>
-
+ 
                     {/* Heatmap Grid */}
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                         {DAYS.map((day, dow) => (
                             <div key={dow} className="flex items-center group/row">
-                                <div className={`w-16 flex-shrink-0 text-[11px] font-black uppercase text-left pr-4 ${t.textMuted(isDark)} group-hover/row:text-cyan-400 transition-colors`}>
+                                <div className={`w-12 sm:w-16 flex-shrink-0 text-[10px] sm:text-[11px] font-black uppercase text-left pr-2 sm:pr-4 ${t.textMuted(isDark)}`}>
                                     {day}
                                 </div>
-                                <div className="flex-1 grid grid-cols-24 gap-1 sm:gap-2 pr-2">
+                                <div className="flex-1 grid grid-cols-24 gap-0.5 sm:gap-2 pr-2">
                                     {heatmap[dow].map((count, hour) => (
                                         <div key={hour} className="flex items-center justify-center">
                                             <motion.div
                                                 initial={{ opacity: 0, scale: 0.8 }}
                                                 animate={{ opacity: 1, scale: 1 }}
-                                                whileHover={{ scale: 1.4, zIndex: 50 }}
-                                                transition={{ delay: 0.5 + (dow * 0.05) + (hour * 0.01), type: 'spring', stiffness: 400, damping: 25 }}
-                                                className={`w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 rounded-full transition-all duration-300 cursor-pointer ${cellColor(count)} border relative group/cell shadow-sm hover:shadow-xl`}
-                                            >
-                                                {/* Vertical Guide Line on Hover */}
-                                                <div className="absolute top-[100%] left-1/2 -translate-x-1/2 w-[1px] h-20 bg-cyan-400/0 group-hover/cell:bg-cyan-400/20 transition-all pointer-events-none z-[-1]" />
-                                                <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 w-[1px] h-20 bg-cyan-400/0 group-hover/cell:bg-cyan-400/20 transition-all pointer-events-none z-[-1]" />
-
-                                                {/* Popover Tooltip */}
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 px-3 py-2 rounded-xl bg-neutral-900 border border-white/10 text-white shadow-2xl opacity-0 group-hover/cell:opacity-100 pointer-events-none transition-all translate-y-2 group-hover/cell:translate-y-0 z-[100]">
-                                                    <div className="flex flex-col items-center gap-1">
-                                                        <span className="text-[14px] font-black leading-none">{count}</span>
-                                                        <span className="text-[8px] font-bold uppercase tracking-widest text-neutral-400 whitespace-nowrap">Logins • {day} {HOURS[hour]}</span>
-                                                    </div>
-                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 border-r border-b border-white/10 rotate-45 -translate-y-1" />
-                                                </div>
-                                            </motion.div>
+                                                transition={{ delay: 0.3 + (dow * 0.05) + (hour * 0.01), type: 'spring', stiffness: 400, damping: 25 }}
+                                                className={`w-full aspect-square flex-shrink-0 rounded-full transition-all duration-300 ${cellColor(count)} border relative group/cell shadow-sm`}
+                                            />
                                         </div>
                                     ))}
                                 </div>
@@ -378,7 +364,7 @@ export function OverviewTab({ stats, paymentPlans, schoolsList, platformMetrics,
             </div>
 
             {/* ── Row 3: Charts ── */}
-            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.36 }}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.36, duration: 0.5 }}>
                 <EngagementCharts engagementData={engagementData} planDistribution={planDistribution} revenueData={revenueData} />
             </motion.div>
 

@@ -16,7 +16,7 @@ import { Plus, Save, Edit, Trash2, BookOpen, Layers, AlertOctagon, Database, Ref
 import { SortableLessonItem } from '../lesson-item-sortable';
 import { CourseDialog } from '../course-dialog';
 import { LessonDialog } from '../lesson-dialog';
-import { Course, Lesson } from '../../types';
+import { Course, Lesson, SchoolClass, CourseClassMapping } from '../../types';
 import { useAdminTheme, t } from '../../theme-context';
 import {
     AlertDialog,
@@ -54,9 +54,10 @@ interface CourseBuilderTabProps {
     setShowLessonDialog: (v: boolean) => void;
     editingLesson: Partial<Lesson> | null;
     setEditingLesson: (l: Partial<Lesson> | null) => void;
-    classes: any[];
-    courseClassMappings: any[];
+    classes: SchoolClass[];
+    courseClassMappings: CourseClassMapping[];
 }
+
 
 export function CourseBuilderTab({
     courses, selectedCourse, lessons, setLessons,

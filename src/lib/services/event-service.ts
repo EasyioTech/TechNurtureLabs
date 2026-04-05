@@ -32,6 +32,8 @@ export interface EventPayload {
     role?: string;
     quizScore?: number;
     isPerfect?: boolean;
+    leveledUp?: boolean;
+    newLevel?: number;
     metadata?: Record<string, any>;
     timestamp: number;
 }

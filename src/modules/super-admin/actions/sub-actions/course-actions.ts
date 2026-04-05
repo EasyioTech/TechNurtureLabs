@@ -9,6 +9,7 @@ import { eq, count, sql, and, desc, asc, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireSuperAdmin } from '@/lib/admin-guard';
 import { redis } from '@/lib/redis';
+import { createAuditLog } from '@/lib/audit';
 
 const CACHE_KEY = 'cache:admin:courses';
 
@@ -18,8 +19,6 @@ export async function fetchAdminCourses(page: number = 0, limit: number = 50) {
     const safeLimit = Math.min(100, Math.max(1, limit));
     const offset = Math.max(0, page) * safeLimit;
 
-    // SCALE BREAKER A: Optimized course fetch using LEFT JOIN instead of correlated subqueries.
-    // This allows the database to perform a single scan instead of N sub-lookups.
     const coursesData = await db.select({
         id: courses.id,
         title: courses.title,
@@ -41,7 +40,6 @@ export async function fetchAdminCourses(page: number = 0, limit: number = 50) {
     .limit(safeLimit)
     .offset(offset);
 
-    // Get total count for pagination (already optimized in previous edits)
     const [{ total }] = await db.select({ total: count() }).from(courses).where(isNull(courses.deleted_at));
 
     return {
@@ -59,7 +57,6 @@ export async function fetchAdminCourses(page: number = 0, limit: number = 50) {
 export async function updateCourseTotals(courseId: string, txContext?: any) {
     const dbClient = txContext ?? db;
 
-    // Optimization: Calculate in DB without loading objects
     const stats = await dbClient.select({
         count: count(),
         xp: sql<number>`sum(${lessons.xp_reward})`
@@ -84,7 +81,6 @@ const courseSchema = z.object({
     id: z.string().uuid().optional().nullable(),
     title: z.string().min(1, 'Title is required').max(255),
     description: z.string().optional().nullable().default(''),
-    // Accept either field name used by the frontend
     thumbnail: z.string().optional().nullable(),
     thumbnail_url: z.string().optional().nullable(),
     published: z.boolean().optional().nullable(),
@@ -107,7 +103,6 @@ export async function saveCourseAdmin(courseData: unknown) {
     let isNew = false;
 
     return await db.transaction(async (tx) => {
-        // M-1: Collision-resistant Slugs for Production scaling (Handles Both Creation & Update)
         const existing = await tx.query.courses.findFirst({
             where: and(eq(courses.slug, slug), isNull(courses.deleted_at))
         });
@@ -116,6 +111,7 @@ export async function saveCourseAdmin(courseData: unknown) {
         }
 
         if (courseId) {
+            const oldCourse = await tx.query.courses.findFirst({ where: eq(courses.id, courseId) });
             await tx.update(courses).set({
                 title: data.title,
                 slug,
@@ -125,10 +121,19 @@ export async function saveCourseAdmin(courseData: unknown) {
                 all_classes: data.all_classes ?? false,
                 updated_at: new Date()
             }).where(eq(courses.id, courseId));
+
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                action: 'update',
+                entityType: 'course',
+                entityId: courseId,
+                oldValues: oldCourse,
+                newValues: data,
+                tx
+            });
         } else {
             const createdBy = data.created_by ?? data.userId ?? session.userId;
-            if (!createdBy) throw new Error("Unauthorized: Cannot create course without user ID.");
-
             const [created] = await tx.insert(courses).values({
                 title: data.title,
                 slug,
@@ -139,9 +144,19 @@ export async function saveCourseAdmin(courseData: unknown) {
                 created_by: createdBy,
                 total_lessons: 0,
                 total_xp: 0,
-            } as any).returning();
+            }).returning();
             courseId = created.id;
             isNew = true;
+
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                action: 'create',
+                entityType: 'course',
+                entityId: courseId,
+                newValues: created,
+                tx
+            });
         }
 
         if (data.classIds) {
@@ -155,7 +170,6 @@ export async function saveCourseAdmin(courseData: unknown) {
                 );
             }
         }
-
         
         if (isNew) {
             analyticsService.incrementMetric('total_courses').catch(() => {});
@@ -175,18 +189,20 @@ export async function saveCourseAdmin(courseData: unknown) {
 export async function deleteCourseAdmin(id: string) {
     const session = await requireSuperAdmin();
     const course = await db.query.courses.findFirst({ where: eq(courses.id, id) });
+    if (!course) return;
+
     await db.update(courses).set({ deleted_at: new Date(), updated_at: new Date() }).where(eq(courses.id, id));
 
     if (session && course) {
         analyticsService.decrementMetric('total_courses').catch(() => {});
-        await db.insert(auditLogs).values({
-            user_id: session.userId,
-            user_type: session.userType,
+        await createAuditLog({
+            userId: session.userId,
+            userType: session.userType,
             action: 'delete',
-            entity_type: 'course',
-            entity_id: id,
-            old_values: course
-        } as any);
+            entityType: 'course',
+            entityId: id,
+            oldValues: course
+        });
         await redis.del(CACHE_KEY);
     }
 }

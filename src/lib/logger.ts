@@ -1,4 +1,4 @@
-import 'server-only';
+import { traceStorage } from './core/context';
 
 type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
@@ -13,8 +13,11 @@ interface LogMeta extends Record<string, unknown> {
 }
 
 function formatEntry(level: LogLevel, message: string, meta?: LogMeta): string {
+    const store = traceStorage.getStore();
     return JSON.stringify({
         level,
+        traceId: store?.traceId,
+        userId: meta?.userId || store?.userId,
         ts: new Date().toISOString(),
         message,
         ...meta,

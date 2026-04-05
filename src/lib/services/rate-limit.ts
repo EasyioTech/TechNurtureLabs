@@ -4,6 +4,7 @@ export interface RateLimitConfig {
     key: string;
     limit: number;
     windowSeconds: number;
+    strict?: boolean; // If true, fail-closed (block on Redis error)
 }
 
 export const rateLimitService = {
@@ -12,12 +13,16 @@ export const rateLimitService = {
      * Returns { allowed: boolean, remaining: number, reset: number }
      */
     async check(config: RateLimitConfig) {
-        const { key, limit, windowSeconds } = config;
+        const { key, limit, windowSeconds, strict = false } = config;
         const fullKey = `ratelimit:${key}`;
 
         try {
+            if (!redis || (redis as any).status !== 'ready') {
+                throw new Error('Redis not available');
+            }
+
             // Atomic Lua script to prevent race conditions and ensure accuracy
-            const results = await redis.eval(
+            const res = await redis.eval(
                 `
                 local current = redis.call("INCR", KEYS[1])
                 if tonumber(current) == 1 then
@@ -30,7 +35,7 @@ export const rateLimitService = {
                 windowSeconds
             ) as [number, number];
 
-            const [count, ttl] = results;
+            const [count, ttl] = res;
 
             return {
                 allowed: count <= limit,
@@ -38,8 +43,13 @@ export const rateLimitService = {
                 reset: ttl > 0 ? ttl : windowSeconds
             };
         } catch (err) {
-            // Redis is unavailable — fail open so a Redis outage doesn't lock
-            // out all users. Log the event for visibility.
+            // Redis is unavailable
+            if (strict) {
+                console.error(`[RateLimit] Redis error for key ${key} — FAILING CLOSED (STRICT):`, err);
+                return { allowed: false, remaining: 0, reset: windowSeconds };
+            }
+            
+            // Fail-open: if Redis is down, we don't want to block legit users
             console.error(`[RateLimit] Redis error for key ${key} — failing open:`, err);
             return { allowed: true, remaining: limit, reset: windowSeconds };
         }
@@ -48,22 +58,24 @@ export const rateLimitService = {
     /**
      * Helper for school-level rate limiting
      */
-    async checkSchoolLimit(schoolId: string, action: string, limit: number = 1000, window: number = 60) {
+    async checkSchoolLimit(schoolId: string, action: string, limit: number = 1000, window: number = 60, strict: boolean = false) {
         return this.check({
             key: `school:${schoolId}:${action}`,
             limit,
-            windowSeconds: window
+            windowSeconds: window,
+            strict
         });
     },
 
     /**
      * Helper for user-level rate limiting (e.g., login attempts, heartbeats)
      */
-    async checkUserLimit(userId: string, action: string, limit: number = 20, window: number = 60) {
+    async checkUserLimit(userId: string, action: string, limit: number = 20, window: number = 60, strict: boolean = false) {
         return this.check({
             key: `user:${userId}:${action}`,
             limit,
-            windowSeconds: window
+            windowSeconds: window,
+            strict
         });
     }
 };

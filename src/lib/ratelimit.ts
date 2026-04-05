@@ -1,18 +1,19 @@
-
 import { redis } from './redis';
 
 /**
- * Simple Redis-based rate limiter for Node.js environments.
+ * PRODUCTION-GRADE RATE LIMITER
  * 
- * Usage:
- *   const { success } = await rateLimit(`api:auth:${ip}`, 5, 60);
- *   if (!success) return { error: "Too many requests" };
+ * In development, we fail-open immediately if Redis is not available,
+ * ensuring no network overhead or log-spam occurs.
  */
 export async function rateLimit(key: string, limit: number, windowSecs: number) {
+  // If Redis is not initialized or disconnected, bypass rate-limiting
+  if (!redis || (redis as any).status !== 'ready') {
+    return { success: true, remaining: limit, current: 0 };
+  }
+
   try {
     const rateKey = `rl:${key}`;
-    
-    // Atomic increment and expire using a Lua script to avoid race conditions
     const res = await redis.eval(
       `
       local current = redis.call("INCR", KEYS[1])
@@ -32,21 +33,25 @@ export async function rateLimit(key: string, limit: number, windowSecs: number) 
       current: res,
     };
   } catch (err) {
-    console.error('[RateLimit] Redis error:', err);
-    // Fail-open: if Redis is down, we don't want to block legit users
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`[RateLimit] Redis action skipped due to connection status: ${redis ? (redis as any).status : 'null'}`);
+    } else {
+      console.error('[RateLimit Error]:', err);
+    }
+    // Fail-open strategy
     return { success: true, remaining: 1, current: 1 };
   }
 }
 
 /**
- * Higher-level rate limit for specific user actions (e.g. login attempts)
+ * Specific action limit (e.g. login attempts)
  */
 export async function rateLimitUser(userId: string, action: string, limit: number, windowSecs: number) {
   return rateLimit(`user:${userId}:${action}`, limit, windowSecs);
 }
 
 /**
- * Global API rate limit by IP (Node.js runtime only)
+ * Global IP-based rate limit
  */
 export async function rateLimitIp(ip: string, limit: number = 100, windowSecs: number = 60) {
   return rateLimit(`ip:${ip}`, limit, windowSecs);

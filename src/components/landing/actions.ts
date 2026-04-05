@@ -71,16 +71,21 @@ export async function getPlatformSettings() {
         }
     }
 
-    const cached = await getCachedPlatformSettings();
-    if (cached) return normalizeBrandingUrls(cached);
+    try {
+        const cached = await getCachedPlatformSettings();
+        if (cached) return normalizeBrandingUrls(cached);
+    } catch (e) {
+        console.warn('[getPlatformSettings] Cache query failed, trying direct DB:', (e as any).message?.slice(0, 100));
+    }
 
-    // Fallback to direct DB if cache is empty
+    // Fallback to direct DB if cache is empty or failed
     try {
         const settings = await db.query.platformSettings.findFirst({
             where: eq(platformSettings.id, 'global')
         });
         return normalizeBrandingUrls(settings) || defaultSettings;
     } catch (e) {
+        console.warn('[getPlatformSettings] Direct DB query failed, using defaults:', (e as any).message?.slice(0, 100));
         return defaultSettings;
     }
 }

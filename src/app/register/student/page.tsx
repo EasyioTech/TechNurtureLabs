@@ -31,8 +31,8 @@ import {
   ArrowLeft, ArrowRight, Loader2, Check, ChevronsUpDown, Search,
   Eye, EyeOff, User, School, Lock, Phone, Mail, GraduationCap, AlertCircle, CheckCircle2,
 } from 'lucide-react';
-import { StudentRegistrationSidebar } from '@/components/registration/StudentRegistrationSidebar';
-import { ManIcon, WomanIcon } from '@/components/registration/GenderIcons';
+import { StudentRegistrationSidebar } from '@/modules/auth/components/StudentRegistrationSidebar';
+import { ManIcon, WomanIcon } from '@/modules/auth/components/GenderIcons';
 
 type SchoolOption = {
   id: string;

@@ -1,23 +1,27 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useAdminTheme, t } from '../../theme-context';
 import { toast } from 'sonner';
-import { Loader2, Video, Save, Link2, UploadCloud, Film, GraduationCap, Plus, Trash2, Hash, X, ImageIcon, Activity, HardDrive, Database, Server, RefreshCw } from 'lucide-react';
-import { VideoUpload } from '@/modules/shared/components/video-upload';
-import { Palette, Shield, Activity as ActivityIcon, Settings2, Smartphone, Key, AlertCircle, CheckCircle, Columns, Rows, Square, Lock } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2 } from 'lucide-react';
+
 import { generate2FASecret, enable2FA, disable2FA } from '@/actions/2fa';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { Slider } from '@/components/ui/slider';
-import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { fetchAllClasses, createClass, deleteClass, ensureDefaultClasses, syncPlatformMetrics, runDatabaseDiagnostics } from '@/modules/super-admin/actions';
+import { 
+    fetchAllClasses, 
+    createClass, 
+    deleteClass, 
+    ensureDefaultClasses, 
+    syncPlatformMetrics, 
+    runDatabaseDiagnostics 
+} from '@/modules/super-admin/actions';
 import { DiagnosticsResult } from '@/modules/super-admin/types';
-import { SystemHealthTab } from './system-health-tab';
 import { getSystemHealth } from '@/modules/super-admin/actions/redis-monitoring';
+
+// Modular Sections
+import { BrandingSection } from './settings/branding-section';
+import { AcademicClassesSection } from './settings/classes-section';
+import { HeroVideoSection } from './settings/hero-video-section';
+import { SecuritySection } from './settings/security-section';
+import { MaintenanceSection } from './settings/maintenance-section';
+import { StorageSection } from './settings/storage-section';
 
 // ─── Utility: Format bytes to human-readable size ──────────────────────────────
 function formatBytes(bytes: number, decimals = 1): string {
@@ -28,41 +32,51 @@ function formatBytes(bytes: number, decimals = 1): string {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
 }
 
-export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref) {
+interface SettingsTabProps {
+    // any props?
+}
+
+export interface SettingsTabRef {
+    handleSave: () => void;
+}
+
+export const SettingsTab = forwardRef<SettingsTabRef, SettingsTabProps>(function SettingsTab(props, ref) {
     const { isDark, accent } = useAdminTheme();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
-    const [videoType, setVideoType] = useState<'youtube' | 'upload' | 'vimeo' | 'link' | 'stream'>('youtube');
-    const [videoUrl, setVideoUrl] = useState('');
+    // Platform Identity States
+    const [platformName, setPlatformName] = useState('TechNurture');
     const [logoUrl, setLogoUrl] = useState('');
     const [faviconUrl, setFaviconUrl] = useState('');
     const [logoUploading, setLogoUploading] = useState(false);
     const [faviconUploading, setFaviconUploading] = useState(false);
-    const logoInputRef = useRef<HTMLInputElement>(null);
-    const faviconInputRef = useRef<HTMLInputElement>(null);
-    const [platformName, setPlatformName] = useState('TechNurture');
     const [logoLayout, setLogoLayout] = useState('landscape');
     const [showPlatformName, setShowPlatformName] = useState(true);
     const [logoHeight, setLogoHeight] = useState(40);
-    const [showHeroVideo, setShowHeroVideo] = useState(true);
+    const logoInputRef = useRef<HTMLInputElement>(null);
+    const faviconInputRef = useRef<HTMLInputElement>(null);
 
-    // 2FA States
+    // Hero Video States
+    const [showHeroVideo, setShowHeroVideo] = useState(true);
+    const [videoType, setVideoType] = useState<'youtube' | 'upload' | 'vimeo' | 'link' | 'stream'>('youtube');
+    const [videoUrl, setVideoUrl] = useState('');
+
+    // Security & 2FA States
     const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
     const [show2FASetup, setShow2FASetup] = useState(false);
     const [qrCode, setQrCode] = useState('');
     const [tempSecret, setTempSecret] = useState('');
     const [otpToken, setOtpToken] = useState('');
-
     const [show2FADisable, setShow2FADisable] = useState(false);
     const [disableToken, setDisableToken] = useState('');
     const [disabling2FA, setDisabling2FA] = useState(false);
+    const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+
     // Password States
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [changingPassword, setChangingPassword] = useState(false);
-
-    const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
 
     // Class Management States
     const [classesList, setClassesList] = useState<any[]>([]);
@@ -71,6 +85,8 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
     const [newClassLevel, setNewClassLevel] = useState('');
     const [classCreating, setClassCreating] = useState(false);
     const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
+
+    // System Maintenance States
     const [syncing, setSyncing] = useState(false);
     const [diagnosing, setDiagnosing] = useState(false);
     const [diagResults, setDiagResults] = useState<DiagnosticsResult | null>(null);
@@ -82,6 +98,8 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
     const [storageError, setStorageError] = useState<string | null>(null);
     const [r2Scanning, setR2Scanning] = useState(false);
 
+    // ─── Data Loading ───────────────────────────────────────────────────────────
+    
     const loadClasses = async () => {
         setClassesLoading(true);
         try {
@@ -92,6 +110,160 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
             console.error(err);
         } finally {
             setClassesLoading(false);
+        }
+    };
+
+    const fetchStorageData = async () => {
+        setStorageLoading(true);
+        setStorageError(null);
+        try {
+            const [storageRes, healthData] = await Promise.all([
+                fetch('/api/admin/storage-usage').then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
+                }),
+                getSystemHealth(),
+            ]);
+            setStorageData(storageRes);
+            setSystemHealth(healthData);
+        } catch (e: any) {
+            setStorageError(e.message || 'Failed to load storage data');
+        } finally {
+            setStorageLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        // Fetch current settings
+        fetch('/api/admin/settings')
+            .then(res => res.json())
+            .then(data => {
+                if (data.settings) {
+                    setVideoType(data.settings.hero_video_type || 'youtube');
+                    setVideoUrl(data.settings.hero_video_url || '');
+                    setLogoUrl(data.settings.logo_url || '');
+                    setFaviconUrl(data.settings.favicon_url || '');
+                    setPlatformName(data.settings.platform_name || 'TechNurture');
+                    setLogoLayout(data.settings.logo_layout || 'landscape');
+                    setShowPlatformName(data.settings.show_platform_name ?? true);
+                    setLogoHeight(data.settings.logo_height || 40);
+                    setShowHeroVideo(data.settings.show_hero_video ?? true);
+                }
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error(err);
+                toast.error('Failed to load platform settings');
+                setLoading(false);
+            });
+
+        // Check 2FA status
+        fetch('/api/auth/me')
+            .then(res => res.json())
+            .then(data => {
+                setTwoFactorEnabled(data.user?.two_factor_enabled || false);
+            });
+
+        loadClasses();
+        fetchStorageData();
+    }, []);
+
+    // ─── Event Handlers ─────────────────────────────────────────────────────────
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            const res = await fetch('/api/admin/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    hero_video_type: videoType,
+                    hero_video_url: videoUrl,
+                    logo_url: logoUrl,
+                    favicon_url: faviconUrl,
+                    platform_name: platformName,
+                    logo_layout: logoLayout,
+                    show_platform_name: showPlatformName,
+                    logo_height: logoHeight,
+                    show_hero_video: showHeroVideo,
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success('Settings updated successfully');
+            } else {
+                toast.error(data.error || 'Failed to update settings');
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Network error while saving');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    useImperativeHandle(ref, () => ({
+        handleSave
+    }));
+
+    const handleBrandingUpload = async (file: File, type: 'logo' | 'favicon') => {
+        const setUploading = type === 'logo' ? setLogoUploading : setFaviconUploading;
+        const setUrl = type === 'logo' ? setLogoUrl : setFaviconUrl;
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', type);
+
+            const csrfToken = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrf_token='))
+                ?.split('=')[1];
+
+            const res = await fetch('/api/branding/upload', {
+                method: 'POST',
+                body: formData,
+                headers: csrfToken ? { 'x-csrf-token': csrfToken } : {}
+            });
+            const data = await res.json();
+            if (data.success) {
+                setUrl(data.url + '?v=' + Date.now());
+                toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} uploaded successfully`);
+            } else {
+                toast.error(data.error || 'Upload failed');
+            }
+        } catch {
+            toast.error('Upload failed');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleBrandingRemove = async (type: 'logo' | 'favicon') => {
+        const setUrl = type === 'logo' ? setLogoUrl : setFaviconUrl;
+        try {
+            const csrfToken = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrf_token='))
+                ?.split('=')[1];
+
+            const res = await fetch('/api/branding/upload', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+                },
+                body: JSON.stringify({ type }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setUrl('');
+                toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} removed`);
+            } else {
+                toast.error(data.error || 'Remove failed');
+            }
+        } catch {
+            toast.error('Remove failed');
         }
     };
 
@@ -135,179 +307,6 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
             setDeletingClassId(null);
         }
     };
-
-    // Storage Usage Fetchers
-    const fetchStorageData = async () => {
-        setStorageLoading(true);
-        setStorageError(null);
-        try {
-            const [storageRes, healthData] = await Promise.all([
-                fetch('/api/admin/storage-usage').then(r => {
-                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                    return r.json();
-                }),
-                getSystemHealth(),
-            ]);
-            setStorageData(storageRes);
-            setSystemHealth(healthData);
-        } catch (e: any) {
-            setStorageError(e.message || 'Failed to load storage data');
-        } finally {
-            setStorageLoading(false);
-        }
-    };
-
-    const handleScanR2 = async () => {
-        setR2Scanning(true);
-        try {
-            const res = await fetch('/api/admin/storage-usage?scanR2=true');
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            setStorageData(data);
-        } catch (e: any) {
-            toast.error('R2 scan failed: ' + (e.message || 'Unknown error'));
-        } finally {
-            setR2Scanning(false);
-        }
-    };
-
-    const handleSave = async () => {
-        setSaving(true);
-        try {
-            const res = await fetch('/api/admin/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    hero_video_type: videoType,
-                    hero_video_url: videoUrl,
-                    logo_url: logoUrl,
-                    favicon_url: faviconUrl,
-                    platform_name: platformName,
-                    logo_layout: logoLayout,
-                    show_platform_name: showPlatformName,
-                    logo_height: logoHeight,
-                    show_hero_video: showHeroVideo,
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                toast.success('Settings updated successfully');
-            } else {
-                toast.error(data.error || 'Failed to update settings');
-            }
-        } catch (error) {
-            console.error(error);
-            toast.error('Network error while saving');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleBrandingUpload = async (file: File, type: 'logo' | 'favicon') => {
-        const setUploading = type === 'logo' ? setLogoUploading : setFaviconUploading;
-        const setUrl = type === 'logo' ? setLogoUrl : setFaviconUrl;
-        setUploading(true);
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('type', type);
-
-            // Get CSRF token from cookies
-            const csrfToken = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('csrf_token='))
-                ?.split('=')[1];
-
-            const res = await fetch('/api/branding/upload', {
-                method: 'POST',
-                body: formData,
-                headers: csrfToken ? { 'x-csrf-token': csrfToken } : {}
-            });
-            const data = await res.json();
-            if (data.success) {
-                setUrl(data.url + '?v=' + Date.now()); // cache-bust preview
-                toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} uploaded successfully`);
-            } else {
-                toast.error(data.error || 'Upload failed');
-            }
-        } catch {
-            toast.error('Upload failed');
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const handleBrandingRemove = async (type: 'logo' | 'favicon') => {
-        const setUrl = type === 'logo' ? setLogoUrl : setFaviconUrl;
-        try {
-            // Get CSRF token from cookies
-            const csrfToken = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('csrf_token='))
-                ?.split('=')[1];
-
-            const res = await fetch('/api/branding/upload', {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
-                },
-                body: JSON.stringify({ type }),
-            });
-            const data = await res.json();
-            if (data.success) {
-                setUrl('');
-                toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} removed`);
-            } else {
-                toast.error(data.error || 'Remove failed');
-            }
-        } catch {
-            toast.error('Remove failed');
-        }
-    };
-
-    useImperativeHandle(ref, () => ({
-        handleSave
-    }));
-
-    useEffect(() => {
-        // Fetch current settings
-        fetch('/api/admin/settings')
-            .then(res => res.json())
-            .then(data => {
-                if (data.settings) {
-                    setVideoType(data.settings.hero_video_type || 'youtube');
-                    setVideoUrl(data.settings.hero_video_url || '');
-                    setLogoUrl(data.settings.logo_url || '');
-                    setFaviconUrl(data.settings.favicon_url || '');
-                    setPlatformName(data.settings.platform_name || 'TechNurture');
-                    setLogoLayout(data.settings.logo_layout || 'landscape');
-                    setShowPlatformName(data.settings.show_platform_name ?? true);
-                    setLogoHeight(data.settings.logo_height || 40);
-                    setShowHeroVideo(data.settings.show_hero_video ?? true);
-                }
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                toast.error('Failed to load platform settings');
-                setLoading(false);
-            });
-
-        // Check 2FA status
-        fetch('/api/auth/me')
-            .then(res => res.json())
-            .then(data => {
-                setTwoFactorEnabled(data.user?.two_factor_enabled || false);
-            });
-
-        // Load classes
-        loadClasses();
-
-        // Load storage and system health data
-        fetchStorageData();
-    }, []);
-
 
     const handleSetup2FA = async () => {
         try {
@@ -382,6 +381,48 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
         }
     };
 
+    const handleScanR2 = async () => {
+        setR2Scanning(true);
+        try {
+            const res = await fetch('/api/admin/storage-usage?scanR2=true');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setStorageData(data);
+        } catch (e: any) {
+            toast.error('R2 scan failed: ' + (e.message || 'Unknown error'));
+        } finally {
+            setR2Scanning(false);
+        }
+    };
+
+    const handleSyncMetrics = async () => {
+        setSyncing(true);
+        try {
+            const res = await syncPlatformMetrics();
+            if (res.success) toast.success("Metrics synchronized");
+            else toast.error("Sync failed");
+        } catch { toast.error("Network error"); }
+        finally { setSyncing(false); }
+    };
+
+    const handleRunDiagnostics = async () => {
+        setDiagnosing(true);
+        try {
+            const res = await runDatabaseDiagnostics();
+            setDiagResults(res);
+            if (res.status === 'ok') {
+                toast.success('Database diagnostics: All clear');
+            } else {
+                toast.error(`Found ${res.issues.length} issue${res.issues.length > 1 ? 's' : ''}`);
+            }
+        } catch (err: any) {
+            toast.error('Diagnostics failed: ' + err.message);
+            console.error(err);
+        } finally {
+            setDiagnosing(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex justify-center items-center py-20">
@@ -392,1113 +433,92 @@ export const SettingsTab = forwardRef<any, any>(function SettingsTab(props, ref)
 
     return (
         <div className="space-y-8 max-w-4xl mx-auto">
-            {/* Platform Identity Section */}
-            <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
-                <div className="flex items-center gap-4 mb-8">
-                    <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
-                        <Palette className={accent.text} size={28} />
-                    </div>
-                    <div>
-                        <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Platform Identity</h2>
-                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Manage the primary logo and branding for the entire platform.</p>
-                    </div>
-                </div>
+            <BrandingSection 
+                platformName={platformName}
+                setPlatformName={setPlatformName}
+                logoUrl={logoUrl}
+                logoUploading={logoUploading}
+                onLogoUpload={(file) => handleBrandingUpload(file, 'logo')}
+                onLogoRemove={() => handleBrandingRemove('logo')}
+                faviconUrl={faviconUrl}
+                faviconUploading={faviconUploading}
+                onFaviconUpload={(file) => handleBrandingUpload(file, 'favicon')}
+                onFaviconRemove={() => handleBrandingRemove('favicon')}
+                logoLayout={logoLayout}
+                setLogoLayout={setLogoLayout}
+                logoHeight={logoHeight}
+                setLogoHeight={setLogoHeight}
+                showPlatformName={showPlatformName}
+                setShowPlatformName={setShowPlatformName}
+                logoInputRef={logoInputRef}
+                faviconInputRef={faviconInputRef}
+            />
 
-                <div className="space-y-10">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        {/* System Logo */}
-                        <div className="space-y-4">
-                            <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>System Logo</Label>
-                            <div className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all overflow-hidden
-                                ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50'}
-                                w-full`} style={{ minHeight: 120 }}>
-                                {logoUploading ? (
-                                    <div className="flex flex-col items-center gap-2 py-8">
-                                        <Loader2 className={`animate-spin ${accent.text}`} size={28} />
-                                        <span className={`text-xs font-bold ${t.textSecondary(isDark)}`}>Uploading…</span>
-                                    </div>
-                                ) : logoUrl ? (
-                                    <div className="relative w-full flex items-center justify-center p-4 group">
-                                        <img
-                                            src={logoUrl}
-                                            alt="Platform Logo"
-                                            className="max-h-20 max-w-full object-contain"
-                                            onError={(e) => { (e.target as HTMLImageElement).src = '/api/branding/logo'; }}
-                                        />
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center gap-3">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); logoInputRef.current?.click(); }}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-colors"
-                                            >
-                                                <UploadCloud size={13} /> Replace
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleBrandingRemove('logo'); }}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/70 hover:bg-red-500/90 text-white text-xs font-bold transition-colors"
-                                            >
-                                                <X size={13} /> Remove
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); logoInputRef.current?.click(); }}
-                                        className="flex flex-col items-center gap-3 py-8 w-full hover:opacity-80 transition-opacity"
-                                    >
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                                            <UploadCloud size={22} />
-                                        </div>
-                                        <div className="text-center">
-                                            <p className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Upload Logo</p>
-                                            <p className={`text-[10px] mt-0.5 font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>PNG, JPG, SVG, WebP · Max 2MB</p>
-                                        </div>
-                                    </button>
-                                )}
-                            </div>
-                            {logoUrl && (
-                                <div className="flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); logoInputRef.current?.click(); }}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${isDark ? 'bg-white/5 hover:bg-white/10 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                                    >
-                                        <UploadCloud size={12} /> Replace
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleBrandingRemove('logo'); }}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
-                                    >
-                                        <Trash2 size={12} /> Remove
-                                    </button>
-                                </div>
-                            )}
-                            <input
-                                ref={logoInputRef}
-                                type="file"
-                                accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif"
-                                className="hidden"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleBrandingUpload(file, 'logo');
-                                    e.target.value = '';
-                                }}
-                            />
-                            <p className={`text-[11px] ${t.textMuted(isDark)} font-medium italic leading-relaxed`}>
-                                Primary branding asset. Used in headers, dashboards, and portals.
-                            </p>
-                        </div>
+            <AcademicClassesSection 
+                classesList={classesList}
+                classesLoading={classesLoading}
+                newClassName={newClassName}
+                setNewClassName={setNewClassName}
+                newClassLevel={newClassLevel}
+                setNewClassLevel={setNewClassLevel}
+                classCreating={classCreating}
+                deletingClassId={deletingClassId}
+                onCreateClass={handleCreateClass}
+                onDeleteClass={handleDeleteClass}
+            />
 
-                        {/* Favicon */}
-                        <div className="space-y-4">
-                            <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>Favicon (Browser Icon)</Label>
-                            <div className="flex items-start gap-4">
-                                <div className={`relative flex items-center justify-center rounded-2xl border-2 border-dashed transition-all overflow-hidden flex-shrink-0
-                                    ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-slate-50'}
-                                    w-20 h-20`}>
-                                    {faviconUploading ? (
-                                        <Loader2 className={`animate-spin ${accent.text}`} size={18} />
-                                    ) : faviconUrl ? (
-                                        <div className="relative w-full h-full flex items-center justify-center p-2 group">
-                                            <img
-                                                src={faviconUrl}
-                                                alt="Favicon"
-                                                className="w-10 h-10 object-contain"
-                                                onError={(e) => { (e.target as HTMLImageElement).src = '/api/branding/favicon'; }}
-                                            />
-                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleBrandingRemove('favicon'); }}
-                                                    className="text-white"
-                                                    title="Remove favicon"
-                                                >
-                                                    <X size={16} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); faviconInputRef.current?.click(); }}
-                                            className="flex flex-col items-center gap-1 hover:opacity-80 transition-opacity w-full h-full justify-center"
-                                        >
-                                            <ImageIcon size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-                                        </button>
-                                    )}
-                                </div>
-                                <div className="flex flex-col gap-2 pt-1">
-                                    <button
-                                        type="button"
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); faviconInputRef.current?.click(); }}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${isDark ? 'bg-white/5 hover:bg-white/10 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                                    >
-                                        <UploadCloud size={12} /> {faviconUrl ? 'Replace' : 'Upload'}
-                                    </button>
-                                    {faviconUrl && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleBrandingRemove('favicon'); }}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
-                                        >
-                                            <Trash2 size={12} /> Remove
-                                        </button>
-                                    )}
-                                    <p className={`text-[10px] ${t.textMuted(isDark)} font-medium leading-tight`}>
-                                        Square icon for browser tabs.
-                                        <br />PNG, ICO, SVG · Max 2MB
-                                    </p>
-                                </div>
-                            </div>
-                            <input
-                                ref={faviconInputRef}
-                                type="file"
-                                accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml,image/webp"
-                                className="hidden"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleBrandingUpload(file, 'favicon');
-                                    e.target.value = '';
-                                }}
-                            />
-                        </div>
-                    </div>
+            <HeroVideoSection 
+                showHeroVideo={showHeroVideo}
+                setShowHeroVideo={setShowHeroVideo}
+                videoType={videoType}
+                setVideoType={setVideoType}
+                videoUrl={videoUrl}
+                setVideoUrl={setVideoUrl}
+                saving={saving}
+                onSave={handleSave}
+            />
 
-                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-10 pt-8 border-t ${t.border(isDark)}`}>
-                        <div className="space-y-4">
-                            <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>Platform Public Name</Label>
-                            <Input
-                                value={platformName}
-                                onChange={(e) => setPlatformName(e.target.value)}
-                                placeholder="e.g. TechNurture Labs"
-                                className={`text-base font-bold h-14 rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? '!bg-white/[0.08] border-white/10 text-white shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
-                            />
-                        </div>
+            <SecuritySection 
+                twoFactorEnabled={twoFactorEnabled}
+                show2FASetup={show2FASetup}
+                qrCode={qrCode}
+                otpToken={otpToken}
+                setOtpToken={setOtpToken}
+                onSetup2FA={handleSetup2FA}
+                onVerify2FA={handleVerifyAndEnable2FA}
+                show2FADisable={show2FADisable}
+                setShow2FADisable={setShow2FADisable}
+                disableToken={disableToken}
+                setDisableToken={setDisableToken}
+                disabling2FA={disabling2FA}
+                onDisable2FA={handleDisable2FA}
+                recoveryCodes={recoveryCodes}
+                currentPassword={currentPassword}
+                setCurrentPassword={setCurrentPassword}
+                newPassword={newPassword}
+                setNewPassword={setNewPassword}
+                changingPassword={changingPassword}
+                onChangePassword={handleChangePassword}
+            />
 
-                        <div className="space-y-4">
-                            <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>Logo Layout</Label>
-                            <div className="grid grid-cols-3 gap-3">
-                                {[
-                                    { id: 'landscape', label: 'Landscape', icon: <Columns size={20} /> },
-                                    { id: 'portrait', label: 'Portrait', icon: <Rows size={20} /> },
-                                    { id: 'icon_only', label: 'Icon', icon: <Square size={16} /> },
-                                ].map((layout) => {
-                                    const isActive = logoLayout === layout.id;
-                                    return (
-                                        <button
-                                            key={layout.id}
-                                            type="button"
-                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLogoLayout(layout.id); }}
-                                            className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2
-                                                ${isActive
-                                                    ? `border-${accent.name}-500 ${isDark ? 'bg-white/[0.04]' : 'bg-slate-50'}`
-                                                    : `border-transparent ${isDark ? 'bg-white/[0.02] hover:bg-white/[0.05]' : 'bg-slate-100/50 hover:bg-slate-100'} ${t.border(isDark)}`
-                                                }`}
-                                        >
-                                            <div className={isActive ? accent.text : t.textMuted(isDark)}>
-                                                {layout.icon}
-                                            </div>
-                                            <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? t.textPrimary(isDark) : t.textSecondary(isDark)}`}>
-                                                {layout.label}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
+            <MaintenanceSection 
+                syncing={syncing}
+                onSyncMetrics={handleSyncMetrics}
+                diagnosing={diagnosing}
+                diagResults={diagResults}
+                onRunDiagnostics={handleRunDiagnostics}
+            />
 
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <Label className={`text-xs font-black uppercase tracking-[0.2em] ${t.textSecondary(isDark)}`}>Logo Display Height</Label>
-                                <span className={`text-sm font-black px-3 py-1 rounded-lg ${accent.text} ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-                                    {logoHeight}px
-                                </span>
-                            </div>
-                            <Slider
-                                value={[logoHeight]}
-                                min={20}
-                                max={120}
-                                step={1}
-                                onValueChange={(vals) => setLogoHeight(vals[0])}
-                                className="py-4"
-                            />
-                            <p className={`text-[10px] ${t.textMuted(isDark)} font-medium`}>
-                                Drag to adjust the logo scale in navigation and footers.
-                            </p>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 rounded-2xl border border-dashed border-slate-200 dark:border-white/10">
-                            <div>
-                                <Label className={`text-sm font-black ${t.textPrimary(isDark)}`}>Show Name beside Logo</Label>
-                                <p className={`text-[10px] ${t.textMuted(isDark)} font-medium`}>Toggle platform name visibility in headers.</p>
-                            </div>
-                            <Switch checked={showPlatformName} onCheckedChange={setShowPlatformName} />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Academic Classes Management Section */}
-            <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
-                <div className="flex items-center gap-4 mb-8">
-                    <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
-                        <GraduationCap className={accent.text} size={28} />
-                    </div>
-                    <div className="flex-1">
-                        <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Academic Classes</h2>
-                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Manage class levels available for school registration. Default classes (1–12) are auto-created.</p>
-                    </div>
-                    <div className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
-                        {classesList.length} total
-                    </div>
-                </div>
-
-                {/* Add New Class */}
-                <div className={`p-5 rounded-2xl border-2 border-dashed ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50/50'} mb-6`}>
-                    <div className="flex items-center gap-2 mb-4">
-                        <Plus size={16} className={accent.text} />
-                        <span className={`text-xs font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Add New Class</span>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="flex-1">
-                            <Input
-                                value={newClassName}
-                                onChange={(e) => setNewClassName(e.target.value)}
-                                placeholder="e.g., Class 13 or Nursery"
-                                className={`h-12 rounded-xl font-medium ${isDark ? '!bg-white/[0.06] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
-                            />
-                        </div>
-                        <div className="w-full sm:w-32">
-                            <Input
-                                type="number"
-                                value={newClassLevel}
-                                onChange={(e) => setNewClassLevel(e.target.value)}
-                                placeholder="Level"
-                                min={0}
-                                className={`h-12 rounded-xl font-medium ${isDark ? '!bg-white/[0.06] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
-                            />
-                        </div>
-                        <Button
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCreateClass(); }}
-                            disabled={classCreating || !newClassName.trim() || !newClassLevel}
-                            className={`h-12 px-6 rounded-xl font-bold uppercase tracking-widest text-xs ${accent.bg} text-white hover:opacity-90 transition-all shrink-0`}
-                        >
-                            {classCreating ? <Loader2 className="animate-spin mr-2" size={16} /> : <Plus className="mr-1" size={16} />}
-                            Add
-                        </Button>
-                    </div>
-                    <p className={`text-[10px] ${t.textMuted(isDark)} font-medium mt-2`}>
-                        Level determines sort order. Lower levels appear first in registration.
-                    </p>
-                </div>
-
-                {/* Classes List */}
-                {classesLoading ? (
-                    <div className="flex justify-center items-center py-12">
-                        <Loader2 className={`animate-spin ${accent.text}`} size={24} />
-                    </div>
-                ) : classesList.length === 0 ? (
-                    <div className={`text-center py-12 ${t.textMuted(isDark)}`}>
-                        <GraduationCap size={32} className="mx-auto mb-3 opacity-30" />
-                        <p className="font-bold text-sm">No classes found</p>
-                        <p className="text-xs mt-1">Add a class above to get started.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        <AnimatePresence mode="popLayout">
-                            {classesList.map((cls) => (
-                                <motion.div
-                                    key={cls.id}
-                                    layout
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    className={`group flex items-center gap-3 p-4 rounded-2xl border transition-all ${isDark
-                                        ? 'bg-white/[0.03] border-white/[0.06] hover:border-white/10'
-                                        : 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm'
-                                        }`}
-                                >
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shrink-0 ${isDark ? 'bg-white/[0.06] text-slate-300' : 'bg-slate-100 text-slate-600'
-                                        }`}>
-                                        {cls.level}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={`text-sm font-bold truncate ${t.textPrimary(isDark)}`}>{cls.name}</p>
-                                        <p className={`text-[10px] font-medium ${t.textMuted(isDark)}`}>Level {cls.level}</p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteClass(cls.id, cls.name); }}
-                                        disabled={deletingClassId === cls.id}
-                                        className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all cursor-pointer ${isDark
-                                            ? 'hover:bg-rose-500/10 text-rose-400'
-                                            : 'hover:bg-rose-50 text-rose-500'
-                                            }`}
-                                        title={`Delete ${cls.name}`}
-                                    >
-                                        {deletingClassId === cls.id ? (
-                                            <Loader2 className="animate-spin" size={16} />
-                                        ) : (
-                                            <Trash2 size={16} />
-                                        )}
-                                    </button>
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
-                    </div>
-                )}
-            </div>
-
-            <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
-                <div className="flex items-center gap-4 mb-8">
-                    <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
-                        <Film className={accent.text} size={28} />
-                    </div>
-                    <div className="flex-1">
-                        <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Landing Page Video</h2>
-                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Configure the hero video shown on the main product landing page.</p>
-                    </div>
-                </div>
-
-                <div className="mb-8 p-6 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10 flex items-center justify-between">
-                    <div className="space-y-1">
-                        <Label className={`text-lg font-bold ${t.textPrimary(isDark)}`}>Enable Hero Video Section</Label>
-                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium`}>Show or hide the video demonstration section on the landing page.</p>
-                    </div>
-                    <Switch 
-                        checked={showHeroVideo} 
-                        onCheckedChange={setShowHeroVideo}
-                        className={`data-[state=checked]:bg-${accent.name}-500`}
-                    />
-                </div>
-
-                <div className={`space-y-8 transition-all duration-300 ${showHeroVideo ? 'opacity-100' : 'opacity-40 pointer-events-none grayscale'}`}>
-                    {/* Video Type Selector */}
-                    <div className="grid grid-cols-2 lg:grid-cols-2 gap-4 max-w-2xl">
-                        {[
-                            { id: 'stream', label: 'Cloudflare Stream', icon: <Video className="mb-2" size={24} /> },
-                            { id: 'youtube', label: 'YouTube', icon: <Hash className="mb-2" size={24} /> },
-                        ].map((type) => {
-                            const isActive = videoType === type.id;
-                            return (
-                                <button
-                                    key={type.id}
-                                    type="button"
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setVideoType(type.id as any); setVideoUrl(''); }}
-                                    className={`relative p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center
-                                        ${isActive
-                                            ? `border-${accent.name}-500 ${isDark ? 'bg-white/[0.04]' : 'bg-slate-50'}`
-                                            : `border-transparent ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50'} ${t.border(isDark)}`
-                                        }`}
-                                >
-                                    {React.cloneElement(type.icon, { className: isActive ? accent.text : t.textMuted(isDark) })}
-                                    <span className={`text-xs font-bold uppercase tracking-wider ${isActive ? t.textPrimary(isDark) : t.textSecondary(isDark)}`}>{type.label}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* URL Input based on Type */}
-                    <div className="space-y-4">
-                        <Label className={`text-xs font-bold uppercase tracking-wider ${t.textSecondary(isDark)}`}>
-                            {videoType === 'stream' ? 'Select or Upload to Cloudflare Stream' : 'YouTube Video ID or URL'}
-                        </Label>
-
-                        {videoType === 'stream' ? (
-                            <div className="space-y-4">
-                                <div className={`p-4 rounded-xl border flex items-start gap-4 ${isDark ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
-                                    <div className={`p-2 rounded-lg ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-100'}`}>
-                                        <Shield className="text-indigo-500" size={18} />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className={`text-xs font-bold ${t.textPrimary(isDark)} mb-1`}>Cloudflare Stream Integration Active</p>
-                                        <p className={`text-[10px] ${t.textSecondary(isDark)}`}>
-                                            Videos are optimized for global delivery. You can upload new videos or browse your existing library.
-                                        </p>
-                                    </div>
-                                </div>
-                                
-                                <VideoUpload
-                                    value={videoUrl}
-                                    onChange={(url) => setVideoUrl(url)}
-                                    isDark={isDark}
-                                    folder="landing"
-                                    useCloudflareStream={true}
-                                />
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <Input
-                                    value={videoUrl}
-                                    onChange={(e) => setVideoUrl(e.target.value)}
-                                    placeholder="e.g., https://www.youtube.com/watch?v=..."
-                                    className={`text-base font-bold h-14 rounded-xl transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 focus-visible:border-${accent.name}-400/30 ${isDark ? 'bg-white/[0.08] border-white/10 text-white shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
-                                />
-                                {videoUrl && !videoUrl.includes('youtube.com') && !videoUrl.includes('youtu.be') && (
-                                    <p className="text-[10px] font-bold text-amber-500 ml-1">
-                                        ⚠ This doesn't look like a valid YouTube link. Please check it.
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className={`mt-10 pt-8 border-t ${t.border(isDark)} flex justify-end`}>
-                    <Button
-                        type="button"
-                        onClick={handleSave}
-                        disabled={saving}
-                        className={`h-12 px-8 rounded-xl font-bold uppercase tracking-widest transition-all
-                            ${accent.bg} text-slate-100 hover:opacity-90 hover:scale-105`}
-                    >
-                        {saving ? <Loader2 className="animate-spin mr-2" size={18} /> : <Save className="mr-2" size={18} />}
-                        Save Configuration
-                    </Button>
-                </div>
-            </div>
-
-            {/* Password Management Section */}
-            <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
-                <div className="flex items-center gap-4 mb-8">
-                    <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
-                        <Lock className={accent.text} size={28} />
-                    </div>
-                    <div>
-                        <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Account Password</h2>
-                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Update your administrative account password.</p>
-                    </div>
-                </div>
-
-                <div className="space-y-6 max-w-md">
-                    <div className="space-y-4">
-                        <Label className={`text-xs font-bold uppercase tracking-wider ${t.textSecondary(isDark)}`}>Current Password</Label>
-                        <Input
-                            type="password"
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                            className={`text-base font-medium h-14 rounded-xl ${isDark ? '!bg-white/[0.04] border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
-                            placeholder="••••••••"
-                        />
-                    </div>
-                    <div className="space-y-4">
-                        <Label className={`text-xs font-bold uppercase tracking-wider ${t.textSecondary(isDark)}`}>New Password</Label>
-                        <Input
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            className={`text-base font-medium h-14 rounded-xl ${isDark ? '!bg-white/[0.04] border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
-                            placeholder="••••••••"
-                        />
-                    </div>
-                        <Button
-                        type="button"
-                        onClick={handleChangePassword}
-                        disabled={changingPassword || !currentPassword || !newPassword}
-                        className={`h-12 w-full rounded-xl font-bold uppercase tracking-widest ${accent.bg} text-white`}
-                    >
-                        {changingPassword ? <Loader2 className="animate-spin mr-2" size={18} /> : null}
-                        Change Password
-                    </Button>
-                </div>
-            </div>
-
-            {/* Security & 2FA Section */}
-            <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
-                <div className="flex items-center gap-4 mb-8">
-                    <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
-                        <Shield className={accent.text} size={28} />
-                    </div>
-                    <div>
-                        <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Security & MFA</h2>
-                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Enhance your administrative account security with Two-Factor Authentication.</p>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    <div className={`p-6 md:p-8 rounded-3xl border ${twoFactorEnabled ? 'border-emerald-500/20 bg-emerald-500/[0.02]' : 'border-amber-500/20 bg-amber-500/[0.02]'}`}>
-                        <div className="flex flex-col md:flex-row items-start md:items-center gap-5 md:gap-6">
-                            <div className={`p-4 rounded-2xl shrink-0 ${twoFactorEnabled ? 'bg-emerald-500/10 text-emerald-500 shadow-inner' : 'bg-amber-500/10 text-amber-500 shadow-inner'}`}>
-                                {twoFactorEnabled ? <CheckCircle size={28} /> : <AlertCircle size={28} />}
-                            </div>
-                            <div className="flex-1 space-y-2">
-                                <h3 className={`font-black uppercase tracking-[0.1em] text-sm ${t.textPrimary(isDark)}`}>
-                                    Two-Factor Authentication: <span className={twoFactorEnabled ? 'text-emerald-500' : 'text-amber-500'}>{twoFactorEnabled ? 'PROTECTED' : 'UNSECURED'}</span>
-                                </h3>
-                                <p className={`text-xs ${t.textSecondary(isDark)} font-medium leading-relaxed max-w-xl`}>
-                                    {twoFactorEnabled
-                                        ? 'Your account is secured with a secondary verification layer. Unauthorized infrastructure access is severely restricted.'
-                                        : 'We strongly recommend enabling 2FA to protect administrative actions and secure platform infrastructure.'}
-                                </p>
-                            </div>
-                            <div className={`w-full md:w-auto mt-6 md:mt-0 pt-6 md:pt-0 border-t ${isDark ? 'border-white/10' : 'border-slate-200'} md:border-0 flex gap-3 shrink-0`}>
-                                {!twoFactorEnabled && !show2FASetup && (
-                                    <Button type="button" onClick={handleSetup2FA} className={`w-full md:w-auto rounded-xl font-black ${accent.bg} text-white px-8 h-12 uppercase tracking-widest text-xs shadow-lg shadow-${accent.name}-500/20 hover:scale-105 transition-all`}>
-                                        Secure Now
-                                    </Button>
-                                )}
-                                {twoFactorEnabled && !show2FADisable && (
-                                    <Button type="button" variant="outline" onClick={() => setShow2FADisable(true)}
-                                        className={`w-full md:w-auto rounded-xl font-black uppercase tracking-widest text-xs px-8 h-12 border-2 transition-all !bg-transparent
-                                                ${isDark ? 'border-white/10 hover:!bg-white/5 text-slate-300' : 'border-slate-200 hover:!bg-slate-50 text-slate-700'}
-                                            `}>
-                                        Disable
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {show2FADisable && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className={`p-8 rounded-3xl border-2 ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100'} space-y-6 overflow-hidden`}>
-                            <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
-                                <div className="space-y-2 flex-1">
-                                    <div className="flex items-center gap-2 text-rose-500">
-                                        <AlertCircle size={20} />
-                                        <h4 className="font-black uppercase tracking-widest text-sm">Disable Two-Factor Authentication</h4>
-                                    </div>
-                                    <p className={`text-xs ${t.textSecondary(isDark)} font-medium leading-relaxed max-w-lg`}>
-                                        Warning: Disabling 2FA will remove the extra layer of security on your administrative account. Please enter your authenticator's 6-digit code to confirm this action.
-                                    </p>
-                                </div>
-                                <div className="flex flex-col gap-4 items-center shrink-0 w-full md:w-auto">
-                                    <InputOTP maxLength={6} value={disableToken} onChange={setDisableToken}>
-                                        <InputOTPGroup className="gap-2">
-                                            {[0, 1, 2, 3, 4, 5].map(i => (
-                                                <InputOTPSlot key={i} index={i} className={`w-12 h-14 rounded-xl border-2 font-black text-lg ${isDark ? '!bg-white/5 border-white/10 text-white' : '!bg-white border-slate-200 text-slate-900'} shadow-[none!important] outline-none`} />
-                                            ))}
-                                        </InputOTPGroup>
-                                    </InputOTP>
-                                    <div className="flex gap-3 w-full">
-                                        <Button type="button" variant="outline" onClick={() => setShow2FADisable(false)} className={`flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-xs border-2 !bg-transparent transition-all ${isDark ? 'border-white/10 text-slate-400 hover:text-white hover:!bg-white/5' : 'border-slate-200 text-slate-500 hover:text-slate-900 hover:!bg-slate-50'}`}>
-                                            Cancel
-                                        </Button>
-                                        <Button type="button" onClick={handleDisable2FA} disabled={disableToken.length !== 6 || disabling2FA} className="flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-xs bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20">
-                                            {disabling2FA ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
-                                            Confirm
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {show2FASetup && (
-                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className={`p-8 rounded-3xl border-2 ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100'} space-y-8`}>
-                            <div className="flex flex-col md:flex-row gap-10">
-                                <div className="p-4 bg-white rounded-2xl shadow-xl w-fit mx-auto md:mx-0">
-                                    {qrCode ? <img src={qrCode} alt="2FA QR Code" className="w-48 h-48" /> : <div className="w-48 h-48 flex items-center justify-center"><Loader2 className="animate-spin" /></div>}
-                                </div>
-                                <div className="flex-1 space-y-6">
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2 text-indigo-500">
-                                            <Smartphone size={18} />
-                                            <span className="text-xs font-black uppercase tracking-wider">Step 1: Scan QR</span>
-                                        </div>
-                                        <p className={`text-sm font-medium ${t.textSecondary(isDark)}`}>
-                                            Open your authenticator app (Google Authenticator, Authy, etc.) and scan the QR code on the left.
-                                        </p>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 text-indigo-500">
-                                            <Key size={18} />
-                                            <span className="text-xs font-black uppercase tracking-wider">Step 2: Verify Token</span>
-                                        </div>
-                                        <div className="flex flex-col items-center md:items-start gap-4">
-                                            <InputOTP maxLength={6} value={otpToken} onChange={setOtpToken}>
-                                                <InputOTPGroup className="gap-2">
-                                                    {[0, 1, 2, 3, 4, 5].map(i => (
-                                                        <InputOTPSlot key={i} index={i} className={`w-12 h-14 rounded-xl border-2 font-black text-lg ${isDark ? '!bg-white/5 border-white/10 text-white' : '!bg-white border-slate-200 text-slate-900'} shadow-[none!important] outline-none`} />
-                                                    ))}
-                                                </InputOTPGroup>
-                                            </InputOTP>
-                                            <Button
-                                                type="button"
-                                                onClick={handleVerifyAndEnable2FA}
-                                                disabled={otpToken.length !== 6}
-                                                className={`h-12 px-10 rounded-xl font-bold uppercase tracking-widest ${accent.bg} text-white`}
-                                            >
-                                                Finalize Setup
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {recoveryCodes.length > 0 && (
-                        <div className={`p-8 rounded-3xl ${isDark ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'} border-2 space-y-6`}>
-                            <div className="flex items-center gap-3 text-indigo-500">
-                                <Key size={22} className="shrink-0" />
-                                <h4 className="text-sm font-black uppercase tracking-[0.15em]">Emergency Recovery Codes</h4>
-                            </div>
-                            <p className={`text-xs ${t.textMuted(isDark)} font-medium leading-relaxed max-w-2xl`}>
-                                Store these codes in a secure, offline location. They can be used to regain access to your administrative account if you lose your authentication device.
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
-                                {recoveryCodes.map(code => (
-                                    <div key={code} className={`p-4 rounded-xl border-2 text-center font-mono text-sm font-black tracking-[0.2em] transition-transform hover:scale-105 cursor-default
-                                        ${isDark
-                                            ? 'bg-white/[0.04] border-white/10 text-indigo-300 hover:border-indigo-400/50 hover:bg-indigo-500/10'
-                                            : 'bg-white border-indigo-100 text-indigo-700 hover:border-indigo-300 hover:shadow-md'}
-                                    `}>
-                                        {code}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* System Maintenance Section */}
-            <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
-                <div className="flex items-center gap-4 mb-8">
-                    <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
-                        <Settings2 className={accent.text} size={28} />
-                    </div>
-                    <div className="flex-1">
-                        <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>System Maintenance</h2>
-                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Perform critical system-wide data synchronization and cleanup tasks.</p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className={`p-6 rounded-3xl border ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-neutral-50'} flex flex-col justify-between`}>
-                        <div className="space-y-2">
-                            <h4 className={`text-sm font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Sync Platform Metrics</h4>
-                            <p className={`text-[11px] font-medium leading-relaxed ${t.textMuted(isDark)}`}>
-                                Force a complete recalculation of total students, revenue, and active subscriptions. Use this if dashboard counters appear out of sync.
-                            </p>
-                        </div>
-                        <Button 
-                            type="button"
-                            disabled={syncing}
-                            onClick={async (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setSyncing(true);
-                                try {
-                                    const res = await syncPlatformMetrics();
-                                    if (res.success) toast.success("Metrics synchronized");
-                                    else toast.error("Sync failed");
-                                } catch { toast.error("Network error"); }
-                                finally { setSyncing(false); }
-                            }}
-                            className={`mt-6 w-fit rounded-full h-11 px-8 font-black uppercase tracking-widest text-[10px] ${t.btnPrimary(isDark, accent)}`}
-                        >
-                            {syncing ? <Loader2 className="animate-spin mr-2" size={14} /> : null}
-                            RECALCULATE ALL DATA
-                        </Button>
-                    </div>
-
-                    <div className={`p-6 rounded-3xl border ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-neutral-50'} flex flex-col justify-between`}>
-                        <div className="space-y-2">
-                            <h4 className={`text-sm font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Database Integrity</h4>
-                            <p className={`text-[11px] font-medium leading-relaxed ${t.textMuted(isDark)}`}>
-                                Validates foreign key relationships and detects orphaned metadata. Run after massive course/school deletions.
-                            </p>
-                            {diagResults && (
-                                <div className={`mt-3 p-3 rounded-xl ${diagResults.status === 'ok' ? (isDark ? 'bg-emerald-500/10' : 'bg-emerald-50') : (isDark ? 'bg-rose-500/10' : 'bg-rose-50')}`}>
-                                    <p className={`text-[10px] font-black ${diagResults.status === 'ok' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                        {diagResults.status === 'ok'
-                                            ? '✓ Database Healthy - No issues found'
-                                            : `⚠ ${diagResults.issues.length} Issue${diagResults.issues.length > 1 ? 's' : ''} Found`}
-                                    </p>
-                                    {diagResults.issues.length > 0 && (
-                                        <ul className={`text-[9px] mt-2 space-y-1 ${isDark ? 'text-rose-200' : 'text-rose-700'}`}>
-                                            {diagResults.issues.map((issue, i) => (
-                                                <li key={i}>• {issue}</li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                        <Button
-                            type="button"
-                            disabled={diagnosing}
-                            onClick={async (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setDiagnosing(true);
-                                try {
-                                    const res = await runDatabaseDiagnostics();
-                                    setDiagResults(res);
-                                    if (res.status === 'ok') {
-                                        toast.success('Database diagnostics: All clear');
-                                    } else {
-                                        toast.error(`Found ${res.issues.length} issue${res.issues.length > 1 ? 's' : ''}`);
-                                    }
-                                } catch (err: any) {
-                                    toast.error('Diagnostics failed: ' + err.message);
-                                    console.error(err);
-                                } finally {
-                                    setDiagnosing(false);
-                                }
-                            }}
-                            className={`mt-6 w-fit rounded-full h-11 px-8 font-black uppercase tracking-widest text-[10px] ${t.btnPrimary(isDark, accent)}`}
-                        >
-                            {diagnosing ? <Loader2 className="animate-spin mr-2" size={14} /> : null}
-                            RUN DIAGNOSTICS
-                        </Button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Storage Usage Divider */}
-            <div className="border-t border-dashed border-white/[0.07]" />
-
-            {/* Storage Usage Section */}
-            <div className={`p-6 md:p-10 rounded-[2rem] border ${t.border(isDark)} ${isDark ? 'bg-[#121214]' : 'bg-white'} shadow-xl`}>
-                <div className="flex items-center gap-4 mb-8">
-                    <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
-                        <HardDrive className={accent.text} size={28} />
-                    </div>
-                    <div className="flex-1">
-                        <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Storage Usage</h2>
-                        <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Server storage allocation across all services</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            type="button"
-                            onClick={() => fetchStorageData()}
-                            disabled={storageLoading}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 disabled:opacity-50' : 'bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50'}`}
-                        >
-                            <RefreshCw size={13} className={storageLoading ? 'animate-spin' : ''} />
-                            Refresh
-                        </button>
-                    </div>
-                </div>
-
-                {/* Error state */}
-                {storageError && (
-                    <div className={`mb-6 p-4 rounded-2xl border ${isDark ? 'bg-rose-500/10 border-rose-500/20' : 'bg-rose-50 border-rose-100'}`}>
-                        <p className={`text-sm font-bold ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>{storageError}</p>
-                        <button
-                            type="button"
-                            onClick={() => fetchStorageData()}
-                            className={`mt-2 text-xs font-black uppercase tracking-widest ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-500'}`}
-                        >
-                            Retry
-                        </button>
-                    </div>
-                )}
-
-                {/* Loading skeleton */}
-                {storageLoading && !storageData && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {[0, 1, 2, 3].map(i => (
-                            <div key={i} className={`p-6 rounded-[1.5rem] border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50/80'} animate-pulse`}>
-                                <div className={`h-4 w-1/2 rounded-full mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-slate-200'}`} />
-                                <div className={`h-8 w-1/3 rounded-full mb-6 ${isDark ? 'bg-white/[0.08]' : 'bg-slate-200'}`} />
-                                <div className={`h-2 w-full rounded-full mb-3 ${isDark ? 'bg-white/[0.08]' : 'bg-slate-200'}`} />
-                                <div className={`h-2 w-4/5 rounded-full mb-3 ${isDark ? 'bg-white/[0.08]' : 'bg-slate-200'}`} />
-                                <div className={`h-2 w-3/5 rounded-full ${isDark ? 'bg-white/[0.08]' : 'bg-slate-200'}`} />
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Data cards */}
-                {storageData && systemHealth && !storageLoading && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                        {/* ── R2 Bucket ────────────────────────────────────────────────────── */}
-                        <div className={`p-6 rounded-[1.5rem] border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50/80'}`}>
-                            <div className="flex items-center justify-between mb-1">
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>R2 Bucket</span>
-                                {!storageData.r2?.scanned && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleScanR2()}
-                                        disabled={r2Scanning}
-                                        className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 disabled:opacity-50' : 'bg-slate-200 hover:bg-slate-300 text-slate-600 disabled:opacity-50'}`}
-                                    >
-                                        {r2Scanning ? <RefreshCw size={10} className="animate-spin" /> : null}
-                                        {r2Scanning ? 'Scanning…' : 'Scan R2'}
-                                    </button>
-                                )}
-                                {storageData.r2?.scanned && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleScanR2()}
-                                        disabled={r2Scanning}
-                                        className={`flex items-center gap-1 text-[9px] font-bold ${t.textMuted(isDark)} hover:opacity-80 transition-opacity`}
-                                    >
-                                        <RefreshCw size={9} className={r2Scanning ? 'animate-spin' : ''} />
-                                        Re-scan
-                                    </button>
-                                )}
-                            </div>
-
-                            {!storageData.r2?.configured && (
-                                <p className={`text-xs font-medium mt-2 ${t.textMuted(isDark)}`}>R2 not configured</p>
-                            )}
-
-                            {storageData.r2?.configured && !storageData.r2?.scanned && (
-                                <div className={`mt-4 p-4 rounded-xl border border-dashed ${isDark ? 'border-white/[0.08]' : 'border-slate-200'} text-center`}>
-                                    <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Click "Scan R2" to analyze bucket usage</p>
-                                    <p className={`text-[9px] mt-1 ${t.textMuted(isDark)} opacity-60`}>May take a few seconds for large buckets</p>
-                                </div>
-                            )}
-
-                            {storageData.r2?.configured && storageData.r2?.scanned && (() => {
-                                const r2 = storageData.r2;
-                                const maxFolder = Math.max(r2.byFolder.images.bytes, r2.byFolder.videos.bytes, r2.byFolder.documents.bytes, 1);
-                                const folders = [
-                                    { key: 'images', label: 'Images', data: r2.byFolder.images },
-                                    { key: 'videos', label: 'Videos', data: r2.byFolder.videos },
-                                    { key: 'documents', label: 'Documents', data: r2.byFolder.documents },
-                                ];
-                                return (
-                                    <>
-                                        <p className={`text-2xl font-black ${t.textPrimary(isDark)} mt-1 mb-5`}>
-                                            {formatBytes(r2.totalBytes)}
-                                            <span className={`text-sm font-bold ml-2 ${t.textMuted(isDark)}`}>used</span>
-                                        </p>
-                                        <div className="space-y-3">
-                                            {folders.map(({ label, data }) => {
-                                                const pct = (data.bytes / maxFolder) * 100;
-                                                return (
-                                                    <div key={label}>
-                                                        <div className="flex justify-between items-center mb-1">
-                                                            <span className={`text-[10px] font-bold ${t.textSecondary(isDark)}`}>{label}</span>
-                                                            <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>{formatBytes(data.bytes)}</span>
-                                                        </div>
-                                                        <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'}`}>
-                                                            <motion.div
-                                                                className={`h-full rounded-full ${accent.bg}`}
-                                                                initial={{ width: 0 }}
-                                                                animate={{ width: `${Math.min(pct, 100)}%` }}
-                                                                transition={{ duration: 0.8, ease: 'easeOut' }}
-                                                                style={t.barGlow(isDark, accent)}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        <p className={`text-[10px] font-bold mt-4 ${t.textMuted(isDark)}`}>
-                                            {r2.objectCount.toLocaleString()} objects total
-                                        </p>
-                                    </>
-                                );
-                            })()}
-                        </div>
-
-                        {/* ── Database ──────────────────────────────────────────────────────── */}
-                        <div className={`p-6 rounded-[1.5rem] border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50/80'}`}>
-                            <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Database</span>
-                            <p className={`text-2xl font-black ${t.textPrimary(isDark)} mt-1 mb-5`}>
-                                {systemHealth.database?.totalSize || 'Unknown'}
-                                <span className={`text-sm font-bold ml-2 ${t.textMuted(isDark)}`}>total size</span>
-                            </p>
-                            {(() => {
-                                const assets = storageData.db?.mediaAssets ?? [];
-                                const byType: Record<string, { count: number; bytes: number }> = {
-                                    video: { count: 0, bytes: 0 },
-                                    image: { count: 0, bytes: 0 },
-                                    document: { count: 0, bytes: 0 },
-                                };
-                                for (const row of assets) {
-                                    if (byType[row.asset_type]) {
-                                        byType[row.asset_type].count += row.count;
-                                        byType[row.asset_type].bytes += row.totalBytes;
-                                    }
-                                }
-                                const maxBytes = Math.max(...Object.values(byType).map(v => v.bytes), 1);
-                                const totalCount = Object.values(byType).reduce((s, v) => s + v.count, 0);
-                                const typeRows = [
-                                    { key: 'video', label: 'Videos' },
-                                    { key: 'image', label: 'Images' },
-                                    { key: 'document', label: 'Documents' },
-                                ];
-                                return (
-                                    <div className="space-y-3">
-                                        {typeRows.map(({ key, label }) => {
-                                            const d = byType[key];
-                                            const pct = (d.bytes / maxBytes) * 100;
-                                            return (
-                                                <div key={key}>
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <span className={`text-[10px] font-bold ${t.textSecondary(isDark)}`}>
-                                                            {label} <span className={`${t.textMuted(isDark)}`}>({d.count})</span>
-                                                        </span>
-                                                        <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>{formatBytes(d.bytes)}</span>
-                                                    </div>
-                                                    <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'}`}>
-                                                        <motion.div
-                                                            className={`h-full rounded-full ${accent.bg}`}
-                                                            initial={{ width: 0 }}
-                                                            animate={{ width: `${Math.min(pct, 100)}%` }}
-                                                            transition={{ duration: 0.8, ease: 'easeOut' }}
-                                                            style={t.barGlow(isDark, accent)}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                        <p className={`text-[10px] font-bold mt-1 ${t.textMuted(isDark)}`}>
-                                            {totalCount.toLocaleString()} assets in media library
-                                        </p>
-                                    </div>
-                                );
-                            })()}
-                        </div>
-
-                        {/* ── Redis Cache ───────────────────────────────────────────────────── */}
-                        <div className={`p-6 rounded-[1.5rem] border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50/80'}`}>
-                            <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Redis Cache</span>
-                            {(() => {
-                                const redis = systemHealth.redis;
-                                const usedBytes = parseInt(redis.used_memory || '0', 10);
-                                const maxBytes = parseInt(redis.maxmemory || '0', 10);
-                                const pct = maxBytes > 0 ? Math.min((usedBytes / maxBytes) * 100, 100) : 0;
-                                const fragRatio = redis.mem_fragmentation_ratio ?? 1;
-                                const fragHigh = fragRatio > 1.5;
-                                return (
-                                    <>
-                                        <p className={`text-2xl font-black ${t.textPrimary(isDark)} mt-1 mb-5`}>
-                                            {redis.used_memory_human}
-                                            {redis.maxmemory_human && redis.maxmemory_human !== 'Unlimited' && (
-                                                <span className={`text-sm font-bold ml-2 ${t.textMuted(isDark)}`}>/ {redis.maxmemory_human}</span>
-                                            )}
-                                        </p>
-                                        {maxBytes > 0 && (
-                                            <div className="mb-3">
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <span className={`text-[10px] font-bold ${t.textSecondary(isDark)}`}>Memory used</span>
-                                                    <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>{pct.toFixed(1)}%</span>
-                                                </div>
-                                                <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'}`}>
-                                                    <motion.div
-                                                        className={`h-full rounded-full ${pct > 85 ? 'bg-rose-500' : accent.bg}`}
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${pct}%` }}
-                                                        transition={{ duration: 0.8, ease: 'easeOut' }}
-                                                        style={t.barGlow(isDark, accent)}
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
-                                        <div className="flex items-center gap-2 mt-4">
-                                            <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Frag ratio:</span>
-                                            <span className={`text-[10px] font-black ${fragHigh ? 'text-amber-500' : t.textPrimary(isDark)}`}>
-                                                {fragRatio.toFixed(2)}
-                                                {fragHigh && ' ⚠'}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Hit rate:</span>
-                                            <span className={`text-[10px] font-black ${t.textPrimary(isDark)}`}>{redis.hit_ratio?.toFixed(1)}%</span>
-                                        </div>
-                                    </>
-                                );
-                            })()}
-                        </div>
-
-                        {/* ── Server RAM + Node.js Heap ─────────────────────────────────────── */}
-                        <div className={`p-6 rounded-[1.5rem] border ${t.border(isDark)} ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50/80'}`}>
-                            <span className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Server RAM &amp; Node.js Heap</span>
-                            {(() => {
-                                const srv = systemHealth.server;
-                                const ramPct = srv.memUsagePercent ?? 0;
-                                const heapPct = srv.heapUsagePercent ?? 0;
-                                const totalGb = (srv.totalMemMb / 1024).toFixed(1);
-                                const usedGb = (srv.usedMemMb / 1024).toFixed(1);
-                                return (
-                                    <>
-                                        <p className={`text-2xl font-black ${t.textPrimary(isDark)} mt-1 mb-5`}>
-                                            {usedGb} GB
-                                            <span className={`text-sm font-bold ml-2 ${t.textMuted(isDark)}`}>/ {totalGb} GB</span>
-                                        </p>
-                                        {/* RAM progress */}
-                                        <div className="mb-3">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className={`text-[10px] font-bold ${t.textSecondary(isDark)}`}>RAM used</span>
-                                                <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>{ramPct.toFixed(1)}%</span>
-                                            </div>
-                                            <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'}`}>
-                                                <motion.div
-                                                    className={`h-full rounded-full ${ramPct > 85 ? 'bg-rose-500' : accent.bg}`}
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${Math.min(ramPct, 100)}%` }}
-                                                    transition={{ duration: 0.8, ease: 'easeOut' }}
-                                                    style={t.barGlow(isDark, accent)}
-                                                />
-                                            </div>
-                                        </div>
-                                        {/* Heap progress */}
-                                        <div className="mb-3">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className={`text-[10px] font-bold ${t.textSecondary(isDark)}`}>
-                                                    Node.js Heap
-                                                </span>
-                                                <span className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>
-                                                    {srv.heapUsedMb} MB / {srv.heapTotalMb} MB
-                                                </span>
-                                            </div>
-                                            <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/[0.08]' : 'bg-neutral-100'}`}>
-                                                <motion.div
-                                                    className={`h-full rounded-full ${heapPct > 85 ? 'bg-rose-500' : accent.bg}`}
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${Math.min(heapPct, 100)}%` }}
-                                                    transition={{ duration: 0.8, ease: 'easeOut' }}
-                                                    style={t.barGlow(isDark, accent)}
-                                                />
-                                            </div>
-                                        </div>
-                                        <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>
-                                            {heapPct.toFixed(1)}% heap used
-                                        </p>
-                                    </>
-                                );
-                            })()}
-                        </div>
-
-                    </div>
-                )}
-            </div>
-
-            {/* Infrastructure Health Section */}
-            <div className="space-y-8 pt-8 border-t border-dashed border-slate-200 dark:border-white/10">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
-                            <ActivityIcon className={accent.text} size={28} />
-                        </div>
-                        <div>
-                            <h2 className={`text-2xl font-black ${t.textPrimary(isDark)} tracking-tight`}>Infrastructure Engine</h2>
-                            <p className={`text-sm ${t.textSecondary(isDark)} font-medium mt-1`}>Real-time monitoring of Node.js, Redis, and Database health.</p>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <a href="/admin-portal/admin/infrastructure-monitor">
-                            <Button
-                                type="button"
-                                className={`h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all hover:scale-105 active:scale-95 ${t.btnPrimary(isDark, accent)}`}
-                            >
-                                <Activity className="mr-2" size={18} />
-                                Infrastructure Monitor
-                            </Button>
-                        </a>
-                    </div>
-                </div>
-                
-                <div className={`p-8 rounded-[2rem] border-2 border-dashed ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100'} text-center`}>
-                    <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${t.textMuted(isDark)}`}>
-                        Monitoring data is fetched on-demand to preserve server resources.
-                    </p>
-                </div>
-            </div>
+            <StorageSection 
+                storageLoading={storageLoading}
+                storageError={storageError}
+                storageData={storageData}
+                systemHealth={systemHealth}
+                onRefreshStorage={fetchStorageData}
+                r2Scanning={r2Scanning}
+                onScanR2={handleScanR2}
+                formatBytes={formatBytes}
+            />
         </div>
     );
 });

@@ -20,11 +20,11 @@ export function TopPerformerRow({ student, rank }: { student: Student; rank: num
             </div>
             <Avatar className="w-8 h-8">
                 <AvatarFallback className="bg-violet-100 text-violet-600 text-xs text-center flex items-center justify-center">
-                    {student.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                    {(student.full_name || 'S').split(' ').map(n => n[0]).join('').toUpperCase()}
                 </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm text-slate-700 truncate">{student.full_name}</p>
+                <p className="font-medium text-sm text-slate-700 truncate">{student.full_name || 'Unknown'}</p>
                 <p className="text-xs text-slate-500">{student.class_name || 'No Class'}</p>
             </div>
             <div className="flex items-center gap-1 text-amber-500">

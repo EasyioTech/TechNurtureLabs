@@ -129,10 +129,10 @@ export function SchoolStudentsTab({
                                             <div className="flex items-center gap-4">
                                                 <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-[13px] sm:text-[15px] font-black flex-shrink-0 transition-transform shadow-lg ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-black/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-indigo-100/30'
                                                     }`}>
-                                                    {s.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                    {(s.full_name || 'S').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className={`font-black text-[14px] sm:text-[15px] tracking-tight truncate leading-none mb-1.5 ${ts.textPrimary(isDark)}`}>{s.full_name}</p>
+                                                    <p className={`font-black text-[14px] sm:text-[15px] tracking-tight truncate leading-none mb-1.5 ${ts.textPrimary(isDark)}`}>{s.full_name || 'Unknown'}</p>
                                                     <p className={`text-[10px] sm:text-[11px] font-bold truncate opacity-50 ${ts.textPrimary(isDark)}`}>
                                                         {s.email || s.phone || 'No contact'}
                                                     </p>

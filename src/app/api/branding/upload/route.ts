@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { platformSettings } from '@/db/schema';
 import { verifySession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
-import { revalidateTag } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
         }
 
         revalidateTag('platform-settings', 'layout');
+        revalidatePath('/', 'layout');
 
         return NextResponse.json({ success: true, url });
     } catch (error) {
@@ -85,6 +86,7 @@ export async function DELETE(request: NextRequest) {
             .where(eq(platformSettings.id, 'global'));
 
         revalidateTag('platform-settings', 'layout');
+        revalidatePath('/', 'layout');
 
         return NextResponse.json({ success: true });
     } catch (error) {

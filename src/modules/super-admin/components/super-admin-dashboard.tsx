@@ -30,7 +30,7 @@ import { OverviewTab } from './tabs/overview-tab';
 import { CourseBuilderTab } from './tabs/course-builder-tab';
 import { PaymentPlansTab } from './tabs/payment-plans-tab';
 import { SchoolsTab } from './tabs/schools-tab';
-import { SettingsTab } from './tabs/settings-tab';
+import { SettingsTab, SettingsTabRef } from './tabs/settings-tab';
 import { PromoCodesTab } from './tabs/promo-codes-tab';
 import { SystemHealthTab } from './tabs/system-health-tab';
 import { LibraryTab } from './tabs/library-tab';
@@ -72,7 +72,7 @@ function DashboardContent() {
     const { isDark, toggle, colorScheme, setColorScheme, accent } = useAdminTheme();
     const [showColorPicker, setShowColorPicker] = useState(false);
     const colorPickerRef = useRef<HTMLDivElement>(null);
-    const settingsRef = useRef<{ handleSave: () => void } | null>(null);
+    const settingsRef = useRef<SettingsTabRef | null>(null);
 
     /* Close color picker on outside click */
     useEffect(() => {

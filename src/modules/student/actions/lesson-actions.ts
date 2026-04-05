@@ -177,7 +177,7 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
     const xpToAdd = lesson.xp_reward || 10;
 
     // SCALE BREAKER C: Core Completion Write (The only synchronous DB hit)
-    await db.transaction(async (tx) => {
+    const xpResult = await db.transaction(async (tx) => {
         const existing = await tx.query.lessonProgress.findFirst({
             where: and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId))
         });
@@ -202,10 +202,9 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
             });
         }
 
-        // 🚀 EVENT-DRIVEN OFFLOADING (Backgrounding 90% of the work)
-        // SCALE BREAKER C: We emit the event INSIDE the transaction to ensure 
-        // it's delivered if the DB write commits. If the event pusher fails, 
-        // the transaction rolls back, preventing "orphaned" lesson completions.
+        // Award actual XP and get level-up info
+        const result = await awardXP(userId, xpToAdd, existingUser.school_id, role as any);
+
         const { eventService } = await import('@/lib/services/event-service');
         await eventService.emit('student.lesson_completed_full', {
             userId,
@@ -216,11 +215,20 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
             role,
             quizScore,
             isPerfect,
+            leveledUp: result?.leveledUp,
+            newLevel: result?.newLevel,
             timestamp: Date.now()
         });
+
+        return result;
     });
 
-    return { success: true };
+    return { 
+        success: true, 
+        leveledUp: xpResult?.leveledUp, 
+        newLevel: xpResult?.newLevel,
+        xpEarned: xpToAdd
+    };
 }
 
 /**

@@ -2,15 +2,15 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { Download, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, ArrowRight, ChevronLeft, ChevronRight, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { VideoPlayer } from '@/components/video/video-player';
-import { CloudflareStreamPlayer } from '@/components/video/cloudflare-stream-player';
+import { VideoPlayer } from '@/modules/student/components/video/video-player';
+import { CloudflareStreamPlayer } from '@/modules/student/components/video/cloudflare-stream-player';
 import { Lesson } from '@/modules/student/types';
 
 // Lazy load heavy viewers
-const PDFViewer = dynamic(() => import('@/components/learning/pdf-viewer').then(mod => mod.PDFViewer), {
+const PDFViewer = dynamic(() => import('@/modules/student/components/learning/pdf-viewer').then(mod => mod.PDFViewer), {
   ssr: false,
 });
 const QuizEngine = dynamic(() => import('@/modules/student/components/quiz/quiz-engine').then(mod => mod.QuizEngine), {
@@ -20,10 +20,11 @@ const QuizEngine = dynamic(() => import('@/modules/student/components/quiz/quiz-
 type ContentBlock = { id: string; type: 'video' | 'pdf' | 'ppt' | 'image' | 'text'; url: string; urls?: string[]; };
 
 /** Image carousel — renders multiple images with swipe/dot navigation */
-function ImageCarousel({ urls, onComplete, lessonComplete }: {
+function ImageCarousel({ urls, onComplete, lessonComplete, isTimerLocked }: {
   urls: string[];
   onComplete: () => void;
   lessonComplete: boolean;
+  isTimerLocked?: boolean;
 }) {
   const [current, setCurrent] = React.useState(0);
   const completedRef = React.useRef(false);
@@ -42,11 +43,11 @@ function ImageCarousel({ urls, onComplete, lessonComplete }: {
 
   // Mark complete when last image is reached
   React.useEffect(() => {
-    if ((current === urls.length - 1 || urls.length <= 1) && !completedRef.current && !lessonComplete) {
+    if ((current === urls.length - 1 || urls.length <= 1) && !completedRef.current && !lessonComplete && !isTimerLocked) {
       completedRef.current = true;
       onComplete();
     }
-  }, [current, urls.length, lessonComplete, onComplete]);
+  }, [current, urls.length, lessonComplete, onComplete, isTimerLocked]);
 
   return (
     <div className="relative w-full select-none"
@@ -135,6 +136,7 @@ interface LessonContentProps {
   isFocusMode: boolean;
   onComplete: (isVideo?: boolean, quizPercentage?: number, isPerfect?: boolean) => void;
   lessonComplete: boolean;
+  isTimerLocked?: boolean;
   pageNumber?: number;
   docMax?: number;
   onDocStateChange?: (total: number) => void;
@@ -153,6 +155,7 @@ function ContentBlock({
   onDocStateChange,
   onPageChange,
   isFirst,
+  isTimerLocked,
 }: {
   block: ContentBlock;
   lessonId: string;
@@ -164,6 +167,7 @@ function ContentBlock({
   onDocStateChange?: (total: number) => void;
   onPageChange?: (page: number) => void;
   isFirst: boolean;
+  isTimerLocked?: boolean;
 }) {
   const isStreamVideo = block.type === 'video' && isCloudflareStreamUrl(block.url);
   const isRegularVideo = block.type === 'video' && !isStreamVideo;
@@ -214,7 +218,7 @@ function ContentBlock({
     return (
       <div className="bg-white w-full px-4 sm:px-8 lg:px-12 py-5 lg:py-8">
         <div className="max-w-[1100px] mx-auto">
-          <ImageCarousel urls={imageUrls} onComplete={onComplete} lessonComplete={lessonComplete} />
+          <ImageCarousel urls={imageUrls} onComplete={onComplete} lessonComplete={lessonComplete} isTimerLocked={isTimerLocked} />
         </div>
       </div>
     );
@@ -231,6 +235,7 @@ function ContentBlock({
           docMax={docMax ?? 1}
           onLoadTotalPages={(total) => onDocStateChange?.(total)}
           onPageChange={onPageChange}
+          canMarkComplete={!isTimerLocked}
         />
       </div>
     );
@@ -245,14 +250,20 @@ function ContentBlock({
             <Download size={28} strokeWidth={2.5} />
           </div>
           <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-3 relative z-10">Course Slides</h2>
-          <a
-            href={block.url}
-            download
-            onClick={() => onComplete()}
-            className="w-full inline-flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-indigo-600 transition-all shadow-xl active:scale-95 group relative z-10"
-          >
-            Download &amp; Continue <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-          </a>
+          {!isTimerLocked ? (
+            <a
+              href={block.url}
+              download
+              onClick={() => onComplete()}
+              className="w-full inline-flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-indigo-600 transition-all shadow-xl active:scale-95 group relative z-10"
+            >
+              Download &amp; Continue <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </a>
+          ) : (
+             <div className="w-full inline-flex items-center justify-center gap-3 bg-slate-100 text-slate-400 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] border border-slate-200 relative z-10 cursor-not-allowed">
+               Content Locked <Timer size={16} />
+             </div>
+          )}
         </div>
       </div>
     );
@@ -266,6 +277,7 @@ export function LessonContent({
   isFocusMode,
   onComplete,
   lessonComplete,
+  isTimerLocked,
   pageNumber = 1,
   docMax = 1,
   onDocStateChange,
@@ -369,6 +381,7 @@ export function LessonContent({
                 lessonComplete={lessonComplete}
                 onComplete={(isVideo) => handleBlockComplete(firstVideo.id, isVideo)}
                 isFirst={true}
+                isTimerLocked={isTimerLocked}
               />
             )}
 
@@ -405,6 +418,7 @@ export function LessonContent({
                 onDocStateChange={idx === 0 ? onDocStateChange : undefined}
                 onPageChange={idx === 0 ? onPageChange : undefined}
                 isFirst={!firstVideo && idx === 0}
+                isTimerLocked={isTimerLocked}
               />
             ))}
           </>
@@ -447,6 +461,7 @@ export function LessonContent({
               docMax={docMax}
               onLoadTotalPages={(total) => onDocStateChange?.(total)}
               onPageChange={onPageChange}
+              canMarkComplete={!isTimerLocked}
             />
           </div>
         </div>
@@ -455,7 +470,7 @@ export function LessonContent({
       {!blocks && lesson.content_type === 'image' && lesson.content_url && (
         <div className="bg-white w-full px-4 sm:px-8 lg:px-12 py-8 lg:py-12">
           <div className="max-w-[1100px] mx-auto">
-            <ImageCarousel urls={[lesson.content_url]} onComplete={onComplete} lessonComplete={lessonComplete} />
+            <ImageCarousel urls={[lesson.content_url]} onComplete={onComplete} lessonComplete={lessonComplete} isTimerLocked={isTimerLocked} />
           </div>
         </div>
       )}
@@ -471,14 +486,20 @@ export function LessonContent({
             <p className="text-slate-400 font-medium text-xs sm:text-sm mb-8 max-w-xs mx-auto leading-relaxed relative z-10">
               Download the presentation slides to study offline.
             </p>
-            <a
-              href={lesson.content_url!}
-              download
-              onClick={() => onComplete()}
-              className="w-full inline-flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-indigo-600 transition-all shadow-xl active:scale-95 group relative z-10"
-            >
-              Download &amp; Continue <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </a>
+            {!isTimerLocked ? (
+              <a
+                href={lesson.content_url!}
+                download
+                onClick={() => onComplete()}
+                className="w-full inline-flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-indigo-600 transition-all shadow-xl active:scale-95 group relative z-10"
+              >
+                Download &amp; Continue <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </a>
+            ) : (
+              <div className="w-full inline-flex items-center justify-center gap-3 bg-slate-100 text-slate-400 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] border border-slate-200 relative z-10 cursor-not-allowed">
+                Content Locked <Timer size={16} />
+              </div>
+            )}
           </div>
         </div>
       )}

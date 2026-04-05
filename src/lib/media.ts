@@ -15,7 +15,6 @@
  *                      and remove it from the schema.
  */
 
-
 import crypto from 'crypto';
 
 export function computeMediaUrl(asset: {
@@ -56,13 +55,11 @@ export function computeMediaUrl(asset: {
                 finalUrl = `/api/media/r2/${path}`;
             }
         }
-    } else if (asset.storage_type === 'local') {
-        // Local storage: use API proxy to serve from disk
-        finalUrl = `/api/media/${path}`;
     } else {
-        // Unknown storage type — fail safely
-        console.warn(`[Media] Unknown storage type: ${asset.storage_type}`);
-        finalUrl = `/api/media/${path}`;
+        // STRICT: Local storage is disabled to save disk space.
+        // Return a broken link or a placeholder if storage_type is not r2.
+        console.warn(`[Media] Unsupported storage type: ${asset.storage_type}. Only 'r2' is allowed.`);
+        return '/placeholder-error.png';
     }
 
     // 4. Security: Add temporary access token (sign the path or prefix)

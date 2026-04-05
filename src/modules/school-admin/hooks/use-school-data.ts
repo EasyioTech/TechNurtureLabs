@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import {
     getSchoolStats, getSchoolStudentsPaginated, getSchoolCourseAnalytics,
     getSchoolLeaderboard, toggleStudentStatus, getGlobalClasses, fetchSchoolClasses,
-    getPendingStudents, verifyStudentAction, getPendingPinRequests, resolvePinRequest
+    getPendingStudents, verifyStudentAction, getSchoolPinRequests, resolvePinRequest
 } from '../actions';
 import { SchoolStats, SchoolStudentMetric, SchoolCourseMetric, SchoolLeaderboardEntry } from '../types';
 
@@ -99,7 +99,7 @@ export function useSchoolData(schoolId: string) {
         if (!schoolId) return;
         setPinLoading(true);
         try {
-            const data = await getPendingPinRequests(schoolId);
+            const data = await getSchoolPinRequests(schoolId);
             if (data.success) {
                 setPinRequests(data.requests as any);
             }

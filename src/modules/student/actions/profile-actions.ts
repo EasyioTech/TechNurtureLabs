@@ -115,7 +115,7 @@ export async function getStudentProfileData() {
         profile: profile ? {
             ...profile,
             className: (profile.academicRecords?.[0] as any)?.academicClass?.name || 'Unassigned',
-            full_name: `${profile.first_name} ${profile.last_name}`,
+            full_name: `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() || 'Student',
             total_xp: Number(profile.cumulative_xp),
             level: stats.level,
             bio: profile.bio || '',

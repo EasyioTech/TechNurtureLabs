@@ -2,37 +2,7 @@ import type { NextConfig } from "next";
 import path from "node:path";
 import fs from "node:fs";
 
-// ── PDF.js asset sync ────────────────────────────────────────────────────────
-// Runs on every config evaluation (dev start + build) so all three assets always
-// match the installed pdfjs-dist version.  Eliminates any CDN dependency at
-// runtime — cmaps and standard_fonts are served from our own origin.
-
-// 1. Worker — must match the pdfjs-dist version exactly
-try {
-  const workerSrc = path.join(process.cwd(), "node_modules/pdfjs-dist/build/pdf.worker.min.mjs");
-  const workerDest = path.join(process.cwd(), "public/pdf.worker.min.mjs");
-  if (fs.existsSync(workerSrc)) {
-    fs.copyFileSync(workerSrc, workerDest);
-  }
-} catch (_) {}
-
-// 2. Character Maps — required for CJK, Arabic, and other non-Latin PDFs
-try {
-  const cmapSrc = path.join(process.cwd(), "node_modules/pdfjs-dist/cmaps");
-  const cmapDest = path.join(process.cwd(), "public/pdfjs-cmaps");
-  if (fs.existsSync(cmapSrc)) {
-    fs.cpSync(cmapSrc, cmapDest, { recursive: true, force: true });
-  }
-} catch (_) {}
-
-// 3. Standard Fonts — fallback fonts for PDFs that embed no font data
-try {
-  const fontSrc = path.join(process.cwd(), "node_modules/pdfjs-dist/standard_fonts");
-  const fontDest = path.join(process.cwd(), "public/pdfjs-fonts");
-  if (fs.existsSync(fontSrc)) {
-    fs.cpSync(fontSrc, fontDest, { recursive: true, force: true });
-  }
-} catch (_) {}
+// ── Image Optimization Config ───────────────────────────────────────────────
 
 // Derive allowed image hostnames from environment at build time
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://technurture.io';
