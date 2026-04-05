@@ -97,7 +97,16 @@ export async function getSchoolPinRequests() {
     const requests = await db.query.pinResetRequests.findMany({
         where: eq(pinResetRequests.school_id, admin.school_id),
         with: {
-            student: true
+            student: {
+                columns: {
+                    id: true,
+                    first_name: true,
+                    last_name: true,
+                    email: true,
+                    phone: true,
+                    // SECURITY: Exclude password_hash to prevent offline cracking attempts
+                }
+            }
         } as any,
         orderBy: [desc(pinResetRequests.requested_at)]
     });
