@@ -63,7 +63,11 @@ async function handleStream(req: NextRequest, context: { params: Promise<{ lesso
             return new NextResponse('Content not found', { status: 404 });
         }
 
-        const storageType = (lesson as any).asset?.storage_type || (lesson.content_url.includes('/api/media/r2/') ? 'r2' : 'local');
+        // SECURITY: Only R2 storage is supported. No fallback to local storage.
+        const storageType = (lesson as any).asset?.storage_type || 'r2';
+        if (storageType !== 'r2') {
+            throw new Error(`Unsupported storage type: ${storageType}. Only 'r2' is supported.`);
+        }
         let key = lesson.content_url;
         
         // Normalize key

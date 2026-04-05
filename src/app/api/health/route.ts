@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
             health.services.storage = `unhealthy: ${err.message}`;
         }
     } else {
-        health.services.storage = 'disabled (using local storage)';
+        health.services.storage = 'unconfigured (R2 credentials missing)';
     }
 
     const statusCode = health.status === 'ok' ? 200 : 503;

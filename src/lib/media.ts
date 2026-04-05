@@ -56,10 +56,8 @@ export function computeMediaUrl(asset: {
             }
         }
     } else {
-        // STRICT: Local storage is disabled to save disk space.
-        // Return a broken link or a placeholder if storage_type is not r2.
-        console.warn(`[Media] Unsupported storage type: ${asset.storage_type}. Only 'r2' is allowed.`);
-        return '/placeholder-error.png';
+        // STRICT: Only R2 storage is supported. Local storage is completely disabled.
+        throw new Error(`Unsupported storage type: ${asset.storage_type}. Only 'r2' is supported.`);
     }
 
     // 4. Security: Add temporary access token (sign the path or prefix)

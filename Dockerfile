@@ -79,8 +79,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/docker-entrypoint.sh ./docker-entrypoint.sh
 
-# Create local_storage directory for fallback uploads
-RUN mkdir -p /app/local_storage && chown nextjs:nodejs /app/local_storage
+# NOTE: Local storage is deprecated. All media is stored exclusively on Cloudflare R2.
+# No local_storage directory is created in the container.
 
 # Create tmp workspace directory for worker tasks
 RUN mkdir -p /app/tmp && chown nextjs:nodejs /app/tmp

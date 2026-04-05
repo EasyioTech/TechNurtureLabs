@@ -82,8 +82,9 @@ export function useUpload(options?: UploadOptions) {
                 ?.split('=')[1];
 
             // 🚀 LARGE FILE OPTIMIZATION
-            // If the file is > 50MB, use Presigned URL flow to avoid Next.js memory limits (unless local storage is preferred)
-            if (file.size > 50 * 1024 * 1024 && additionalData.storagePreference !== 'local') {
+            // If the file is > 50MB, use Presigned URL flow to avoid Next.js memory limits
+            // All uploads go directly to R2 (no local storage fallback)
+            if (file.size > 50 * 1024 * 1024) {
                 try {
                     console.log('[Upload] Large file detected, switching to Direct R2 flow...');
                     const csrfToken = getCsrfToken();
