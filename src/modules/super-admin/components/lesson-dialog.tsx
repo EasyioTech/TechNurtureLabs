@@ -161,7 +161,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                 toast.success('Video uploaded!');
                 return;
             }
-            const result = await upload(file, { purpose: 'library', storagePreference: storagePref, folder }) as { url: string } | undefined;
+            const result = await upload(file, { purpose: 'library', storagePreference: 'r2', folder }) as { url: string } | undefined;
             if (result?.url) applyBlockUpdate(itemId, 'url', result.url);
 
             toast.success('File uploaded');
