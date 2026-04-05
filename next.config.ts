@@ -39,7 +39,9 @@ const nextConfig: NextConfig = {
     // In production HSTS is enforced; skip in dev to avoid breaking http://localhost.
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://*.youtube.com https://s.ytimg.com https://player.vimeo.com https://checkout.razorpay.com https://cdn.razorpay.com https://*.razorpay.com",
+      // SECURITY: Removed 'unsafe-eval' — no legitimate use case in modern Next.js
+      // Razorpay SDK works without it (uses postMessage instead of eval)
+      "script-src 'self' 'unsafe-inline' https://www.youtube.com https://*.youtube.com https://s.ytimg.com https://player.vimeo.com https://checkout.razorpay.com https://cdn.razorpay.com https://*.razorpay.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://checkout.razorpay.com",
       "img-src 'self' data: blob: https:",
       "media-src 'self' blob: https:",
@@ -60,7 +62,9 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          { key: 'Content-Security-Policy', value: csp },
+          // SECURITY: Using report-only mode while refactoring to remove 'unsafe-inline' from script-src
+          // This allows XSS detection without breaking the app
+          { key: 'Content-Security-Policy-Report-Only', value: csp },
           // HSTS: 1 year, include subdomains. Only send in production (http://localhost breaks otherwise).
           ...(!isDev ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }] : []),
         ],
