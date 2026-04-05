@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 // Modular Components
 import { LibraryHeader } from './media-library-picker/library-header';
 import { AssetGrid } from './media-library-picker/asset-grid';
-import { StreamList } from './media-library-picker/stream-list';
 import { AssetType, MediaAsset, MediaLibraryPickerProps } from './media-library-picker/types';
 
 // ─── Utilities ──────────────────────────────────────────────────────────────
@@ -44,8 +43,7 @@ export function MediaLibraryPicker({
     const [hasMore, setHasMore] = React.useState(true);
     const [page, setPage] = React.useState(1);
     const [error, setError] = React.useState<string | null>(null);
-    const [activeTab, setActiveTab] = React.useState<AssetType>(filterType ?? 'all');
-    const [activeFolder, setActiveFolder] = React.useState<string>(folder ?? 'all');
+    const [activeTab, setActiveTab] = React.useState<AssetType>(filterType === 'document' ? 'document' : 'image');
     const [search, setSearch] = React.useState('');
     const [debouncedSearch, setDebouncedSearch] = React.useState('');
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
@@ -55,14 +53,11 @@ export function MediaLibraryPicker({
     // Selected items for bulk operations
     const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
     const [isMultiSelect, setIsMultiSelect] = React.useState(false);
-    const [streamVideos, setStreamVideos] = React.useState<any[]>([]);
 
     // Strictly fresh refs for use inside callbacks
     const activeTabRef        = React.useRef(activeTab);
-    const activeFolderRef     = React.useRef(activeFolder);
     const debouncedSearchRef  = React.useRef(debouncedSearch);
     React.useEffect(() => { activeTabRef.current       = activeTab;       }, [activeTab]);
-    React.useEffect(() => { activeFolderRef.current    = activeFolder;    }, [activeFolder]);
     React.useEffect(() => { debouncedSearchRef.current = debouncedSearch; }, [debouncedSearch]);
 
     const getCsrfToken = () => document.cookie
@@ -81,11 +76,9 @@ export function MediaLibraryPicker({
             toast.success('Upload complete');
             setUploadFile(null);
             setPage(1);
-            const tab    = activeTabRef.current;
-            const folder = activeFolderRef.current;
+            const tab = activeTabRef.current;
             const search = debouncedSearchRef.current;
-            if (tab === 'cloudflare_stream') loadStreamVideos(search);
-            else loadAssets(tab, folder, 1, search, false);
+            loadAssets(tab, 'all', 1, search, false);
         },
         onError: (err) => { toast.error(err || 'Failed to upload file'); }
     });
@@ -97,40 +90,19 @@ export function MediaLibraryPicker({
 
     React.useEffect(() => {
         if (!open) return;
-        const isVideoMode = filterType === 'video';
-        const newTab = isVideoMode ? 'cloudflare_stream' : (filterType ?? 'all');
-        const newFolder = folder ?? 'all';
+        const newTab = filterType === 'document' ? 'document' : 'image';
         setActiveTab(newTab);
-        setActiveFolder(newFolder);
         setSearch('');
         setPage(1);
-        if (newTab === 'cloudflare_stream') loadStreamVideos('');
-        else loadAssets(newTab, newFolder, 1, '', false);
-    }, [open, filterType, folder]);
+        loadAssets(newTab, 'all', 1, '', false);
+    }, [open, filterType]);
 
     React.useEffect(() => {
         if (!open) return;
         setPage(1);
-        if (activeTab === 'cloudflare_stream') loadStreamVideos(debouncedSearch);
-        else loadAssets(activeTab, activeFolder, 1, debouncedSearch, false);
-    }, [debouncedSearch]);
+        loadAssets(activeTab, 'all', 1, debouncedSearch, false);
+    }, [debouncedSearch, activeTab, open]);
 
-    async function loadStreamVideos(query: string = '') {
-        setLoading(true);
-        setError(null);
-        try {
-            const params = new URLSearchParams();
-            if (query) params.set('search', query);
-            const res = await fetch(`/api/media/stream-list?${params.toString()}`);
-            if (!res.ok) throw new Error('Failed to load stream videos');
-            const data = await res.json();
-            setStreamVideos(data.videos || []);
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    }
 
     async function loadAssets(type: AssetType, targetFolder: string, targetPage: number, query: string, append: boolean) {
         if (append) setLoadingMore(true);
@@ -172,7 +144,7 @@ export function MediaLibraryPicker({
         if (loadingMore || !hasMore) return;
         const nextPage = page + 1;
         setPage(nextPage);
-        loadAssets(activeTab, activeFolder, nextPage, debouncedSearch, true);
+        loadAssets(activeTab, 'all', nextPage, debouncedSearch, true);
     }
 
     function handleSelection(asset: MediaAsset) {
@@ -250,11 +222,10 @@ export function MediaLibraryPicker({
         if (file.size > maxSize) return toast.error('File size limit is 2GB');
 
         setUploadFile(file);
-        const folderToSave = folder || (activeFolder !== 'all' ? activeFolder : 'library');
         const additionalData = {
             purpose: filterType === 'video' ? 'system_video' : 'library',
             storagePreference: 'r2',
-            folder: folderToSave,
+            folder: 'library',
         };
         try { await upload(file, additionalData); } 
         catch (err) { console.error('[Upload]', err); } 
@@ -268,16 +239,12 @@ export function MediaLibraryPicker({
                 className={`w-full sm:max-w-[560px] p-0 flex flex-col border-0 ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}
             >
                 <LibraryHeader
-                    filterType={filterType}
                     isUploading={isUploading}
                     onUploadClick={() => fileInputRef.current?.click()}
                     search={search}
                     onSearchChange={setSearch}
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
-                    activeFolder={activeFolder}
-                    onFolderChange={setActiveFolder}
-                    folderEnforced={!!folder}
                 />
                 
                 <input
@@ -312,21 +279,12 @@ export function MediaLibraryPicker({
                             <p className={`text-sm font-bold text-center ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>{error}</p>
                             <Button
                                 size="sm" variant="outline"
-                                onClick={() => activeTab === 'cloudflare_stream' ? loadStreamVideos(debouncedSearch) : loadAssets(activeTab, activeFolder, 1, debouncedSearch, false)}
+                                onClick={() => loadAssets(activeTab, 'all', 1, debouncedSearch, false)}
                                 className="rounded-full font-bold text-xs"
                             >
                                 Retry
                             </Button>
                         </div>
-                    ) : activeTab === 'cloudflare_stream' ? (
-                        <StreamList 
-                            streamVideos={streamVideos}
-                            currentUrl={currentUrl}
-                            onSelect={(url, id) => {
-                                onSelect(url, id);
-                                onOpenChange(false);
-                            }}
-                        />
                     ) : assets.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-48 gap-3">
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
