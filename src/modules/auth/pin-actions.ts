@@ -137,9 +137,9 @@ export async function handlePinResetAction(requestId: string, action: 'approved'
                 await tx.update(pinResetRequests)
                     .set({
                         status: 'approved',
-                        new_pin: newPin, // Plain text for display to teacher (only temporarily until it's communicated)
                         resolved_at: new Date(),
                         resolved_by: session.userId
+                        // SECURITY: PIN is NOT stored in DB. Return it in the API response only.
                     } as any)
                     .where(eq(pinResetRequests.id, requestId));
             } else {
