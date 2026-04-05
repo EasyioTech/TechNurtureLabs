@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { paymentTransactions, schoolSubscriptions, auditLogs } from '@/db/schema';
+import { paymentTransactions, schoolSubscriptions, auditLogs, schoolAdmins } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
@@ -67,7 +67,22 @@ export const paymentService = {
 
         // 3. ATOMIC STATE TRANSITION
         return await db.transaction(async (tx) => {
-            // A. Find the local transaction record
+            // A. SECURITY: Verify user's school ownership (prevent cross-school payment IDOR)
+            const admin = await tx.query.schoolAdmins.findFirst({
+                where: eq(schoolAdmins.id, userId),
+                columns: { school_id: true }
+            });
+
+            if (!admin || admin.school_id !== school_id) {
+                logger.error('[PaymentService] IDOR: User attempted to verify payment for different school', {
+                    userId,
+                    requestedSchool: school_id,
+                    userSchool: admin?.school_id
+                });
+                throw new AppError('Forbidden — this school is not authorized', 'FORBIDDEN', 403);
+            }
+
+            // B. Find the local transaction record
             const transaction = await tx.query.paymentTransactions.findFirst({
                 where: and(
                     eq(paymentTransactions.razorpay_order_id, razorpay_order_id),
@@ -79,13 +94,13 @@ export const paymentService = {
                 throw new AppError('Order not found', 'NOT_FOUND', 404);
             }
 
-            // B. IDEMPOTENCY: Check if already processed
+            // C. IDEMPOTENCY: Check if already processed
             if (transaction.status === 'captured') {
                 logger.info('[PaymentService] Idempotent hit: Already captured', { razorpay_order_id });
                 return { subscriptionId: transaction.subscription_id, alreadyProcessed: true };
             }
 
-            // C. SECURITY: Amount Verification
+            // D. SECURITY: Amount Verification
             const expectedAmountPaise = Math.round(Number(transaction.amount) * 100);
             if (paymentDetails.amount !== expectedAmountPaise) {
                 logger.error('[PaymentService] FRAUD: Amount mismatch', { expected: expectedAmountPaise, received: paymentDetails.amount });
@@ -101,7 +116,7 @@ export const paymentService = {
                 throw new AppError('Payment amount mismatch', 'FRAUD_DETECTED', 400);
             }
 
-            // D. UPDATE TRANSACTION
+            // E. UPDATE TRANSACTION
             await tx.update(paymentTransactions)
                 .set({
                     status: 'captured',
@@ -112,7 +127,7 @@ export const paymentService = {
                 })
                 .where(eq(paymentTransactions.id, transaction.id));
 
-            // E. ACTIVATE SUBSCRIPTION
+            // F. ACTIVATE SUBSCRIPTION
             const subscription = await tx.query.schoolSubscriptions.findFirst({
                 where: eq(schoolSubscriptions.id, transaction.subscription_id),
                 with: { plan: true }
@@ -137,7 +152,7 @@ export const paymentService = {
                 })
                 .where(eq(schoolSubscriptions.id, subscription.id));
 
-            // F. AUDIT LOG
+            // G. AUDIT LOG
             await tx.insert(auditLogs).values({
                 school_id,
                 user_id: userId,
