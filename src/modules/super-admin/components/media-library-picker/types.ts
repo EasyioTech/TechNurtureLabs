@@ -10,7 +10,7 @@ export interface MediaAsset {
     file_path: string;
     mime_type: string;
     file_size: number;
-    storage_type: 'r2' | 'local';
+    storage_type: 'r2';
     asset_type: 'video' | 'image' | 'document';
     created_at: string;
 }

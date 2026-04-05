@@ -2,8 +2,8 @@ import React from 'react';
 import { SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-    Film, ImageIcon, Upload, Loader2, Search, Cloud, HardDrive, FileText, Folder 
+import {
+    Film, ImageIcon, Upload, Loader2, Search, Cloud, FileText, Folder, HardDrive
 } from 'lucide-react';
 import { useAdminTheme, t } from '../../theme-context';
 import { AssetType } from './types';
@@ -27,8 +27,6 @@ interface LibraryHeaderProps {
     filterType?: 'video' | 'image' | 'document';
     isUploading: boolean;
     onUploadClick: () => void;
-    storagePref: 'r2' | 'local';
-    onStoragePrefChange: (pref: 'r2' | 'local') => void;
     search: string;
     onSearchChange: (val: string) => void;
     activeTab: AssetType;
@@ -40,7 +38,6 @@ interface LibraryHeaderProps {
 
 export function LibraryHeader({
     filterType, isUploading, onUploadClick,
-    storagePref, onStoragePrefChange,
     search, onSearchChange,
     activeTab, onTabChange,
     activeFolder, onFolderChange,
@@ -82,36 +79,6 @@ export function LibraryHeader({
                 </Button>
             </SheetTitle>
 
-            {/* Storage Preference Toggle */}
-            {filterType !== 'video' && (
-                <div className="flex items-center gap-3 mt-4 px-1">
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
-                        Storage Destination:
-                    </p>
-                    <div className={`p-1 rounded-full flex gap-1 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-                        {[
-                            { id: 'r2', label: 'Cloud (R2)', icon: Cloud },
-                            { id: 'local', label: 'Local Server', icon: HardDrive }
-                        ].map(opt => {
-                            const isActive = storagePref === opt.id;
-                            return (
-                                <button
-                                    key={opt.id}
-                                    type="button"
-                                    onClick={() => onStoragePrefChange(opt.id as 'r2' | 'local')}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all
-                                        ${isActive
-                                            ? (isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-900 shadow-sm')
-                                            : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
-                                >
-                                    <opt.icon size={10} />
-                                    {opt.label}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
 
             {/* Search */}
             {filterType !== 'video' && (

@@ -63,7 +63,6 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     const [libraryOpen, setLibraryOpen] = React.useState(false);
     const [libraryTargetId, setLibraryTargetId] = React.useState<string | null>(null);
     const [importOpen, setImportOpen] = React.useState(false);
-    const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
     const [streamProgress, setStreamProgress] = React.useState(0);
     const [isStreamUploading, setIsStreamUploading] = React.useState(false);
 

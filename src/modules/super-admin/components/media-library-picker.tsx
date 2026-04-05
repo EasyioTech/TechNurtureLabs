@@ -50,7 +50,6 @@ export function MediaLibraryPicker({
     const [debouncedSearch, setDebouncedSearch] = React.useState('');
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
     const [uploadFile, setUploadFile] = React.useState<File | null>(null);
-    const [storagePref, setStoragePref] = React.useState<'r2' | 'local'>('r2');
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     // Selected items for bulk operations
@@ -254,7 +253,7 @@ export function MediaLibraryPicker({
         const folderToSave = folder || (activeFolder !== 'all' ? activeFolder : 'library');
         const additionalData = {
             purpose: filterType === 'video' ? 'system_video' : 'library',
-            storagePreference: storagePref,
+            storagePreference: 'r2',
             folder: folderToSave,
         };
         try { await upload(file, additionalData); } 
@@ -268,12 +267,10 @@ export function MediaLibraryPicker({
                 side="right"
                 className={`w-full sm:max-w-[560px] p-0 flex flex-col border-0 ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}
             >
-                <LibraryHeader 
+                <LibraryHeader
                     filterType={filterType}
                     isUploading={isUploading}
                     onUploadClick={() => fileInputRef.current?.click()}
-                    storagePref={storagePref}
-                    onStoragePrefChange={setStoragePref}
                     search={search}
                     onSearchChange={setSearch}
                     activeTab={activeTab}
