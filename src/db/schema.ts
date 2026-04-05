@@ -244,6 +244,8 @@ export const paymentTransactions = pgTable('payment_transactions', {
 }, (table) => [
     index('idx_transactions_school').on(table.school_id),
     index('idx_transactions_status').on(table.status),
+    // PERFORMANCE: Index for payment verification queries
+    index('idx_transactions_razorpay_order').on(table.razorpay_order_id),
 ]);
 
 export const invoices = pgTable('invoices', {
@@ -769,6 +771,8 @@ export const pinResetRequests = pgTable('pin_reset_requests', {
     index('idx_pin_reset_student').on(table.student_id),
     index('idx_pin_reset_school').on(table.school_id),
     index('idx_pin_reset_status').on(table.status),
+    // PERFORMANCE: Composite index for "find pending request for student" queries
+    index('idx_pin_reset_student_status').on(table.student_id, table.status),
 ]);
 
 export const loginAttempts = pgTable('login_attempts', {
@@ -785,6 +789,8 @@ export const loginAttempts = pgTable('login_attempts', {
 }, (table) => [
     index('idx_login_email').on(table.email),
     index('idx_login_created').on(table.created_at),
+    // PERFORMANCE: Index for IP-based rate limiting and ban queries
+    index('idx_login_ip').on(table.ip_address),
 ]);
 
 // ============================================================================
