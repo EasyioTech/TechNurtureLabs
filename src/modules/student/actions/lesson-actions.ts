@@ -517,13 +517,21 @@ export async function getQuizData(quizId: string): Promise<QuizData> {
     }
     const userId = session.userId;
 
-    // SECURITY FIX #6A: Pre-fetch lesson + course for authorization checks
-    // This prevents N+1 queries and centralizes authorization logic
+    // SECURITY FIX #6A: Fetch full quiz data in ONE query to avoid double-fetch
+    // Includes lesson for authorization + questions/options for rendering
     const quiz = await db.query.quizzes.findFirst({
         where: eq(quizzes.id, quizId),
         with: {
             lesson: {
                 columns: { id: true, course_id: true, content_type: true }
+            },
+            questions: {
+                orderBy: [asc(quizQuestions.sequence_order)],
+                with: {
+                    options: {
+                        orderBy: [asc(quizOptions.sequence_order)]
+                    }
+                }
             }
         }
     });
@@ -566,33 +574,16 @@ export async function getQuizData(quizId: string): Promise<QuizData> {
         throw new Error('This lesson does not contain a quiz');
     }
 
-    // SECURITY FIX #6F: Now fetch full quiz data with all questions/options
-    const fullQuiz = await db.query.quizzes.findFirst({
-        where: eq(quizzes.id, quizId),
-        with: {
-            questions: {
-                orderBy: [asc(quizQuestions.sequence_order)],
-                with: {
-                    options: {
-                        orderBy: [asc(quizOptions.sequence_order)]
-                    }
-                }
-            }
-        }
-    });
-
-    if (!fullQuiz) throw new Error('Quiz data unavailable');
-
     return {
         quiz: {
-            id: fullQuiz.id,
-            title: fullQuiz.title,
-            time_limit_secs: fullQuiz.time_limit_secs as number | null,
-            pass_percentage: Number(fullQuiz.pass_percentage),
-            max_attempts: fullQuiz.max_attempts,
-            xp_reward: fullQuiz.xp_reward,
+            id: quiz.id,
+            title: quiz.title,
+            time_limit_secs: quiz.time_limit_secs as number | null,
+            pass_percentage: Number(quiz.pass_percentage),
+            max_attempts: quiz.max_attempts,
+            xp_reward: quiz.xp_reward,
         },
-        questions: fullQuiz.questions.map(q => ({
+        questions: (quiz.questions || []).map(q => ({
             id: q.id,
             text: q.question_text,
             question_type: q.question_type as string,
