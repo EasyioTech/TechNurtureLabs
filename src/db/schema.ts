@@ -9,7 +9,7 @@ import { relations, sql } from 'drizzle-orm';
 // ENUM TYPES
 // ============================================================================
 
-export const userRoleEnum = pgEnum('user_role', ['super_admin', 'school_admin', 'student']);
+// SCHEMA FIX: Unified user type enum (removed duplicate userRoleEnum — was identical to userTypeEnum)
 export const userTypeEnum = pgEnum('user_type', ['super_admin', 'school_admin', 'student']);
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'trialing', 'past_due', 'cancelled', 'expired']);
 export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'quarterly', 'semi_annual', 'annual']);
@@ -21,7 +21,8 @@ export const achievementTierEnum = pgEnum('achievement_tier', ['bronze', 'silver
 export const challengeStatusEnum = pgEnum('challenge_status', ['active', 'completed', 'expired']);
 export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion', 'pin_reset_request']);
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'issued', 'paid', 'void', 'overdue']);
-export const storageTypeEnum = pgEnum('storage_type', ['r2', 'local']);
+// SCHEMA FIX: Removed 'local' (dead value — all storage is R2-only after C4 fixes)
+export const storageTypeEnum = pgEnum('storage_type', ['r2']);
 export const assetTypeEnum = pgEnum('asset_type', ['video', 'image', 'document']);
 export const discountTypeEnum = pgEnum('discount_type', ['percentage', 'fixed']);
 
@@ -111,7 +112,8 @@ export const students = pgTable('students', {
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     first_name: text('first_name').notNull(),
     last_name: text('last_name').notNull(),
-    email: text('email'),
+    // SCHEMA FIX: Email now required (was nullable, but critical for identity)
+    email: text('email').notNull(),
     password_hash: text('password_hash').notNull(), // Student PIN
     phone: text('phone'),
     avatar_url: text('avatar_url'),
@@ -368,7 +370,8 @@ export const lessons = pgTable('lessons', {
     title: text('title').notNull(),
     description: text('description'),
     content_type: lessonContentTypeEnum('content_type').notNull(),
-    content_url: text('content_url'),
+    // SCHEMA FIX: content_url now required (video/pdf/quiz lessons require URL)
+    content_url: text('content_url').notNull(),
     content_items: text('content_items'), // JSON: Array<{id,type,url}> for multi-block lessons
     asset_id: uuid('asset_id').references(() => mediaAssets.id, { onDelete: 'set null' }),
     sequence_order: integer('sequence_order').notNull(),
@@ -379,8 +382,11 @@ export const lessons = pgTable('lessons', {
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => [
-    // INTEGRATED CONSTRAINT: uniqueIndex replaced by DEFERRABLE UNIQUE constraint in base schema
-    // to allow reorder transactions without temporary violations. (uq_lesson_sequence_per_course)
+    // SCHEMA FIX: Enforce unique sequence order per course (soft-delete aware)
+    // Prevents duplicate sequence_order values which break lesson ordering
+    uniqueIndex('uq_lesson_sequence_per_course')
+        .on(table.course_id, table.sequence_order)
+        .where(sql`deleted_at IS NULL`),
     index('idx_lessons_course').on(table.course_id),
     // ISSUE 9: Partial index — only active (non-deleted) lessons
     index('idx_lessons_active').on(table.course_id).where(sql`deleted_at IS NULL`),
@@ -805,7 +811,8 @@ export const mediaAssets = pgTable('media_assets', {
     file_path: text('file_path').notNull(),          // Storage key (R2) or relative local path
     mime_type: text('mime_type').notNull(),
     file_size: bigint('file_size', { mode: 'number' }).notNull().default(0),
-    storage_type: storageTypeEnum('storage_type').notNull().default('local'),
+    // SCHEMA FIX: Default storage is R2 (removed 'local' from enum and defaults)
+    storage_type: storageTypeEnum('storage_type').notNull().default('r2'),
     asset_type: assetTypeEnum('asset_type').notNull().default('document'),
     uploaded_by: uuid('uploaded_by'), // Polymorphic - students, school_admins, or super_admins
     folder: text('folder'), // course, lesson, settings, etc
