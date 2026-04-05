@@ -90,7 +90,7 @@ export async function getLessonData(lessonId: string) {
     
     // M-10: Secure Media Redirect flow
     const contentUrl = await getSecureMediaUrl(
-        lesson.asset ? (lesson.asset as any) : { storage_type: 'local', file_path: lesson.content_url || '' },
+        lesson.asset ? (lesson.asset as any) : { storage_type: 'r2', file_path: lesson.content_url || '' },
         useHls ? 'hls' : 'original'
     );
 
