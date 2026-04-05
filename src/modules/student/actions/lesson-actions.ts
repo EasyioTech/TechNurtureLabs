@@ -8,7 +8,7 @@ import {
     quizAttempts, quizAttemptAnswers, academicSessions
 } from '@/db/schema';
 import { eq, and, asc, isNotNull, sql } from 'drizzle-orm';
-import { awardXP, incrementProgressCounter, handleStudentEngagement } from '@/lib/gamification';
+import { awardXP, incrementProgressCounter, handleStudentEngagement, calculateLevel } from '@/lib/gamification';
 import { redis } from '@/lib/redis';
 import { ensureEnrollment, invalidateStudentDashboardCache } from './course-actions';
 import { computeMediaUrl, getSecureMediaUrl } from '@/lib/media';
@@ -202,8 +202,36 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
             });
         }
 
-        // Award actual XP and get level-up info
-        const result = await awardXP(userId, xpToAdd, existingUser.school_id, role as any);
+        // SECURITY: Award XP inside transaction (not outside) to prevent partial writes
+        // If outer transaction rolls back, XP award is also rolled back
+        const student = await tx.query.students.findFirst({
+            where: eq(students.id, userId),
+            columns: { cumulative_xp: true, school_id: true }
+        });
+
+        if (!student) {
+            throw new Error('Student not found');
+        }
+
+        const oldXp = student.cumulative_xp || 0;
+        const newXp = oldXp + xpToAdd;
+        const oldLevelData = calculateLevel(oldXp);
+        const newLevelData = calculateLevel(newXp);
+        const leveledUp = newLevelData.level > oldLevelData.level;
+
+        // Update XP inside transaction
+        await tx.update(students)
+            .set({
+                cumulative_xp: sql`cumulative_xp + ${xpToAdd}`,
+                updated_at: new Date()
+            })
+            .where(eq(students.id, userId));
+
+        const result = {
+            leveledUp,
+            oldLevel: oldLevelData.level,
+            newLevel: newLevelData.level
+        };
 
         const { eventService } = await import('@/lib/services/event-service');
         await eventService.emit('student.lesson_completed_full', {
@@ -223,9 +251,27 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
         return result;
     });
 
-    return { 
-        success: true, 
-        leveledUp: xpResult?.leveledUp, 
+    // Update leaderboards and caches AFTER transaction commits (OK if these fail)
+    if (xpResult && xpToAdd > 0) {
+        const pipeline = redis.pipeline();
+        pipeline.zincrby('lb:global', xpToAdd, userId);
+        pipeline.expire('lb:global', 86400 * 7); // 7 days
+
+        const targetSchoolId = existingUser.school_id;
+        if (targetSchoolId) {
+            pipeline.zincrby(`lb:school:${targetSchoolId}`, xpToAdd, userId);
+            pipeline.expire(`lb:school:${targetSchoolId}`, 86400 * 7);
+        }
+
+        pipeline.setex(`user:${userId}:achievements_dirty`, 3600, '1');
+        await pipeline.exec().catch(() => {}); // Non-critical, ignore failures
+
+        await invalidateStudentDashboardCache(userId).catch(() => {});
+    }
+
+    return {
+        success: true,
+        leveledUp: xpResult?.leveledUp,
         newLevel: xpResult?.newLevel,
         xpEarned: xpToAdd
     };
