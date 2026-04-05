@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { schools, students, schoolSubscriptions, paymentPlans } from '@/db/schema';
+import { schools, students, schoolSubscriptions, paymentPlans, schoolAdmins } from '@/db/schema';
 import { eq, and, sql, isNull } from 'drizzle-orm';
 import { logger } from '@/lib/logger';
 import { verifySession } from '@/lib/auth';
@@ -45,11 +45,18 @@ export async function GET(request: NextRequest) {
         }
 
         // SECURITY: School admins can only check their own school
-        if (session.role !== 'super_admin' && session.school_id !== schoolId) {
-            return NextResponse.json(
-                { error: 'Forbidden' },
-                { status: 403 }
-            );
+        if (session.role !== 'super_admin') {
+            // For school admins, verify they belong to this school
+            const admin = await db.query.schoolAdmins.findFirst({
+                where: eq(schoolAdmins.id, session.userId)
+            });
+
+            if (!admin || admin.school_id !== schoolId) {
+                return NextResponse.json(
+                    { error: 'Forbidden' },
+                    { status: 403 }
+                );
+            }
         }
 
         // Get active subscription for the school

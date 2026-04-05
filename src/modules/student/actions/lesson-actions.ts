@@ -345,13 +345,8 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
         }
     }
 
-    const previousAttempts = await db.query.quizAttempts.findMany({
-        where: and(eq(quizAttempts.user_id, userId), eq(quizAttempts.quiz_id, quizId))
-    });
-
-    if (previousAttempts.length >= quiz.max_attempts) {
-        throw new Error('Maximum attempts reached');
-    }
+    // SECURITY: Don't check attempt limit here — will check inside transaction
+    // to prevent race condition where two concurrent requests both pass the check
 
     let earnedScore = 0;
     let totalScorePossible = 0;
@@ -395,11 +390,23 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
     }
 
     const attemptId = await db.transaction(async (tx) => {
+        // SECURITY: Recount attempts inside transaction to prevent race condition
+        const attemptCountResult = await tx.select({ count: sql<number>`COUNT(*)::integer` })
+            .from(quizAttempts)
+            .where(and(eq(quizAttempts.user_id, userId), eq(quizAttempts.quiz_id, quizId)));
+
+        const previousAttemptCount = attemptCountResult[0]?.count || 0;
+
+        // Check limit inside transaction — no other transaction can insert between count and insert
+        if (previousAttemptCount >= quiz.max_attempts) {
+            throw new Error('Maximum attempts reached');
+        }
+
         const [attempt] = await tx.insert(quizAttempts).values({
             user_id: userId,
             quiz_id: quizId,
             enrollment_id: enrollment.id,
-            attempt_number: previousAttempts.length + 1,
+            attempt_number: previousAttemptCount + 1,
             score: earnedScore.toString(),
             max_score: totalScorePossible.toString(),
             passed: passed,
