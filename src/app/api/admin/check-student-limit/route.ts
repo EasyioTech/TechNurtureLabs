@@ -3,11 +3,15 @@ import { db } from '@/lib/db';
 import { schools, students, schoolSubscriptions, paymentPlans } from '@/db/schema';
 import { eq, and, sql, isNull } from 'drizzle-orm';
 import { logger } from '@/lib/logger';
+import { verifySession } from '@/lib/auth';
 
 /**
  * Check if a school can add more students based on their payment plan
  *
  * GET /api/admin/check-student-limit?school_id=UUID
+ *
+ * Authentication: Required. User must be a school admin OR super admin.
+ * School admins can only check their own school's limit.
  *
  * Response:
  * {
@@ -22,12 +26,29 @@ import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
     try {
+        // SECURITY: Require authentication
+        const session = await verifySession();
+        if (!session) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
         const schoolId = request.nextUrl.searchParams.get('school_id');
 
         if (!schoolId) {
             return NextResponse.json(
                 { error: 'school_id parameter is required' },
                 { status: 400 }
+            );
+        }
+
+        // SECURITY: School admins can only check their own school
+        if (session.role !== 'super_admin' && session.school_id !== schoolId) {
+            return NextResponse.json(
+                { error: 'Forbidden' },
+                { status: 403 }
             );
         }
 
