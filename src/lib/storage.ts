@@ -312,9 +312,6 @@ export async function uploadFile(
  * @param storageType  Must be 'r2'
  */
 export async function deleteFile(filePath: string, storageType: 'r2'): Promise<void> {
-    if (storageType !== 'r2') {
-        throw new Error(`[Storage] Attempted to delete from local storage, which is disabled.`);
-    }
 
     if (filePath.startsWith('/') || filePath.includes('..')) {
         throw new Error(`[Storage] Refusing to delete: invalid key "${filePath}"`);

@@ -35,7 +35,7 @@ export async function DELETE(
 
         // Delete storage (R2 or local)
         try {
-            if (asset.storage_type === 'r2' || asset.storage_type === 'local') {
+            if (asset.storage_type === 'r2') {
                 await deleteFile(asset.file_path, asset.storage_type);
             }
         } catch (storageErr) {

@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
         const contextType = formData.get('contextType') as 'course' | 'lesson' | null;
         const contextId = formData.get('contextId') as string | null;
-        const storagePreference = formData.get('storagePreference') as 'r2' | 'local' | null;
+        const storagePreference = formData.get('storagePreference') as 'r2' | null;
         const targetFolder = formData.get('folder') as string | null;
         const context = (contextType && contextId) ? { type: contextType as 'course' | 'lesson', id: contextId } : undefined;
 

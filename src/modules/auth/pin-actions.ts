@@ -123,7 +123,11 @@ export async function handlePinResetAction(requestId: string, action: 'approved'
     if (request.status !== 'pending') return { success: false, error: "Request already processed" };
 
     // SECURITY: Verify school_id ownership — school admins can only manage their own school's PIN resets
-    if (request.school_id !== session.school_id) {
+    const admin = await db.query.schoolAdmins.findFirst({
+        where: eq(schoolAdmins.id, session.userId)
+    });
+
+    if (!admin || admin.school_id !== request.school_id) {
         return { success: false, error: "Forbidden — you do not have permission to manage this request" };
     }
 

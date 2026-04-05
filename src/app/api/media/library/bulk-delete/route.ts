@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
         // Parallel Delete from Storage
         const storageDeletes = assets.map(asset => 
-            deleteFile(asset.file_path, asset.storage_type as 'r2' | 'local')
+            deleteFile(asset.file_path, asset.storage_type as 'r2')
                 .catch(err => console.error(`[Bulk Delete] Failed for ${asset.id}:`, err))
         );
         await Promise.all(storageDeletes);

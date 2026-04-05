@@ -80,34 +80,6 @@ async function handleStream(req: NextRequest, context: { params: Promise<{ lesso
 
         const range = req.headers.get('range');
 
-        // 4. Handle Local Storage 
-        if (storageType === 'local') {
-            const { getLocalObjectStream } = await import('@/lib/storage');
-            try {
-                const { body, contentType, contentLength, contentRange, acceptRanges } = await getLocalObjectStream(key, range || undefined);
-                
-                const resHeaders = new Headers();
-                if (contentType) resHeaders.set('Content-Type', contentType);
-                if (contentLength) resHeaders.set('Content-Length', contentLength.toString());
-                if (contentRange) resHeaders.set('Content-Range', contentRange);
-                if (acceptRanges) resHeaders.set('Accept-Ranges', acceptRanges);
-                
-                return new Response(method === 'HEAD' ? null : body as any, {
-                    status: range ? 206 : 200,
-                    headers: resHeaders
-                });
-            } catch (err: any) {
-                console.error('[Video Stream Local Error]:', err);
-                if (err?.code === 'RANGE_NOT_SATISFIABLE') {
-                    return new NextResponse(null, {
-                        status: 416,
-                        headers: { 'Content-Range': `bytes */${err.fileSize}` },
-                    });
-                }
-                return new NextResponse('File not found in local storage', { status: 404 });
-            }
-        }
-
         // 5. Handle Cloudflare R2 — generate a short-lived signed URL and redirect.
         //
         // Previously the server proxied the entire video stream, holding a Node.js
