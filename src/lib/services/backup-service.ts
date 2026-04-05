@@ -308,11 +308,21 @@ export async function restoreBackup(backupData: CourseBackupData, superAdminId: 
     let quizzesCount = 0;
 
     return await db.transaction(async (tx) => {
+        // PERFORMANCE: Batch fetch all existing records to avoid N+1 queries
+        const existingClasses = await tx.query.classes.findMany();
+        const existingAssets = await tx.query.mediaAssets.findMany();
+        const existingCourses = await tx.query.courses.findMany();
+
+        // Build lookup maps
+        const classByLevel = new Map(existingClasses.map(c => [c.level, c]));
+        const assetByPath = new Map(existingAssets.map(a => [a.file_path, a]));
+        const courseBySlug = new Map(existingCourses.map(c => [c.slug, c]));
+
         // 1. Restore Classes
         console.log(`[Backup Service] Step 1: Restoring ${backupData.classes.length} classes...`);
         const classMap = new Map<string, string>();
         for (const cls of backupData.classes) {
-            const existingClass = await tx.query.classes.findFirst({ where: eq(schema.classes.level, cls.level) });
+            const existingClass = classByLevel.get(cls.level);
             if (existingClass) {
                 classMap.set(cls.id, existingClass.id);
             } else {
@@ -325,7 +335,7 @@ export async function restoreBackup(backupData: CourseBackupData, superAdminId: 
         console.log(`[Backup Service] Step 2: Restoring ${backupData.mediaAssets.length} media assets...`);
         const assetMap = new Map<string, string>();
         for (const asset of backupData.mediaAssets) {
-            const existingAsset = await tx.query.mediaAssets.findFirst({ where: eq(schema.mediaAssets.file_path, asset.file_path) });
+            const existingAsset = assetByPath.get(asset.file_path);
             if (existingAsset) {
                 assetMap.set(asset.id, existingAsset.id);
             } else {
@@ -343,7 +353,7 @@ export async function restoreBackup(backupData: CourseBackupData, superAdminId: 
         // 3. Restore Courses
         for (const courseData of backupData.courses) {
             let courseId: string;
-            const existingCourse = await tx.query.courses.findFirst({ where: eq(schema.courses.slug, courseData.slug) });
+            const existingCourse = courseBySlug.get(courseData.slug);
 
             if (existingCourse) {
                 await tx.update(schema.courses).set({
