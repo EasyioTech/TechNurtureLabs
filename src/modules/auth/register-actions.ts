@@ -152,17 +152,23 @@ export async function registerStudent(formData: any) {
             }
 
             // ─── STUDENT LIMIT VALIDATION ───────────────────────────────────────
-            // Check if school has an active subscription with max_students limit
-            const subscription = await tx.query.schoolSubscriptions.findFirst({
-                where: and(
-                    eq(schoolSubscriptions.school_id, validatedData.school_id),
-                    eq(schoolSubscriptions.status, 'active')
-                ),
-                with: { plan: true }
-            });
+            // SECURITY: Lock subscription row with FOR UPDATE to prevent TOCTOU race.
+            // Two concurrent registrations now serialize on the lock: first increments count,
+            // second sees updated count and may reject. Prevents exceeding plan limits.
+            const subscriptionResult = await tx.execute(
+                sql`SELECT ${schoolSubscriptions.id}, ${schoolSubscriptions.school_id}, ${schoolSubscriptions.status}, ${paymentPlans.max_students}
+                    FROM ${schoolSubscriptions}
+                    LEFT JOIN ${paymentPlans} ON ${schoolSubscriptions.plan_id} = ${paymentPlans.id}
+                    WHERE ${schoolSubscriptions.school_id} = ${validatedData.school_id}
+                    AND ${schoolSubscriptions.status} = ${'active'}
+                    FOR UPDATE OF ${schoolSubscriptions}
+                    LIMIT 1`
+            );
 
-            if (subscription && subscription.plan && subscription.plan.max_students !== null) {
-                const maxStudents = subscription.plan.max_students;
+            const subscription = subscriptionResult[0] as any;
+
+            if (subscription && subscription.max_students !== null) {
+                const maxStudents = subscription.max_students;
 
                 // Count current students in this school
                 const studentCount = await tx.select({
