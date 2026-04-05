@@ -3,15 +3,16 @@ import { SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-    ImageIcon, Upload, Loader2, Search, FileText
+    ImageIcon, Upload, Loader2, Search, FileText, Film, Cloud
 } from 'lucide-react';
 import { useAdminTheme, t } from '../../theme-context';
 import { AssetType } from './types';
 
-// Simplified: Only Images and Documents tabs
+// Tabs: Images, Documents, and Videos (Cloudflare Stream)
 const TABS: { id: AssetType; label: string; icon: React.ElementType }[] = [
     { id: 'image', label: 'Images', icon: ImageIcon },
     { id: 'document', label: 'Documents', icon: FileText },
+    { id: 'cloudflare_stream', label: 'Stream Videos', icon: Cloud },
 ];
 
 interface LibraryHeaderProps {
@@ -21,14 +22,21 @@ interface LibraryHeaderProps {
     onSearchChange: (val: string) => void;
     activeTab: AssetType;
     onTabChange: (tab: AssetType) => void;
+    filterType?: 'image' | 'document' | 'video';
 }
 
 export function LibraryHeader({
     isUploading, onUploadClick,
     search, onSearchChange,
-    activeTab, onTabChange
+    activeTab, onTabChange,
+    filterType
 }: LibraryHeaderProps) {
     const { isDark, accent } = useAdminTheme();
+
+    // Only show tabs relevant to the current filterType
+    const visibleTabs = filterType === 'video'
+        ? TABS.filter(tab => tab.id === 'cloudflare_stream')
+        : TABS.filter(tab => tab.id !== 'cloudflare_stream');
 
     return (
         <SheetHeader className={`px-6 pt-6 pb-5 border-b shrink-0 ${t.border(isDark)}`}>
@@ -73,7 +81,7 @@ export function LibraryHeader({
 
             {/* Type Tabs - Clean and Minimal */}
             <div className="flex gap-2 mt-5">
-                {TABS.map(tab => {
+                {visibleTabs.map(tab => {
                     const isActive = activeTab === tab.id;
                     return (
                         <button

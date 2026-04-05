@@ -78,7 +78,11 @@ export function MediaLibraryPicker({
             setPage(1);
             const tab = activeTabRef.current;
             const search = debouncedSearchRef.current;
-            loadAssets(tab, 'all', 1, search, false);
+            if (tab === 'cloudflare_stream') {
+                loadStreamVideos(1, search, false);
+            } else {
+                loadAssets(tab, 'all', 1, search, false);
+            }
         },
         onError: (err) => { toast.error(err || 'Failed to upload file'); }
     });
@@ -90,17 +94,29 @@ export function MediaLibraryPicker({
 
     React.useEffect(() => {
         if (!open) return;
-        const newTab = filterType === 'document' ? 'document' : 'image';
+        let newTab: AssetType = 'image';
+        if (filterType === 'document') newTab = 'document';
+        else if (filterType === 'video') newTab = 'cloudflare_stream';
+
         setActiveTab(newTab);
         setSearch('');
         setPage(1);
-        loadAssets(newTab, 'all', 1, '', false);
+
+        if (newTab === 'cloudflare_stream') {
+            loadStreamVideos(1, '', false);
+        } else {
+            loadAssets(newTab, 'all', 1, '', false);
+        }
     }, [open, filterType]);
 
     React.useEffect(() => {
         if (!open) return;
         setPage(1);
-        loadAssets(activeTab, 'all', 1, debouncedSearch, false);
+        if (activeTab === 'cloudflare_stream') {
+            loadStreamVideos(1, debouncedSearch, false);
+        } else {
+            loadAssets(activeTab, 'all', 1, debouncedSearch, false);
+        }
     }, [debouncedSearch, activeTab, open]);
 
 
@@ -140,11 +156,49 @@ export function MediaLibraryPicker({
         }
     }
 
+    async function loadStreamVideos(targetPage: number = 1, query: string = '', append: boolean = false) {
+        if (append) setLoadingMore(true);
+        else setLoading(true);
+        setError(null);
+        try {
+            const params = new URLSearchParams({ page: targetPage.toString(), limit: '24' });
+            if (query) params.set('search', query);
+
+            const res = await fetch(`/api/media/stream?${params.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, max-age=0',
+                    'Pragma': 'no-cache',
+                    'X-Requested-Timestamp': Date.now().toString()
+                },
+                cache: 'no-store'
+            });
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({ error: 'Unknown server error' }));
+                throw new Error(errorData.details || errorData.error || 'Failed to load stream videos');
+            }
+            const data = await res.json();
+            if (append) setAssets(prev => [...prev, ...data.assets]);
+            else setAssets(data.assets);
+            setHasMore(data.pagination.currentPage < data.pagination.pages);
+        } catch (err: any) {
+            console.error('[Stream Videos] Load error:', err);
+            setError(err.message || 'Could not load stream videos.');
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    }
+
     function handleLoadMore() {
         if (loadingMore || !hasMore) return;
         const nextPage = page + 1;
         setPage(nextPage);
-        loadAssets(activeTab, 'all', nextPage, debouncedSearch, true);
+        if (activeTab === 'cloudflare_stream') {
+            loadStreamVideos(nextPage, debouncedSearch, true);
+        } else {
+            loadAssets(activeTab, 'all', nextPage, debouncedSearch, true);
+        }
     }
 
     function handleSelection(asset: MediaAsset) {
@@ -245,6 +299,7 @@ export function MediaLibraryPicker({
                     onSearchChange={setSearch}
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
+                    filterType={filterType}
                 />
                 
                 <input
