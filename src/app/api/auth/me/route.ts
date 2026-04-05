@@ -108,7 +108,8 @@ export async function GET(req: NextRequest) {
             }
         }
 
-        const { password_hash, ...safeUser } = user;
+        // SECURITY: Exclude sensitive fields (passwords, 2FA secrets, backup codes)
+        const { password_hash, two_factor_secret, backup_codes, ...safeUser } = user;
 
         // SECURITY: Handle XP safely to prevent precision loss on large numbers
         // cumulative_xp is stored as bigint in DB. JavaScript numbers lose precision above 2^53.
