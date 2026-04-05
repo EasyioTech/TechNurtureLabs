@@ -66,10 +66,20 @@ export async function markLessonComplete(lessonId: string) {
 }
 
 export async function getLessonsByCourse(courseId: string) {
+    // SECURITY: Require authentication
+    const { verifySession } = await import('@/lib/auth');
+    const session = await verifySession();
+    if (!session || session.userType !== 'student') {
+        throw new Error('Unauthorized: Only authenticated students can access lessons');
+    }
+
+    // SECURITY: Verify student is enrolled in the course before returning lessons
+    await ensureEnrolled(courseId);
+
     const { db } = await import('@/lib/db');
     const { lessons } = await import('@/db/schema');
     const { eq } = await import('drizzle-orm');
-    
+
     const courseLessons = await db.query.lessons.findMany({
         where: eq(lessons.course_id, courseId),
         orderBy: (lessons, { asc }) => [asc(lessons.sequence_order)]
