@@ -181,18 +181,24 @@ export function MediaLibraryPicker({
             }
             const data = await res.json();
             // Transform stream videos to asset format for compatibility
-            const transformedAssets = (data.videos || []).map((video: any) => ({
-                id: video.uid || video.id,
-                file_name: video.name || video.filename || '',
-                original_name: video.name || video.filename || '',
-                file_url: `cf-stream://${video.uid || video.id}`,
-                file_path: `stream/${video.uid || video.id}`,
-                mime_type: 'video/mp4',
-                file_size: 0,
-                storage_type: 'cloudflare_stream',
-                asset_type: 'video',
-                created_at: video.created || new Date().toISOString()
-            }));
+            const transformedAssets = (data.videos || []).map((video: any) => {
+                // Calculate file_size from duration (approximate: assuming 1MB per minute)
+                const durationSeconds = video.duration || 0;
+                const approximateSize = Math.round((durationSeconds / 60) * 1024 * 1024);
+
+                return {
+                    id: video.uid || video.id,
+                    file_name: video.name || video.filename || 'Untitled Video',
+                    original_name: video.name || video.filename || 'Untitled Video',
+                    file_url: `https://iframe.videodelivery.net/${video.uid || video.id}`,
+                    file_path: `stream/${video.uid || video.id}`,
+                    mime_type: 'video/mp4',
+                    file_size: approximateSize,
+                    storage_type: 'cloudflare_stream',
+                    asset_type: 'video',
+                    created_at: video.created || new Date().toISOString()
+                };
+            });
             if (append) setAssets(prev => [...prev, ...transformedAssets]);
             else setAssets(transformedAssets);
             setHasMore(false); // Stream list doesn't support pagination yet

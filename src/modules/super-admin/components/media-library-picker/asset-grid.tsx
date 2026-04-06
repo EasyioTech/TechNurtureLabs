@@ -195,6 +195,23 @@ function VideoPreview({ src, isDark }: { src: string; isDark: boolean }) {
         );
     }
 
+    // Handle Cloudflare Stream iframe URLs
+    if (src.includes('videodelivery.net') || src.includes('cf-stream://')) {
+        const uid = src.includes('cf-stream://')
+            ? src.replace('cf-stream://', '')
+            : src.split('/').pop();
+
+        return (
+            <iframe
+                src={`https://iframe.videodelivery.net/${uid}`}
+                className="w-full h-full border-0"
+                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                onError={() => setFailed(true)}
+            />
+        );
+    }
+
     return (
         <video
             src={src}
