@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { db } from '@/lib/db';
-import { mediaAssets, students, schoolAdmins, schools } from '@/db/schema';
+import { mediaAssets, schools } from '@/db/schema';
 import { verifySession } from '@/lib/auth';
 import { getAssetType } from '@/lib/storage';
 import { eq } from 'drizzle-orm';
@@ -24,35 +24,18 @@ export async function POST(req: NextRequest) {
             return new NextResponse('Missing asset details', { status: 400 });
         }
 
-        // CRITICAL FIX #1: Resolve school_id from uploader (polymorphic)
+        // CRITICAL FIX: Super admins uploading platform-wide media must use a default school
+        // Authorization check above ensures ONLY super_admin can reach this point
+        // Since media_assets.school_id has NOT NULL constraint, assign to first school
+        // This ensures platform-wide media (courses, lessons, content) is owned by a school
         let schoolId: string | null = null;
-        if (session.userType === 'student') {
-            const student = await db.query.students.findFirst({
-                where: eq(students.id, session.userId),
-                columns: { school_id: true }
-            });
-            schoolId = student?.school_id || null;
-        } else if (session.userType === 'school_admin') {
-            const admin = await db.query.schoolAdmins.findFirst({
-                where: eq(schoolAdmins.id, session.userId),
-                columns: { school_id: true }
-            });
-            schoolId = admin?.school_id || null;
-        } else if (session.userType === 'super_admin') {
-            // CRITICAL FIX #2: Super admins uploading platform-wide media must use a default school
-            // Instead of null (which violates NOT NULL constraint), use first school's ID
-            // This allows super admins to manage global media while maintaining referential integrity
-            const firstSchool = await db.query.schools.findFirst({
-                columns: { id: true }
-            });
-            schoolId = firstSchool?.id || null;
-        }
-        // Fallback: If schoolId is still null, assign to first school
+        const firstSchool = await db.query.schools.findFirst({
+            columns: { id: true }
+        });
+        schoolId = firstSchool?.id || null;
+
         if (!schoolId) {
-            const firstSchool = await db.query.schools.findFirst({
-                columns: { id: true }
-            });
-            schoolId = firstSchool?.id || null;
+            return new NextResponse('No schools configured - cannot register media', { status: 503 });
         }
 
         const assetType = getAssetType(mimeType);
