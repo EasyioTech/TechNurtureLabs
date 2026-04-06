@@ -56,6 +56,10 @@ export async function createSession(payload: Omit<SessionPayload, 'sessionId' | 
     const refreshToken = crypto.randomBytes(32).toString('hex');
     const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
 
+    // Generate CSRF Token (random, not derived from sessionId)
+    const csrfToken = crypto.randomUUID();
+    const csrfTokenHash = crypto.createHash('sha256').update(csrfToken).digest('hex');
+
     const roleExpiry = getSessionExpirySeconds(payload.userType);
 
     // Store session in DB (Persistence + Rotation context)
@@ -64,6 +68,7 @@ export async function createSession(payload: Omit<SessionPayload, 'sessionId' | 
         user_id: payload.userId,
         user_type: payload.userType,
         refresh_token_hash: refreshTokenHash,
+        csrf_token_hash: csrfTokenHash,
         expires_at: new Date(Date.now() + roleExpiry * 1000),
     });
 
@@ -103,15 +108,29 @@ export async function createSession(payload: Omit<SessionPayload, 'sessionId' | 
         maxAge: roleExpiry,
     });
 
-    // SECURITY: Generate CSRF token (deterministic, derived from sessionId)
-    // Token is stable across access token rotation since sessionId is stable
-    const csrfToken = crypto
-        .createHmac('sha256', jwtSecretEnv || '')
-        .update(`csrf:${sessionId}`)
-        .digest('hex');
+    // CRITICAL FIX #6: CSRF token already generated and stored in initial INSERT above.
+    // Now generate the client-facing CSRF token and set it in a readable cookie.
+    // The hash is already in the DB, we just need to send the plaintext token to the client.
+    const clientCsrfToken = crypto.randomBytes(32).toString('hex');
+
+    // Update DB with the actual CSRF token hash (we'll hash the client token for verification)
+    const clientCsrfTokenHash = crypto.createHash('sha256').update(clientCsrfToken).digest('hex');
+    await db.update(userSessions)
+        .set({ csrf_token_hash: clientCsrfTokenHash })
+        .where(eq(userSessions.id, sessionId));
+
+    // Update Redis cache if available
+    if (redis && (redis as any).status === 'ready') {
+        const cachedSession = JSON.parse(
+            (await redis.get(`session:${sessionId}`)) || '{}'
+        );
+        cachedSession.csrfTokenHash = clientCsrfTokenHash;
+        redis.set(`session:${sessionId}`, JSON.stringify(cachedSession), 'EX', roleExpiry)
+            .catch(() => {});
+    }
 
     // Set CSRF Token Cookie (not httpOnly so JavaScript can read and send as header)
-    cookieStore.set('csrf_token', csrfToken, {
+    cookieStore.set('csrf_token', clientCsrfToken, {
         httpOnly: false,
         secure: isProduction && !isHttp,
         sameSite: 'strict',
@@ -229,14 +248,28 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
         } catch (_) {}
         if (graceData) {
             const parsed = JSON.parse(graceData);
-            // Set only the new access token cookie — refresh token is already in the
-            // browser cookie from the first rotation response (not cached in Redis).
+            // CRITICAL FIX #5: Don't return cached JWT; regenerate it (same session)
+            // Grace period stores only session metadata, not credentials
+            const gracefulSessionData: SessionPayload = {
+                userId: parsed.userId,
+                userType: parsed.userType,
+                role: parsed.userType,
+                sessionId: parsed.sessionId
+            };
+
+            // Regenerate JWT with current metadata (avoids credential leakage from Redis)
+            const gracefulNewAccessToken = await new SignJWT(gracefulSessionData)
+                .setProtectedHeader({ alg: 'HS256' })
+                .setIssuedAt()
+                .setExpirationTime(ACCESS_TOKEN_EXPIRY)
+                .sign(JWT_SECRET);
+
             try {
-                cookieStore.set('session', parsed.newAccessToken, {
+                cookieStore.set('session', gracefulNewAccessToken, {
                     httpOnly: true, secure: serverEnv.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 900
                 });
             } catch (e) { /* Read-only context (Layout/Page), skip cookie set */ }
-            return parsed.sessionData;
+            return gracefulSessionData;
         }
 
         // Find active session in DB
@@ -279,6 +312,11 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
             .setExpirationTime(ACCESS_TOKEN_EXPIRY)
             .sign(JWT_SECRET);
 
+        // CRITICAL FIX #6: Regenerate CSRF token on rotation with random value
+        // This invalidates old CSRF tokens, preventing token reuse attacks
+        const newCsrfToken = crypto.randomBytes(32).toString('hex');
+        const newCsrfTokenHash = crypto.createHash('sha256').update(newCsrfToken).digest('hex');
+
         const isProduction = serverEnv.NODE_ENV === 'production';
         const appUrl = serverEnv.NEXT_PUBLIC_APP_URL || '';
         const isHttp = appUrl.startsWith('http://') || !isProduction;
@@ -302,10 +340,20 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
                 maxAge: roleExpiry,
             });
 
-            // Update Database
+            // CRITICAL FIX #6: Update CSRF token cookie on rotation
+            cookieStore.set('csrf_token', newCsrfToken, {
+                httpOnly: false,
+                secure: isProduction && !isHttp,
+                sameSite: 'strict',
+                path: '/',
+                maxAge: roleExpiry,
+            });
+
+            // Update Database with new tokens
             await db.update(userSessions)
                 .set({
                     refresh_token_hash: newRefreshTokenHash,
+                    csrf_token_hash: newCsrfTokenHash, // CRITICAL FIX #6: Update CSRF token hash
                     last_used_at: new Date(),
                 })
                 .where(eq(userSessions.id, sessionId));
@@ -314,14 +362,16 @@ async function verifySessionInternal(): Promise<SessionPayload | null> {
                 await redis.expire(`session:${sessionId}`, roleExpiry);
 
                 // --- GRACE PERIOD: Prevent parallel request failures ---
-                // Store only the new access token and session data — NOT the refresh token.
-                // Storing the plaintext refresh token in Redis would expose it to any Redis breach.
-                // Parallel requests in the grace window get the new access token from here;
-                // the new refresh token is already set in the cookie by the first rotation.
+                // Store ONLY session metadata, NOT the JWT token itself.
+                // Storing plaintext access tokens in Redis creates a vulnerability:
+                // if Redis is breached, JWTs (valid for 15 min) are exposed.
+                // Instead, store just the session ID; parallel requests can re-verify with DB.
+                // Parallel requests in the grace window can use the session ID to fetch from DB.
                 await redis.set(`rotation_grace:${refreshTokenHash}`, JSON.stringify({
-                    sessionData: finalSessionData,
-                    newAccessToken,
-                    // newRefreshToken intentionally omitted — sent via httpOnly cookie only
+                    sessionId: finalSessionData.sessionId,
+                    userId: finalSessionData.userId,
+                    userType: finalSessionData.userType,
+                    // Do NOT store newAccessToken — it's a credential vulnerability
                 }), 'EX', 30); // 30 second grace period
             }
 
@@ -376,8 +426,9 @@ export async function destroySession() {
 }
 
 /**
- * Verify CSRF token using double-submit cookie pattern
- * Token is derived deterministically from sessionId, so it's stable across access token rotation
+ * Verify CSRF token using double-submit cookie pattern + database validation
+ * CRITICAL FIX #6: Validates submitted token against hash stored in userSessions
+ * This prevents token reuse across rotations and ensures tokens are invalidated properly
  */
 export async function verifyCsrfToken(submittedToken: string | null): Promise<boolean> {
     if (!submittedToken) return false;
@@ -386,14 +437,38 @@ export async function verifyCsrfToken(submittedToken: string | null): Promise<bo
     if (!session) return false;
 
     try {
-        const expected = crypto
-            .createHmac('sha256', jwtSecretEnv || '')
-            .update(`csrf:${session.sessionId}`)
-            .digest('hex');
+        // CRITICAL FIX #6: Validate against stored CSRF token hash in DB
+        // First, try Redis cache for performance
+        try {
+            if (redis && (redis as any).status === 'ready') {
+                const cachedSession = await redis.get(`session:${session.sessionId}`);
+                if (cachedSession) {
+                    const parsed = JSON.parse(cachedSession);
+                    if (parsed.csrfTokenHash) {
+                        const submittedHash = crypto.createHash('sha256').update(submittedToken).digest('hex');
+                        return crypto.timingSafeEqual(Buffer.from(parsed.csrfTokenHash), Buffer.from(submittedHash));
+                    }
+                }
+            }
+        } catch (_) {
+            // Redis unavailable, fall through to DB
+        }
 
-        // Constant-time comparison to prevent timing attacks
-        return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(submittedToken));
-    } catch {
+        // Fallback to DB query if Redis miss
+        const sessionRecord = await db.query.userSessions.findFirst({
+            where: eq(userSessions.id, session.sessionId),
+            columns: { csrf_token_hash: true }
+        });
+
+        if (!sessionRecord || !sessionRecord.csrf_token_hash) {
+            return false; // No CSRF token stored
+        }
+
+        // Hash the submitted token and compare
+        const submittedHash = crypto.createHash('sha256').update(submittedToken).digest('hex');
+        return crypto.timingSafeEqual(Buffer.from(sessionRecord.csrf_token_hash), Buffer.from(submittedHash));
+    } catch (err) {
+        // Constant-time comparison failed (buffer mismatch or other error)
         return false;
     }
 }

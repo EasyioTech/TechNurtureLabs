@@ -138,10 +138,10 @@ const DB_SYNC_INTERVAL_MS = 300000; // 5 minutes: Enterprise scale persistence i
 
 /**
  * Validates and processes a learning heartbeat.
- * Implements: Nonce check, Playback speed validation, Temporal jump protection, 
+ * Implements: Nonce check, Playback speed validation, Temporal jump protection,
  * and Device/IP binding verification.
  */
-export async function processHeartbeat(token: string, payload: {
+export async function processHeartbeat(token: string, userId: string, payload: {
     nonce: number,
     playbackTime: number,
     playbackRate: number,
@@ -157,6 +157,13 @@ export async function processHeartbeat(token: string, payload: {
 
     const session = JSON.parse(sessionData);
     const now = Date.now();
+
+    // CRITICAL FIX #7: Validate session token belongs to authenticated user (tenant isolation)
+    // Prevents attacker from using another student's session token
+    if (session.userId !== userId) {
+        await invalidateSession(token);
+        return { error: "Session ownership mismatch", code: "SECURITY_BREACH" };
+    }
 
     // 2. Security: Anti-Spoofing (Device/IP Binding)
     if (payload.deviceHash && session.deviceHash && payload.deviceHash !== session.deviceHash) {

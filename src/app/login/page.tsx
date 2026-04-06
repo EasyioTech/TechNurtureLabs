@@ -15,7 +15,7 @@ import { GlobalLogo } from '@/modules/shared/components/global-logo';
 import { getPlatformSettings } from "@/components/landing/actions";
 
 export default function StudentLoginPage() {
-  const { signIn } = useAuth();
+  const { signIn, profile, loading: authLoading } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -31,6 +31,13 @@ export default function StudentLoginPage() {
   useEffect(() => {
     getPlatformSettings().then(setPlatformSettings);
   }, []);
+
+  useEffect(() => {
+    // If user is already authenticated, redirect to dashboard
+    if (!authLoading && profile?.id && profile?.role === 'student') {
+      router.replace('/student');
+    }
+  }, [profile, authLoading, router]);
 
   const validateIdentifier = () => {
     const newErrors: Record<string, string> = {};

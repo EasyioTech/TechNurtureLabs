@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         const userAgent = req.headers.get('user-agent') || 'unknown';
         const deviceHash = crypto.createHash('sha256').update(userAgent).digest('hex');
 
-        const result = await processHeartbeat(sessionToken, {
+        const result = await processHeartbeat(sessionToken, userId, {
             nonce,
             playbackTime,
             playbackRate: playbackRate || 1.0,

@@ -4,11 +4,11 @@ import { SchoolStats, SchoolLeaderboardEntry, SchoolCourseMetric } from '../../t
 import { useSchoolTheme, ts } from '../../theme-context';
 import {
     Users, BookOpen, Zap, Trophy, Target, TrendingUp, CreditCard,
-    CheckCircle2, Clock, Award, Star, Activity, BarChart3
+    Star, Activity, BarChart3
 } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart, Pie, Cell, Legend, BarChart, Bar
+    PieChart, Pie, Cell
 } from 'recharts';
 import { useRouter } from 'next/navigation';
 
@@ -101,27 +101,23 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
     const router = useRouter();
     const [isMounted, setIsMounted] = useState(false);
 
+    // Prevent hydration mismatches with dynamic charts (Recharts)
+    // Charts render differently server vs client, so we delay rendering until client-side
     useEffect(() => {
         setIsMounted(true);
     }, []);
 
-    const activityData = stats.totalStudents > 0 ? [
-        { day: 'Mon', active: stats.activeStudents > 0 ? Math.floor(stats.activeStudents * 0.4) : 12, total: stats.totalStudents },
-        { day: 'Tue', active: stats.activeStudents > 0 ? Math.floor(stats.activeStudents * 0.6) : 18, total: stats.totalStudents },
-        { day: 'Wed', active: stats.activeStudents > 0 ? Math.floor(stats.activeStudents * 0.9) : 25, total: stats.totalStudents },
-        { day: 'Thu', active: stats.activeStudents > 0 ? Math.floor(stats.activeStudents * 0.7) : 15, total: stats.totalStudents },
-        { day: 'Fri', active: stats.activeStudents > 0 ? stats.activeStudents : 30, total: stats.totalStudents },
-        { day: 'Sat', active: stats.activeStudents > 0 ? Math.floor(stats.activeStudents * 0.3) : 8, total: stats.totalStudents },
-        { day: 'Sun', active: stats.activeStudents > 0 ? Math.floor(stats.activeStudents * 0.2) : 5, total: stats.totalStudents },
-    ] : [
-        { day: 'Mon', active: 0, total: 0 },
-        { day: 'Tue', active: 0, total: 0 },
-        { day: 'Wed', active: 0, total: 0 },
-        { day: 'Thu', active: 0, total: 0 },
-        { day: 'Fri', active: 0, total: 0 },
-        { day: 'Sat', active: 0, total: 0 },
-        { day: 'Sun', active: 0, total: 0 },
-    ];
+    const activityData = stats.weeklyActivity && stats.weeklyActivity.length > 0
+        ? stats.weeklyActivity
+        : [
+            { day: 'Mon', active: 0, total: 0 },
+            { day: 'Tue', active: 0, total: 0 },
+            { day: 'Wed', active: 0, total: 0 },
+            { day: 'Thu', active: 0, total: 0 },
+            { day: 'Fri', active: 0, total: 0 },
+            { day: 'Sat', active: 0, total: 0 },
+            { day: 'Sun', active: 0, total: 0 },
+        ];
 
     const studentActivityData = [
         { name: 'Active', value: stats.activeStudents },
@@ -131,7 +127,7 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
     const topCoursesRaw = courseMetrics.slice(0, 5);
     const topCourses = topCoursesRaw.map(c => ({
         id: c.id,
-        name: c.title.length > 20 ? c.title.slice(0, 20) + '…' : c.title,
+        name: c.title,
         enrolled: c.enrolled_count,
         completion: c.completion_rate,
     }));
@@ -139,15 +135,6 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
     const PIE_COLORS = isDark ? ['#6366f1', '#4f46e5', '#312e81', '#1e1b4b'] : ['#6366f1', '#4f46e5', '#818cf8', '#c7d2fe'];
     const gridColor = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)';
     const tickColor = isDark ? '#64748b' : '#94a3b8';
-    const tooltipStyle = {
-        background: isDark ? '#161921' : '#fff',
-        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}`,
-        borderRadius: 16,
-        fontSize: 12,
-        fontWeight: 800,
-        boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
-        padding: '12px 16px',
-    };
 
     return (
         <div className="space-y-8">
@@ -190,8 +177,8 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                             Next billing cycle on <span className="text-indigo-500 font-black">{stats.planExpiry ? new Date(stats.planExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}</span>
                         </p>
                     </div>
-                    <button 
-                        onClick={() => router.push('/school-admin/settings?tab=subscription')}
+                    <button
+                        onClick={() => router.push('/school-admin/settings')}
                         className={`w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-[11px] sm:text-[12px] font-black transition-all ${isDark ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
                     >
                         MANAGE PLAN

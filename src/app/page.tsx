@@ -3,7 +3,8 @@ import dynamicFn from 'next/dynamic';
 import type { Metadata } from 'next';
 import Script from 'next/script';
 
-export const dynamic = 'force-dynamic';
+// Allow static generation for SEO - homepage must be cached for Google indexing
+export const revalidate = 3600; // Revalidate every hour
 
 import { Navigation } from '@/components/landing/Navigation';
 import { HeroSection } from '@/components/landing/HeroSection';

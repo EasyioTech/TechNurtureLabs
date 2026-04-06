@@ -66,6 +66,29 @@ export async function getSchoolStats(schoolId: string): Promise<SchoolStats> {
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
+    // Get real weekly activity data (last 7 days per day of week)
+    const weeklyActivityRaw = await db.select({
+        day: sql<string>`TO_CHAR(${students.last_active_at}, 'Day')`,
+        count: count()
+    })
+        .from(students)
+        .where(and(
+            eq(students.school_id, schoolId),
+            isNull(students.deleted_at),
+            eq(students.is_verified, true),
+            gt(students.last_active_at, sevenDaysAgo)
+        ))
+        .groupBy(sql`TO_CHAR(${students.last_active_at}, 'Day')`);
+
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const activityMap = new Map(weeklyActivityRaw.map(w => [w.day?.trim(), Number(w.count) || 0]));
+
+    const weeklyActivity = days.map(day => ({
+        day: day.substring(0, 3),
+        active: activityMap.get(day) || 0,
+        total: 0  // Will be filled with total students below
+    }));
+
     const [basicStats, activeCount, lessonsCompleted, quizCount, avgProgress, xpStats, pendingCount, enrolledCount] = await Promise.all([
         db.select({ count: count() }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at), eq(students.is_verified, true))),
         db.select({ count: count() }).from(students).where(and(eq(students.school_id, schoolId), isNull(students.deleted_at), eq(students.is_verified, true), gt(students.last_active_at, sevenDaysAgo))),
@@ -77,13 +100,15 @@ export async function getSchoolStats(schoolId: string): Promise<SchoolStats> {
         db.select({ count: count(sql`DISTINCT ${courseProgress.course_id}`) }).from(courseProgress).innerJoin(students, eq(courseProgress.user_id, students.id)).where(eq(students.school_id, schoolId)),
     ]);
 
-    const sub = await db.query.schoolSubscriptions.findFirst({ 
+    const sub = await db.query.schoolSubscriptions.findFirst({
         where: eq(schoolSubscriptions.school_id, schoolId),
         with: { plan: true }
     });
 
+    const totalStudents = Number(basicStats[0]?.count || 0);
+
     return {
-        totalStudents: Number(basicStats[0]?.count || 0),
+        totalStudents,
         activeStudents: Number(activeCount[0]?.count || 0),
         avgXp: Math.round(Number(xpStats[0]?.avg || 0)),
         totalXp: Number(xpStats[0]?.total || 0),
@@ -95,6 +120,10 @@ export async function getSchoolStats(schoolId: string): Promise<SchoolStats> {
         planName: sub?.plan?.name || 'Community',
         subscriptionStatus: sub?.status || 'active',
         planExpiry: sub?.current_period_end?.toISOString() || null,
+        weeklyActivity: weeklyActivity.map(day => ({
+            ...day,
+            total: totalStudents
+        })),
     };
 }
 

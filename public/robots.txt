@@ -1,0 +1,44 @@
+# TechNurture Labs - SEO Optimization
+# Allow all legitimate crawlers to index the site
+
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /contact-us
+Allow: /terms
+Allow: /privacy-policy
+Allow: /refund-policy
+Allow: /shipping-policy
+
+# Disallow student dashboard and admin areas from being indexed
+Disallow: /student/
+Disallow: /school-admin/
+Disallow: /admin/
+Disallow: /admin-portal/
+Disallow: /school-portal/
+Disallow: /api/
+Disallow: /login
+Disallow: /register/
+Disallow: /forgot-password/
+
+# Sitemap location
+Sitemap: https://technurturelms.in/sitemap.xml
+
+# Google-specific rules
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+# Bing-specific rules
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# Allow other search engines
+User-agent: YandexBot
+Allow: /
+Crawl-delay: 0
+
+User-agent: MJ12bot
+Allow: /
+Crawl-delay: 1

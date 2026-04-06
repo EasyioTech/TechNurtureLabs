@@ -815,6 +815,7 @@ export const mediaAssets = pgTable('media_assets', {
     storage_type: storageTypeEnum('storage_type').notNull().default('r2'),
     asset_type: assetTypeEnum('asset_type').notNull().default('document'),
     uploaded_by: uuid('uploaded_by'), // Polymorphic - students, school_admins, or super_admins
+    school_id: uuid('school_id').references(() => schools.id, { onDelete: 'cascade' }), // CRITICAL FIX #1: Multi-tenancy enforcement
     folder: text('folder'), // course, lesson, settings, etc
     processing_status: text('processing_status').notNull().default('completed'), // 'pending', 'processing', 'completed', 'failed'
     error_message: text('error_message'),
@@ -823,6 +824,7 @@ export const mediaAssets = pgTable('media_assets', {
 }, (table) => [
     index('idx_media_asset_type').on(table.asset_type),
     index('idx_media_uploaded_by').on(table.uploaded_by),
+    index('idx_media_school').on(table.school_id), // NEW INDEX: school-scoped queries
     index('idx_media_folder').on(table.folder),
     index('idx_media_storage_type').on(table.storage_type),
     index('idx_media_created').on(table.created_at),
@@ -892,6 +894,7 @@ export const userSessions = pgTable('user_sessions', {
     user_id: uuid('user_id').notNull(),
     user_type: userTypeEnum('user_type').notNull(),
     refresh_token_hash: text('refresh_token_hash').notNull(),
+    csrf_token_hash: text('csrf_token_hash').notNull(), // CRITICAL FIX #6: Store CSRF token for verification
     device_info: text('device_info'),
     ip_address: inet('ip_address'),
     expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),

@@ -1,5 +1,11 @@
 // School Admin Types
 
+export type DailyActivity = {
+    day: string;
+    active: number;
+    total: number;
+};
+
 export type SchoolStats = {
     totalStudents: number;
     activeStudents: number;   // active in last 7 days
@@ -13,6 +19,7 @@ export type SchoolStats = {
     planName: string | null;
     subscriptionStatus: string | null;
     planExpiry: string | null;
+    weeklyActivity: DailyActivity[];  // Real 7-day activity data
 };
 
 export type SchoolStudentMetric = {

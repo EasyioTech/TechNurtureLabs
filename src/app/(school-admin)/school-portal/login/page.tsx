@@ -15,7 +15,7 @@ import { getPlatformSettings } from '@/components/landing/actions';
 import { useEffect } from 'react';
 
 export default function SchoolLoginPage() {
-  const { signIn } = useAuth();
+  const { signIn, profile, loading: authLoading } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -26,6 +26,13 @@ export default function SchoolLoginPage() {
   useEffect(() => {
     getPlatformSettings().then(setPlatformSettings);
   }, []);
+
+  useEffect(() => {
+    // If user is already authenticated, redirect to dashboard
+    if (!authLoading && profile?.id && profile?.role === 'school_admin') {
+      router.replace('/school-admin');
+    }
+  }, [profile, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

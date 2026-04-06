@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { invoices, schools } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { requireSchoolAdmin } from '@/lib/admin-guard';
+import { invoices, schools, schoolAdmins } from '@/db/schema';
+import { eq, and, isNull } from 'drizzle-orm';
+import { verifySession } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -11,10 +11,35 @@ export async function GET(
 ) {
     try {
         const { id: invoiceId } = await params;
-        
-        // 1. Fetch invoice first to get school_id
+
+        // CRITICAL FIX #2: Auth-first approach to prevent enumeration attacks
+        // 1. Verify session and role BEFORE any data fetch
+        const session = await verifySession();
+        if (!session || session.userType !== 'school_admin') {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // 2. Fetch school admin to get school_id (single query)
+        const admin = await db.query.schoolAdmins.findFirst({
+            where: and(
+                eq(schoolAdmins.id, session.userId),
+                eq(schoolAdmins.is_active, true),
+                isNull(schoolAdmins.deleted_at)
+            ),
+            columns: { school_id: true }
+        });
+
+        if (!admin) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // 3. Fetch invoice with SCHOOL_ID FILTER (prevent cross-school access)
+        // This ensures we only fetch invoices belonging to the admin's school
         const invoice = await db.query.invoices.findFirst({
-            where: eq(invoices.id, invoiceId),
+            where: and(
+                eq(invoices.id, invoiceId),
+                eq(invoices.school_id, admin.school_id) // CRITICAL: Enforce school isolation
+            ),
             with: {
                 transaction: true,
                 subscription: {
@@ -29,13 +54,7 @@ export async function GET(
             return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
         }
 
-        // 2. SECURITY: Verify the requester is an admin for THIS school
-        const { admin } = await requireSchoolAdmin(invoice.school_id);
-        if (!admin) {
-             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        // 3. Fetch school details for the header
+        // 4. Fetch school details for the header
         const school = await db.query.schools.findFirst({
             where: eq(schools.id, invoice.school_id)
         });

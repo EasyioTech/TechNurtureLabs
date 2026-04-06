@@ -1,7 +1,7 @@
 
 // import 'server-only';
 import { db } from '../db';
-import { students, xpEvents } from '@/db/schema';
+import { students, xpEvents, enrollments } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { redis } from '../redis';
 
@@ -22,9 +22,16 @@ export const gamificationService = {
 
     /**
      * Efficiently adds XP with Redis buffering to prevent DB locks
+     * SECURITY: Validates schoolId to prevent cross-school XP manipulation
      */
     awardXP: async (userId: string, amount: number, schoolId?: string, source: string = 'engagement') => {
         try {
+            // SECURITY: Validate inputs to prevent manipulation
+            if (!amount || amount < 0) {
+                console.error('[Gamification] Invalid XP amount:', amount);
+                return false;
+            }
+
             // 1. Buffer in Redis for real-time UI updates
             const userKey = `student:${userId}:stats`;
             await redis.hincrby(userKey, 'cumulative_xp', amount);
@@ -33,9 +40,20 @@ export const gamificationService = {
             // 2. Persist to DB asynchronously or in this task
             // Note: For now we do immediate persist but we could move to a batch job
             await db.transaction(async (tx) => {
+                // SECURITY: Validate student exists and belongs to school if schoolId provided
+                if (schoolId) {
+                    const enrollment = await tx.query.enrollments.findFirst({
+                        where: eq(enrollments.user_id, userId),
+                        columns: { school_id: true }
+                    });
+                    if (!enrollment || enrollment.school_id !== schoolId) {
+                        throw new Error(`Student ${userId} does not belong to school ${schoolId}`);
+                    }
+                }
+
                 // Update student total
                 await tx.update(students)
-                    .set({ 
+                    .set({
                         cumulative_xp: sql`${students.cumulative_xp} + ${amount}`,
                         updated_at: new Date()
                     })

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-export const dynamic = 'force-dynamic';
 import { getPlatformSettings } from "@/components/landing/actions";
 import "./globals.css";
 import ErrorReporter from "@/components/shared/ErrorReporter";

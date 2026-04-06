@@ -19,6 +19,15 @@ export function useSchoolData(schoolId: string) {
         totalStudents: 0, activeStudents: 0, avgXp: 0, totalXp: 0,
         enrolledCourses: 0, totalLessonsCompleted: 0, totalQuizzesTaken: 0,
         avgCompletionRate: 0, pendingStudents: 0, planName: null, subscriptionStatus: null, planExpiry: null,
+        weeklyActivity: [
+            { day: 'Mon', active: 0, total: 0 },
+            { day: 'Tue', active: 0, total: 0 },
+            { day: 'Wed', active: 0, total: 0 },
+            { day: 'Thu', active: 0, total: 0 },
+            { day: 'Fri', active: 0, total: 0 },
+            { day: 'Sat', active: 0, total: 0 },
+            { day: 'Sun', active: 0, total: 0 },
+        ],
     });
     
     const [pagedStudents, setPagedStudents] = useState<SchoolStudentMetric[]>([]);

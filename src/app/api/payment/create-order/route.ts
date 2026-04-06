@@ -11,6 +11,7 @@ import { verifySession } from '@/lib/auth';
 
 const createOrderSchema = z.object({
     plan_id: z.string().uuid('Invalid plan ID'),
+    school_id: z.string().uuid('Invalid school ID'), // CRITICAL FIX #3: Capture school context
     promo_code_id: z.string()
         .optional()
         .nullable()
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
             logger.warn('[Create Order] Invalid schema', { errors: body.error.issues });
             return NextResponse.json({ error: body.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 });
         }
-        const { plan_id, promo_code_id } = body.data;
+        const { plan_id, school_id, promo_code_id } = body.data;
 
         // SECURITY: Verify user is authenticated (for in-portal usage)
         // NOTE: Registration endpoint is pre-auth, so we don't require session here
@@ -182,6 +183,7 @@ export async function POST(req: NextRequest) {
                 notes: {
                     plan_id: plan.id,
                     plan_name: plan.name,
+                    school_id: school_id, // CRITICAL FIX #3: Store school context for verification
                     promo_code_id: promo_code_id || '',
                 },
             });
@@ -224,13 +226,25 @@ export async function POST(req: NextRequest) {
             };
             logger.error('[Create Order] Razorpay API error', errorDetails);
 
-            // SECURITY: Rollback promo code usage if Razorpay fails
+            // CRITICAL FIX #8: Rollback promo code usage with retry logic
+            // Ensures promo code counter is decremented even if first attempt fails
             if (appliedPromoId) {
-                try {
-                    await db.update(promoCodes).set({ current_uses: sql`current_uses - 1` }).where(eq(promoCodes.id, appliedPromoId));
-                    logger.info('[Create Order] Promo code usage rolled back after Razorpay failure', { promo_code_id: appliedPromoId });
-                } catch (rollbackErr: any) {
-                    logger.error('[Create Order] Failed to rollback promo code usage', { promo_code_id: appliedPromoId, error: rollbackErr?.message });
+                let rollbackSuccess = false;
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    try {
+                        await db.update(promoCodes).set({ current_uses: sql`current_uses - 1` }).where(eq(promoCodes.id, appliedPromoId));
+                        logger.info('[Create Order] Promo code usage rolled back after Razorpay failure', { promo_code_id: appliedPromoId, attempt: attempt + 1 });
+                        rollbackSuccess = true;
+                        break;
+                    } catch (rollbackErr: any) {
+                        if (attempt === 2) {
+                            // Final attempt failed — log critical issue
+                            logger.error('[Create Order] CRITICAL: Failed to rollback promo code after 3 attempts', {
+                                promo_code_id: appliedPromoId,
+                                error: rollbackErr?.message
+                            });
+                        }
+                    }
                 }
             }
 

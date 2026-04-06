@@ -65,6 +65,18 @@ export const paymentService = {
             throw new AppError('Payment not captured or order mismatch', 'PAYMENT_STATE_INVALID', 400);
         }
 
+        // CRITICAL FIX #3: Verify school_id from Razorpay notes matches the claimed school_id
+        // This prevents payment hijacking where attacker pays for School A but verifies as School B
+        const notesSchoolId = paymentDetails.notes?.school_id;
+        if (notesSchoolId && notesSchoolId !== school_id) {
+            logger.error('[PaymentService] FRAUD: School ID mismatch in payment notes', {
+                razorpay_order_id,
+                notesSchoolId,
+                claimedSchoolId: school_id
+            });
+            throw new AppError('Payment school ID mismatch', 'FRAUD_DETECTED', 400);
+        }
+
         // 3. ATOMIC STATE TRANSITION
         return await db.transaction(async (tx) => {
             // A. SECURITY: Verify user's school ownership (prevent cross-school payment IDOR)

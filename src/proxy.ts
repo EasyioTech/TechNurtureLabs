@@ -94,8 +94,36 @@ export async function proxy(request: NextRequest) {
     return withTrace(new NextResponse('Too Many Requests', { status: 429 }));
   }
 
-  // ─── SESSION VALIDATION ──────────────────────────────────────────────
+  // ─── EARLY REDIRECT PREVENTION ──────────────────────────────────────
+  // If user is authenticated and trying to access login page, redirect to dashboard
+  const isAccessingLoginRoute = url.pathname.includes('/login');
   const sessionToken = request.cookies.get('session')?.value;
+
+  // Check if session exists and user is on login page
+  if (sessionToken && isAccessingLoginRoute) {
+    try {
+      const jwtSecret = process.env.JWT_SECRET;
+      if (jwtSecret && jwtSecret.trim() !== '') {
+        const { jwtVerify } = await import('jose');
+        const secret = new TextEncoder().encode(jwtSecret);
+        const { payload } = await jwtVerify(sessionToken, secret);
+        const sessionData = payload as any;
+
+        // Session is valid and user is authenticated on login page → redirect to dashboard
+        if (sessionData && sessionData.userType) {
+          const dashboardPath = sessionData.userType === 'student' ? '/student'
+                              : sessionData.userType === 'school_admin' ? '/school-admin'
+                              : sessionData.userType === 'super_admin' ? '/admin'
+                              : '/';
+          return withTrace(NextResponse.redirect(new URL(dashboardPath, request.url)));
+        }
+      }
+    } catch (e) {
+      // JWT verification failed, session is invalid/expired, continue to login page
+    }
+  }
+
+  // ─── SESSION VALIDATION ──────────────────────────────────────────────
   if (sessionToken) {
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret || jwtSecret.trim() === '') {

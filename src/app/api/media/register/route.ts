@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { db } from '@/lib/db';
-import { mediaAssets } from '@/db/schema';
+import { mediaAssets, students, schoolAdmins } from '@/db/schema';
 import { verifySession } from '@/lib/auth';
 import { getAssetType } from '@/lib/storage';
+import { eq } from 'drizzle-orm';
 
 /**
  * 📝 ASSET REGISTRATION API
@@ -22,6 +23,23 @@ export async function POST(req: NextRequest) {
         if (!fileName || !filePath) {
             return new NextResponse('Missing asset details', { status: 400 });
         }
+
+        // CRITICAL FIX #1: Resolve school_id from uploader (polymorphic)
+        let schoolId: string | null = null;
+        if (session.userType === 'student') {
+            const student = await db.query.students.findFirst({
+                where: eq(students.id, session.userId),
+                columns: { school_id: true }
+            });
+            schoolId = student?.school_id || null;
+        } else if (session.userType === 'school_admin') {
+            const admin = await db.query.schoolAdmins.findFirst({
+                where: eq(schoolAdmins.id, session.userId),
+                columns: { school_id: true }
+            });
+            schoolId = admin?.school_id || null;
+        }
+        // super_admin: schoolId remains null (global platform media)
 
         const assetType = getAssetType(mimeType);
         const isProcessableVideo = assetType === 'video' && storageType === 'r2';
@@ -42,6 +60,7 @@ export async function POST(req: NextRequest) {
             storage_type: storageType,
             asset_type: assetType,
             uploaded_by: session.userId,
+            school_id: schoolId, // CRITICAL FIX: Capture school context at upload time
             folder: folder,
             processing_status: 'completed',
         } as any).returning();
