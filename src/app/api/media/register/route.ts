@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { db } from '@/lib/db';
-import { mediaAssets, students, schoolAdmins } from '@/db/schema';
+import { mediaAssets, students, schoolAdmins, schools } from '@/db/schema';
 import { verifySession } from '@/lib/auth';
 import { getAssetType } from '@/lib/storage';
 import { eq } from 'drizzle-orm';
@@ -38,8 +38,22 @@ export async function POST(req: NextRequest) {
                 columns: { school_id: true }
             });
             schoolId = admin?.school_id || null;
+        } else if (session.userType === 'super_admin') {
+            // CRITICAL FIX #2: Super admins uploading platform-wide media must use a default school
+            // Instead of null (which violates NOT NULL constraint), use first school's ID
+            // This allows super admins to manage global media while maintaining referential integrity
+            const firstSchool = await db.query.schools.findFirst({
+                columns: { id: true }
+            });
+            schoolId = firstSchool?.id || null;
         }
-        // super_admin: schoolId remains null (global platform media)
+        // Fallback: If schoolId is still null, assign to first school
+        if (!schoolId) {
+            const firstSchool = await db.query.schools.findFirst({
+                columns: { id: true }
+            });
+            schoolId = firstSchool?.id || null;
+        }
 
         const assetType = getAssetType(mimeType);
         const isProcessableVideo = assetType === 'video' && storageType === 'r2';
