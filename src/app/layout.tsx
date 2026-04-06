@@ -6,7 +6,7 @@ import Script from "next/script";
 
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { BackgroundUploadManager } from "@/components/shared/background-upload-manager";
-import { Toaster } from 'sonner';
+import { CustomToaster } from "@/components/shared/custom-toaster";
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getPlatformSettings();
   const platformName = settings?.platform_name ?? "TechNurture Labs";
@@ -189,7 +189,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased font-sans">
-        <Toaster position="top-center" expand={true} richColors closeButton />
+        <CustomToaster />
         <AuthProvider>
           <ErrorReporter />
           <BackgroundUploadManager />
