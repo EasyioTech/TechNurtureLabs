@@ -185,46 +185,12 @@ function AssetImagePreview({ asset }: { asset: MediaAsset }) {
 }
 
 function VideoPreview({ src, isDark }: { src: string; isDark: boolean }) {
-    const [failed, setFailed] = React.useState(false);
-
-    if (failed) {
-        return (
-            <div className="w-full h-full flex items-center justify-center">
-                <Film size={24} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
-            </div>
-        );
-    }
-
-    // Handle Cloudflare Stream iframe URLs
-    if (src.includes('videodelivery.net') || src.includes('cf-stream://')) {
-        const uid = src.includes('cf-stream://')
-            ? src.replace('cf-stream://', '')
-            : src.split('/').pop();
-
-        return (
-            <iframe
-                src={`https://iframe.videodelivery.net/${uid}`}
-                className="w-full h-full border-0"
-                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                onError={() => setFailed(true)}
-            />
-        );
-    }
-
+    // For media library selection - just show the Film icon, no playable preview
+    // Videos are meant to be selected and used in lessons, not played in the picker
     return (
-        <video
-            src={src}
-            className="w-full h-full object-cover"
-            preload="none"
-            muted
-            onError={() => setFailed(true)}
-            onMouseEnter={e => e.currentTarget.play()}
-            onMouseLeave={e => {
-                e.currentTarget.pause();
-                e.currentTarget.currentTime = 0;
-            }}
-        />
+        <div className="w-full h-full flex items-center justify-center">
+            <Film size={24} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+        </div>
     );
 }
 
