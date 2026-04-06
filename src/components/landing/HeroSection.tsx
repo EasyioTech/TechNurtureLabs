@@ -7,13 +7,13 @@ import { ArrowRight, Play, CheckCircle2, Sparkles, Zap, Users, TrendingUp } from
 
 export const HeroSection = ({ settings }: { settings?: any }) => {
     return (
-        <section className="relative z-10 pt-20 pb-16 md:pt-32 md:pb-24 lg:pt-40 lg:pb-32 overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 lg:min-h-screen flex items-center">
+        <section className="relative z-10 pt-20 pb-16 md:pt-32 md:pb-24 lg:pt-40 lg:pb-32 overflow-hidden bg-gradient-to-br from-white via-blue-50 to-slate-100 lg:min-h-screen flex items-center">
 
             {/* Animated gradient background */}
             <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse-subtle" />
-                <div className="absolute top-1/3 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '1s' }} />
-                <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '2s' }} />
+                <div className="absolute top-0 left-0 w-96 h-96 bg-blue-200/30 rounded-full blur-3xl animate-pulse-subtle" />
+                <div className="absolute top-1/3 right-0 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '1s' }} />
+                <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-slate-200/20 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '2s' }} />
             </div>
 
             {/* Grid overlay */}
@@ -34,9 +34,9 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                             transition={{ duration: 0.6 }}
                             className="mb-8"
                         >
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 backdrop-blur-sm hover:border-blue-400/50 transition-all">
-                                <Zap size={14} className="text-cyan-400" />
-                                <span className="text-xs font-bold text-cyan-300 uppercase tracking-widest">AI-Powered Learning</span>
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 to-blue-50 border border-blue-300 backdrop-blur-sm hover:border-blue-400 transition-all">
+                                <Zap size={14} className="text-blue-600" />
+                                <span className="text-xs font-bold text-blue-700 uppercase tracking-widest">AI-Powered Learning</span>
                             </div>
                         </motion.div>
 
@@ -47,9 +47,9 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                             transition={{ duration: 0.8, delay: 0.1 }}
                             className="mb-6"
                         >
-                            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-tight md:leading-[1.1] text-white">
+                            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-tight md:leading-[1.1] text-slate-900">
                                 The learning platform{' '}
-                                <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">India trusts</span>
+                                <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">India trusts</span>
                             </h1>
                         </motion.div>
 
@@ -60,7 +60,7 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                             transition={{ duration: 0.8, delay: 0.2 }}
                             className="mb-8 max-w-xl"
                         >
-                            <p className="text-sm sm:text-base md:text-lg text-slate-300 leading-relaxed font-medium">
+                            <p className="text-sm sm:text-base md:text-lg text-slate-600 leading-relaxed font-medium">
                                 Gamified learning for K-12. IoT, embedded systems, full-stack development—all in one platform. Real-time analytics, certified instructors, and 100K+ happy students.
                             </p>
                         </motion.div>
@@ -74,13 +74,13 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                         >
                             <div className="flex flex-col gap-3 sm:flex-row">
                                 <Link href="/register/school" className="flex-1">
-                                    <button className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg shadow-blue-600/50 transition-all text-sm sm:text-base cursor-pointer group">
+                                    <button className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition-all text-sm sm:text-base cursor-pointer group">
                                         Register School
                                         <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                                     </button>
                                 </Link>
                                 <Link href="#demo" className="flex-1">
-                                    <button className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3.5 rounded-xl border border-white/20 hover:border-white/40 backdrop-blur-sm transition-all text-sm sm:text-base cursor-pointer">
+                                    <button className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold px-6 py-3.5 rounded-xl border border-slate-300 hover:border-slate-400 transition-all text-sm sm:text-base cursor-pointer">
                                         <Play size={14} className="fill-current" />
                                         Watch Demo
                                     </button>
@@ -88,17 +88,17 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                             </div>
 
                             {/* Trust badges */}
-                            <div className="flex flex-col gap-3 border-t border-white/10 pt-6">
-                                <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm text-slate-300">
-                                    <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                            <div className="flex flex-col gap-3 border-t border-slate-300 pt-6">
+                                <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm text-slate-600">
+                                    <CheckCircle2 size={14} className="text-green-600 shrink-0" />
                                     <span>No credit card required</span>
                                 </div>
-                                <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm text-slate-300">
-                                    <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                                <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm text-slate-600">
+                                    <CheckCircle2 size={14} className="text-green-600 shrink-0" />
                                     <span>14-day free trial</span>
                                 </div>
-                                <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm text-slate-300">
-                                    <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                                <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm text-slate-600">
+                                    <CheckCircle2 size={14} className="text-green-600 shrink-0" />
                                     <span>UDISE verified & certified</span>
                                 </div>
                             </div>
@@ -113,50 +113,50 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                         className="hidden lg:flex flex-col items-start text-left justify-center pr-8 space-y-8"
                     >
                         {/* Badge */}
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 backdrop-blur-sm hover:border-blue-400/50 transition-all w-fit">
-                            <Zap size={16} className="text-cyan-400" />
-                            <span className="text-xs font-bold text-cyan-300 uppercase tracking-widest">AI-Powered Platform</span>
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 to-blue-50 border border-blue-300 backdrop-blur-sm hover:border-blue-400 transition-all w-fit">
+                            <Zap size={16} className="text-blue-600" />
+                            <span className="text-xs font-bold text-blue-700 uppercase tracking-widest">AI-Powered Platform</span>
                         </div>
 
                         {/* Heading */}
                         <div>
-                            <h1 className="text-7xl xl:text-8xl font-bold tracking-tight leading-[0.95] text-white mb-4">
+                            <h1 className="text-7xl xl:text-8xl font-bold tracking-tight leading-[0.95] text-slate-900 mb-4">
                                 The learning platform{' '}
-                                <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent block">India trusts</span>
+                                <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent block">India trusts</span>
                             </h1>
                         </div>
 
                         {/* Description */}
-                        <p className="text-lg text-slate-300 leading-relaxed font-medium max-w-xl">
+                        <p className="text-lg text-slate-600 leading-relaxed font-medium max-w-xl">
                             Gamified learning for K-12 schools. Master IoT, embedded systems, and full-stack development. Real-time analytics, certified instructors, trusted by 100K+ students across India.
                         </p>
 
                         {/* Stats Row */}
                         <div className="flex gap-8 pt-4">
                             <div className="flex flex-col gap-1">
-                                <div className="text-3xl font-bold text-cyan-400">100K+</div>
-                                <div className="text-sm text-slate-400">Active Students</div>
+                                <div className="text-3xl font-bold text-blue-600">100K+</div>
+                                <div className="text-sm text-slate-500">Active Students</div>
                             </div>
                             <div className="flex flex-col gap-1">
-                                <div className="text-3xl font-bold text-purple-400">500+</div>
-                                <div className="text-sm text-slate-400">Courses</div>
+                                <div className="text-3xl font-bold text-indigo-600">500+</div>
+                                <div className="text-sm text-slate-500">Courses</div>
                             </div>
                             <div className="flex flex-col gap-1">
-                                <div className="text-3xl font-bold text-blue-400">98%</div>
-                                <div className="text-sm text-slate-400">Success Rate</div>
+                                <div className="text-3xl font-bold text-purple-600">98%</div>
+                                <div className="text-sm text-slate-500">Success Rate</div>
                             </div>
                         </div>
 
                         {/* CTA Buttons */}
                         <div className="flex flex-wrap items-center gap-4 pt-4">
                             <Link href="/register/school">
-                                <button className="flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-blue-600/50 transition-all text-base cursor-pointer group">
+                                <button className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-blue-600/30 transition-all text-base cursor-pointer group">
                                     Register School
                                     <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                                 </button>
                             </Link>
                             <Link href="#demo">
-                                <button className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold px-8 py-4 rounded-xl border border-white/20 hover:border-white/40 backdrop-blur-sm transition-all text-base cursor-pointer">
+                                <button className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold px-8 py-4 rounded-xl border border-slate-300 hover:border-slate-400 transition-all text-base cursor-pointer">
                                     <Play size={16} className="fill-current" />
                                     Watch Demo
                                 </button>
@@ -164,17 +164,17 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                         </div>
 
                         {/* Trust badges */}
-                        <div className="flex flex-wrap items-center gap-6 pt-4 text-sm text-slate-400 font-medium border-t border-white/10 pt-8">
+                        <div className="flex flex-wrap items-center gap-6 pt-4 text-sm text-slate-600 font-medium border-t border-slate-300 pt-8">
                             <div className="flex items-center gap-2">
-                                <CheckCircle2 size={16} className="text-emerald-400" />
+                                <CheckCircle2 size={16} className="text-green-600" />
                                 <span>No credit card</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <CheckCircle2 size={16} className="text-emerald-400" />
+                                <CheckCircle2 size={16} className="text-green-600" />
                                 <span>Free trial</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <CheckCircle2 size={16} className="text-emerald-400" />
+                                <CheckCircle2 size={16} className="text-green-600" />
                                 <span>UDISE verified</span>
                             </div>
                         </div>
