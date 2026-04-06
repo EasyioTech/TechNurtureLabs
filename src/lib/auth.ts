@@ -1,6 +1,31 @@
-// NOTE: 'server-only' removed to allow usage in worker scripts (standalone Node.js processes)
-// The functions in this module are inherently server-side (they work with cookies, DB, etc.)
-// and should not be exported or called from client code anyway. The runtime check was too strict.
+/**
+ * PHASE 3 HARDENING: Auth Module Architecture
+ *
+ * ⚠️ CRITICAL DESIGN NOTES:
+ *
+ * 1. REMOVED 'server-only' guard (see git history for rationale)
+ *    - Next.js 'server-only' package blocked standalone workers
+ *    - Auth module is already inherently server-only (uses cookies(), headers(), DB)
+ *    - Safer to rely on runtime checks than import-time guards
+ *
+ * 2. LAZY-LOADING PATTERN:
+ *    - Functions requiring verifySession should be lazy-loaded by callers
+ *    - Example: const { verifySession } = await import('@/lib/auth')
+ *    - This allows checkAndAwardAchievementsInternal to be imported in workers
+ *      without pulling in the entire auth module upfront
+ *
+ * 3. RUNTIME BOUNDARIES:
+ *    - Auth functions depend on Next.js features (cookies(), headers())
+ *    - Standalone workers cannot call createSession(), verifySession(), etc.
+ *    - Workers CAN call achievement/gamification logic that doesn't use auth
+ *
+ * 4. FUTURE HARDENING:
+ *    - Add assertServerContext() calls to session-dependent functions
+ *    - Add import-time checks if auth module is imported from wrong context
+ *    - Monitor for new cross-boundary violations via runtime-check.ts
+ *
+ * DO NOT add 'import "server-only"' back — the import chain breaks workers.
+ */
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { redis } from './redis';
