@@ -43,7 +43,9 @@ export function MediaLibraryPicker({
     const [hasMore, setHasMore] = React.useState(true);
     const [page, setPage] = React.useState(1);
     const [error, setError] = React.useState<string | null>(null);
-    const [activeTab, setActiveTab] = React.useState<AssetType>(filterType === 'document' ? 'document' : 'image');
+    const [activeTab, setActiveTab] = React.useState<AssetType>(
+        filterType === 'video' ? 'cloudflare_stream' : filterType === 'document' ? 'document' : 'image'
+    );
     const [search, setSearch] = React.useState('');
     const [debouncedSearch, setDebouncedSearch] = React.useState('');
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
