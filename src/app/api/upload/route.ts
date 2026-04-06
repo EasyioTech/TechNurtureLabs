@@ -131,6 +131,51 @@ export async function POST(request: NextRequest) {
 
         const correctFolder = getFolderPrefix(file.type);
 
+        // CRITICAL FIX: Resolve school_id from uploader (polymorphic)
+        let schoolId: string | null = null;
+        if (isStudent && session?.userType === 'student') {
+            // Students upload within their school context
+            const { students } = await import('@/db/schema');
+            const { eq } = await import('drizzle-orm');
+            const student = await db.query.students.findFirst({
+                where: eq(students.id, session.userId),
+                columns: { school_id: true }
+            });
+            schoolId = student?.school_id || null;
+        } else if (isAdmin && session?.userType === 'school_admin') {
+            // School admins upload within their school context
+            const { schoolAdmins } = await import('@/db/schema');
+            const { eq } = await import('drizzle-orm');
+            const admin = await db.query.schoolAdmins.findFirst({
+                where: eq(schoolAdmins.id, session.userId),
+                columns: { school_id: true }
+            });
+            schoolId = admin?.school_id || null;
+        } else if (isAdmin && session?.userType === 'super_admin') {
+            // Super admins upload platform-wide media (assign to first school)
+            const { schools } = await import('@/db/schema');
+            const firstSchool = await db.query.schools.findFirst({
+                columns: { id: true }
+            });
+            schoolId = firstSchool?.id || null;
+        }
+
+        // Fallback: ensure schoolId is assigned
+        if (!schoolId) {
+            const { schools } = await import('@/db/schema');
+            const firstSchool = await db.query.schools.findFirst({
+                columns: { id: true }
+            });
+            schoolId = firstSchool?.id || null;
+        }
+
+        if (!schoolId) {
+            return NextResponse.json(
+                { error: 'No schools configured - cannot register media' },
+                { status: 503 }
+            );
+        }
+
         // Persist to media library
         const [asset] = await db.insert(mediaAssets).values({
             file_name: fileName,
@@ -142,6 +187,7 @@ export async function POST(request: NextRequest) {
             storage_type: result.storageType,
             asset_type: assetType,
             uploaded_by: uploadedBy || undefined,
+            school_id: schoolId, // CRITICAL FIX: Include school_id
             folder: correctFolder,
             // Videos are handled via Cloudflare Stream, no server-side processing needed
             processing_status: 'completed',
