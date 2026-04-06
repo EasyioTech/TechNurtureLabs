@@ -106,10 +106,12 @@ export function AssetGrid({
                                 <div className={`absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase
                                     ${asset.storage_type === 'r2'
                                         ? (isDark ? `${accent.softDark.split(' ').slice(0, 2).join(' ')}` : `${accent.softLight.split(' ').slice(0, 2).join(' ')}`)
+                                        : asset.storage_type === 'cloudflare_stream'
+                                        ? (isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-700')
                                         : (isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-500')}`}
                                 >
-                                    {asset.storage_type === 'r2' ? <Cloud size={8} /> : <HardDrive size={8} />}
-                                    {asset.storage_type === 'r2' ? 'R2' : 'Local'}
+                                    {asset.storage_type === 'r2' ? <Cloud size={8} /> : asset.storage_type === 'cloudflare_stream' ? <Film size={8} /> : <HardDrive size={8} />}
+                                    {asset.storage_type === 'r2' ? 'R2' : asset.storage_type === 'cloudflare_stream' ? 'Stream' : 'Local'}
                                 </div>
 
                                 <button

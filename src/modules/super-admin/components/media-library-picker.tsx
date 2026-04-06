@@ -163,10 +163,10 @@ export function MediaLibraryPicker({
         else setLoading(true);
         setError(null);
         try {
-            const params = new URLSearchParams({ page: targetPage.toString(), limit: '24' });
+            const params = new URLSearchParams({ limit: '24' });
             if (query) params.set('search', query);
 
-            const res = await fetch(`/api/media/stream?${params.toString()}`, {
+            const res = await fetch(`/api/media/stream-list?${params.toString()}`, {
                 method: 'GET',
                 headers: {
                     'Cache-Control': 'no-cache, no-store, max-age=0',
@@ -180,9 +180,22 @@ export function MediaLibraryPicker({
                 throw new Error(errorData.details || errorData.error || 'Failed to load stream videos');
             }
             const data = await res.json();
-            if (append) setAssets(prev => [...prev, ...data.assets]);
-            else setAssets(data.assets);
-            setHasMore(data.pagination.currentPage < data.pagination.pages);
+            // Transform stream videos to asset format for compatibility
+            const transformedAssets = (data.videos || []).map((video: any) => ({
+                id: video.uid || video.id,
+                file_name: video.name || video.filename || '',
+                original_name: video.name || video.filename || '',
+                file_url: `cf-stream://${video.uid || video.id}`,
+                file_path: `stream/${video.uid || video.id}`,
+                mime_type: 'video/mp4',
+                file_size: 0,
+                storage_type: 'cloudflare_stream',
+                asset_type: 'video',
+                created_at: video.created || new Date().toISOString()
+            }));
+            if (append) setAssets(prev => [...prev, ...transformedAssets]);
+            else setAssets(transformedAssets);
+            setHasMore(false); // Stream list doesn't support pagination yet
         } catch (err: any) {
             console.error('[Stream Videos] Load error:', err);
             setError(err.message || 'Could not load stream videos.');
