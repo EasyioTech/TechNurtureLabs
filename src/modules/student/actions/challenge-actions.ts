@@ -3,7 +3,6 @@
 import { db } from '@/lib/db';
 import { dailyChallenges, userDailyChallenges, students } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
-import { verifySession } from '@/lib/auth';
 import { awardXP } from '@/lib/gamification';
 
 // Helper to get today's date string in YYYY-MM-DD format

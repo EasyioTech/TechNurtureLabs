@@ -1,7 +1,6 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { verifySession } from '@/lib/auth';
 import {
     students,
     achievements,
@@ -187,6 +186,8 @@ export async function seedAchievementsData() {
  * Check and award achievements to the current user
  */
 export async function checkAndAwardAchievements() {
+    // Lazy-load verifySession to avoid pulling server-only modules into worker contexts
+    const { verifySession } = await import('@/lib/auth');
     const session = await verifySession();
     if (!session) {
         redirect('/login');
@@ -425,6 +426,8 @@ async function getStudentRankMetrics(userId: string, schoolId: string) {
 }
 
 export async function getStudentAchievementsData() {
+    // Lazy-load verifySession to avoid pulling server-only modules into worker contexts
+    const { verifySession } = await import('@/lib/auth');
     const session = await verifySession();
     if (!session) {
         redirect('/login');
