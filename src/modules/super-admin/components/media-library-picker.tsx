@@ -203,7 +203,9 @@ export function MediaLibraryPicker({
                     file_size: approximateSize,
                     storage_type: 'cloudflare_stream',
                     asset_type: 'video',
-                    created_at: video.created || new Date().toISOString()
+                    created_at: video.created || new Date().toISOString(),
+                    thumbnail: video.thumbnail || null,
+                    preview: video.preview || null,
                 };
             });
             if (append) setAssets(prev => [...prev, ...transformedAssets]);

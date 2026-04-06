@@ -13,6 +13,8 @@ export interface MediaAsset {
     storage_type: 'r2' | 'cloudflare_stream';
     asset_type: 'video' | 'image' | 'document';
     created_at: string;
+    thumbnail?: string | null;
+    preview?: string | null;
 }
 
 export interface MediaLibraryPickerProps {

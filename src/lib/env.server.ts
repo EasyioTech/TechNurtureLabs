@@ -1,4 +1,5 @@
-import 'server-only';
+// NOTE: 'server-only' removed to allow usage in worker scripts
+// Workers are Node.js processes that need environment access
 import { z } from 'zod';
 
 const serverSchema = z.object({

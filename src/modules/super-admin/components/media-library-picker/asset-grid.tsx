@@ -89,11 +89,11 @@ export function AssetGrid({
                                 {asset.asset_type === 'image' ? (
                                     <AssetImagePreview asset={asset} />
                                 ) : asset.asset_type === 'video' ? (
-                                    <VideoPreview src={asset.file_url} isDark={isDark} />
+                                    <VideoPreview asset={asset} isDark={isDark} />
                                 ) : (
-                                    <AssetIcon 
-                                        asset_type={asset.asset_type} 
-                                        className={isDark ? 'text-slate-400' : 'text-slate-500'} 
+                                    <AssetIcon
+                                        asset_type={asset.asset_type}
+                                        className={isDark ? 'text-slate-400' : 'text-slate-500'}
                                     />
                                 )}
 
@@ -184,13 +184,31 @@ function AssetImagePreview({ asset }: { asset: MediaAsset }) {
     );
 }
 
-function VideoPreview({ src, isDark }: { src: string; isDark: boolean }) {
-    // For media library selection - just show the Film icon, no playable preview
-    // Videos are meant to be selected and used in lessons, not played in the picker
+function VideoPreview({ asset, isDark }: { asset: MediaAsset; isDark: boolean }) {
+    const [failed, setFailed] = React.useState(false);
+    const hasThumbnail = asset.thumbnail && !failed;
+
+    if (!hasThumbnail) {
+        return (
+            <div className="w-full h-full flex items-center justify-center">
+                <Film size={24} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+            </div>
+        );
+    }
+
     return (
-        <div className="w-full h-full flex items-center justify-center">
-            <Film size={24} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
-        </div>
+        <>
+            <img
+                src={asset.thumbnail || ''}
+                alt={asset.original_name}
+                className="w-full h-full object-cover"
+                onError={() => setFailed(true)}
+            />
+            {/* Overlay play button indicator */}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
+                <Film size={28} className="text-white drop-shadow-lg" />
+            </div>
+        </>
     );
 }
 

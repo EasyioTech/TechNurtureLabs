@@ -306,6 +306,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
             </Dialog>
 
             <MediaLibraryPicker
+                key={libraryTargetId}
                 open={libraryOpen} onOpenChange={setLibraryOpen}
                 filterType={libraryTargetId ? (() => {
                     const block = contentItems.find(i => i.id === libraryTargetId?.split(':')[0]);

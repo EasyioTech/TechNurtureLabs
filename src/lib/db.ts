@@ -1,4 +1,5 @@
-import 'server-only';
+// NOTE: 'server-only' removed to allow usage in worker scripts
+// Workers are Node.js processes, not Next.js client/server contexts
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '@/db/schema';
