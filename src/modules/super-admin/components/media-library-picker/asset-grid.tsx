@@ -33,7 +33,7 @@ export function AssetGrid({
     return (
         <div className="space-y-4">
             {/* Bulk Selection Controls */}
-            <div className={`p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${isMultiSelect ? (isDark ? 'bg-white/[0.04] border-white/10' : 'bg-slate-50 border-slate-200') : 'border-transparent'}`}>
+            <div className={`p-3 rounded-lg border-2 flex items-center justify-between will-change-[background-color,border-color] ${isMultiSelect ? (isDark ? 'bg-white/[0.04] border-white/10' : 'bg-slate-50 border-slate-200') : 'border-transparent'}`}>
                 <div className="space-y-0.5">
                     <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
                         {isMultiSelect ? `${selectedIds.length} items selected` : 'Library Assets'}
@@ -50,7 +50,7 @@ export function AssetGrid({
                             size="sm"
                             variant="destructive"
                             onClick={onBulkDelete}
-                            className="h-8 px-4 text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all"
+                            className="h-8 px-4 text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm"
                         >
                             <Trash2 size={12} className="mr-2" />
                             Delete {selectedIds.length}
@@ -67,7 +67,7 @@ export function AssetGrid({
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
                 {assets.map(asset => {
                     const isSelected = asset.file_url === currentUrl;
                     const isInBulk = selectedIds.includes(asset.id);
@@ -75,17 +75,17 @@ export function AssetGrid({
                     return (
                         <div
                             key={asset.id}
-                            className={`relative group/card text-left rounded-2xl border-2 overflow-hidden transition-all cursor-pointer
+                            className={`relative group/card text-left rounded-xl border-2 overflow-hidden will-change-[border-color] cursor-pointer
                                 ${(isSelected || isInBulk)
-                                    ? (isDark ? `border-${accent.name}-400 ring-2 ring-${accent.name}-400/20` : `border-${accent.name}-400 ring-2 ring-${accent.name}-400/10`)
-                                    : (isDark ? 'border-white/5 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]' : 'border-slate-100 hover:border-slate-300 bg-slate-50 hover:bg-white')
+                                    ? (isDark ? `border-${accent.name}-400 ring-1 ring-${accent.name}-400/20` : `border-${accent.name}-400 ring-1 ring-${accent.name}-400/10`)
+                                    : (isDark ? 'border-white/5 bg-white/[0.02]' : 'border-slate-100 bg-slate-50')
                                 } ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
                             onClick={() => {
                                 if (isDeleting) return;
                                 onSelect(asset);
                             }}
                         >
-                            <div className={`aspect-video relative flex items-center justify-center ${isDark ? 'bg-white/[0.03]' : 'bg-slate-100'}`}>
+                            <div className={`aspect-video relative flex items-center justify-center ${isDark ? 'bg-white/[0.02]' : 'bg-slate-100'}`}>
                                 {asset.asset_type === 'image' ? (
                                     <AssetImagePreview asset={asset} />
                                 ) : asset.asset_type === 'video' ? (
@@ -98,19 +98,19 @@ export function AssetGrid({
                                 )}
 
                                 {(isSelected || isInBulk) && (
-                                    <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-lg ${accent.bg} text-slate-900`}>
-                                        <Check size={12} strokeWidth={3} />
+                                    <div className={`absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center shadow-sm ${accent.bg} text-slate-900`}>
+                                        <Check size={11} strokeWidth={3} />
                                     </div>
                                 )}
 
-                                <div className={`absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase
+                                <div className={`absolute bottom-1.5 left-1.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-black uppercase
                                     ${asset.storage_type === 'r2'
                                         ? (isDark ? `${accent.softDark.split(' ').slice(0, 2).join(' ')}` : `${accent.softLight.split(' ').slice(0, 2).join(' ')}`)
                                         : asset.storage_type === 'cloudflare_stream'
                                         ? (isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-700')
                                         : (isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-500')}`}
                                 >
-                                    {asset.storage_type === 'r2' ? <Cloud size={8} /> : asset.storage_type === 'cloudflare_stream' ? <Film size={8} /> : <HardDrive size={8} />}
+                                    {asset.storage_type === 'r2' ? <Cloud size={7} /> : asset.storage_type === 'cloudflare_stream' ? <Film size={7} /> : <HardDrive size={7} />}
                                     {asset.storage_type === 'r2' ? 'R2' : asset.storage_type === 'cloudflare_stream' ? 'Stream' : 'Local'}
                                 </div>
 
@@ -118,19 +118,19 @@ export function AssetGrid({
                                     type="button"
                                     onClick={e => onDelete(asset, e)}
                                     disabled={isDeleting}
-                                    className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity
+                                    className={`absolute top-1.5 left-1.5 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 z-10
                                         ${isDark ? 'bg-rose-500/80 text-white hover:bg-rose-500' : 'bg-rose-500 text-white hover:bg-rose-600'}`}
                                 >
-                                    {isDeleting ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} />}
+                                    {isDeleting ? <Loader2 size={9} className="animate-spin" /> : <Trash2 size={9} />}
                                 </button>
                             </div>
 
-                            <div className="p-2.5 space-y-0.5">
-                                <p className={`text-[11px] font-black truncate ${t.textPrimary(isDark)}`}>
+                            <div className="p-2 space-y-0.5">
+                                <p className={`text-[10px] font-black truncate ${t.textPrimary(isDark)}`} title={asset.original_name}>
                                     {asset.original_name}
                                 </p>
-                                <p className={`text-[9px] font-bold uppercase tracking-wider ${t.textMuted(isDark)}`}>
-                                    {formatBytes(asset.file_size)} · {asset.asset_type}
+                                <p className={`text-[8px] font-bold uppercase tracking-wider ${t.textMuted(isDark)}`}>
+                                    {formatBytes(asset.file_size)} • {asset.asset_type}
                                 </p>
                             </div>
                         </div>
@@ -139,21 +139,21 @@ export function AssetGrid({
             </div>
 
             {hasMore && (
-                <div className="flex justify-center pt-2 pb-6">
+                <div className="flex justify-center pt-2 pb-4">
                     <Button
                         variant="outline"
                         size="sm"
                         disabled={loadingMore}
                         onClick={onLoadMore}
-                        className={`rounded-full px-6 font-black uppercase tracking-widest text-[10px] ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-slate-200'}`}
+                        className={`rounded-lg px-5 font-black uppercase tracking-widest text-[10px] h-8 ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-slate-200'}`}
                     >
                         {loadingMore ? (
                             <>
-                                <Loader2 size={12} className="animate-spin mr-2" />
+                                <Loader2 size={11} className="animate-spin mr-1.5" />
                                 Loading...
                             </>
                         ) : (
-                            'Load More Assets'
+                            'Load More'
                         )}
                     </Button>
                 </div>

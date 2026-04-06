@@ -22,14 +22,25 @@ interface LibraryHeaderProps {
     onSearchChange: (val: string) => void;
     activeTab: AssetType;
     onTabChange: (tab: AssetType) => void;
+    filterType?: 'video' | 'image' | 'document';
 }
 
 export function LibraryHeader({
     isUploading, onUploadClick,
     search, onSearchChange,
-    activeTab, onTabChange
+    activeTab, onTabChange, filterType
 }: LibraryHeaderProps) {
     const { isDark, accent } = useAdminTheme();
+
+    // Show only the tab that matches filterType if set
+    const visibleTabs = filterType
+        ? TABS.filter(tab => {
+            if (filterType === 'video') return tab.id === 'cloudflare_stream';
+            if (filterType === 'image') return tab.id === 'image';
+            if (filterType === 'document') return tab.id === 'document';
+            return true;
+          })
+        : TABS;
 
     return (
         <SheetHeader className={`px-6 pt-6 pb-5 border-b shrink-0 ${t.border(isDark)}`}>
@@ -43,7 +54,7 @@ export function LibraryHeader({
                         Media Library
                     </h2>
                     <p className={`text-[10px] font-semibold uppercase tracking-widest ${t.textMuted(isDark)}`}>
-                        Select or upload assets
+                        {filterType ? `Select ${filterType === 'document' ? 'documents' : filterType}s` : 'Select or upload assets'}
                     </p>
                 </div>
 
@@ -72,27 +83,29 @@ export function LibraryHeader({
                 />
             </div>
 
-            {/* Type Tabs - Clean and Minimal */}
-            <div className="flex gap-2 mt-5">
-                {TABS.map(tab => {
-                    const isActive = activeTab === tab.id;
-                    return (
-                        <button
-                            key={tab.id}
-                            onClick={() => onTabChange(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[12px] font-black tracking-wide transition-all
-                                ${isActive
-                                    ? `${accent.bg} text-slate-900 shadow-md`
-                                    : (isDark
-                                        ? 'bg-white/[0.08] text-slate-400 border border-white/10 hover:bg-white/[0.12]'
-                                        : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-150')}`}
-                        >
-                            <tab.icon size={14} />
-                            {tab.label}
-                        </button>
-                    );
-                })}
-            </div>
+            {/* Type Tabs - Only show if multiple tabs available */}
+            {visibleTabs.length > 1 && (
+                <div className="flex gap-2 mt-5">
+                    {visibleTabs.map(tab => {
+                        const isActive = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => onTabChange(tab.id)}
+                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[12px] font-black tracking-wide transition-all will-change-[background-color,border-color]
+                                    ${isActive
+                                        ? `${accent.bg} text-slate-900 shadow-md`
+                                        : (isDark
+                                            ? 'bg-white/[0.08] text-slate-400 border border-white/10 hover:bg-white/[0.12]'
+                                            : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-150')}`}
+                            >
+                                <tab.icon size={14} />
+                                {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
         </SheetHeader>
     );
 }

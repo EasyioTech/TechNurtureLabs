@@ -147,14 +147,14 @@ export const DemoSection = ({ settings }: { settings?: any }) => {
     // Observer to handle autoplay when reached section
     React.useEffect(() => {
         if (!containerRef.current) return;
-
+        
         const observer = new IntersectionObserver(
             ([entry]) => {
                 setInView(entry.isIntersecting);
             },
             { threshold: 0.3 }
         );
-
+        
         observer.observe(containerRef.current);
         return () => observer.disconnect();
     }, []);
@@ -175,15 +175,13 @@ export const DemoSection = ({ settings }: { settings?: any }) => {
     const videoType = settings?.hero_video_type || 'youtube';
 
     return (
-        <section ref={containerRef} id="demo" className={`relative z-10 bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950 ${isMobile ? 'h-auto py-12 sm:py-20 overflow-hidden' : 'h-[250vh]'}`}>
+        <section ref={containerRef} id="demo" className={`relative z-10 bg-slate-50 ${isMobile ? 'h-auto py-12 sm:py-20 overflow-hidden' : 'h-[250vh]'}`}>
             <div className={`${isMobile ? 'relative w-full flex flex-col items-center' : 'sticky top-0 h-screen w-full flex flex-col items-center justify-center overflow-hidden'} px-4 sm:px-6`}>
 
-                {/* Animated gradient background */}
-                <div className="absolute inset-0 z-0 pointer-events-none">
-                    <div className="absolute top-1/4 left-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse-subtle -translate-x-1/2" />
-                    <div className="absolute top-1/2 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '1s' }} />
-                    <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '2s' }} />
-                </div>
+                {/* Subdued Grid Background */}
+                <div className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none"
+                    style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #000 1px, transparent 0)', backgroundSize: '40px 40px' }}
+                />
 
                 <motion.div
                     style={{ opacity: textOpacity, y: textY }}
@@ -192,12 +190,11 @@ export const DemoSection = ({ settings }: { settings?: any }) => {
                         isMobile ? "relative pt-2 sm:pt-4 pb-6 sm:pb-12" : "absolute top-[5%] md:top-[8%] left-0 right-0"
                     )}
                 >
-                    <span className="text-[9px] sm:text-[10px] md:text-sm font-bold text-cyan-400 uppercase tracking-[0.15em] sm:tracking-[0.2em] inline-flex items-center gap-2 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-cyan-400/30 backdrop-blur-sm py-1.5 sm:py-2.5 px-4 sm:px-6 rounded-full mb-2 sm:mb-4 md:mb-8">
-                        <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+                    <span className="text-[9px] sm:text-[10px] md:text-sm font-bold text-blue-600 uppercase tracking-[0.15em] sm:tracking-[0.2em] bg-blue-50 py-1.5 sm:py-2.5 px-4 sm:px-6 rounded-full inline-block mb-2 sm:mb-4 md:mb-8 shadow-sm border border-blue-100/50">
                         Video Demonstration
                     </span>
-                    <h2 className="text-xl sm:text-4xl lg:text-7xl font-bold text-white tracking-tight leading-tight">
-                        Experience the <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">Future</span>
+                    <h2 className="text-xl sm:text-4xl lg:text-7xl font-black text-slate-900 tracking-tight leading-tight">
+                        Experience the <span className="text-blue-600">Future</span>
                     </h2>
                 </motion.div>
 
@@ -211,12 +208,12 @@ export const DemoSection = ({ settings }: { settings?: any }) => {
                     {/* Dynamic Halo Glow behind the video */}
                     <motion.div
                         style={{ opacity: glowOpacity }}
-                        className="absolute -inset-12 sm:-inset-20 bg-cyan-500/20 rounded-full blur-2xl sm:blur-[120px] pointer-events-none"
+                        className="absolute -inset-12 sm:-inset-20 bg-blue-300/15 rounded-full blur-2xl sm:blur-[120px] pointer-events-none"
                     />
 
-                    {/* Premium Glass Border with Gradient */}
+                    {/* Premium Apple-style Glass Border (Fade White) */}
                     <div className={cn(
-                        "relative bg-gradient-to-br from-cyan-500/10 to-blue-500/10 p-1 sm:p-1.5 md:p-2 rounded-2xl sm:rounded-[2.5rem] md:rounded-[3.5rem] shadow-lg sm:shadow-[0_50px_100px_-20px_rgba(0,150,255,0.15)] border border-cyan-400/30 backdrop-blur-xl z-20 hover:border-cyan-400/50 transition-all duration-300"
+                        "relative bg-white/40 p-1 sm:p-1.5 md:p-2 rounded-2xl sm:rounded-[2.5rem] md:rounded-[3.5rem] shadow-lg sm:shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] ring-1 ring-white/60 backdrop-blur-xl z-20"
                     )}>
                         {/* Inner Video Container */}
                         <div className={cn(
@@ -225,9 +222,9 @@ export const DemoSection = ({ settings }: { settings?: any }) => {
                             {videoUrl ? (
                                 <CustomVideoPlayer src={videoUrl} type={videoType} autoPlay={inView} />
                             ) : (
-                                <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-slate-400 gap-4">
-                                     <Video className="w-12 h-12 opacity-30 animate-pulse" />
-                                     <span className="text-xs font-bold uppercase tracking-widest opacity-60">Loading Platform Hero Video</span>
+                                <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-slate-500 gap-4">
+                                     <Video className="w-12 h-12 opacity-20 animate-pulse" />
+                                     <span className="text-xs font-bold uppercase tracking-widest opacity-40">Loading Platform Hero Video</span>
                                 </div>
                             )}
                         </div>

@@ -133,11 +133,33 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     const handleFileUpload = async (file: File, itemId: string, folder: string) => {
         if (!file) return;
         if (file.size > 2048 * 1024 * 1024) { toast.error('Max 2 GB'); return; }
+
+        // Get the block being uploaded to for type validation
+        const block = contentItems.find(i => i.id === itemId);
+        if (!block) return;
+
+        // Validate file type matches block type
+        const isVideoFile = file.type.startsWith('video/');
+        const isImageFile = file.type.startsWith('image/');
+        const isDocumentFile = /pdf|word|document/.test(file.type) || ['.pdf', '.doc', '.docx'].some(ext => file.name.toLowerCase().endsWith(ext));
+
+        if (block.type === 'video' && !isVideoFile) {
+            toast.error('Video block only accepts video files');
+            return;
+        }
+        if (block.type === 'image' && !isImageFile) {
+            toast.error('Image block only accepts image files');
+            return;
+        }
+        if ((block.type === 'pdf' || block.type === 'ppt') && !isDocumentFile && !isVideoFile) {
+            toast.error(`${block.type === 'pdf' ? 'Document' : 'Slides'} block only accepts document files`);
+            return;
+        }
+
         setActiveUploadItemId(itemId);
         setUploadFile(file);
 
         try {
-            const isVideoFile = file.type.startsWith('video/');
             if (isVideoFile) {
                 const res = await fetch('/api/media/stream-upload', {
                     method: 'POST',
@@ -285,13 +307,20 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
 
             <MediaLibraryPicker
                 open={libraryOpen} onOpenChange={setLibraryOpen}
+                filterType={libraryTargetId ? (() => {
+                    const block = contentItems.find(i => i.id === libraryTargetId?.split(':')[0]);
+                    return block?.type === 'pdf' ? 'document' : block?.type === 'ppt' ? 'document' : block?.type as 'video' | 'image' | 'document' | undefined;
+                })() : undefined}
                 onSelect={(url) => {
                     if (libraryTargetId) {
                         if (libraryTargetId.includes(':')) {
                             const [blockId, imgIdx] = libraryTargetId.split(':');
                             const block = contentItems.find(i => i.id === blockId);
                             if (block) { const urls = [...getImageUrls(block)]; urls[parseInt(imgIdx)] = url; applyImageUrls(blockId, urls); }
-                        } else applyBlockUpdate(libraryTargetId, 'url', url);
+                        } else {
+                            const block = contentItems.find(i => i.id === libraryTargetId);
+                            if (block) applyBlockUpdate(libraryTargetId, 'url', url);
+                        }
                     }
                     setLibraryOpen(false);
                 }}

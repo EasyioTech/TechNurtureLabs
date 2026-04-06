@@ -103,6 +103,8 @@ export function MediaLibraryPicker({
         setActiveTab(newTab);
         setSearch('');
         setPage(1);
+        setAssets([]); // Clear assets when switching to ensure clean state
+        setError(null);
 
         if (newTab === 'cloudflare_stream') {
             loadStreamVideos(1, '', false);
@@ -113,7 +115,12 @@ export function MediaLibraryPicker({
 
     React.useEffect(() => {
         if (!open) return;
+
+        // Only load if tab has changed or search changed
         setPage(1);
+        setAssets([]); // Clear before loading new tab data
+        setError(null);
+
         if (activeTab === 'cloudflare_stream') {
             loadStreamVideos(1, debouncedSearch, false);
         } else {
@@ -320,6 +327,7 @@ export function MediaLibraryPicker({
                     onSearchChange={setSearch}
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
+                    filterType={filterType}
                 />
                 
                 <input
