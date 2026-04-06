@@ -190,7 +190,7 @@ export function MediaLibraryPicker({
                     id: video.uid || video.id,
                     file_name: video.name || video.filename || 'Untitled Video',
                     original_name: video.name || video.filename || 'Untitled Video',
-                    file_url: `https://iframe.videodelivery.net/${video.uid || video.id}`,
+                    file_url: `cf-stream://${video.uid || video.id}`,
                     file_path: `stream/${video.uid || video.id}`,
                     mime_type: 'video/mp4',
                     file_size: approximateSize,
