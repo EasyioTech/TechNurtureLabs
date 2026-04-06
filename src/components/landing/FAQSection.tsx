@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import Script from 'next/script';
@@ -63,33 +63,38 @@ const FAQ_LD_JSON = {
 
 export const FAQSection = () => {
     return (
-        <section className="py-12 sm:py-20 lg:py-24 bg-white relative z-10">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <section className="py-12 sm:py-20 lg:py-24 bg-gradient-to-b from-slate-950 to-slate-900 relative z-10 overflow-hidden">
+            {/* Animated gradient background */}
+            <div className="absolute inset-0 z-0 pointer-events-none">
+                <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse-subtle" />
+                <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '1s' }} />
+            </div>
 
-                <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8 lg:gap-12 mb-12 lg:mb-20">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="flex flex-col lg:flex-row items-start lg:items-center gap-8 lg:gap-12 mb-12 lg:mb-20"
+                >
                     <div className="text-left flex-1">
                         <div>
-                            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+                            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight leading-tight">
                                 Frequently Asked <br className="hidden sm:block" /> Questions
                             </h2>
-                            <p className="mt-3 sm:mt-4 text-sm sm:text-lg text-slate-600 font-medium max-w-md">
+                            <p className="mt-3 sm:mt-4 text-sm sm:text-lg text-slate-300 font-medium max-w-md">
                                 Everything schools ask before going live. If you have more, we're one message away.
                             </p>
                         </div>
                     </div>
-                    <div className="hidden lg:block w-full max-w-[400px]">
-                        <img
-                            src="/illustrations/faq-primary.webp"
-                            alt="FAQ Support"
-                            loading="lazy"
-                            decoding="async"
-                            className="w-full h-auto pointer-events-none mix-blend-multiply"
-                        />
+                    <div className="hidden lg:flex items-center justify-center w-full max-w-[400px] h-64 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-400/30 backdrop-blur-sm">
+                        <HelpCircle size={64} className="text-cyan-400/30" />
                     </div>
-                </div>
+                </motion.div>
 
                 <div>
-                    <div className="divide-y divide-slate-200 border-t border-b border-slate-200">
+                    <div className="divide-y divide-slate-700/50 border-t border-b border-slate-700/50">
                         <FAQItem
                             question="How long does it take to onboard our school?"
                             answer="Our streamlined onboarding process usually takes less than 24 hours. Once your UDISE code is verified, you can immediately begin inviting teachers and students — no technical setup required."
@@ -135,14 +140,14 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
         <div className="py-4 sm:py-6">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-start sm:items-center justify-between w-full text-left focus:outline-none group cursor-pointer gap-3"
+                className="flex items-start sm:items-center justify-between w-full text-left focus:outline-none group cursor-pointer gap-3 hover:opacity-80 transition-opacity"
             >
-                <span className="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-blue-600 transition-colors leading-snug">
+                <span className="text-sm sm:text-lg font-bold text-white group-hover:text-cyan-400 transition-colors leading-snug">
                     {question}
                 </span>
                 <ChevronDown
                     size={18}
-                    className={cn("text-slate-400 transition-transform duration-300 flex-shrink-0 mt-0.5 sm:mt-0", isOpen ? "rotate-180" : "rotate-0")}
+                    className={cn("text-slate-400 group-hover:text-cyan-400 transition-all duration-300 flex-shrink-0 mt-0.5 sm:mt-0", isOpen ? "rotate-180" : "rotate-0")}
                 />
             </button>
 
@@ -155,7 +160,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
                         transition={{ duration: 0.3 }}
                         className="overflow-hidden"
                     >
-                        <p className="pt-3 sm:pt-4 text-xs sm:text-base text-slate-600 font-medium leading-relaxed">
+                        <p className="pt-3 sm:pt-4 text-xs sm:text-base text-slate-300 font-medium leading-relaxed">
                             {answer}
                         </p>
                     </motion.div>

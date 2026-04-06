@@ -28,22 +28,22 @@ const footerLinks = {
 
 export const Footer = ({ settings }: { settings?: any }) => {
     return (
-        <footer className="relative z-10 bg-slate-50 text-slate-500 overflow-hidden">
+        <footer className="relative z-10 bg-gradient-to-b from-slate-900 to-slate-950 text-slate-400 overflow-hidden">
 
             {/* Top divider */}
-            <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+            <div className="h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
 
-            {/* Subtle ambient background - scaled for mobile */}
+            {/* Subtle ambient background */}
             <div className="absolute inset-0 pointer-events-none">
                 <div
-                    className="absolute inset-0 opacity-[0.03]"
+                    className="absolute inset-0 opacity-[0.02]"
                     style={{
                         backgroundImage: 'linear-gradient(#94a3b8 1px, transparent 1px), linear-gradient(90deg, #94a3b8 1px, transparent 1px)',
                         backgroundSize: '60px 60px',
                     }}
                 />
-                <div className="absolute -top-40 -left-40 w-64 h-64 sm:w-96 sm:h-96 lg:w-[500px] lg:h-[500px] bg-blue-100/40 rounded-full blur-3xl sm:blur-[80px] lg:blur-[140px]" />
-                <div className="absolute -bottom-40 -right-40 w-56 h-56 sm:w-80 sm:h-80 lg:w-[400px] lg:h-[400px] bg-indigo-100/30 rounded-full blur-3xl sm:blur-[60px] lg:blur-[120px]" />
+                <div className="absolute -top-40 -left-40 w-64 h-64 sm:w-96 sm:h-96 lg:w-[500px] lg:h-[500px] bg-blue-500/5 rounded-full blur-3xl sm:blur-[80px] lg:blur-[140px]" />
+                <div className="absolute -bottom-40 -right-40 w-56 h-56 sm:w-80 sm:h-80 lg:w-[400px] lg:h-[400px] bg-purple-500/5 rounded-full blur-3xl sm:blur-[60px] lg:blur-[120px]" />
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
@@ -68,15 +68,15 @@ export const Footer = ({ settings }: { settings?: any }) => {
 
                             {/* Contact info */}
                             <div className="space-y-2.5 sm:space-y-3 pt-2">
-                                <a href="mailto:hello@technurture.com" className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm font-medium text-slate-400 hover:text-blue-600 transition-colors group">
-                                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center group-hover:border-blue-200 group-hover:bg-blue-50 transition-all shadow-sm flex-shrink-0">
-                                        <Mail size={12} className="sm:block hidden text-slate-400 group-hover:text-blue-500 transition-colors" />
-                                        <Mail size={10} className="sm:hidden text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                <a href="mailto:hello@technurture.com" className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm font-medium text-slate-400 hover:text-cyan-400 transition-colors group">
+                                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center group-hover:border-cyan-400/50 group-hover:bg-cyan-500/10 transition-all shadow-sm flex-shrink-0">
+                                        <Mail size={12} className="sm:block hidden text-slate-400 group-hover:text-cyan-400 transition-colors" />
+                                        <Mail size={10} className="sm:hidden text-slate-400 group-hover:text-cyan-400 transition-colors" />
                                     </div>
                                     <span className="truncate">hello@technurture.com</span>
                                 </a>
                                 <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm font-medium text-slate-400">
-                                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm flex-shrink-0">
+                                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center shadow-sm flex-shrink-0">
                                         <MapPin size={12} className="sm:block hidden" />
                                         <MapPin size={10} className="sm:hidden" />
                                     </div>
@@ -90,7 +90,7 @@ export const Footer = ({ settings }: { settings?: any }) => {
                             <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 sm:gap-8 lg:gap-12">
                                 {Object.entries(footerLinks).map(([category, links]) => (
                                     <div key={category}>
-                                        <h4 className="text-[9px] sm:text-[11px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-slate-900 mb-3 sm:mb-5">
+                                        <h4 className="text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em] text-slate-300 mb-3 sm:mb-5">
                                             {category}
                                         </h4>
                                         <ul className="space-y-2 sm:space-y-3.5">
@@ -98,7 +98,7 @@ export const Footer = ({ settings }: { settings?: any }) => {
                                                 <li key={link.label}>
                                                     <Link
                                                         href={link.href}
-                                                        className="group flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-400 hover:text-blue-600 transition-colors"
+                                                        className="group flex items-center gap-1 text-xs sm:text-sm font-medium text-slate-400 hover:text-cyan-400 transition-colors"
                                                     >
                                                         {link.label}
                                                         <ArrowUpRight
@@ -117,7 +117,7 @@ export const Footer = ({ settings }: { settings?: any }) => {
                 </div>
 
                 {/* Bottom Bar */}
-                <div className="border-t border-slate-200 py-6 sm:py-8">
+                <div className="border-t border-slate-700/50 py-6 sm:py-8">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
                         <p className="text-[10px] sm:text-xs font-medium text-slate-400 tracking-wide">
                             © {new Date().getFullYear()} {settings?.platform_name || 'TechNurture'}. All rights reserved.
@@ -129,7 +129,7 @@ export const Footer = ({ settings }: { settings?: any }) => {
                                 <a
                                     key={social}
                                     href="#"
-                                    className="px-2 sm:px-3 py-1 sm:py-1.5 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider sm:tracking-widest text-slate-400 hover:text-blue-600 rounded-lg hover:bg-white transition-all hidden sm:inline-block"
+                                    className="px-2 sm:px-3 py-1 sm:py-1.5 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider sm:tracking-widest text-slate-400 hover:text-cyan-400 rounded-lg hover:bg-cyan-500/10 transition-all hidden sm:inline-block"
                                 >
                                     {social}
                                 </a>

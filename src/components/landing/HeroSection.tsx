@@ -3,46 +3,194 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, Play, CheckCircle2, Sparkles } from 'lucide-react';
+import { ArrowRight, Play, CheckCircle2, Sparkles, Zap, Users, TrendingUp } from 'lucide-react';
 
 export const HeroSection = ({ settings }: { settings?: any }) => {
     return (
-        <section className="relative z-10 pt-28 pb-12 md:pt-40 md:pb-24 lg:pt-32 lg:pb-20 overflow-hidden bg-slate-50 lg:min-h-screen flex items-center">
+        <section className="relative z-10 pt-20 pb-16 md:pt-32 md:pb-24 lg:pt-40 lg:pb-32 overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 lg:min-h-screen flex items-center">
 
-            {/* Precision Grid Background */}
+            {/* Animated gradient background */}
+            <div className="absolute inset-0 z-0 pointer-events-none">
+                <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse-subtle" />
+                <div className="absolute top-1/3 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '1s' }} />
+                <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse-subtle" style={{ animationDelay: '2s' }} />
+            </div>
+
+            {/* Grid overlay */}
             <div
-                className="absolute inset-0 z-0 pointer-events-none opacity-[0.03]"
-                style={{ backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '40px 40px' }}
+                className="absolute inset-0 z-0 pointer-events-none opacity-[0.02]"
+                style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}
             />
-
-            {/* Ambient glow - scaled for devices */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 md:w-[600px] md:h-[600px] lg:w-[900px] lg:h-[450px] bg-blue-100/60 rounded-full blur-3xl md:blur-[100px] lg:blur-[130px] pointer-events-none -z-10 animate-pulse-subtle" />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 w-full">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
-                    {/* Mobile & Tablet: Content Flows Vertically */}
+                    {/* Mobile & Tablet: Content */}
                     <div className="lg:hidden flex flex-col items-center text-center max-w-2xl mx-auto">
+                        {/* Badge */}
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6 }}
+                            className="mb-8"
+                        >
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 backdrop-blur-sm hover:border-blue-400/50 transition-all">
+                                <Zap size={14} className="text-cyan-400" />
+                                <span className="text-xs font-bold text-cyan-300 uppercase tracking-widest">AI-Powered Learning</span>
+                            </div>
+                        </motion.div>
 
-                        {/* Capsule - Top (Separating from Logo) */}
-                        <div className="mb-6 md:mb-10">
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white border border-slate-200 shadow-sm">
-                                {settings?.logo_url ? (
-                                    <img src={settings.logo_url} alt="Logo" className="w-4 h-4 object-contain" />
-                                ) : (
-                                    <Sparkles size={14} className="text-blue-600" />
-                                )}
-                                <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">{settings?.platform_name || 'TechNurture'}</span>
+                        {/* Heading */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8, delay: 0.1 }}
+                            className="mb-6"
+                        >
+                            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-tight md:leading-[1.1] text-white">
+                                The learning platform{' '}
+                                <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">India trusts</span>
+                            </h1>
+                        </motion.div>
+
+                        {/* Description */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.8, delay: 0.2 }}
+                            className="mb-8 max-w-xl"
+                        >
+                            <p className="text-sm sm:text-base md:text-lg text-slate-300 leading-relaxed font-medium">
+                                Gamified learning for K-12. IoT, embedded systems, full-stack development—all in one platform. Real-time analytics, certified instructors, and 100K+ happy students.
+                            </p>
+                        </motion.div>
+
+                        {/* CTA Buttons */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8, delay: 0.3 }}
+                            className="w-full max-w-md space-y-4"
+                        >
+                            <div className="flex flex-col gap-3 sm:flex-row">
+                                <Link href="/register/school" className="flex-1">
+                                    <button className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg shadow-blue-600/50 transition-all text-sm sm:text-base cursor-pointer group">
+                                        Register School
+                                        <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                                    </button>
+                                </Link>
+                                <Link href="#demo" className="flex-1">
+                                    <button className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3.5 rounded-xl border border-white/20 hover:border-white/40 backdrop-blur-sm transition-all text-sm sm:text-base cursor-pointer">
+                                        <Play size={14} className="fill-current" />
+                                        Watch Demo
+                                    </button>
+                                </Link>
+                            </div>
+
+                            {/* Trust badges */}
+                            <div className="flex flex-col gap-3 border-t border-white/10 pt-6">
+                                <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm text-slate-300">
+                                    <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                                    <span>No credit card required</span>
+                                </div>
+                                <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm text-slate-300">
+                                    <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                                    <span>14-day free trial</span>
+                                </div>
+                                <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm text-slate-300">
+                                    <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                                    <span>UDISE verified & certified</span>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+
+                    {/* Desktop: Left Column - Text */}
+                    <motion.div
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.9 }}
+                        className="hidden lg:flex flex-col items-start text-left justify-center pr-8 space-y-8"
+                    >
+                        {/* Badge */}
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 backdrop-blur-sm hover:border-blue-400/50 transition-all w-fit">
+                            <Zap size={16} className="text-cyan-400" />
+                            <span className="text-xs font-bold text-cyan-300 uppercase tracking-widest">AI-Powered Platform</span>
+                        </div>
+
+                        {/* Heading */}
+                        <div>
+                            <h1 className="text-7xl xl:text-8xl font-bold tracking-tight leading-[0.95] text-white mb-4">
+                                The learning platform{' '}
+                                <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent block">India trusts</span>
+                            </h1>
+                        </div>
+
+                        {/* Description */}
+                        <p className="text-lg text-slate-300 leading-relaxed font-medium max-w-xl">
+                            Gamified learning for K-12 schools. Master IoT, embedded systems, and full-stack development. Real-time analytics, certified instructors, trusted by 100K+ students across India.
+                        </p>
+
+                        {/* Stats Row */}
+                        <div className="flex gap-8 pt-4">
+                            <div className="flex flex-col gap-1">
+                                <div className="text-3xl font-bold text-cyan-400">100K+</div>
+                                <div className="text-sm text-slate-400">Active Students</div>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <div className="text-3xl font-bold text-purple-400">500+</div>
+                                <div className="text-sm text-slate-400">Courses</div>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <div className="text-3xl font-bold text-blue-400">98%</div>
+                                <div className="text-sm text-slate-400">Success Rate</div>
                             </div>
                         </div>
 
-                        {/* Illustration - Key focus for tablet */}
-                        <div className="relative w-full h-64 sm:h-80 md:h-[450px] mb-8 md:mb-12">
+                        {/* CTA Buttons */}
+                        <div className="flex flex-wrap items-center gap-4 pt-4">
+                            <Link href="/register/school">
+                                <button className="flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-blue-600/50 transition-all text-base cursor-pointer group">
+                                    Register School
+                                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                </button>
+                            </Link>
+                            <Link href="#demo">
+                                <button className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold px-8 py-4 rounded-xl border border-white/20 hover:border-white/40 backdrop-blur-sm transition-all text-base cursor-pointer">
+                                    <Play size={16} className="fill-current" />
+                                    Watch Demo
+                                </button>
+                            </Link>
+                        </div>
+
+                        {/* Trust badges */}
+                        <div className="flex flex-wrap items-center gap-6 pt-4 text-sm text-slate-400 font-medium border-t border-white/10 pt-8">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 size={16} className="text-emerald-400" />
+                                <span>No credit card</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 size={16} className="text-emerald-400" />
+                                <span>Free trial</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 size={16} className="text-emerald-400" />
+                                <span>UDISE verified</span>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* Desktop: Right Column - Illustration */}
+                    <motion.div
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.9 }}
+                        className="hidden lg:block relative w-full max-w-[600px] mx-auto"
+                    >
+                        <div className="relative z-10 group">
                             <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ duration: 0.9, ease: [0.21, 0.47, 0.32, 0.98] }}
-                                className="relative z-10 w-full h-full group flex items-center justify-center px-4"
+                                animate={{ y: [0, -20, 0] }}
+                                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                             >
                                 <img
                                     src="/assets/gaming-hero.svg"
@@ -50,127 +198,15 @@ export const HeroSection = ({ settings }: { settings?: any }) => {
                                     loading="eager"
                                     fetchPriority="high"
                                     decoding="async"
-                                    className="w-full h-full object-contain pointer-events-none mix-blend-multiply opacity-90 transition-transform duration-700 group-hover:scale-[1.02]"
+                                    className="w-full h-auto object-contain pointer-events-none transition-transform duration-700 group-hover:scale-[1.05]"
                                 />
                             </motion.div>
-                            <div className="absolute inset-0 bg-blue-100/30 rounded-full blur-[80px] md:blur-[120px] -z-10" />
                         </div>
 
-                        {/* Heading - Bigger on Tablet (md) */}
-                        <div className="mb-4 md:mb-6 px-2">
-                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-tight md:leading-[1.15] text-slate-900">
-                                The online learning platform{' '}
-                                <span className="text-blue-600 block md:inline">students actually love.</span>
-                            </h1>
-                        </div>
-
-                        {/* Description */}
-                        <div className="mb-6 md:mb-10 max-w-xl mx-auto">
-                            <p className="text-xs sm:text-sm md:text-base text-slate-600 leading-relaxed font-medium">
-                                Gamified LMS for K-12 schools across India — courses in IoT, embedded systems, full-stack development, and skill-based programming, with real-time analytics and school-wide student management.
-                            </p>
-                        </div>
-
-                        {/* Buttons & Trust Signals */}
-                        <div className="w-full max-w-md">
-                            <div className="flex flex-row gap-3 items-center">
-                                <Link href="#demo" className="flex-1">
-                                    <button className="w-full flex items-center justify-center gap-2 bg-white text-slate-700 font-semibold px-4 py-3 rounded-xl shadow-sm border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm cursor-pointer whitespace-nowrap">
-                                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 shrink-0">
-                                            <Play size={8} className="text-white ml-0.5 fill-current" />
-                                        </span>
-                                        Watch Demo
-                                    </button>
-                                </Link>
-                                <Link href="/register/school" className="flex-1">
-                                    <button className="w-full flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white font-semibold px-4 py-3 rounded-xl shadow-lg shadow-slate-900/20 transition-all text-sm cursor-pointer whitespace-nowrap">
-                                        Register School
-                                    </button>
-                                </Link>
-                            </div>
-
-                            <div className="flex flex-row flex-wrap justify-center items-center gap-x-6 gap-y-2 mt-8 text-[11px] md:text-xs text-slate-500 font-medium border-t border-slate-100 pt-6">
-                                <div className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> No credit card</div>
-                                <div className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> Free trial</div>
-                                <div className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> UDISE verified</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Desktop: Two Column Layout (Large Viewports Only) */}
-                    <div className="hidden lg:flex flex-col items-start text-left justify-center pr-8">
-
-                        <div className="mb-6">
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white border border-slate-200 shadow-sm">
-                                {settings?.logo_url ? (
-                                    <img src={settings.logo_url} alt="Logo" className="w-4 h-4 object-contain" />
-                                ) : (
-                                    <Sparkles size={14} className="text-blue-600" />
-                                )}
-                                <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">{settings?.platform_name || 'TechNurture'} Labs</span>
-                            </div>
-                        </div>
-
-                        <div className="mb-6">
-                            <h1 className="text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] text-slate-900">
-                                The online learning platform{' '}
-                                <span className="text-blue-600">students actually love.</span>
-                            </h1>
-                        </div>
-
-                        <div className="mb-8">
-                            <p className="text-lg text-slate-600 leading-relaxed font-medium max-w-xl">
-                                Gamified LMS for K-12 schools across India — courses in IoT, embedded systems, full-stack development, and skill-based programming, with real-time analytics and school-wide student management.
-                            </p>
-                        </div>
-
-                        <div className="w-full">
-                            <div className="flex flex-row items-center gap-3">
-                                <Link href="/register/school" className="w-auto">
-                                    <button className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold px-7 py-3.5 rounded-xl shadow-lg shadow-slate-900/20 transition-colors text-base cursor-pointer">
-                                        Register School
-                                        <ArrowRight size={16} />
-                                    </button>
-                                </Link>
-                                <Link href="#demo" className="w-auto">
-                                    <button className="flex items-center justify-center gap-2 bg-white text-slate-700 font-semibold px-7 py-3.5 rounded-xl shadow-sm border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-base cursor-pointer">
-                                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 shrink-0">
-                                            <Play size={10} className="text-white ml-0.5 fill-current" />
-                                        </span>
-                                        Watch Demo
-                                    </button>
-                                </Link>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-8 text-sm text-slate-500 font-medium">
-                                <div className="flex items-center gap-1.5"><CheckCircle2 size={15} className="text-emerald-500" /> No credit card required</div>
-                                <div className="flex items-center gap-1.5"><CheckCircle2 size={15} className="text-emerald-500" /> 14-day free trial</div>
-                                <div className="flex items-center gap-1.5"><CheckCircle2 size={15} className="text-emerald-500" /> UDISE verified</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Desktop: Right Column - Illustration */}
-                    <div className="hidden lg:block relative w-full max-w-[650px] mx-auto ml-auto">
-                        <motion.div
-                            initial={{ opacity: 0, x: 16, y: 8 }}
-                            animate={{ opacity: 1, x: 0, y: 0 }}
-                            transition={{ duration: 0.9, ease: [0.21, 0.47, 0.32, 0.98] }}
-                            className="relative z-10 w-full h-full group"
-                        >
-                            <img
-                                src="/assets/gaming-hero.svg"
-                                alt="TechNurture Education Platform"
-                                loading="eager"
-                                fetchPriority="high"
-                                decoding="async"
-                                className="w-full h-auto object-contain pointer-events-none mix-blend-multiply opacity-90 transition-transform duration-700 group-hover:scale-[1.02]"
-                            />
-                        </motion.div>
-
-                        {/* Ambient glow behind illustration */}
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-blue-100/30 rounded-full blur-[100px] -z-10" />
-                    </div>
+                        {/* Glow effects */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-gradient-to-t from-cyan-500/20 to-transparent rounded-full blur-3xl -z-10 animate-pulse-subtle" />
+                        <div className="absolute top-0 left-1/4 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl -z-10" />
+                    </motion.div>
 
                 </div>
             </div>

@@ -59,3 +59,5 @@ tmp/
 fix_*.sh
 seed_*.sh
 
+.aidesigner/*
+!.aidesigner/.gitkeep
