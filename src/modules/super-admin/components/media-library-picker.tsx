@@ -301,7 +301,6 @@ export function MediaLibraryPicker({
                     onSearchChange={setSearch}
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
-                    filterType={filterType}
                 />
                 
                 <input

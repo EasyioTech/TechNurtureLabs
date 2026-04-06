@@ -22,21 +22,14 @@ interface LibraryHeaderProps {
     onSearchChange: (val: string) => void;
     activeTab: AssetType;
     onTabChange: (tab: AssetType) => void;
-    filterType?: 'image' | 'document' | 'video';
 }
 
 export function LibraryHeader({
     isUploading, onUploadClick,
     search, onSearchChange,
-    activeTab, onTabChange,
-    filterType
+    activeTab, onTabChange
 }: LibraryHeaderProps) {
     const { isDark, accent } = useAdminTheme();
-
-    // Only show tabs relevant to the current filterType
-    const visibleTabs = filterType === 'video'
-        ? TABS.filter(tab => tab.id === 'cloudflare_stream')
-        : TABS.filter(tab => tab.id !== 'cloudflare_stream');
 
     return (
         <SheetHeader className={`px-6 pt-6 pb-5 border-b shrink-0 ${t.border(isDark)}`}>
@@ -81,7 +74,7 @@ export function LibraryHeader({
 
             {/* Type Tabs - Clean and Minimal */}
             <div className="flex gap-2 mt-5">
-                {visibleTabs.map(tab => {
+                {TABS.map(tab => {
                     const isActive = activeTab === tab.id;
                     return (
                         <button

@@ -162,16 +162,22 @@ export function AssetGrid({
 
 function AssetImagePreview({ asset }: { asset: MediaAsset }) {
     const { isDark } = useAdminTheme();
+    const [failed, setFailed] = React.useState(false);
+
+    if (failed) {
+        return (
+            <div className="w-full h-full flex items-center justify-center">
+                <ImageIcon size={24} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+            </div>
+        );
+    }
+
     return (
         <img
             src={asset.file_url}
             alt={asset.original_name}
             className="w-full h-full object-cover"
-            onError={e => {
-                const el = e.target as HTMLImageElement;
-                el.style.display = 'none';
-                el.parentElement?.querySelector('.fallback-icon')?.classList.remove('hidden');
-            }}
+            onError={() => setFailed(true)}
         />
     );
 }
