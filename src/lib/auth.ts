@@ -1,4 +1,6 @@
-import 'server-only';
+// NOTE: 'server-only' removed to allow usage in worker scripts (standalone Node.js processes)
+// The functions in this module are inherently server-side (they work with cookies, DB, etc.)
+// and should not be exported or called from client code anyway. The runtime check was too strict.
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { redis } from './redis';
