@@ -134,7 +134,8 @@ export function MediaLibraryPicker({
         else setLoading(true);
         setError(null);
         try {
-            const params = new URLSearchParams({ page: targetPage.toString(), limit: '24' });
+            const limit = '30';
+            const params = new URLSearchParams({ page: targetPage.toString(), limit });
             if (type !== 'all' && type !== 'cloudflare_stream') params.set('type', type);
             if (targetFolder !== 'all') params.set('folder', targetFolder);
             if (query) params.set('search', query);
@@ -153,8 +154,13 @@ export function MediaLibraryPicker({
                 throw new Error(errorData.details || errorData.error || 'Failed to load library');
             }
             const data = await res.json();
-            if (append) setAssets(prev => [...prev, ...data.assets]);
-            else setAssets(data.assets);
+            const transformed = (data.assets || []).map((asset: any) => ({
+                ...asset,
+                thumbnail: asset.metadata?.thumbnail || asset.thumbnail || null,
+                preview: asset.metadata?.preview || asset.preview || null,
+            }));
+            if (append) setAssets(prev => [...prev, ...transformed]);
+            else setAssets(transformed);
             setHasMore(data.pagination.currentPage < data.pagination.pages);
         } catch (err: any) {
             console.error('[Media Library] Load error:', err);
@@ -170,7 +176,8 @@ export function MediaLibraryPicker({
         else setLoading(true);
         setError(null);
         try {
-            const params = new URLSearchParams({ limit: '24' });
+            const limit = 30;
+            const params = new URLSearchParams({ limit: limit.toString() });
             if (query) params.set('search', query);
 
             const res = await fetch(`/api/media/stream-list?${params.toString()}`, {
@@ -187,8 +194,10 @@ export function MediaLibraryPicker({
                 throw new Error(errorData.details || errorData.error || 'Failed to load stream videos');
             }
             const data = await res.json();
+            const videos = data.videos || [];
+
             // Transform stream videos to asset format for compatibility
-            const transformedAssets = (data.videos || []).map((video: any) => {
+            const transformedAssets = videos.map((video: any) => {
                 // Calculate file_size from duration (approximate: assuming 1MB per minute)
                 const durationSeconds = video.duration || 0;
                 const approximateSize = Math.round((durationSeconds / 60) * 1024 * 1024);
@@ -210,7 +219,10 @@ export function MediaLibraryPicker({
             });
             if (append) setAssets(prev => [...prev, ...transformedAssets]);
             else setAssets(transformedAssets);
-            setHasMore(false); // Stream list doesn't support pagination yet
+            
+            // For Cloudflare Stream, if we got exactly the limit, there might be more.
+            // Since we don't have true pagination offset yet in the helper, we just check length.
+            setHasMore(videos.length === limit);
         } catch (err: any) {
             console.error('[Stream Videos] Load error:', err);
             setError(err.message || 'Could not load stream videos.');
@@ -316,6 +328,35 @@ export function MediaLibraryPicker({
         finally { if (fileInputRef.current) fileInputRef.current.value = ''; }
     }
 
+    const [isSyncing, setIsSyncing] = React.useState(false);
+
+    async function handleSync() {
+        if (isSyncing) return;
+        setIsSyncing(true);
+        try {
+            const csrfToken = getCsrfToken();
+            const res = await fetch('/api/media/sync', { 
+                method: 'POST',
+                headers: { ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) }
+            });
+            if (!res.ok) throw new Error('Sync failed');
+            const data = await res.json();
+            toast.success(data.message || 'Library synchronized with storage');
+            
+            // Reload current tab
+            setPage(1);
+            if (activeTab === 'cloudflare_stream') {
+                loadStreamVideos(1, debouncedSearch, false);
+            } else {
+                loadAssets(activeTab, 'all', 1, debouncedSearch, false);
+            }
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to sync library');
+        } finally {
+            setIsSyncing(false);
+        }
+    }
+
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
@@ -330,6 +371,8 @@ export function MediaLibraryPicker({
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
                     filterType={filterType}
+                    onSync={handleSync}
+                    isSyncing={isSyncing}
                 />
                 
                 <input
@@ -394,6 +437,7 @@ export function MediaLibraryPicker({
                             selectedIds={selectedIds}
                             onBulkDelete={handleBulkDelete}
                             formatBytes={formatBytes}
+                            activeTab={activeTab}
                         />
                     )}
                 </div>

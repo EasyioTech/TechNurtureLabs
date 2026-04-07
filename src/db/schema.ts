@@ -22,7 +22,7 @@ export const challengeStatusEnum = pgEnum('challenge_status', ['active', 'comple
 export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion', 'pin_reset_request']);
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'issued', 'paid', 'void', 'overdue']);
 // SCHEMA FIX: Removed 'local' (dead value — all storage is R2-only after C4 fixes)
-export const storageTypeEnum = pgEnum('storage_type', ['r2']);
+export const storageTypeEnum = pgEnum('storage_type', ['r2', 'cloudflare_stream']);
 export const assetTypeEnum = pgEnum('asset_type', ['video', 'image', 'document']);
 export const discountTypeEnum = pgEnum('discount_type', ['percentage', 'fixed']);
 
@@ -819,6 +819,7 @@ export const mediaAssets = pgTable('media_assets', {
     folder: text('folder'), // course, lesson, settings, etc
     processing_status: text('processing_status').notNull().default('completed'), // 'pending', 'processing', 'completed', 'failed'
     error_message: text('error_message'),
+    metadata: jsonb('metadata'),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

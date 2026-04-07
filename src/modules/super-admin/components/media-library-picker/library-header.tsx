@@ -23,12 +23,15 @@ interface LibraryHeaderProps {
     activeTab: AssetType;
     onTabChange: (tab: AssetType) => void;
     filterType?: 'video' | 'image' | 'document';
+    onSync?: () => void;
+    isSyncing?: boolean;
 }
 
 export function LibraryHeader({
     isUploading, onUploadClick,
     search, onSearchChange,
-    activeTab, onTabChange, filterType
+    activeTab, onTabChange, filterType,
+    onSync, isSyncing
 }: LibraryHeaderProps) {
     const { isDark, accent } = useAdminTheme();
 
@@ -44,7 +47,7 @@ export function LibraryHeader({
 
     return (
         <SheetHeader className={`px-6 pt-6 pb-5 border-b shrink-0 ${t.border(isDark)}`}>
-            {/* Header with title and upload button */}
+            {/* Header with title and upload/sync buttons */}
             <SheetTitle className="flex items-center gap-3 mb-1">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${accent.bg} text-slate-900`}>
                     <ImageIcon size={18} />
@@ -58,15 +61,31 @@ export function LibraryHeader({
                     </p>
                 </div>
 
-                <Button
-                    size="sm"
-                    disabled={isUploading}
-                    onClick={onUploadClick}
-                    className={`rounded-lg h-9 px-5 text-xs font-black uppercase tracking-wider ${accent.bg} text-slate-900 shrink-0 hover:shadow-lg transition-all`}
-                >
-                    {isUploading ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Upload size={14} className="mr-1.5" />}
-                    Upload
-                </Button>
+                <div className="flex gap-2 shrink-0">
+                    {onSync && (
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={isSyncing || isUploading}
+                            onClick={onSync}
+                            title="Sync with storage"
+                            className={`w-9 h-9 p-0 rounded-lg border-2 ${t.border(isDark)} ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100'}`}
+                        >
+                            <Loader2 size={14} className={isSyncing ? 'animate-spin' : 'hidden'} />
+                            {!isSyncing && <Cloud size={14} className={t.textMuted(isDark)} />}
+                        </Button>
+                    )}
+
+                    <Button
+                        size="sm"
+                        disabled={isUploading || isSyncing}
+                        onClick={onUploadClick}
+                        className={`rounded-lg h-9 px-5 text-xs font-black uppercase tracking-wider ${accent.bg} text-slate-900 hover:shadow-lg transition-all`}
+                    >
+                        {isUploading ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Upload size={14} className="mr-1.5" />}
+                        Upload
+                    </Button>
+                </div>
             </SheetTitle>
 
             {/* Search Bar */}

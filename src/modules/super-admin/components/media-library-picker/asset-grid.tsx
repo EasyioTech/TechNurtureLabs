@@ -20,20 +20,22 @@ interface AssetGridProps {
     selectedIds: string[];
     onBulkDelete: () => void;
     formatBytes: (bytes: number) => string;
+    activeTab: string;
 }
 
 export function AssetGrid({
     assets, loadingMore, hasMore, onLoadMore, currentUrl,
     onSelect, onDelete, deletingId,
     isMultiSelect, setIsMultiSelect, selectedIds, onBulkDelete,
-    formatBytes
+    formatBytes, activeTab
 }: AssetGridProps) {
     const { isDark, accent } = useAdminTheme();
+    const isDocumentView = activeTab === 'document';
 
     return (
         <div className="space-y-4">
             {/* Bulk Selection Controls */}
-            <div className={`p-3 rounded-lg border-2 flex items-center justify-between will-change-[background-color,border-color] ${isMultiSelect ? (isDark ? 'bg-white/[0.04] border-white/10' : 'bg-slate-50 border-slate-200') : 'border-transparent'}`}>
+            <div className={`p-3 rounded-lg border-2 flex items-center justify-between transition-colors ${isMultiSelect ? (isDark ? 'bg-white/[0.04] border-white/10' : 'bg-slate-50 border-slate-200') : 'border-transparent'}`}>
                 <div className="space-y-0.5">
                     <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>
                         {isMultiSelect ? `${selectedIds.length} items selected` : 'Library Assets'}
@@ -67,15 +69,64 @@ export function AssetGrid({
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className={isDocumentView ? "space-y-2" : "grid grid-cols-2 gap-2.5"}>
                 {assets.map(asset => {
                     const isSelected = asset.file_url === currentUrl;
                     const isInBulk = selectedIds.includes(asset.id);
                     const isDeleting = deletingId === asset.id;
+
+                    if (isDocumentView) {
+                        return (
+                            <div
+                                key={asset.id}
+                                className={`relative group/card flex items-center p-3 rounded-xl border-2 transition-all cursor-pointer
+                                    ${(isSelected || isInBulk)
+                                        ? (isDark ? `border-${accent.name}-400 bg-${accent.name}-400/5` : `border-${accent.name}-400 bg-${accent.name}-400/5`)
+                                        : (isDark ? 'border-white/5 bg-white/[0.02] hover:bg-white/5' : 'border-slate-100 bg-slate-50 hover:bg-slate-100')
+                                    } ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                onClick={() => {
+                                    if (isDeleting) return;
+                                    onSelect(asset);
+                                }}
+                            >
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 ${isDark ? 'bg-white/5' : 'bg-white border border-slate-200'}`}>
+                                    <FileText size={20} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+                                </div>
+                                <div className="flex-1 min-w-0 pr-10">
+                                    <p className={`text-[11px] font-bold truncate ${t.textPrimary(isDark)}`} title={asset.original_name}>
+                                        {asset.original_name}
+                                    </p>
+                                    <p className={`text-[9px] font-bold uppercase tracking-wider ${t.textMuted(isDark)}`}>
+                                        {formatBytes(asset.file_size)} • {asset.mime_type.split('/')[1] || 'DOC'}
+                                    </p>
+                                </div>
+
+                                {(isSelected || isInBulk) && (
+                                    <div className={`mr-4 w-5 h-5 rounded-full flex items-center justify-center shadow-sm ${accent.bg} text-slate-900`}>
+                                        <Check size={11} strokeWidth={3} />
+                                    </div>
+                                )}
+
+                                <button
+                                    type="button"
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        onDelete(asset, e);
+                                    }}
+                                    disabled={isDeleting}
+                                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-0 group-hover/card:opacity-100
+                                        ${isDark ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white' : 'bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white'}`}
+                                >
+                                    {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                                </button>
+                            </div>
+                        );
+                    }
+
                     return (
                         <div
                             key={asset.id}
-                            className={`relative group/card text-left rounded-xl border-2 overflow-hidden will-change-[border-color] cursor-pointer
+                            className={`relative group/card text-left rounded-xl border-2 overflow-hidden transition-all cursor-pointer
                                 ${(isSelected || isInBulk)
                                     ? (isDark ? `border-${accent.name}-400 ring-1 ring-${accent.name}-400/20` : `border-${accent.name}-400 ring-1 ring-${accent.name}-400/10`)
                                     : (isDark ? 'border-white/5 bg-white/[0.02]' : 'border-slate-100 bg-slate-50')
@@ -137,6 +188,7 @@ export function AssetGrid({
                     );
                 })}
             </div>
+
 
             {hasMore && (
                 <div className="flex justify-center pt-2 pb-4">
