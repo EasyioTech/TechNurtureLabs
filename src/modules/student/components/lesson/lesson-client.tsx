@@ -255,7 +255,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
                 </div>
 
                 {/* Sidebar body */}
-                <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-5">
+                <div className="flex-1 overflow-y-auto px-5 py-5">
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Your Progress</span>
@@ -326,7 +326,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
         </AnimatePresence>
 
         {/* ─── Main content ─── */}
-        <div className="lesson-scroll-container flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar">
+        <div className="lesson-scroll-container flex-1 flex flex-col min-w-0 overflow-y-auto">
           <LessonContent
             lesson={lesson}
             isFocusMode={false}

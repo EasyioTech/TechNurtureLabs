@@ -264,7 +264,7 @@ export function PDFViewer({
             {/* Content */}
             <div 
                 className={cn(
-                    "flex-1 bg-slate-200/50 relative overflow-hidden",
+                    "flex-1 bg-slate-200/50 relative",
                     isFullscreen ? "h-[calc(100vh-76px)]" : "h-[75vh] min-h-[500px]"
                 )}
                 onContextMenu={(e) => e.preventDefault()}
@@ -293,7 +293,10 @@ export function PDFViewer({
                         options={fileOptions}
                     >
                         {numPages > 0 && (
-                            <div className="h-full overflow-y-auto no-scrollbar scroll-smooth p-4 space-y-6 flex flex-col items-center">
+                            <div 
+                                className="h-full overflow-y-auto scroll-smooth p-4 space-y-6 flex flex-col items-center touch-pan-y"
+                                style={{ WebkitOverflowScrolling: 'touch' }}
+                            >
                                 {Array.from({ length: numPages }, (_, index) => {
                                     const pageNum = index + 1;
                                     const shouldRender = visiblePages.has(pageNum);
@@ -341,17 +344,7 @@ export function PDFViewer({
                 )}
             </div>
 
-            {/* Continuous progress indicator */}
-            {numPages > 1 && (
-                <div className="h-1.5 w-full bg-slate-100">
-                    <motion.div 
-                        className="h-full bg-indigo-500"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(pageNumber / numPages) * 100}%` }}
-                        transition={{ duration: 0.3 }}
-                    />
-                </div>
-            )}
+
         </div>
     );
 }

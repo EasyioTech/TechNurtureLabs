@@ -190,7 +190,7 @@ function ContentBlock({
     return (
       <div className={cn(
         "w-full lg:max-w-[1100px] lg:mx-auto lg:px-12 lg:py-4 transition-all duration-300",
-        "sticky top-0 z-[40] md:relative md:z-0 bg-white shadow-md md:shadow-none"
+        "sticky top-0 z-50 md:relative md:z-0 bg-white shadow-md md:shadow-none"
       )}>
         <CloudflareStreamPlayer
           uid={extractStreamUid(block.url)}
@@ -207,7 +207,7 @@ function ContentBlock({
     return (
       <div className={cn(
         "w-full lg:max-w-[1100px] lg:mx-auto lg:px-12 lg:py-4 transition-all duration-300",
-        "sticky top-0 z-[40] md:relative md:z-0 bg-white shadow-md md:shadow-none"
+        "sticky top-0 z-50 md:relative md:z-0 bg-white shadow-md md:shadow-none"
       )}>
         <VideoPlayer
           src={block.url}
@@ -435,7 +435,7 @@ export function LessonContent({
       {!blocks && isStreamVideo && (
         <div className={cn(
           "w-full lg:max-w-[1100px] lg:mx-auto lg:px-12 lg:py-8 transition-all duration-300",
-          "sticky top-0 z-[40] md:relative md:z-0 bg-white shadow-md md:shadow-none"
+          "sticky top-0 z-50 md:relative md:z-0 bg-white shadow-md md:shadow-none"
         )}>
           <CloudflareStreamPlayer
             uid={extractStreamUid(lesson.content_url!)}
@@ -450,7 +450,7 @@ export function LessonContent({
       {!blocks && isRegularVideo && (
         <div className={cn(
           "w-full lg:max-w-[1100px] lg:mx-auto lg:px-12 lg:py-8 transition-all duration-300",
-          "sticky top-0 z-[40] md:relative md:z-0 bg-white shadow-md md:shadow-none"
+          "sticky top-0 z-50 md:relative md:z-0 bg-white shadow-md md:shadow-none"
         )}>
           <VideoPlayer
             src={lesson.content_url!}
