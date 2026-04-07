@@ -107,21 +107,19 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     }, [uploadId, isUploading, open]);
 
     const syncItems = React.useCallback((items: ContentItem[]) => {
+        if (!editingLesson) return;
         const firstType = items[0]?.type || 'video';
         const dbType: Lesson['content_type'] = firstType === 'image' ? 'pdf' : (firstType as Lesson['content_type']);
         const autoXp = autoCalcXp(items, 'content');
         
-        setEditingLesson((prev: Partial<Lesson> | null) => {
-            if (!prev) return null;
-            return {
-                ...prev,
-                content_type: dbType,
-                content_url: items[0]?.url || '',
-                content_items: items.length > 0 ? JSON.stringify(items) : null,
-                ...(!isXpCustomized && { xp_reward: autoXp }),
-            };
+        setEditingLesson({
+            ...editingLesson,
+            content_type: dbType,
+            content_url: items[0]?.url || '',
+            content_items: items.length > 0 ? JSON.stringify(items) : null,
+            ...(!isXpCustomized && { xp_reward: autoXp }),
         });
-    }, [setEditingLesson, isXpCustomized]);
+    }, [editingLesson, setEditingLesson, isXpCustomized]);
 
 
     const addBlock = (type: ContentItem['type']) => syncItems([...contentItems, { id: genId(), type, url: '' }]);
