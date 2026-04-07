@@ -167,7 +167,10 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
   }, []);
 
   return (
-    <div className={cn('w-full overflow-hidden bg-black', className)}>
+    <div 
+      className={cn('w-full overflow-hidden bg-black', className)}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {/* Player */}
       <div className="relative aspect-video w-full">
         <MediaPlayer
@@ -177,7 +180,8 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
           onCanPlay={onCanPlay}
           onSeeked={handleSeeked}
           onTimeUpdate={handleTimeUpdate}
-          className="w-full h-full"
+          muted={false}
+          className="w-full h-full group"
           playsInline
           key={src}
           crossOrigin={src.startsWith('http') ? 'anonymous' : 'use-credentials'}
@@ -185,6 +189,22 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
           <MediaProvider>
             {poster && <Poster src={poster} className="object-cover w-full h-full" />}
           </MediaProvider>
+
+          {/* Large Center Play Button */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <button 
+              onClick={() => player.current?.paused ? player.current?.play() : player.current?.pause()}
+              className="w-20 h-20 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20 opacity-0 group-data-[paused]:opacity-100 transition-all hover:scale-110 pointer-events-auto shadow-2xl"
+            >
+              <div className="group-data-[paused]:block hidden relative left-1">
+                <svg viewBox="0 0 32 32" className="w-10 h-10 fill-current"><path d="M8 5v22l18-11L8 5z"/></svg>
+              </div>
+              <div className="group-data-[paused]:hidden block">
+                <svg viewBox="0 0 32 32" className="w-10 h-10 fill-current"><path d="M6 4h8v24H6V4zm12 0h8v24h-8V4z"/></svg>
+              </div>
+            </button>
+          </div>
+
           <DefaultVideoLayout icons={defaultLayoutIcons} />
         </MediaPlayer>
 

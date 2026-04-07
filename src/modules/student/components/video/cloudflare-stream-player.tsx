@@ -42,6 +42,7 @@ export function CloudflareStreamPlayer({
     autoPlay = false,
     muted = false,
 }: CloudflareStreamPlayerProps) {
+    const [isPaused, setIsPaused] = React.useState(true);
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
     // Keep latest onComplete in a ref so fireComplete never needs it as a dep.
@@ -199,6 +200,13 @@ export function CloudflareStreamPlayer({
                     fireComplete();
                 }
 
+                // ── play / pause state sync ──────────────────────────────
+                if (eventName === 'play' || eventName === 'playing') {
+                    setIsPaused(false);
+                } else if (eventName === 'pause' || eventName === 'ended') {
+                    setIsPaused(true);
+                }
+
                 // ── loadedmetadata — capture duration early ───────────────
                 if (eventName === 'loadedmetadata' || eventName === 'durationchange') {
                     // duration already captured above; nothing else to do
@@ -256,8 +264,11 @@ export function CloudflareStreamPlayer({
     }, []);
 
     return (
-        <div className={cn('w-full overflow-hidden bg-black', className)}>
-            <div className="relative aspect-video w-full">
+        <div 
+            className={cn('w-full overflow-hidden bg-black', className)}
+            onContextMenu={(e) => e.preventDefault()}
+        >
+            <div className="relative aspect-video w-full group">
                 <iframe
                     ref={iframeRef}
                     src={embedUrl}
@@ -266,6 +277,31 @@ export function CloudflareStreamPlayer({
                     allowFullScreen
                     loading="lazy"
                 />
+
+                {/* Large Center Play Button Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                    <button 
+                        onClick={() => {
+                            const cmd = isPaused ? 'play' : 'pause';
+                            iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ [cmd]: true }), '*');
+                            setIsPaused(!isPaused);
+                        }}
+                        className={cn(
+                            "w-20 h-20 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20 transition-all hover:scale-110 pointer-events-auto shadow-2xl",
+                            isPaused ? "opacity-100" : "opacity-0 hover:opacity-100" // Always show on pause, show on hover when playing
+                        )}
+                    >
+                        {isPaused ? (
+                            <div className="relative left-1">
+                                <svg viewBox="0 0 32 32" className="w-10 h-10 fill-current"><path d="M8 5v22l18-11L8 5z"/></svg>
+                            </div>
+                        ) : (
+                            <div>
+                                <svg viewBox="0 0 32 32" className="w-10 h-10 fill-current"><path d="M6 4h8v24H6V4zm12 0h8v24h-8V4z"/></svg>
+                            </div>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );

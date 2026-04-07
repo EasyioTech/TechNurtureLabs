@@ -237,15 +237,7 @@ export function PDFViewer({
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <a 
-                        href={absoluteUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                        title="Open in Browser"
-                    >
-                        <ExternalLink size={18} />
-                    </a>
+
                     <button 
                         onClick={() => setIsFullscreen(!isFullscreen)}
                         className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
@@ -270,7 +262,13 @@ export function PDFViewer({
             </div>
 
             {/* Content */}
-            <div className="flex-1 min-h-[500px] h-[75vh] bg-slate-200/50 relative overflow-hidden">
+            <div 
+                className={cn(
+                    "flex-1 bg-slate-200/50 relative overflow-hidden",
+                    isFullscreen ? "h-[calc(100vh-76px)]" : "h-[75vh] min-h-[500px]"
+                )}
+                onContextMenu={(e) => e.preventDefault()}
+            >
                 {error ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center bg-white">
                         <AlertTriangle className="text-rose-500 mb-6" size={48} />
@@ -282,9 +280,7 @@ export function PDFViewer({
                             <button onClick={handleRetry} className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
                                 <RefreshCw size={14} /> Retry
                             </button>
-                            <a href={absoluteUrl} target="_blank" className="px-6 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                                <ExternalLink size={14} /> Open Native
-                            </a>
+
                         </div>
                     </div>
                 ) : (

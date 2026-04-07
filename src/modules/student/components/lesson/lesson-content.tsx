@@ -65,7 +65,9 @@ function ImageCarousel({ urls, onComplete, lessonComplete, isTimerLocked }: {
           key={current}
           src={urls[current]}
           alt=""
-          className="w-full max-h-[75vh] object-contain rounded-2xl lg:rounded-3xl shadow-xl border border-slate-100"
+          className="w-full max-h-[75vh] object-contain rounded-2xl lg:rounded-3xl shadow-xl border border-slate-100 select-none"
+          onContextMenu={(e) => e.preventDefault()}
+          draggable={false}
           initial={{ opacity: 0, x: dir * 40 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: dir * -40 }}
@@ -186,7 +188,10 @@ function ContentBlock({
 
   if (isStreamVideo) {
     return (
-      <div className="w-full lg:max-w-[1100px] lg:mx-auto lg:px-12 lg:py-4">
+      <div className={cn(
+        "w-full lg:max-w-[1100px] lg:mx-auto lg:px-12 lg:py-4 transition-all duration-300",
+        "sticky top-0 z-[40] md:relative md:z-0 bg-white shadow-md md:shadow-none"
+      )}>
         <CloudflareStreamPlayer
           uid={extractStreamUid(block.url)}
           lessonId={lessonId}
@@ -200,7 +205,10 @@ function ContentBlock({
 
   if (isRegularVideo) {
     return (
-      <div className="w-full lg:max-w-[1100px] lg:mx-auto lg:px-12 lg:py-4">
+      <div className={cn(
+        "w-full lg:max-w-[1100px] lg:mx-auto lg:px-12 lg:py-4 transition-all duration-300",
+        "sticky top-0 z-[40] md:relative md:z-0 bg-white shadow-md md:shadow-none"
+      )}>
         <VideoPlayer
           src={block.url}
           lessonId={lessonId}
@@ -251,14 +259,12 @@ function ContentBlock({
           </div>
           <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-3 relative z-10">Course Slides</h2>
           {!isTimerLocked ? (
-            <a
-              href={block.url}
-              download
+            <button
               onClick={() => onComplete()}
-              className="w-full inline-flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-indigo-600 transition-all shadow-xl active:scale-95 group relative z-10"
+              className="w-full inline-flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-emerald-600 transition-all shadow-xl active:scale-95 group relative z-10"
             >
-              Download &amp; Continue <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </a>
+              Mastered &amp; Continue <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </button>
           ) : (
              <div className="w-full inline-flex items-center justify-center gap-3 bg-slate-100 text-slate-400 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] border border-slate-200 relative z-10 cursor-not-allowed">
                Content Locked <Timer size={16} />
@@ -427,7 +433,10 @@ export function LessonContent({
 
       {/* ── Legacy: single video ────────────────────────────── */}
       {!blocks && isStreamVideo && (
-        <div className="w-full lg:max-w-[1100px] lg:mx-auto lg:px-12 lg:py-8">
+        <div className={cn(
+          "w-full lg:max-w-[1100px] lg:mx-auto lg:px-12 lg:py-8 transition-all duration-300",
+          "sticky top-0 z-[40] md:relative md:z-0 bg-white shadow-md md:shadow-none"
+        )}>
           <CloudflareStreamPlayer
             uid={extractStreamUid(lesson.content_url!)}
             lessonId={lesson.id}
@@ -439,7 +448,10 @@ export function LessonContent({
       )}
 
       {!blocks && isRegularVideo && (
-        <div className="w-full lg:max-w-[1100px] lg:mx-auto lg:px-12 lg:py-8">
+        <div className={cn(
+          "w-full lg:max-w-[1100px] lg:mx-auto lg:px-12 lg:py-8 transition-all duration-300",
+          "sticky top-0 z-[40] md:relative md:z-0 bg-white shadow-md md:shadow-none"
+        )}>
           <VideoPlayer
             src={lesson.content_url!}
             lessonId={lesson.id}
@@ -487,14 +499,12 @@ export function LessonContent({
               Download the presentation slides to study offline.
             </p>
             {!isTimerLocked ? (
-              <a
-                href={lesson.content_url!}
-                download
+              <button
                 onClick={() => onComplete()}
-                className="w-full inline-flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-indigo-600 transition-all shadow-xl active:scale-95 group relative z-10"
+                className="w-full inline-flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-emerald-600 transition-all shadow-xl active:scale-95 group relative z-10"
               >
-                Download &amp; Continue <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </a>
+                Mastered &amp; Continue <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </button>
             ) : (
               <div className="w-full inline-flex items-center justify-center gap-3 bg-slate-100 text-slate-400 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] border border-slate-200 relative z-10 cursor-not-allowed">
                 Content Locked <Timer size={16} />

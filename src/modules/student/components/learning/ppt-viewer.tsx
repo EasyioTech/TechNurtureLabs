@@ -194,15 +194,7 @@ export function PPTViewer({
                             <RefreshCw size={14} /> Retry Conversion
                         </button>
                     )}
-                    {url && (
-                        <a
-                            href={url}
-                            download
-                            className="inline-flex items-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-slate-700 transition-all shadow-xl font-outfit"
-                        >
-                            <Download size={14} /> Download File
-                        </a>
-                    )}
+
                 </div>
             </div>
         );
@@ -213,7 +205,10 @@ export function PPTViewer({
     const currentSlide = slides[pageNumber - 1] ?? slides[0];
 
     return (
-        <div className={cn('w-full flex flex-col bg-white', className)}>
+        <div 
+            className={cn('w-full flex flex-col bg-white', className)}
+            onContextMenu={(e) => e.preventDefault()}
+        >
             {/* Slide image */}
             <div className="w-full flex justify-center py-6 sm:py-10 px-4">
                 <div className="w-full max-w-4xl">
@@ -373,6 +368,7 @@ function SlideImage({ url, index }: { url: string; index: number }) {
                     onLoad={() => setLoaded(true)}
                     onError={() => { setLoaded(true); setErrored(true); }}
                     draggable={false}
+                    onContextMenu={(e) => e.preventDefault()}
                 />
             )}
         </div>
