@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
             for (const folder of folders) {
                 const files = await listFiles(folder);
                 for (const file of files) {
-                    if (!file.Key) continue;
+                    if (!file.Key || !file.Size || file.Size === 0) continue;
                     totalCount++;
 
                     // Check if exists
@@ -73,17 +73,23 @@ export async function POST(req: NextRequest) {
                         if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico'].includes(extension)) assetType = 'image';
                         else if (['mp4', 'mov', 'webm'].includes(extension)) assetType = 'video';
 
+                        // CRITICAL: Calculate file_url for R2 (usually proxied through /api/media/r2-proxy/[key])
+                        // Adjust prefix as per your actual proxy route
+                        const fileUrl = `/api/media/r2/${file.Key}`;
+
                         await db.insert(mediaAssets).values({
                             id: uuidv4(),
                             original_name: filename,
                             file_name: filename,
+                            file_url: fileUrl,
+                            file_path: file.Key,
                             mime_type: assetType === 'image' ? `image/${extension === 'jpg' ? 'jpeg' : extension}` : 
                                       assetType === 'video' ? `video/${extension}` : 'application/octet-stream',
                             file_size: file.Size || 0,
                             asset_type: assetType,
                             storage_type: 'r2',
-                            file_path: file.Key,
                             folder: folder,
+                            processing_status: 'completed',
                             created_at: file.LastModified || new Date(),
                         });
                         addedCount++;
