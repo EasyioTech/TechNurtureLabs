@@ -49,11 +49,11 @@ interface CourseBuilderTabProps {
     showCourseDialog: boolean;
     setShowCourseDialog: (v: boolean) => void;
     editingCourse: Partial<Course> | null;
-    setEditingCourse: (c: Partial<Course> | null) => void;
+    setEditingCourse: React.Dispatch<React.SetStateAction<Partial<Course> | null>>;
     showLessonDialog: boolean;
     setShowLessonDialog: (v: boolean) => void;
     editingLesson: Partial<Lesson> | null;
-    setEditingLesson: (l: Partial<Lesson> | null) => void;
+    setEditingLesson: React.Dispatch<React.SetStateAction<Partial<Lesson> | null>>;
     classes: SchoolClass[];
     courseClassMappings: CourseClassMapping[];
 }

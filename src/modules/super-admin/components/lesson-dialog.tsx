@@ -41,7 +41,7 @@ interface LessonDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     editingLesson: Partial<Lesson> | null;
-    setEditingLesson: (lesson: Partial<Lesson> | null) => void;
+    setEditingLesson: React.Dispatch<React.SetStateAction<Partial<Lesson> | null>>;
     onSave: () => void;
 }
 
@@ -56,7 +56,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         [editingLesson?.content_items, editingLesson?.content_url, editingLesson?.content_type]
     );
 
-    const [isXpCustomized, setIsXpCustomized] = React.useState(false);
+    const [isAutoXp, setIsAutoXp] = React.useState(true);
     const [showBlockPicker, setShowBlockPicker] = React.useState(false);
     const [activeUploadItemId, setActiveUploadItemId] = React.useState<string | null>(null);
     const [uploadFile, setUploadFile] = React.useState<File | null>(null);
@@ -78,12 +78,20 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
             initialDataRef.current = JSON.stringify(editingLesson);
             setIsDirty(false);
 
-            // Recalculate auto XP on open if not customized
+            // If lesson has XP field, and it matches auto XP calculation, stick to auto mode
+            // Otherwise, if it was already explicitly set to 0 or something else, maybe keep manual?
+            // For now, let's assume if it's a new lesson (no ID) it's Auto.
+            // If editing, check if it's "customized".
             const parsedItems = parseContentItems(editingLesson);
             const mode = getLessonMode(editingLesson?.content_type);
             const autoXp = autoCalcXp(parsedItems, mode);
-            if (autoXp > 0 && !isXpCustomized) {
-                setEditingLesson({ ...editingLesson, xp_reward: autoXp });
+            
+            if (!editingLesson.id) {
+                setIsAutoXp(true);
+            } else {
+                // If existing XP matches auto calc, or if it's 0, default to Auto
+                const matches = editingLesson.xp_reward === autoXp;
+                setIsAutoXp(matches);
             }
         }
     }, [open, editingLesson?.id]);
@@ -107,19 +115,21 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     }, [uploadId, isUploading, open]);
 
     const syncItems = React.useCallback((items: ContentItem[]) => {
-        if (!editingLesson) return;
         const firstType = items[0]?.type || 'video';
         const dbType: Lesson['content_type'] = firstType === 'image' ? 'pdf' : (firstType as Lesson['content_type']);
         const autoXp = autoCalcXp(items, 'content');
         
-        setEditingLesson({
-            ...editingLesson,
-            content_type: dbType,
-            content_url: items[0]?.url || '',
-            content_items: items.length > 0 ? JSON.stringify(items) : null,
-            ...(!isXpCustomized && { xp_reward: autoXp }),
+        setEditingLesson(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                content_type: dbType,
+                content_url: items[0]?.url || '',
+                content_items: items.length > 0 ? JSON.stringify(items) : null,
+                ...(isAutoXp && { xp_reward: autoXp }),
+            };
         });
-    }, [editingLesson, setEditingLesson, isXpCustomized]);
+    }, [setEditingLesson, isAutoXp]);
 
 
     const addBlock = (type: ContentItem['type']) => syncItems([...contentItems, { id: genId(), type, url: '' }]);
@@ -260,7 +270,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                     <Input 
                                         placeholder="Lesson title..." 
                                         value={editingLesson?.title || ''} 
-                                        onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })} 
+                                        onChange={(e) => setEditingLesson(prev => prev ? ({ ...prev, title: e.target.value }) : prev)} 
                                         className={cn(
                                             `rounded-xl h-11 border-2 font-semibold transition-all`,
                                             showValidation && !editingLesson?.title?.trim() ? 'border-rose-500/50 bg-rose-500/5 ring-rose-500/20' : `${isDark ? 'bg-white/[0.06] border-white/8 text-white' : 'bg-slate-50 border-slate-200'}`
@@ -270,22 +280,62 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
 
                                 <div className="space-y-1.5">
                                     <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Description</Label>
-                                    <Textarea placeholder="What will they learn?" value={editingLesson?.description || ''} onChange={(e) => setEditingLesson({ ...editingLesson, description: e.target.value })} className={`rounded-xl min-h-[120px] lg:min-h-[160px] border-2 font-medium resize-none ${isDark ? 'bg-white/[0.06] border-white/8 text-white' : 'bg-slate-50 border-slate-200'}`} />
+                                    <Textarea 
+                                        placeholder="What will they learn?" 
+                                        value={editingLesson?.description || ''} 
+                                        onChange={(e) => setEditingLesson(prev => prev ? ({ ...prev, description: e.target.value }) : prev)} 
+                                        className={`rounded-xl min-h-[120px] lg:min-h-[160px] border-2 font-medium resize-none ${isDark ? 'bg-white/[0.06] border-white/8 text-white' : 'bg-slate-50 border-slate-200'}`} 
+                                    />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
-                                        <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>XP Reward</Label>
+                                    <div className="space-y-1.5 pt-1">
+                                        <div className="flex items-center justify-between">
+                                            <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>XP Reward</Label>
+                                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/5">
+                                                <span className={`text-[8px] font-bold uppercase tracking-tighter ${isAutoXp ? accent.text : t.textMuted(isDark)}`}>AUTO</span>
+                                                <Switch 
+                                                    checked={isAutoXp} 
+                                                    onCheckedChange={(val) => {
+                                                        setIsAutoXp(val);
+                                                        if (val) {
+                                                            const autoXp = autoCalcXp(contentItems, lessonMode);
+                                                            setEditingLesson(prev => prev ? ({ ...prev, xp_reward: autoXp }) : prev);
+                                                        }
+                                                    }}
+                                                    className="scale-75 origin-right"
+                                                />
+                                            </div>
+                                        </div>
                                         <div className="relative">
-                                            <Zap size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-violet-500" />
-                                            <Input type="number" value={editingLesson?.xp_reward || 0} onChange={(e) => { setIsXpCustomized(true); setEditingLesson({ ...editingLesson, xp_reward: Number(e.target.value) }); }} className={`h-10 rounded-xl pl-8 border-2 font-bold ${isDark ? 'bg-white/[0.06] border-white/8 text-violet-400' : 'bg-slate-50 border-slate-200 text-violet-600'}`} />
+                                            <Zap size={13} className={cn("absolute left-3 top-1/2 -translate-y-1/2", isAutoXp ? accent.text : "text-violet-500")} />
+                                            <Input 
+                                                type="number" 
+                                                value={editingLesson?.xp_reward || 0} 
+                                                disabled={isAutoXp}
+                                                onChange={(e) => { 
+                                                    setEditingLesson(prev => prev ? ({ ...prev, xp_reward: Number(e.target.value) }) : prev); 
+                                                }} 
+                                                className={cn(
+                                                    "h-10 rounded-xl pl-8 border-2 font-black transition-all",
+                                                    isAutoXp 
+                                                        ? (isDark ? "bg-white/[0.02] border-white/5 opacity-50 cursor-not-allowed text-violet-400" : "bg-slate-100 border-slate-200 opacity-50 text-violet-600")
+                                                        : (isDark ? "bg-white/[0.06] border-white/8 text-violet-400" : "bg-slate-50 border-slate-200 text-violet-600")
+                                                )} 
+                                            />
                                         </div>
                                     </div>
+
                                     <div className="space-y-1.5">
                                         <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Duration (min)</Label>
                                         <div className="relative">
                                             <Clock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-sky-500" />
-                                            <Input type="number" value={editingLesson?.duration || editingLesson?.duration_minutes || 0} onChange={(e) => setEditingLesson({ ...editingLesson, duration: Number(e.target.value), duration_minutes: Number(e.target.value) })} className={`h-10 rounded-xl pl-8 border-2 font-bold ${isDark ? 'bg-white/[0.06] border-white/8 text-sky-400' : 'bg-slate-50 border-slate-200 text-sky-600'}`} />
+                                            <Input 
+                                                type="number" 
+                                                value={editingLesson?.duration || editingLesson?.duration_minutes || 0} 
+                                                onChange={(e) => setEditingLesson(prev => prev ? ({ ...prev, duration: Number(e.target.value), duration_minutes: Number(e.target.value) }) : prev)} 
+                                                className={`h-10 rounded-xl pl-8 border-2 font-bold ${isDark ? 'bg-white/[0.06] border-white/8 text-sky-400' : 'bg-slate-50 border-slate-200 text-sky-600'}`} 
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -295,7 +345,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                         <Label className={`text-sm font-black ${(editingLesson?.is_published ?? true) && isDark ? accent.text : t.textPrimary(isDark)}`}>Publish Lesson</Label>
                                         <p className={`text-[10px] font-medium ${t.textMuted(isDark)}`}>Visible to students.</p>
                                     </div>
-                                    <Switch checked={editingLesson?.is_published ?? true} onCheckedChange={(val) => setEditingLesson({ ...editingLesson, is_published: val })} />
+                                    <Switch checked={editingLesson?.is_published ?? true} onCheckedChange={(val) => setEditingLesson(prev => prev ? ({ ...prev, is_published: val }) : prev)} />
                                 </div>
                             </div>
 
@@ -304,7 +354,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                 <LessonModeSelector
                                     contentType={editingLesson?.content_type}
                                     onModeChange={(mode) => mode === 'quiz'
-                                        ? setEditingLesson({ ...editingLesson, content_type: 'quiz', content_url: '', content_items: null, ...(!isXpCustomized && { xp_reward: 25 }) } as any)
+                                        ? setEditingLesson(prev => prev ? ({ ...prev, content_type: 'quiz', content_url: '', content_items: null, ...(isAutoXp && { xp_reward: 25 }) } as any) : prev)
                                         : syncItems(contentItems)
                                     }
                                 />
@@ -399,7 +449,12 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                 <EntityLibraryPicker
                     open={importOpen} onOpenChange={setImportOpen} entityType="quiz"
                     onSelect={async (sourceId) => {
-                        try { await cloneQuizAction(sourceId, editingLesson.id!, editingLesson.course_id!); toast.success('Quiz imported!'); onSave(); }
+                        if (!editingLesson?.id) return;
+                        try { 
+                            await cloneQuizAction(sourceId, editingLesson.id, editingLesson.course_id || ''); 
+                            toast.success('Quiz imported!'); 
+                            onSave(); 
+                        }
                         catch (err: any) { toast.error(`Import failed: ${err.message}`); }
                         setImportOpen(false);
                     }}
