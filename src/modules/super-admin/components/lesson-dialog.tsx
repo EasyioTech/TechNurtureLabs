@@ -111,7 +111,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         const dbType: Lesson['content_type'] = firstType === 'image' ? 'pdf' : (firstType as Lesson['content_type']);
         const autoXp = autoCalcXp(items, 'content');
         
-        setEditingLesson(prev => {
+        setEditingLesson((prev: Partial<Lesson> | null) => {
             if (!prev) return null;
             return {
                 ...prev,
