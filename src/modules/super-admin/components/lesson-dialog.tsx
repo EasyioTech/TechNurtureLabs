@@ -56,7 +56,6 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         [editingLesson?.content_items, editingLesson?.content_url, editingLesson?.content_type]
     );
 
-    const [isAutoXp, setIsAutoXp] = React.useState(true);
     const [showBlockPicker, setShowBlockPicker] = React.useState(false);
     const [activeUploadItemId, setActiveUploadItemId] = React.useState<string | null>(null);
     const [uploadFile, setUploadFile] = React.useState<File | null>(null);
@@ -78,20 +77,13 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
             initialDataRef.current = JSON.stringify(editingLesson);
             setIsDirty(false);
 
-            // If lesson has XP field, and it matches auto XP calculation, stick to auto mode
-            // Otherwise, if it was already explicitly set to 0 or something else, maybe keep manual?
-            // For now, let's assume if it's a new lesson (no ID) it's Auto.
-            // If editing, check if it's "customized".
+            // Always sync initial XP on open based on content
             const parsedItems = parseContentItems(editingLesson);
             const mode = getLessonMode(editingLesson?.content_type);
             const autoXp = autoCalcXp(parsedItems, mode);
             
-            if (!editingLesson.id) {
-                setIsAutoXp(true);
-            } else {
-                // If existing XP matches auto calc, or if it's 0, default to Auto
-                const matches = editingLesson.xp_reward === autoXp;
-                setIsAutoXp(matches);
+            if (editingLesson.xp_reward !== autoXp) {
+                setEditingLesson(prev => prev ? ({ ...prev, xp_reward: autoXp }) : prev);
             }
         }
     }, [open, editingLesson?.id]);
@@ -126,10 +118,10 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                 content_type: dbType,
                 content_url: items[0]?.url || '',
                 content_items: items.length > 0 ? JSON.stringify(items) : null,
-                ...(isAutoXp && { xp_reward: autoXp }),
+                xp_reward: autoXp,
             };
         });
-    }, [setEditingLesson, isAutoXp]);
+    }, [setEditingLesson]);
 
 
     const addBlock = (type: ContentItem['type']) => syncItems([...contentItems, { id: genId(), type, url: '' }]);
@@ -288,54 +280,58 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1.5 pt-1">
-                                        <div className="flex items-center justify-between">
-                                            <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>XP Reward</Label>
-                                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/5">
-                                                <span className={`text-[8px] font-bold uppercase tracking-tighter ${isAutoXp ? accent.text : t.textMuted(isDark)}`}>AUTO</span>
-                                                <Switch 
-                                                    checked={isAutoXp} 
-                                                    onCheckedChange={(val) => {
-                                                        setIsAutoXp(val);
-                                                        if (val) {
-                                                            const autoXp = autoCalcXp(contentItems, lessonMode);
-                                                            setEditingLesson(prev => prev ? ({ ...prev, xp_reward: autoXp }) : prev);
-                                                        }
-                                                    }}
-                                                    className="scale-75 origin-right"
-                                                />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Lesson Value</Label>
+                                        <div className={cn(
+                                            "relative h-[52px] rounded-2xl p-0.5 overflow-hidden transition-all duration-500 group",
+                                            isDark ? "bg-white/5 border border-white/10" : "bg-slate-100 border border-slate-200"
+                                        )}>
+                                            {/* Animated Gradient Background */}
+                                            <div className={cn(
+                                                "absolute inset-0 opacity-[0.08] group-hover:opacity-[0.15] transition-opacity duration-700 bg-gradient-to-br from-violet-600 via-indigo-500 to-sky-400 animate-gradient-slow"
+                                            )} />
+                                            
+                                            <div className="relative h-full flex items-center px-4 gap-3 bg-transparent">
+                                                <div className={cn(
+                                                    "w-8 h-8 rounded-xl flex items-center justify-center shadow-lg transition-all duration-500 group-hover:scale-110 group-hover:rotate-12",
+                                                    isDark ? "bg-violet-500/20 text-violet-400 border border-violet-500/30" : "bg-violet-600 text-white shadow-violet-200"
+                                                )}>
+                                                    <Zap size={16} fill={isDark ? "none" : "currentColor"} className="animate-pulse-subtle" />
+                                                </div>
+                                                <div className="flex flex-col justify-center">
+                                                    <div className="flex items-baseline gap-1">
+                                                        <span className={cn("text-lg font-[1000] tracking-tight leading-none", isDark ? "text-violet-400" : "text-violet-700")}>
+                                                            {editingLesson?.xp_reward || 0}
+                                                        </span>
+                                                        <span className={cn("text-[9px] font-black uppercase tracking-tighter opacity-60", isDark ? "text-violet-300" : "text-violet-600")}>XP REWARD</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                        <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                                                        <span className={`text-[8px] font-bold uppercase tracking-widest opacity-40`}>Auto-Generated</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="relative">
-                                            <Zap size={13} className={cn("absolute left-3 top-1/2 -translate-y-1/2", isAutoXp ? accent.text : "text-violet-500")} />
-                                            <Input 
-                                                type="number" 
-                                                value={editingLesson?.xp_reward || 0} 
-                                                disabled={isAutoXp}
-                                                onChange={(e) => { 
-                                                    setEditingLesson(prev => prev ? ({ ...prev, xp_reward: Number(e.target.value) }) : prev); 
-                                                }} 
-                                                className={cn(
-                                                    "h-10 rounded-xl pl-8 border-2 font-black transition-all",
-                                                    isAutoXp 
-                                                        ? (isDark ? "bg-white/[0.02] border-white/5 opacity-50 cursor-not-allowed text-violet-400" : "bg-slate-100 border-slate-200 opacity-50 text-violet-600")
-                                                        : (isDark ? "bg-white/[0.06] border-white/8 text-violet-400" : "bg-slate-50 border-slate-200 text-violet-600")
-                                                )} 
-                                            />
                                         </div>
                                     </div>
 
-                                    <div className="space-y-1.5">
-                                        <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Duration (min)</Label>
-                                        <div className="relative">
-                                            <Clock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-sky-500" />
+                                    <div className="space-y-2">
+                                        <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Completion Time</Label>
+                                        <div className="relative group">
+                                            <Clock size={16} className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-300", isDark ? "text-sky-500/50 group-hover:text-sky-400" : "text-sky-400 group-focus-within:text-sky-600")} />
                                             <Input 
                                                 type="number" 
+                                                placeholder="0"
                                                 value={editingLesson?.duration || editingLesson?.duration_minutes || 0} 
                                                 onChange={(e) => setEditingLesson(prev => prev ? ({ ...prev, duration: Number(e.target.value), duration_minutes: Number(e.target.value) }) : prev)} 
-                                                className={`h-10 rounded-xl pl-8 border-2 font-bold ${isDark ? 'bg-white/[0.06] border-white/8 text-sky-400' : 'bg-slate-50 border-slate-200 text-sky-600'}`} 
+                                                className={cn(
+                                                    "h-[52px] rounded-2xl pl-11 border-2 font-[900] text-lg transition-all duration-300",
+                                                    isDark 
+                                                        ? "bg-white/[0.04] border-white/5 text-sky-400 placeholder:text-white/10 focus:bg-white/[0.08] focus:border-sky-500/30" 
+                                                        : "bg-slate-50 border-slate-200 text-sky-600 placeholder:text-slate-300 focus:bg-white focus:border-sky-400 focus:shadow-xl focus:shadow-sky-500/5"
+                                                )} 
                                             />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase tracking-widest opacity-20 group-focus-within:opacity-40 transition-opacity">MINUTES</span>
                                         </div>
                                     </div>
                                 </div>
@@ -354,7 +350,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                 <LessonModeSelector
                                     contentType={editingLesson?.content_type}
                                     onModeChange={(mode) => mode === 'quiz'
-                                        ? setEditingLesson(prev => prev ? ({ ...prev, content_type: 'quiz', content_url: '', content_items: null, ...(isAutoXp && { xp_reward: 25 }) } as any) : prev)
+                                        ? setEditingLesson(prev => prev ? ({ ...prev, content_type: 'quiz', content_url: '', content_items: null, xp_reward: 25 } as any) : prev)
                                         : syncItems(contentItems)
                                     }
                                 />
