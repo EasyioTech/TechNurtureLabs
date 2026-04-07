@@ -197,6 +197,8 @@ function ContentBlock({
           lessonId={lessonId}
           initialProgress={isFirst ? userProgress as any : null}
           onComplete={(isVideo) => onComplete(isVideo)}
+          autoPlay={true}
+          muted={false}
           className="lg:rounded-2xl overflow-hidden lg:shadow-xl lg:border lg:border-slate-200/70"
         />
       </div>
@@ -214,6 +216,7 @@ function ContentBlock({
           lessonId={lessonId}
           initialProgress={isFirst ? userProgress as any : null}
           onComplete={(isVideo) => onComplete(isVideo)}
+          autoplay={true}
           className="lg:rounded-2xl overflow-hidden lg:shadow-xl lg:border lg:border-slate-200/70"
         />
       </div>
@@ -442,6 +445,8 @@ export function LessonContent({
             lessonId={lesson.id}
             initialProgress={lesson.user_progress as any}
             onComplete={(isVideo) => onComplete(isVideo)}
+            autoPlay={true}
+            muted={false}
             className="lg:rounded-2xl overflow-hidden lg:shadow-xl lg:border lg:border-slate-200/70"
           />
         </div>
@@ -457,6 +462,7 @@ export function LessonContent({
             lessonId={lesson.id}
             initialProgress={lesson.user_progress as any}
             onComplete={(isVideo) => onComplete(isVideo)}
+            autoplay={true}
             className="lg:rounded-2xl overflow-hidden lg:shadow-xl lg:border lg:border-slate-200/70"
           />
         </div>

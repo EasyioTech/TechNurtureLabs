@@ -39,7 +39,7 @@ export function CloudflareStreamPlayer({
     initialProgress,
     onComplete,
     className,
-    autoPlay = false,
+    autoPlay = true,
     muted = false,
 }: CloudflareStreamPlayerProps) {
     const iframeRef = useRef<HTMLIFrameElement>(null);

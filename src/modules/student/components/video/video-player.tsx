@@ -32,9 +32,10 @@ interface VideoPlayerProps {
   } | null;
   onComplete?: (isVideo?: boolean) => void;
   className?: string;
+  autoplay?: boolean;
 }
 
-export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete, className }: VideoPlayerProps) {
+export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete, className, autoplay = true }: VideoPlayerProps) {
   const player = useRef<any>(null);
   const [isReady, setIsReady] = useState(false);
 
@@ -178,8 +179,8 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
           src={src}
           onEnded={handleEnded}
           onCanPlay={onCanPlay}
-          onSeeked={handleSeeked}
           onTimeUpdate={handleTimeUpdate}
+          autoplay={autoplay}
           muted={false}
           className="w-full h-full group"
           playsInline
