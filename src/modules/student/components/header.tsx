@@ -8,9 +8,11 @@ import {
     Flame, Star, Crown, LogOut, Search, Menu, X,
     Settings, GraduationCap, LayoutDashboard,
     Zap, Sparkles, Compass, User, BookOpen, Target, Trophy,
-    Beaker, Microscope
+    Beaker, Microscope, Download
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
+import { usePWAInstall } from '@/hooks/use-pwa-install';
+import { toast } from 'sonner';
 
 import { GlobalLogo } from '@/modules/shared/components/global-logo';
 
@@ -30,6 +32,7 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
     const [searchOpen, setSearchOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const pwa = usePWAInstall();
 
     const initials = profile?.full_name
         ?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'ST';
@@ -220,6 +223,29 @@ export function StudentHeader({ profile, school, stats, searchQuery, setSearchQu
                                 </div>
                                 <NavItem icon={User} label="My Profile" href="/student/profile" active={pathname === '/student/profile'} close={() => setMobileOpen(false)} />
                                 <NavItem icon={Settings} label="Settings" href="/student/settings" active={pathname === '/student/settings'} close={() => setMobileOpen(false)} />
+                                
+                                {/* PWA Install Option */}
+                                {!pwa.isInstalled && (
+                                    <motion.button
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        onClick={async () => {
+                                            if (pwa.platform === 'ios') {
+                                                toast.info('To install: Tap Share button then "Add to Home Screen"');
+                                            } else {
+                                                const outcome = await pwa.prompt();
+                                                if (outcome === 'accepted') {
+                                                    toast.success('App installed! You can now open it from your home screen.');
+                                                    setMobileOpen(false);
+                                                }
+                                            }
+                                        }}
+                                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-indigo-600 bg-indigo-50/50 hover:bg-indigo-50 border border-dashed border-indigo-200 transition-all duration-200 mt-2"
+                                    >
+                                        <Download size={18} className="text-indigo-500" />
+                                        Install as Application
+                                    </motion.button>
+                                )}
                             </nav>
 
                             {/* Sign out */}
