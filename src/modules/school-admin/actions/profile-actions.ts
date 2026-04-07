@@ -93,6 +93,7 @@ export async function updateSchoolProfile(schoolId: string, data: any) {
         await createAuditLog({
             userId: session.userId,
             userType: session.userType,
+            schoolId: schoolId,
             action: 'update',
             entityType: 'school',
             entityId: schoolId,

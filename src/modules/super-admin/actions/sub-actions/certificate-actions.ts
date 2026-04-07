@@ -8,6 +8,7 @@ import {
 import { eq, and, isNull, desc, count, sql, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireSuperAdmin } from '@/lib/admin-guard';
+import { createAuditLog } from '@/lib/audit';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -138,6 +139,19 @@ export async function saveCertificateConfig(data: unknown) {
             })
             .where(eq(certificates.id, parsed.id))
             .returning();
+        
+        const session = await (await import('@/lib/auth')).verifySession();
+        if (session) {
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                action: 'update',
+                entityType: 'setting',
+                entityId: updated.id,
+                newValues: updated,
+                metadata: { field: 'certificate_config', courseId: updated.course_id }
+            });
+        }
         return updated;
     } else {
         // Check if one already exists for the course
@@ -157,6 +171,19 @@ export async function saveCertificateConfig(data: unknown) {
                 })
                 .where(eq(certificates.id, existing.id))
                 .returning();
+            
+            const session = await (await import('@/lib/auth')).verifySession();
+            if (session) {
+                await createAuditLog({
+                    userId: session.userId,
+                    userType: session.userType,
+                    action: 'update',
+                    entityType: 'setting',
+                    entityId: updated.id,
+                    newValues: updated,
+                    metadata: { field: 'certificate_config', courseId: updated.course_id }
+                });
+            }
             return updated;
         }
         const [created] = await db
@@ -169,6 +196,19 @@ export async function saveCertificateConfig(data: unknown) {
                 is_active: parsed.is_active,
             } as any)
             .returning();
+
+        const session = await (await import('@/lib/auth')).verifySession();
+        if (session) {
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                action: 'create',
+                entityType: 'setting',
+                entityId: created.id,
+                newValues: created,
+                metadata: { field: 'certificate_config', courseId: created.course_id }
+            });
+        }
         return created;
     }
 }
@@ -176,8 +216,20 @@ export async function saveCertificateConfig(data: unknown) {
 // ─── Delete certificate config ────────────────────────────────────────────────
 
 export async function deleteCertificateConfig(id: string) {
-    await requireSuperAdmin();
+    const session = await (await import('@/lib/auth')).verifySession();
+    const cert = await db.query.certificates.findFirst({ where: eq(certificates.id, id) });
     await db.delete(certificates).where(eq(certificates.id, id));
+    if (session && cert) {
+        await createAuditLog({
+            userId: session.userId,
+            userType: session.userType,
+            action: 'delete',
+            entityType: 'setting',
+            entityId: id,
+            oldValues: cert,
+            metadata: { field: 'certificate_config', courseId: cert.course_id }
+        });
+    }
 }
 
 // ─── Fetch students who completed a specific course ───────────────────────────
@@ -296,12 +348,45 @@ export async function issueCertificate(payload: {
         .onConflictDoNothing()
         .returning();
 
+    const session = await (await import('@/lib/auth')).verifySession();
+    if (session && row) {
+        await createAuditLog({
+            userId: session.userId,
+            userType: session.userType,
+            action: 'create',
+            entityType: 'user',
+            entityId: payload.user_id,
+            metadata: { 
+                action: 'issue_certificate', 
+                certificateId: payload.certificate_id,
+                enrollmentId: payload.enrollment_id,
+                verificationCode: row.verification_code
+            }
+        });
+    }
+
     return row;
 }
 
 // ─── Revoke a certificate ─────────────────────────────────────────────────────
 
 export async function revokeCertificate(userCertId: string) {
-    await requireSuperAdmin();
+    const session = await (await import('@/lib/auth')).verifySession();
+    const userCert = await db.query.userCertificates.findFirst({ where: eq(userCertificates.id, userCertId) });
     await db.delete(userCertificates).where(eq(userCertificates.id, userCertId));
+    
+    if (session && userCert) {
+        await createAuditLog({
+            userId: session.userId,
+            userType: session.userType,
+            action: 'delete',
+            entityType: 'user',
+            entityId: userCert.user_id,
+            metadata: { 
+                action: 'revoke_certificate', 
+                userCertId: userCertId,
+                certificateId: userCert.certificate_id
+            }
+        });
+    }
 }

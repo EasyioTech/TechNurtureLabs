@@ -4,12 +4,13 @@ import { db } from '@/lib/db';
 import { 
     paymentPlans, promoCodes, classes, 
     platformSettings, platformMetricsDaily, 
-    auditLogs, schoolSubscriptions, students, enrollments, schools, paymentTransactions, lessonProgress
+    schoolSubscriptions, students, enrollments, schools, paymentTransactions, lessonProgress
 } from '@/db/schema';
 import { eq, asc, desc, count, sql, and, lte, inArray, not, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireSuperAdmin } from '@/lib/admin-guard';
 import { redis } from '@/lib/redis';
+import { createAuditLog } from '@/lib/audit';
 import { format, subDays, endOfDay } from 'date-fns';
 
 const CACHE_KEY = 'cache:admin:meta';
@@ -135,15 +136,18 @@ export async function savePromoCode(promoData: unknown) {
             updated_at: new Date()
         }).where(eq(promoCodes.id, data.id)).returning();
         
-        await db.insert(auditLogs).values({
-            user_id: session.userId,
-            user_type: session.userType,
-            action: 'update',
-            entity_type: 'promoCode',
-            entity_id: updated.id,
-            old_values: existing,
-            new_values: updated
-        } as any);
+        if (session) {
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                action: 'update',
+                entityType: 'promoCode',
+                entityId: updated.id,
+                oldValues: existing,
+                newValues: updated,
+                metadata: {}
+            });
+        }
 
         await redis.del(CACHE_KEY);
         return [updated];
@@ -158,14 +162,17 @@ export async function savePromoCode(promoData: unknown) {
             is_active: data.is_active ?? true,
         }).returning();
 
-        await db.insert(auditLogs).values({
-            user_id: session.userId,
-            user_type: session.userType,
-            action: 'create',
-            entity_type: 'promoCode',
-            entity_id: inserted.id,
-            new_values: inserted
-        } as any);
+        if (session) {
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                action: 'create',
+                entityType: 'promoCode',
+                entityId: inserted.id,
+                newValues: inserted,
+                metadata: {}
+            });
+        }
 
         await redis.del(CACHE_KEY);
         return [inserted];
@@ -190,14 +197,15 @@ export async function deletePromoCode(id: string) {
     }).where(eq(promoCodes.id, id));
 
     if (session && promo) {
-        await db.insert(auditLogs).values({
-            user_id: session.userId,
-            user_type: session.userType,
+        await createAuditLog({
+            userId: session.userId,
+            userType: session.userType,
             action: 'delete',
-            entity_type: 'promoCode',
-            entity_id: id,
-            old_values: promo
-        } as any);
+            entityType: 'promoCode',
+            entityId: id,
+            oldValues: promo,
+            metadata: {}
+        });
         await redis.del(CACHE_KEY);
     }
 }
@@ -246,28 +254,32 @@ export async function savePlanAdmin(planData: unknown) {
             const oldPlan = await tx.query.paymentPlans.findFirst({ where: eq(paymentPlans.id, data.id) });
             const [updated] = await tx.update(paymentPlans).set(planPayload).where(eq(paymentPlans.id, data.id)).returning();
             
-            await tx.insert(auditLogs).values({
-                user_id: session.userId,
-                user_type: session.userType,
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
                 action: 'update',
-                entity_type: 'paymentPlan',
-                entity_id: updated.id,
-                old_values: oldPlan,
-                new_values: updated
-            } as any);
+                entityType: 'paymentPlan',
+                entityId: updated.id,
+                oldValues: oldPlan,
+                newValues: updated,
+                metadata: {},
+                tx
+            });
             
             result = updated;
         } else {
             const [created] = await tx.insert(paymentPlans).values(planPayload as any).returning();
             
-            await tx.insert(auditLogs).values({
-                user_id: session.userId,
-                user_type: session.userType,
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
                 action: 'create',
-                entity_type: 'paymentPlan',
-                entity_id: created.id,
-                new_values: created
-            } as any);
+                entityType: 'paymentPlan',
+                entityId: created.id,
+                newValues: created,
+                metadata: {},
+                tx
+            });
             
             result = created;
         }
@@ -295,14 +307,15 @@ export async function deletePlanAdmin(id: string) {
     }).where(eq(paymentPlans.id, id));
 
     if (session && plan) {
-        await db.insert(auditLogs).values({
-            user_id: session.userId,
-            user_type: session.userType,
+        await createAuditLog({
+            userId: session.userId,
+            userType: session.userType,
             action: 'delete',
-            entity_type: 'paymentPlan',
-            entity_id: id,
-            old_values: plan
-        } as any);
+            entityType: 'paymentPlan',
+            entityId: id,
+            oldValues: plan,
+            metadata: {}
+        });
         await redis.del(CACHE_KEY);
     }
 }
@@ -478,6 +491,19 @@ export async function createClass(name: string, level: number) {
             level: level,
         }).returning();
 
+        const session = await (await import('@/lib/auth')).verifySession();
+        if (session) {
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                action: 'create',
+                entityType: 'class',
+                entityId: newClass.id,
+                newValues: newClass,
+                metadata: {}
+            });
+        }
+
         return { success: true, data: newClass };
     } catch (error: any) {
         return { success: false, error: error.message };
@@ -491,10 +517,24 @@ export async function deleteClass(classId: string) {
             .where(sql`${schools.id} IN (SELECT school_id FROM school_class_mapping WHERE class_id = ${classId})`);
         if (mappings.length > 0) return { success: false, error: `Class in use by ${mappings.length} schools` };
 
+        const oldClass = await db.query.classes.findFirst({ where: eq(classes.id, classId) });
         // Soft delete the class
         await db.update(classes).set({ 
             deleted_at: new Date() 
         }).where(eq(classes.id, classId));
+        
+        const session = await (await import('@/lib/auth')).verifySession();
+        if (session && oldClass) {
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                action: 'delete',
+                entityType: 'class',
+                entityId: classId,
+                oldValues: oldClass,
+                metadata: {}
+            });
+        }
         
         await redis.del(CACHE_KEY);
         return { success: true };

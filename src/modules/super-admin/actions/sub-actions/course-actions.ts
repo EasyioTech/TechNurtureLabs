@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { 
     courses, lessons, enrollments, 
-    courseClassMapping, auditLogs 
+    courseClassMapping 
 } from '@/db/schema';
 import { eq, count, sql, and, desc, asc, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
@@ -128,8 +128,8 @@ export async function saveCourseAdmin(courseData: unknown) {
                 action: 'update',
                 entityType: 'course',
                 entityId: courseId,
-                oldValues: oldCourse,
                 newValues: data,
+                metadata: {},
                 tx
             });
         } else {
@@ -155,6 +155,7 @@ export async function saveCourseAdmin(courseData: unknown) {
                 entityType: 'course',
                 entityId: courseId,
                 newValues: created,
+                metadata: {},
                 tx
             });
         }
@@ -201,7 +202,8 @@ export async function deleteCourseAdmin(id: string) {
             action: 'delete',
             entityType: 'course',
             entityId: id,
-            oldValues: course
+            oldValues: course,
+            metadata: {}
         });
         await redis.del(CACHE_KEY);
     }

@@ -3,12 +3,13 @@
 import { db } from '@/lib/db';
 import {
     schools, schoolSubscriptions, paymentPlans,
-    students, schoolClassMapping, auditLogs,
+    students, schoolClassMapping,
     schoolAdmins, promoCodes, paymentTransactions
 } from '@/db/schema';
 import { eq, count, sql, and, not, desc, asc, inArray, ilike, isNull } from 'drizzle-orm';
 import { requireSuperAdmin } from '@/lib/admin-guard';
 import { redis } from '@/lib/redis';
+import { createAuditLog } from '@/lib/audit';
 import { z } from 'zod';
 import { addMonths } from 'date-fns';
 import bcrypt from 'bcryptjs';
@@ -96,15 +97,17 @@ export async function toggleSchoolStatus(schoolId: string, isActive: boolean) {
         .returning();
 
     if (session && oldSchool) {
-        await db.insert(auditLogs).values({
-            user_id: session.userId,
-            user_type: session.userType,
+        await createAuditLog({
+            userId: session.userId,
+            userType: session.userType,
+            schoolId: schoolId,
             action: 'update',
-            entity_type: 'school',
-            entity_id: schoolId,
-            old_values: oldSchool,
-            new_values: updated
-        } as any);
+            entityType: 'school',
+            entityId: schoolId,
+            oldValues: oldSchool,
+            newValues: updated,
+            metadata: { field: 'is_active', value: isActive }
+        });
         await redis.del(CACHE_KEY);
     }
     return updated;
@@ -226,14 +229,17 @@ export async function saveSchoolAdmin(schoolData: any) {
             }
         }
 
-        await tx.insert(auditLogs).values({
-            user_id: session.userId,
-            user_type: session.userType,
+        await createAuditLog({
+            userId: session.userId,
+            userType: session.userType,
+            schoolId: schoolId,
             action: validatedData.id ? 'update' : 'create',
-            entity_type: 'school',
-            entity_id: schoolId,
-            new_values: validatedData,
-        } as any);
+            entityType: 'school',
+            entityId: schoolId,
+            newValues: validatedData,
+            metadata: {},
+            tx
+        });
 
         await redis.del(CACHE_KEY);
         return { success: true, id: schoolId };
@@ -309,6 +315,24 @@ export async function assignPlanToSchool(schoolId: string, planId: string, billi
             // Increment global revenue counter in Redis for immediate feedback 
             // (stats fallback to DB if cache cold, but this keeps heatmaps/vitals warm)
             analyticsService.incrementMetric('total_revenue', Number(plan.price)).catch(() => {});
+        }
+
+        if (session) {
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                schoolId: schoolId,
+                action: 'update',
+                entityType: 'school',
+                entityId: schoolId,
+                metadata: { 
+                    action: 'assign_plan', 
+                    planId, 
+                    billingMonths: safeBillingMonths, 
+                    promoCodeId 
+                },
+                tx
+            });
         }
 
         await redis.del(CACHE_KEY);

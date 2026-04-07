@@ -2,11 +2,12 @@
 
 import { db } from '@/lib/db';
 import { 
-    lessons, auditLogs, courses
+    lessons, courses
 } from '@/db/schema';
 import { eq, asc, desc, sql, count, ilike, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireSuperAdmin } from '@/lib/admin-guard';
+import { createAuditLog } from '@/lib/audit';
 import { updateCourseTotals } from './course-actions';
 import { invalidateCourseCaches } from '@/lib/services/cache-service';
 
@@ -63,6 +64,18 @@ export async function saveLessonAdmin(lessonData: unknown) {
             updated_at: new Date()
         }).where(eq(lessons.id, data.id)).returning();
 
+        if (session) {
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                action: 'update',
+                entityType: 'lesson',
+                entityId: updated.id,
+                newValues: updated,
+                metadata: { courseId: updated.course_id }
+            });
+        }
+
         await updateCourseTotals(updated.course_id);
         await invalidateCourseCaches(updated.course_id);
         return { ...updated, sequence_index: updated.sequence_order, duration: updated.duration_minutes };
@@ -84,6 +97,18 @@ export async function saveLessonAdmin(lessonData: unknown) {
             is_published: data.is_published ?? true,
         } as any).returning();
 
+        if (session) {
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                action: 'create',
+                entityType: 'lesson',
+                entityId: created.id,
+                newValues: created,
+                metadata: { courseId: created.course_id }
+            });
+        }
+
         await updateCourseTotals(created.course_id);
         await invalidateCourseCaches(created.course_id);
         return { ...created, sequence_index: created.sequence_order, duration: created.duration_minutes };
@@ -98,14 +123,15 @@ export async function deleteLessonAdmin(id: string) {
         await updateCourseTotals(lesson.course_id);
         await invalidateCourseCaches(lesson.course_id);
         if (session) {
-            await db.insert(auditLogs).values({
-                user_id: session.userId,
-                user_type: session.userType,
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
                 action: 'delete',
-                entity_type: 'lesson',
-                entity_id: id,
-                old_values: lesson
-            } as any);
+                entityType: 'lesson',
+                entityId: id,
+                oldValues: lesson,
+                metadata: { courseId: lesson.course_id }
+            });
         }
     }
 }

@@ -5,6 +5,8 @@ import { academicSessions, schoolClassMapping, classes, studentAcademicRecords }
 import { eq, and } from 'drizzle-orm';
 import { verifySchoolAdminContext } from './shared';
 import { invalidateSchoolCache } from './profile-actions';
+import { createAuditLog } from '@/lib/audit';
+import { verifySession } from '@/lib/auth';
 
 export async function fetchSchoolClasses(schoolId: string) {
     const mappings = await db.query.schoolClassMapping.findMany({
@@ -46,6 +48,20 @@ export async function updateSchoolClasses(schoolId: string, classIds: string[]) 
                         } as any);
                 }
             }
+        }
+
+        const session = await verifySession();
+        if (session) {
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                schoolId: schoolId,
+                action: 'update',
+                entityType: 'setting',
+                entityId: schoolId,
+                metadata: { action: 'update_school_classes', classIds },
+                tx
+            });
         }
 
         await invalidateSchoolCache(schoolId);
@@ -121,6 +137,23 @@ export async function promoteStudentsAction(schoolId: string, newSessionName: st
 
     if (newRecords.length > 0) {
         await db.insert(studentAcademicRecords).values(newRecords as any);
+    }
+
+    const session = await verifySession();
+    if (session) {
+        await createAuditLog({
+            userId: session.userId,
+            userType: session.userType,
+            schoolId: schoolId,
+            action: 'update',
+            entityType: 'user',
+            entityId: schoolId,
+            metadata: { 
+                action: 'promote_students', 
+                newSessionName, 
+                studentCount: records.length 
+            }
+        });
     }
 
     await invalidateSchoolCache(schoolId);

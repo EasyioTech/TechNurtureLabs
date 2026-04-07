@@ -173,6 +173,7 @@ export async function verifyStudentAction(userId: string, isVerified: boolean) {
         await createAuditLog({
             userId: session.userId,
             userType: session.userType,
+            schoolId: student.school_id!,
             action: 'verify',
             entityType: 'student',
             entityId: userId,
@@ -192,6 +193,7 @@ export async function verifyStudentAction(userId: string, isVerified: boolean) {
         await createAuditLog({
             userId: session.userId,
             userType: session.userType,
+            schoolId: student.school_id!,
             action: 'reject',
             entityType: 'student',
             entityId: userId,
@@ -220,6 +222,7 @@ export async function toggleStudentStatus(userId: string, isActive: boolean) {
         await createAuditLog({
             userId: session.userId,
             userType: session.userType,
+            schoolId: oldStudent.school_id!,
             action: 'update',
             entityType: 'student',
             entityId: userId,
@@ -262,10 +265,12 @@ export async function deleteStudent(userId: string) {
             await createAuditLog({
                 userId: session.userId,
                 userType: session.userType,
+                schoolId: student.school_id!,
                 action: 'delete',
                 entityType: 'student',
                 entityId: userId,
                 oldValues: student,
+                metadata: {},
                 tx
             });
         }

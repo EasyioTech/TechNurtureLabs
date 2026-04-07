@@ -60,6 +60,7 @@ export async function resolvePinRequest(requestId: string, action: 'approved' | 
             await createAuditLog({
                 userId: session.userId,
                 userType: session.userType,
+                schoolId: request.school_id,
                 action: 'approved',
                 entityType: 'student',
                 entityId: request.student_id,
@@ -79,6 +80,7 @@ export async function resolvePinRequest(requestId: string, action: 'approved' | 
         await createAuditLog({
             userId: session.userId,
             userType: session.userType,
+            schoolId: request.school_id,
             action: 'reject',
             entityType: 'student',
             entityId: request.student_id,
@@ -115,6 +117,7 @@ export async function updateSchoolAdminPassword(schoolId: string, adminId: strin
         await createAuditLog({
             userId: session.userId,
             userType: session.userType,
+            schoolId: schoolId,
             action: 'update',
             entityType: 'user',
             entityId: adminId,

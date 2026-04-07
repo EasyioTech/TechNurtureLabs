@@ -7,6 +7,7 @@ import {
 import { eq, asc, desc, sql, count, ilike, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireSuperAdmin } from '@/lib/admin-guard';
+import { createAuditLog } from '@/lib/audit';
 
 export async function fetchQuizAdmin(lessonId: string) {
     const session = await requireSuperAdmin();
@@ -98,6 +99,18 @@ export async function saveQuizAdmin(quizData: unknown) {
                     is_published: data.is_published ?? true,
                     updated_at: new Date()
                 }).where(eq(quizzes.id, quizId));
+
+                if (session) {
+                    await createAuditLog({
+                        userId: session.userId,
+                        userType: session.userType,
+                        action: 'update',
+                        entityType: 'quiz',
+                        entityId: quizId,
+                        metadata: { courseId: data.course_id },
+                        tx
+                    });
+                }
             } else {
                 const [created] = await tx.insert(quizzes).values({
                     lesson_id: data.lesson_id || null,  // ✓ Changed from ?? to || for consistency
@@ -111,6 +124,18 @@ export async function saveQuizAdmin(quizData: unknown) {
                     is_published: data.is_published ?? true,
                 } as any).returning();
                 quizId = created.id;
+
+                if (session) {
+                    await createAuditLog({
+                        userId: session.userId,
+                        userType: session.userType,
+                        action: 'create',
+                        entityType: 'quiz',
+                        entityId: quizId,
+                        metadata: { courseId: data.course_id },
+                        tx
+                    });
+                }
             }
         } catch (dbError) {
             // Provide clear DB error messages
@@ -194,7 +219,19 @@ export async function saveQuizAdmin(quizData: unknown) {
 
 export async function deleteQuizAdmin(quizId: string) {
     const session = await requireSuperAdmin();
+    const quiz = await db.query.quizzes.findFirst({ where: eq(quizzes.id, quizId) });
     await db.delete(quizzes).where(eq(quizzes.id, quizId));
+    if (session && quiz) {
+        await createAuditLog({
+            userId: session.userId,
+            userType: session.userType,
+            action: 'delete',
+            entityType: 'quiz',
+            entityId: quizId,
+            oldValues: quiz,
+            metadata: { courseId: quiz.course_id }
+        });
+    }
 }
 
 export async function cloneQuizAction(quizId: string, targetLessonId: string | null | undefined, targetCourseId?: string | null) {
