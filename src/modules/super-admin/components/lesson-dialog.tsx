@@ -215,7 +215,8 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         <>
             <Dialog open={open} onOpenChange={(val) => !val ? handleClose() : onOpenChange(true)}>
                 <DialogContent
-                    className={cn('w-[95vw] max-w-[580px] rounded-2xl sm:rounded-3xl border-0 shadow-2xl p-0 overflow-hidden outline-none', isDark ? 'bg-[#0f1219]' : 'bg-white')}
+                    showCloseButton={false}
+                    className={cn('w-[95vw] lg:max-w-[1020px] max-w-[580px] rounded-2xl sm:rounded-3xl border-0 shadow-2xl p-0 overflow-hidden outline-none transition-all duration-300', isDark ? 'bg-[#0f1219]' : 'bg-white')}
                     onInteractOutside={(e) => isDirty && e.preventDefault()}
                     onEscapeKeyDown={(e) => isDirty && e.preventDefault()}
                 >
@@ -225,76 +226,122 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                             <DialogTitle className={`text-base font-[900] tracking-tight ${t.textPrimary(isDark)}`}>{isEditing ? 'Update Lesson' : 'Create Lesson'}</DialogTitle>
                             <DialogDescription className={`text-[10px] font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>{isEditing ? 'Edit details & content' : 'Add new lesson'}</DialogDescription>
                         </div>
-                        <button onClick={() => handleClose()} className={`w-8 h-8 rounded-xl flex items-center justify-center ${isDark ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`}><X size={16} /></button>
+                        <button 
+                            onClick={() => handleClose()} 
+                            className={cn(
+                                "w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+                                isDark 
+                                    ? "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white" 
+                                    : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+                            )}
+                        >
+                            <X size={16} />
+                        </button>
                     </div>
 
-                    <div className="overflow-y-auto px-6 py-5 space-y-5" style={{ maxHeight: 'calc(90vh - 130px)' }}>
-                        <div className="space-y-1.5">
-                            <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Lesson Title *</Label>
-                            <Input placeholder="Lesson title..." value={editingLesson?.title || ''} onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })} className={`rounded-xl h-11 border-2 font-semibold ${isDark ? 'bg-white/[0.06] border-white/8 text-white' : 'bg-slate-50 border-slate-200'}`} />
-                        </div>
+                    <div className="overflow-y-auto px-6 py-5 lg:py-6" style={{ maxHeight: 'calc(90vh - 130px)' }}>
+                        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-8">
+                            {/* Left Column: Basic Details & Settings */}
+                            <div className="lg:col-span-5 space-y-5">
+                                <div className="space-y-1.5">
+                                    <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Lesson Title *</Label>
+                                    <Input placeholder="Lesson title..." value={editingLesson?.title || ''} onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })} className={`rounded-xl h-11 border-2 font-semibold ${isDark ? 'bg-white/[0.06] border-white/8 text-white' : 'bg-slate-50 border-slate-200'}`} />
+                                </div>
 
-                        <LessonModeSelector
-                            contentType={editingLesson?.content_type}
-                            onModeChange={(mode) => mode === 'quiz'
-                                ? setEditingLesson({ ...editingLesson, content_type: 'quiz', content_url: '', content_items: null, ...(!isXpCustomized && { xp_reward: 25 }) } as any)
-                                : syncItems(contentItems)
-                            }
-                        />
+                                <div className="space-y-1.5">
+                                    <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Description</Label>
+                                    <Textarea placeholder="What will they learn?" value={editingLesson?.description || ''} onChange={(e) => setEditingLesson({ ...editingLesson, description: e.target.value })} className={`rounded-xl min-h-[100px] border-2 font-medium resize-none ${isDark ? 'bg-white/[0.06] border-white/8 text-white' : 'bg-slate-50 border-slate-200'}`} />
+                                </div>
 
-                        {lessonMode === 'content' && (
-                            <ContentBlockList
-                                contentItems={contentItems} isDark={isDark} isUploading={isUploading} isStreamUploading={isStreamUploading}
-                                activeUploadItemId={activeUploadItemId} progress={progress} streamProgress={streamProgress}
-                                uploadFile={uploadFile} uploadError={uploadError} showBlockPicker={showBlockPicker}
-                                setShowBlockPicker={setShowBlockPicker} onAddBlock={addBlock} onRemoveBlock={removeBlock}
-                                onUpdateBlock={applyBlockUpdate} onImageSync={applyImageUrls} onFileUpload={handleFileUpload}
-                                onLibraryRequest={(id) => { setLibraryTargetId(id); setLibraryOpen(true); }}
-                                abort={abort} resetUpload={resetUpload} upload={upload}
-                            />
-                        )}
-
-                        {lessonMode === 'quiz' && (
-                            <div className={cn('p-6 rounded-2xl border-2 border-dashed flex flex-col items-center text-center gap-3', isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50')}>
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}><HelpCircle className="w-6 h-6" /></div>
-                                <p className={`text-sm font-black uppercase ${t.textPrimary(isDark)}`}>Quiz Builder</p>
-                                {editingLesson?.id ? (
-                                    <div className="flex gap-2">
-                                        <Button onClick={() => router.push(`/admin/quiz/${editingLesson.id}`)} className={`rounded-full px-5 h-9 text-[10px] font-black ${accent.bg} text-slate-900`}><MonitorPlay size={12} className="mr-2" /> Open Builder</Button>
-                                        <Button variant="outline" onClick={() => setImportOpen(true)} className="rounded-full h-9 px-3 text-[10px] font-bold border-2"><FileDown size={11} className="mr-1" /> Import</Button>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>XP Reward</Label>
+                                        <div className="relative">
+                                            <Zap size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-violet-500" />
+                                            <Input type="number" value={editingLesson?.xp_reward || 0} onChange={(e) => { setIsXpCustomized(true); setEditingLesson({ ...editingLesson, xp_reward: Number(e.target.value) }); }} className={`h-10 rounded-xl pl-8 border-2 font-bold ${isDark ? 'bg-white/[0.06] border-white/8 text-violet-400' : 'bg-slate-50 border-slate-200 text-violet-600'}`} />
+                                        </div>
                                     </div>
-                                ) : <p className={`text-[10px] font-medium ${t.textMuted(isDark)}`}>Save lesson first to build quiz.</p>}
-                            </div>
-                        )}
+                                    <div className="space-y-1.5">
+                                        <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Duration (min)</Label>
+                                        <div className="relative">
+                                            <Clock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-sky-500" />
+                                            <Input type="number" value={editingLesson?.duration || editingLesson?.duration_minutes || 0} onChange={(e) => setEditingLesson({ ...editingLesson, duration: Number(e.target.value), duration_minutes: Number(e.target.value) })} className={`h-10 rounded-xl pl-8 border-2 font-bold ${isDark ? 'bg-white/[0.06] border-white/8 text-sky-400' : 'bg-slate-50 border-slate-200 text-sky-600'}`} />
+                                        </div>
+                                    </div>
+                                </div>
 
-                        <div className="space-y-1.5">
-                            <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Description</Label>
-                            <Textarea placeholder="What will they learn?" value={editingLesson?.description || ''} onChange={(e) => setEditingLesson({ ...editingLesson, description: e.target.value })} className={`rounded-xl min-h-[80px] border-2 font-medium resize-none ${isDark ? 'bg-white/[0.06] border-white/8 text-white' : 'bg-slate-50 border-slate-200'}`} />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>XP Reward</Label>
-                                <div className="relative">
-                                    <Zap size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-violet-500" />
-                                    <Input type="number" value={editingLesson?.xp_reward || 0} onChange={(e) => { setIsXpCustomized(true); setEditingLesson({ ...editingLesson, xp_reward: Number(e.target.value) }); }} className={`h-10 rounded-xl pl-8 border-2 font-bold ${isDark ? 'bg-white/[0.06] border-white/8 text-violet-400' : 'bg-slate-50 border-slate-200 text-violet-600'}`} />
+                                <div className={cn('flex items-center justify-between p-4 rounded-2xl border-2 transition-colors', (editingLesson?.is_published ?? true) ? (isDark ? `border-${accent.name}-400/30 bg-${accent.name}-400/5` : 'border-indigo-200 bg-indigo-50/50') : t.border(isDark))}>
+                                    <div>
+                                        <Label className={`text-sm font-black ${(editingLesson?.is_published ?? true) && isDark ? accent.text : t.textPrimary(isDark)}`}>Publish Lesson</Label>
+                                        <p className={`text-[10px] font-medium ${t.textMuted(isDark)}`}>Visible to students.</p>
+                                    </div>
+                                    <Switch checked={editingLesson?.is_published ?? true} onCheckedChange={(val) => setEditingLesson({ ...editingLesson, is_published: val })} />
                                 </div>
                             </div>
-                            <div className="space-y-1.5">
-                                <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Duration (min)</Label>
-                                <div className="relative">
-                                    <Clock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-sky-500" />
-                                    <Input type="number" value={editingLesson?.duration || editingLesson?.duration_minutes || 0} onChange={(e) => setEditingLesson({ ...editingLesson, duration: Number(e.target.value), duration_minutes: Number(e.target.value) })} className={`h-10 rounded-xl pl-8 border-2 font-bold ${isDark ? 'bg-white/[0.06] border-white/8 text-sky-400' : 'bg-slate-50 border-slate-200 text-sky-600'}`} />
+
+                            {/* Right Column: Interaction & Content Builder */}
+                            <div className="lg:col-span-7 space-y-5">
+                                <LessonModeSelector
+                                    contentType={editingLesson?.content_type}
+                                    onModeChange={(mode) => mode === 'quiz'
+                                        ? setEditingLesson({ ...editingLesson, content_type: 'quiz', content_url: '', content_items: null, ...(!isXpCustomized && { xp_reward: 25 }) } as any)
+                                        : syncItems(contentItems)
+                                    }
+                                />
+
+                                <div className={cn(
+                                    "p-1 rounded-2xl border-2 min-h-[400px]",
+                                    isDark ? "border-white/5 bg-black/20" : "border-slate-100 bg-slate-50/30"
+                                )}>
+                                    {lessonMode === 'content' && (
+                                        <div className="p-4">
+                                            <ContentBlockList
+                                                contentItems={contentItems} isDark={isDark} isUploading={isUploading} isStreamUploading={isStreamUploading}
+                                                activeUploadItemId={activeUploadItemId} progress={progress} streamProgress={streamProgress}
+                                                uploadFile={uploadFile} uploadError={uploadError} showBlockPicker={showBlockPicker}
+                                                setShowBlockPicker={setShowBlockPicker} onAddBlock={addBlock} onRemoveBlock={removeBlock}
+                                                onUpdateBlock={applyBlockUpdate} onImageSync={applyImageUrls} onFileUpload={handleFileUpload}
+                                                onLibraryRequest={(id) => { setLibraryTargetId(id); setLibraryOpen(true); }}
+                                                abort={abort} resetUpload={resetUpload} upload={upload}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {lessonMode === 'quiz' && (
+                                        <div className="flex flex-col items-center justify-center min-h-[390px] text-center p-8">
+                                            <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-4 ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
+                                                <HelpCircle className="w-8 h-8" />
+                                            </div>
+                                            <h3 className={`text-lg font-black tracking-tight mb-2 ${t.textPrimary(isDark)}`}>Quiz Builder</h3>
+                                            <p className={`text-xs font-medium max-w-[280px] mb-8 ${t.textMuted(isDark)}`}>
+                                                Transform this lesson into an interactive assessment for your students.
+                                            </p>
+                                            
+                                            {editingLesson?.id ? (
+                                                <div className="flex flex-col sm:flex-row gap-3 w-full max-w-[320px]">
+                                                    <Button 
+                                                        onClick={() => router.push(`/admin/quiz/${editingLesson.id}`)} 
+                                                        className={`flex-1 rounded-xl px-5 h-12 font-black shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] ${accent.bg} text-slate-900`}
+                                                    >
+                                                        <MonitorPlay size={16} className="mr-2" /> Open Builder
+                                                    </Button>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        onClick={() => setImportOpen(true)} 
+                                                        className={`flex-1 rounded-xl h-12 px-3 font-bold border-2 ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-slate-200'}`}
+                                                    >
+                                                        <FileDown size={16} className="mr-2" /> Import
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className={`px-5 py-3 rounded-xl border-2 border-dashed ${isDark ? 'border-white/10 text-slate-500' : 'border-slate-200 text-slate-400'}`}>
+                                                    <p className="text-[11px] font-bold uppercase tracking-widest">Save lesson first to build quiz</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        </div>
-
-                        <div className={cn('flex items-center justify-between p-4 rounded-2xl border-2', (editingLesson?.is_published ?? true) ? (isDark ? `border-${accent.name}-400/30 bg-${accent.name}-400/5` : 'border-indigo-200 bg-indigo-50/50') : t.border(isDark))}>
-                            <div>
-                                <Label className={`text-sm font-black ${(editingLesson?.is_published ?? true) && isDark ? accent.text : t.textPrimary(isDark)}`}>Publish Lesson</Label>
-                                <p className={`text-[10px] font-medium ${t.textMuted(isDark)}`}>Visible to students.</p>
-                            </div>
-                            <Switch checked={editingLesson?.is_published ?? true} onCheckedChange={(val) => setEditingLesson({ ...editingLesson, is_published: val })} />
                         </div>
                     </div>
 

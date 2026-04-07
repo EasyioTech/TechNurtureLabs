@@ -361,6 +361,7 @@ export function MediaLibraryPicker({
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
                 side="right"
+                showCloseButton={false}
                 className={`w-full sm:max-w-[560px] p-0 flex flex-col border-0 ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}
             >
                 <LibraryHeader
@@ -373,6 +374,7 @@ export function MediaLibraryPicker({
                     filterType={filterType}
                     onSync={handleSync}
                     isSyncing={isSyncing}
+                    onClose={() => onOpenChange(false)}
                 />
                 
                 <input

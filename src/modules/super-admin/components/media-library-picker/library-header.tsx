@@ -3,7 +3,7 @@ import { SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-    ImageIcon, Upload, Loader2, Search, FileText, Film, Cloud
+    ImageIcon, Upload, Loader2, Search, FileText, Film, Cloud, X
 } from 'lucide-react';
 import { useAdminTheme, t } from '../../theme-context';
 import { AssetType } from './types';
@@ -25,13 +25,14 @@ interface LibraryHeaderProps {
     filterType?: 'video' | 'image' | 'document';
     onSync?: () => void;
     isSyncing?: boolean;
+    onClose?: () => void;
 }
 
 export function LibraryHeader({
     isUploading, onUploadClick,
     search, onSearchChange,
     activeTab, onTabChange, filterType,
-    onSync, isSyncing
+    onSync, isSyncing, onClose
 }: LibraryHeaderProps) {
     const { isDark, accent } = useAdminTheme();
 
@@ -85,6 +86,19 @@ export function LibraryHeader({
                         {isUploading ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Upload size={14} className="mr-1.5" />}
                         Upload
                     </Button>
+
+                    {onClose && (
+                        <button
+                            onClick={onClose}
+                            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                                isDark 
+                                ? 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white' 
+                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900'
+                            }`}
+                        >
+                            <X size={16} />
+                        </button>
+                    )}
                 </div>
             </SheetTitle>
 
