@@ -190,7 +190,21 @@ export function VideoPlayer({ src, poster, lessonId, initialProgress, onComplete
             {poster && <Poster src={poster} className="object-cover w-full h-full" />}
           </MediaProvider>
 
-          <DefaultVideoLayout icons={defaultLayoutIcons} />
+          <DefaultVideoLayout 
+            icons={defaultLayoutIcons} 
+            noGestures={true}
+          />
+          <style dangerouslySetInnerHTML={{ __html: `
+            /* Robustly hide the center play button and any glassmorphism-style gestures/overlays */
+            .vds-play-button.vds-center { display: none !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+            .vds-gesture[data-video-play] { display: none !important; }
+            .vds-gesture[data-video-pause] { display: none !important; }
+            .vds-layout[data-size="sm"] .vds-play-button.vds-center { display: none !important; }
+            /* Remove the dark overlay that often appears when paused */
+            .vds-media[data-paused] .vds-media-ui { background: transparent !important; }
+            /* Force the player to show controls on tap without the big icon */
+            .vds-media:not([data-playing]) .vds-play-button.vds-center { display: none !important; }
+          `}} />
         </MediaPlayer>
 
       </div>

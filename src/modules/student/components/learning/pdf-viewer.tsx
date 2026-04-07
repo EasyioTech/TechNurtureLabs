@@ -261,11 +261,11 @@ export function PDFViewer({
                 </div>
             </div>
 
-            {/* Content */}
+            {/* Content area: use flex-1 to fill the space below the sticky/fixed header */}
             <div 
                 className={cn(
-                    "flex-1 bg-slate-200/50 relative",
-                    isFullscreen ? "h-[calc(100vh-76px)]" : "h-[75vh] min-h-[500px]"
+                    "flex-1 bg-slate-200/50 relative overflow-hidden",
+                    !isFullscreen && "h-[75vh] min-h-[500px]"
                 )}
                 onContextMenu={(e) => e.preventDefault()}
             >
@@ -291,6 +291,7 @@ export function PDFViewer({
                         onLoadError={onDocumentLoadError}
                         loading={<div className="absolute inset-0 flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600 opacity-20" size={48} /></div>}
                         options={fileOptions}
+                        className="h-full w-full"
                     >
                         {numPages > 0 && (
                             <div 
