@@ -34,12 +34,12 @@ export function CourseDialog({
 
     const { isDark, accent } = useAdminTheme();
     const isEditing = !!editingCourse?.id;
-
-    // Local state for selected classes to avoid immediate parent updates
     const [selectedClassIds, setSelectedClassIds] = React.useState<string[]>([]);
+    const [showValidation, setShowValidation] = React.useState(false);
 
     React.useEffect(() => {
         if (open) {
+            setShowValidation(false);
             if (editingCourse?.id) {
                 const currentMappings = courseClassMappings
                     .filter(m => m.course_id === editingCourse.id)
@@ -57,6 +57,38 @@ export function CourseDialog({
             : [...selectedClassIds, classId];
         setSelectedClassIds(newIds);
         setEditingCourse({ ...editingCourse, classIds: newIds, all_classes: newIds.length === classes.length });
+    };
+
+    const handleAttemptSave = () => {
+        const isTitleEmpty = !editingCourse?.title?.trim();
+        const areClassesEmpty = selectedClassIds.length === 0;
+
+        if (isTitleEmpty || areClassesEmpty) {
+            setShowValidation(true);
+            if (isTitleEmpty) toast.error('Course Title is required');
+            else if (areClassesEmpty) toast.error('Select at least one class for this course');
+            return;
+        }
+
+        if (editingCourse?.thumbnail) {
+            const url = editingCourse.thumbnail;
+            let isInvalid = false;
+            try {
+                const parsed = new URL(url);
+                const ext = parsed.pathname.split('.').pop()?.toLowerCase();
+                const isImageFile = ['png', 'jpg', 'jpeg', 'svg', 'webp', 'gif'].includes(ext || '');
+                const isR2 = url.includes('r2.cloudflarestorage.com') || url.startsWith('/api/media/');
+                if (!isImageFile && !isR2) isInvalid = true;
+            } catch (e) {
+                if (!url.startsWith('/') && !url.startsWith('./')) isInvalid = true;
+            }
+            if (isInvalid) {
+                toast.error('Invalid image URL format. Please fix the thumbnail URL before saving.');
+                return;
+            }
+        }
+
+        onSave();
     };
 
 
@@ -108,13 +140,20 @@ export function CourseDialog({
                             {/* Left Column: Basic Information */}
                             <div className="lg:col-span-6 space-y-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="title" className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Course Title *</Label>
+                                    <Label htmlFor="title" className={`text-xs font-black uppercase tracking-wider ${showValidation && !editingCourse?.title?.trim() ? 'text-rose-500 animate-pulse' : t.textSecondary(isDark)}`}>
+                                        Course Title * {showValidation && !editingCourse?.title?.trim() && <span className="text-[10px] normal-case ml-2">(Required)</span>}
+                                    </Label>
                                     <Input
                                         id="title"
                                         placeholder="e.g. Advanced Robotics Operations"
                                         value={editingCourse?.title || ''}
                                         onChange={(e) => setEditingCourse({ ...editingCourse, title: e.target.value })}
-                                        className={`rounded-xl h-11 px-4 shadow-inner text-sm font-bold border-2 transition-all focus-visible:ring-4 focus-visible:ring-${accent.name}-400/20 ${isDark ? 'bg-white/[0.08] text-white border-white/5' : 'bg-slate-50 border-slate-200'}`}
+                                        className={cn(
+                                            `rounded-xl h-11 px-4 shadow-inner text-sm font-bold border-2 transition-all focus-visible:ring-4`,
+                                            showValidation && !editingCourse?.title?.trim() 
+                                                ? 'border-rose-500/50 bg-rose-500/5 ring-rose-500/20' 
+                                                : `focus-visible:ring-${accent.name}-400/20 ${isDark ? 'bg-white/[0.08] text-white border-white/5' : 'bg-slate-50 border-slate-200'}`
+                                        )}
                                     />
                                 </div>
 
@@ -148,7 +187,9 @@ export function CourseDialog({
                                 {/* Class Assignment Section */}
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between px-1">
-                                        <Label className={`text-xs font-black uppercase tracking-wider ${t.textSecondary(isDark)}`}>Target Classes</Label>
+                                        <Label className={`text-xs font-black uppercase tracking-wider ${showValidation && selectedClassIds.length === 0 ? 'text-rose-500 animate-pulse' : t.textSecondary(isDark)}`}>
+                                            Target Classes * {showValidation && selectedClassIds.length === 0 && <span className="text-[10px] normal-case ml-2">(Selection Required)</span>}
+                                        </Label>
                                         <Button
                                             type="button"
                                             variant="ghost"
@@ -164,7 +205,12 @@ export function CourseDialog({
                                             {selectedClassIds.length === classes.length ? 'DESELECT ALL' : 'SELECT ALL'}
                                         </Button>
                                     </div>
-                                    <div className={`p-4 rounded-2xl border-2 flex flex-wrap gap-2 min-h-[140px] align-content-start ${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-slate-50'}`}>
+                                    <div className={cn(
+                                        `p-4 rounded-2xl border-2 flex flex-wrap gap-2 min-h-[140px] max-h-[280px] overflow-y-auto align-content-start transition-all custom-scrollbar`,
+                                        showValidation && selectedClassIds.length === 0 
+                                            ? 'border-rose-500/40 bg-rose-500/5' 
+                                            : `${t.border(isDark)} ${isDark ? 'bg-white/[0.02]' : 'bg-slate-50'}`
+                                    )}>
                                         {classes.length > 0 ? classes.map(cls => {
                                             const isSelected = selectedClassIds.includes(cls.id);
                                             return (
@@ -218,27 +264,8 @@ export function CourseDialog({
                             className={`rounded-full h-11 px-6 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white hover:text-white' : 'hover:bg-slate-200 text-slate-700'}`}>
                             Cancel
                         </Button>
-                        <Button type="button" onClick={() => {
-                            if (editingCourse?.thumbnail) {
-                                const url = editingCourse.thumbnail;
-                                let isInvalid = false;
-                                try {
-                                    const parsed = new URL(url);
-                                    const ext = parsed.pathname.split('.').pop()?.toLowerCase();
-                                    const isImageFile = ['png', 'jpg', 'jpeg', 'svg', 'webp', 'gif'].includes(ext || '');
-                                    const isR2 = url.includes('r2.cloudflarestorage.com') || url.startsWith('/api/media/');
-                                    if (!isImageFile && !isR2) isInvalid = true;
-                                } catch (e) {
-                                    if (!url.startsWith('/') && !url.startsWith('./')) isInvalid = true;
-                                }
-                                if (isInvalid) {
-                                    toast.error('Invalid image URL format. Please fix the thumbnail URL before saving.');
-                                    return;
-                                }
-                            }
-                            onSave();
-                        }} disabled={!editingCourse?.title?.trim()}
-                            className={`rounded-full h-11 px-8 font-black text-sm shadow-xl transition-all border-0 ${!editingCourse?.title?.trim() ? 'opacity-50 cursor-not-allowed' : ''} ${t.btnPrimary(isDark, accent)}`}
+                        <Button type="button" onClick={handleAttemptSave}
+                            className={`rounded-full h-11 px-8 font-black text-sm shadow-xl transition-all border-0 ${t.btnPrimary(isDark, accent)}`}
                             style={t.glowStyle(isDark, accent)}>
                             {isEditing ? 'Save Changes' : 'Create Course'}
                         </Button>

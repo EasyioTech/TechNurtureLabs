@@ -70,8 +70,11 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     const [isDirty, setIsDirty] = React.useState(false);
     const initialDataRef = React.useRef<string>('');
 
+    const [showValidation, setShowValidation] = React.useState(false);
+
     React.useEffect(() => {
         if (open && editingLesson) {
+            setShowValidation(false);
             initialDataRef.current = JSON.stringify(editingLesson);
             setIsDirty(false);
 
@@ -107,14 +110,18 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         const firstType = items[0]?.type || 'video';
         const dbType: Lesson['content_type'] = firstType === 'image' ? 'pdf' : (firstType as Lesson['content_type']);
         const autoXp = autoCalcXp(items, 'content');
-        setEditingLesson({
-            ...editingLesson,
-            content_type: dbType,
-            content_url: items[0]?.url || '',
-            content_items: items.length > 0 ? JSON.stringify(items) : null,
-            ...(!isXpCustomized && { xp_reward: autoXp }),
+        
+        setEditingLesson(prev => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                content_type: dbType,
+                content_url: items[0]?.url || '',
+                content_items: items.length > 0 ? JSON.stringify(items) : null,
+                ...(!isXpCustomized && { xp_reward: autoXp }),
+            };
         });
-    }, [editingLesson, setEditingLesson, isXpCustomized]);
+    }, [setEditingLesson, isXpCustomized]);
 
 
     const addBlock = (type: ContentItem['type']) => syncItems([...contentItems, { id: genId(), type, url: '' }]);
@@ -197,7 +204,12 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     };
 
     const handleSave = () => {
-        if (!editingLesson?.title?.trim()) { toast.error('Lesson title is required'); return; }
+        const isTitleEmpty = !editingLesson?.title?.trim();
+        if (isTitleEmpty) {
+            setShowValidation(true);
+            toast.error('Lesson title is required');
+            return;
+        }
         if (lessonMode === 'content' && contentItems.length > 0) {
             const emptyBlocks = contentItems.filter(item => item.type === 'image' ? getImageUrls(item).every(u => !u.trim()) : !item.url.trim());
             if (emptyBlocks.length > 0) { toast.error('Missing content URL in one or more blocks'); return; }
@@ -239,18 +251,28 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                         </button>
                     </div>
 
-                    <div className="overflow-y-auto px-6 py-5 lg:py-6" style={{ maxHeight: 'calc(90vh - 130px)' }}>
-                        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-8">
-                            {/* Left Column: Basic Details & Settings */}
-                            <div className="lg:col-span-5 space-y-5">
+                    <div className="overflow-y-auto lg:overflow-hidden px-6 py-5 lg:py-6" style={{ maxHeight: 'calc(90vh - 130px)' }}>
+                        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-10">
+                            {/* Left Column: Basic Details & Settings - INDEPENDENT SCROLL ON DESKTOP */}
+                            <div className="lg:col-span-5 space-y-6 lg:overflow-y-auto lg:max-h-[calc(90vh-170px)] lg:pr-6 custom-scrollbar">
                                 <div className="space-y-1.5">
-                                    <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Lesson Title *</Label>
-                                    <Input placeholder="Lesson title..." value={editingLesson?.title || ''} onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })} className={`rounded-xl h-11 border-2 font-semibold ${isDark ? 'bg-white/[0.06] border-white/8 text-white' : 'bg-slate-50 border-slate-200'}`} />
+                                    <Label className={`text-[10px] font-black uppercase tracking-widest ${showValidation && !editingLesson?.title?.trim() ? 'text-rose-500 animate-pulse' : t.textSecondary(isDark)}`}>
+                                        Lesson Title * {showValidation && !editingLesson?.title?.trim() && <span className="text-[8px] normal-case ml-2">(Title required)</span>}
+                                    </Label>
+                                    <Input 
+                                        placeholder="Lesson title..." 
+                                        value={editingLesson?.title || ''} 
+                                        onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })} 
+                                        className={cn(
+                                            `rounded-xl h-11 border-2 font-semibold transition-all`,
+                                            showValidation && !editingLesson?.title?.trim() ? 'border-rose-500/50 bg-rose-500/5 ring-rose-500/20' : `${isDark ? 'bg-white/[0.06] border-white/8 text-white' : 'bg-slate-50 border-slate-200'}`
+                                        )} 
+                                    />
                                 </div>
 
                                 <div className="space-y-1.5">
                                     <Label className={`text-[10px] font-black uppercase tracking-widest ${t.textSecondary(isDark)}`}>Description</Label>
-                                    <Textarea placeholder="What will they learn?" value={editingLesson?.description || ''} onChange={(e) => setEditingLesson({ ...editingLesson, description: e.target.value })} className={`rounded-xl min-h-[100px] border-2 font-medium resize-none ${isDark ? 'bg-white/[0.06] border-white/8 text-white' : 'bg-slate-50 border-slate-200'}`} />
+                                    <Textarea placeholder="What will they learn?" value={editingLesson?.description || ''} onChange={(e) => setEditingLesson({ ...editingLesson, description: e.target.value })} className={`rounded-xl min-h-[120px] lg:min-h-[160px] border-2 font-medium resize-none ${isDark ? 'bg-white/[0.06] border-white/8 text-white' : 'bg-slate-50 border-slate-200'}`} />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
@@ -279,8 +301,8 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                 </div>
                             </div>
 
-                            {/* Right Column: Interaction & Content Builder */}
-                            <div className="lg:col-span-7 space-y-5">
+                            {/* Right Column: Interaction & Content Builder - INDEPENDENT SCROLL ON DESKTOP */}
+                            <div className="lg:col-span-7 space-y-5 lg:overflow-y-auto lg:max-h-[calc(90vh-170px)] lg:pr-2 custom-scrollbar">
                                 <LessonModeSelector
                                     contentType={editingLesson?.content_type}
                                     onModeChange={(mode) => mode === 'quiz'
@@ -290,7 +312,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                 />
 
                                 <div className={cn(
-                                    "p-1 rounded-2xl border-2 min-h-[400px]",
+                                    "p-1 rounded-2xl border-2 min-h-[450px]",
                                     isDark ? "border-white/5 bg-black/20" : "border-slate-100 bg-slate-50/30"
                                 )}>
                                     {lessonMode === 'content' && (
@@ -308,7 +330,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                     )}
 
                                     {lessonMode === 'quiz' && (
-                                        <div className="flex flex-col items-center justify-center min-h-[390px] text-center p-8">
+                                        <div className="flex flex-col items-center justify-center min-h-[440px] text-center p-8">
                                             <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-4 ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
                                                 <HelpCircle className="w-8 h-8" />
                                             </div>
@@ -341,6 +363,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                         </div>
                                     )}
                                 </div>
+                                <div className="h-4 lg:hidden" /> {/* Spacer for mobile */}
                             </div>
                         </div>
                     </div>
