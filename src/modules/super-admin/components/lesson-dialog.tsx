@@ -400,27 +400,47 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                 </DialogContent>
             </Dialog>
 
-            <MediaLibraryPicker
-                key={libraryTargetId}
-                open={libraryOpen} onOpenChange={setLibraryOpen}
-                filterType={libraryTargetId ? (() => {
-                    const block = contentItems.find(i => i.id === libraryTargetId?.split(':')[0]);
-                    return block?.type === 'pdf' ? 'document' : block?.type === 'ppt' ? 'document' : block?.type as 'video' | 'image' | 'document' | undefined;
-                })() : undefined}
-                onSelect={(url) => {
-                    if (libraryTargetId) {
-                        if (libraryTargetId.includes(':')) {
-                            const [blockId, imgIdx] = libraryTargetId.split(':');
-                            const block = contentItems.find(i => i.id === blockId);
-                            if (block) { const urls = [...getImageUrls(block)]; urls[parseInt(imgIdx)] = url; applyImageUrls(blockId, urls); }
-                        } else {
-                            const block = contentItems.find(i => i.id === libraryTargetId);
-                            if (block) applyBlockUpdate(libraryTargetId, 'url', url);
+            {/* Get current URL for highlight */}
+            {(() => {
+                let currentUrl: string | undefined;
+                if (libraryTargetId) {
+                    if (libraryTargetId.includes(':')) {
+                        const [blockId, imgIdx] = libraryTargetId.split(':');
+                        const block = contentItems.find(i => i.id === blockId);
+                        if (block) {
+                            const urls = getImageUrls(block);
+                            currentUrl = urls[parseInt(imgIdx)];
                         }
+                    } else {
+                        const block = contentItems.find(i => i.id === libraryTargetId);
+                        currentUrl = block?.url;
                     }
-                    setLibraryOpen(false);
-                }}
-            />
+                }
+                return (
+                    <MediaLibraryPicker
+                        key={libraryTargetId}
+                        open={libraryOpen} onOpenChange={setLibraryOpen}
+                        filterType={libraryTargetId ? (() => {
+                            const block = contentItems.find(i => i.id === libraryTargetId?.split(':')[0]);
+                            return block?.type === 'pdf' ? 'document' : block?.type === 'ppt' ? 'document' : block?.type as 'video' | 'image' | 'document' | undefined;
+                        })() : undefined}
+                        currentUrl={currentUrl}
+                        onSelect={(url) => {
+                            if (libraryTargetId) {
+                                if (libraryTargetId.includes(':')) {
+                                    const [blockId, imgIdx] = libraryTargetId.split(':');
+                                    const block = contentItems.find(i => i.id === blockId);
+                                    if (block) { const urls = [...getImageUrls(block)]; urls[parseInt(imgIdx)] = url; applyImageUrls(blockId, urls); }
+                                } else {
+                                    const block = contentItems.find(i => i.id === libraryTargetId);
+                                    if (block) applyBlockUpdate(libraryTargetId, 'url', url);
+                                }
+                            }
+                            setLibraryOpen(false);
+                        }}
+                    />
+                );
+            })()}
 
             {lessonMode === 'quiz' && editingLesson?.id && (
                 <EntityLibraryPicker
