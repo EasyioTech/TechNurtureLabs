@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
     LayoutGrid, BookOpen, CreditCard, Users, BarChart3,
     Building2, Bell, Search, Sun, Moon, Filter, LogOut, Plus, Palette, Check, Settings,
-    Menu, X, Save, Library, Activity, Zap, GraduationCap, ChevronDown, HardDrive
+    Menu, X, Save, Library, Activity, Zap, GraduationCap, ChevronDown
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -35,7 +35,6 @@ import { PromoCodesTab } from './tabs/promo-codes-tab';
 import { SystemHealthTab } from './tabs/system-health-tab';
 import { LibraryTab } from './tabs/library-tab';
 import { CertificationsTab } from './tabs/certifications-tab';
-import { BackupsTab } from './tabs/backups-tab';
 import { GlobalLogo } from '@/modules/shared/components/global-logo';
 
 import {
@@ -51,7 +50,6 @@ const NAV_ITEMS = [
     { id: 'plans', label: 'PLANS', icon: CreditCard },
     { id: 'promo', label: 'PROMOS', icon: CreditCard },
     { id: 'schools', label: 'SCHOOLS', icon: Building2 },
-    { id: 'backups', label: 'BACKUPS', icon: HardDrive },
     { id: 'library', label: 'LIBRARY', icon: Library },
     { id: 'users', label: 'STUDENTS', icon: Users },
     { id: 'settings', label: 'SETTINGS', icon: Settings, iconOnly: true },
@@ -64,7 +62,6 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
     plans: { title: 'Pricing Plans', subtitle: 'Manage subscription plans and pricing levels.' },
     promo: { title: 'Promo Codes', subtitle: 'Manage platform-wide discount codes.' },
     schools: { title: 'Schools & Partners', subtitle: 'View and manage all registered school accounts.' },
-    backups: { title: 'School Backups', subtitle: 'Create and restore school backups with complete data.' },
     users: { title: 'Student Management', subtitle: 'Track student progress and overall engagement.' },
     library: { title: 'Content Library', subtitle: 'Browse and reuse content across the platform.' },
     settings: { title: 'Platform Settings', subtitle: 'Manage global platform configuration and infrastructure health.' },
@@ -503,9 +500,6 @@ function DashboardContent() {
                                 onLoadMore={() => data.loadSchools(data.schoolsPage + 1, searchQuery, true)}
                             />
                         )}
-                        {activePage === 'backups' && (
-                            <BackupsTab schoolsList={data.schoolsList} />
-                        )}
                         {activePage === 'users' && (
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -563,7 +557,7 @@ function DashboardContent() {
                                 totalQuizzesPages={data.totalGlobalQuizzesPages}
                             />
                         )}
-                        { activePage === 'settings' && <SettingsTab ref={settingsRef} onNavigateToBackups={() => setActivePage('backups')} />}
+                        { activePage === 'settings' && <SettingsTab ref={settingsRef} schoolsList={data.schoolsList} />}
                     </motion.div>
                 </AnimatePresence>
 

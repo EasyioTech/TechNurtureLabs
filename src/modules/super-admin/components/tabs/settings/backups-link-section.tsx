@@ -1,16 +1,22 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useAdminTheme, t } from '../../../theme-context';
 import { HardDrive, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BackupsTab } from '../backups-tab';
 
 interface BackupsLinkSectionProps {
-    onNavigateToBackups: () => void;
+    schoolsList: Array<{ id: string; name: string }>;
 }
 
-export function BackupsLinkSection({ onNavigateToBackups }: BackupsLinkSectionProps) {
+export function BackupsLinkSection({ schoolsList }: BackupsLinkSectionProps) {
     const { isDark, accent } = useAdminTheme();
+    const [showBackups, setShowBackups] = useState(false);
+
+    if (showBackups) {
+        return <BackupsTab schoolsList={schoolsList} />;
+    }
 
     return (
         <div className="space-y-4">
@@ -36,7 +42,7 @@ export function BackupsLinkSection({ onNavigateToBackups }: BackupsLinkSectionPr
                     </div>
                 </div>
                 <Button
-                    onClick={onNavigateToBackups}
+                    onClick={() => setShowBackups(true)}
                     className={`rounded-2xl h-11 px-6 font-black text-[13px] shrink-0 ${t.btnPrimary(isDark, accent)}`}
                     style={isDark ? { boxShadow: t.glowStyle(isDark, accent).boxShadow } : {}}
                 >

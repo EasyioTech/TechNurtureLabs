@@ -33,14 +33,14 @@ function formatBytes(bytes: number, decimals = 1): string {
 }
 
 interface SettingsTabProps {
-    onNavigateToBackups?: () => void;
+    schoolsList?: Array<{ id: string; name: string }>;
 }
 
 export interface SettingsTabRef {
     handleSave: () => void;
 }
 
-export const SettingsTab = forwardRef<SettingsTabRef, SettingsTabProps>(function SettingsTab({ onNavigateToBackups }, ref) {
+export const SettingsTab = forwardRef<SettingsTabRef, SettingsTabProps>(function SettingsTab({ schoolsList = [] }, ref) {
     const { isDark, accent } = useAdminTheme();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -502,7 +502,7 @@ export const SettingsTab = forwardRef<SettingsTabRef, SettingsTabProps>(function
             />
 
             <BackupsLinkSection
-                onNavigateToBackups={onNavigateToBackups || (() => {})}
+                schoolsList={schoolsList}
             />
 
             <StorageSection 
