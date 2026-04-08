@@ -11,7 +11,7 @@ import { verifySession } from '@/lib/auth';
 
 const createOrderSchema = z.object({
     plan_id: z.string().uuid('Invalid plan ID'),
-    school_id: z.string().uuid().nullable().optional().default(null), // Optional for registration (school not created yet)
+    school_id: z.string().uuid('Invalid school ID').optional(), // Optional for registration flow
     promo_code_id: z.string()
         .optional()
         .nullable()
@@ -41,7 +41,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
         }
 
-        const body = createOrderSchema.safeParse(await req.json());
+        const rawBody = await req.json();
+        // Ensure school_id exists (defaults to null for pre-auth registration)
+        if (!rawBody.school_id) rawBody.school_id = null;
+
+        const body = createOrderSchema.safeParse(rawBody);
         if (!body.success) {
             logger.warn('[Create Order] Invalid schema', { errors: body.error.issues });
             return NextResponse.json({ error: body.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 });
