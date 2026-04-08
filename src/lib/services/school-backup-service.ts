@@ -1093,9 +1093,105 @@ export async function exportCompleteSchoolData(schoolId: string): Promise<Comple
 // PHASE 3: R2 UPLOAD, LIST, DOWNLOAD, RESTORE
 // ============================================================================
 
+// ============================================================================
+// R2 CREDENTIAL VERIFICATION
+// ============================================================================
+
+/**
+ * Verify R2 credentials are configured and working
+ * Called before any R2 operation
+ */
+async function verifyR2Credentials(): Promise<{
+    isConfigured: boolean;
+    hasClient: boolean;
+    bucketName: string | null;
+    error: string | null;
+}> {
+    try {
+        const { s3Client, isCloudflareConfigured } = await import('@/lib/storage');
+        const { serverEnv } = await import('@/lib/env.server');
+
+        const isConfigured = isCloudflareConfigured === true;
+        const hasClient = s3Client !== null && s3Client !== undefined;
+        const bucketName = serverEnv.CLOUDFLARE_BUCKET_NAME || null;
+
+        if (!isConfigured) {
+            return {
+                isConfigured: false,
+                hasClient: false,
+                bucketName,
+                error: 'R2 not configured: Missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_ACCESS_KEY_ID'
+            };
+        }
+
+        if (!hasClient) {
+            return {
+                isConfigured: true,
+                hasClient: false,
+                bucketName,
+                error: 'R2 client not initialized: S3 client is null'
+            };
+        }
+
+        if (!bucketName) {
+            return {
+                isConfigured: true,
+                hasClient: true,
+                bucketName: null,
+                error: 'R2 bucket name not configured: CLOUDFLARE_BUCKET_NAME missing'
+            };
+        }
+
+        console.log(`[Backup] ✓ R2 credentials verified. Bucket: ${bucketName}`);
+
+        return {
+            isConfigured: true,
+            hasClient: true,
+            bucketName,
+            error: null
+        };
+    } catch (error: any) {
+        return {
+            isConfigured: false,
+            hasClient: false,
+            bucketName: null,
+            error: `R2 verification failed: ${error.message}`
+        };
+    }
+}
+
+/**
+ * Test R2 connectivity with a health check
+ * Attempts to list objects to verify access
+ */
+async function testR2Connectivity(): Promise<boolean> {
+    try {
+        const { s3Client, isCloudflareConfigured } = await import('@/lib/storage');
+        const { serverEnv } = await import('@/lib/env.server');
+
+        if (!isCloudflareConfigured || !s3Client) {
+            return false;
+        }
+
+        const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+        const command = new ListObjectsV2Command({
+            Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+            MaxKeys: 1, // Just check if we can list, don't retrieve all
+        });
+
+        await s3Client.send(command);
+        console.log(`[Backup] ✓ R2 connectivity test passed`);
+        return true;
+    } catch (error: any) {
+        console.error(`[Backup] ✗ R2 connectivity test failed:`, error.message);
+        return false;
+    }
+}
+
 /**
  * FUNCTION 6: Upload Backup to R2
  *
+ * Includes credential verification and error handling
  * Takes: CompleteSchoolBackup
  * Uploads: GZIP compressed JSON to R2
  * Returns: File path, hash, isNew flag
@@ -1109,8 +1205,21 @@ export async function uploadSchoolBackupToR2(
     const zlib = await import('zlib');
     const { promisify } = await import('util');
 
-    if (!isCloudflareConfigured || !s3Client) {
-        throw new Error('R2 not configured');
+    // Verify R2 is properly configured
+    const credentials = await verifyR2Credentials();
+    if (!credentials.isConfigured) {
+        throw new Error(`Cannot backup to R2: ${credentials.error}`);
+    }
+
+    // Test connectivity
+    const isConnected = await testR2Connectivity();
+    if (!isConnected) {
+        throw new Error('R2 connectivity test failed. Cannot proceed with backup. Check credentials and network.');
+    }
+
+    // At this point, credentials are verified and client must exist
+    if (!s3Client) {
+        throw new Error('R2 client is unavailable after verification passed. This should not happen.');
     }
 
     console.log(`[Backup] Uploading to R2 for school: ${schoolId}`);
@@ -1138,7 +1247,7 @@ export async function uploadSchoolBackupToR2(
         }
     });
 
-    await s3Client.send(command);
+    await s3Client!.send(command);
 
     console.log(`[Backup] ✓ Uploaded to R2: ${fileName}`);
 
@@ -1161,6 +1270,13 @@ export async function uploadSchoolBackupToR2(
 export async function listSchoolBackups(schoolId: string): Promise<BackupListItem[]> {
     const { s3Client, isCloudflareConfigured } = await import('@/lib/storage');
     const { serverEnv } = await import('@/lib/env.server');
+
+    // Verify R2 is configured (graceful fallback - return empty list if not)
+    const credentials = await verifyR2Credentials();
+    if (!credentials.isConfigured) {
+        console.warn(`[Backup] R2 not configured, returning empty backup list: ${credentials.error}`);
+        return [];
+    }
 
     if (!isCloudflareConfigured || !s3Client) return [];
 
@@ -1208,8 +1324,14 @@ export async function downloadSchoolBackup(fileName: string): Promise<CompleteSc
     const zlib = await import('zlib');
     const { promisify } = await import('util');
 
-    if (!isCloudflareConfigured || !s3Client) {
-        throw new Error('R2 not configured');
+    // Verify R2 is properly configured
+    const credentials = await verifyR2Credentials();
+    if (!credentials.isConfigured) {
+        throw new Error(`Cannot download backup from R2: ${credentials.error}`);
+    }
+
+    if (!s3Client) {
+        throw new Error('R2 client is unavailable. Cannot proceed with backup download.');
     }
 
     const gunzip = promisify(zlib.gunzip);
