@@ -1148,11 +1148,18 @@ export async function exportCompleteSchoolData(schoolId: string): Promise<Comple
         validateBackupStructure(backup);
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+        const backupJson = JSON.stringify(backup);
+        const backupSize = Buffer.byteLength(backupJson, 'utf8');
         console.log(`\n[Backup] ✓ Complete export successful (${duration}s)`);
         console.log(`[Backup] School: ${school.name}`);
         console.log(`[Backup] Students: ${students.length}`);
+        console.log(`[Backup] Academic Sessions: ${backup.academicSessions.length}`);
+        console.log(`[Backup] Class Mappings: ${backup.classMappings.length}`);
+        console.log(`[Backup] Transactions: ${backup.transactions.length}`);
+        console.log(`[Backup] Invoices: ${backup.invoices.length}`);
         console.log(`[Backup] Total XP: ${backup.metadata.totalXpDistributed}`);
         console.log(`[Backup] Total Revenue: ₹${totalRevenue}`);
+        console.log(`[Backup] Backup size: ${(backupSize / 1024).toFixed(2)} KB (uncompressed)`);
         console.log(`========================================\n`);
 
         releaseBackupLock(schoolId);
