@@ -10,6 +10,7 @@ import { ChangePasswordModal } from '../settings/change-password-modal';
 import { EditAdminProfileModal } from '../settings/edit-admin-profile-modal';
 import { UpgradePlanModal } from '../settings/upgrade-plan-modal';
 import { BillingHistoryModal } from '../settings/billing-history-modal';
+import { BackupSection } from '../settings/backup-section';
 import { useAuth } from '@/components/providers/auth-provider';
 
 interface SettingsTabProps {
@@ -38,6 +39,11 @@ export function SchoolSettingsTab({ stats, schoolId, classesData, globalClasses,
     }, []);
 
     const sections = [
+        {
+            title: 'Data Backup & Recovery',
+            icon: Shield,
+            content: <BackupSection schoolId={schoolId} />
+        },
         {
             title: 'Plan & Renewal',
             icon: CreditCard,

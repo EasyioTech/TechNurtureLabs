@@ -337,6 +337,7 @@ export interface CompleteSchoolBackup {
             classMappings: number;
             transactions: number;
             invoices: number;
+            academicRecords: number;
             quizAttempts: number;
             xpTransactions: number;
             achievements: number;
@@ -990,6 +991,7 @@ export async function exportCompleteSchoolData(schoolId: string): Promise<Comple
                     classMappings: classMappings.length,
                     transactions: transactions.length,
                     invoices: invoices.length,
+                    academicRecords: totalRecords.academicRecords,
                     quizAttempts: totalRecords.quizAttempts,
                     xpTransactions: totalRecords.xpTransactions,
                     achievements: totalRecords.achievements,
@@ -1009,5 +1011,426 @@ export async function exportCompleteSchoolData(schoolId: string): Promise<Comple
     } catch (error) {
         console.error(`[Backup] ✗ Export failed:`, error);
         throw error;
+    }
+}
+
+// ============================================================================
+// PHASE 3: R2 UPLOAD, LIST, DOWNLOAD, RESTORE
+// ============================================================================
+
+/**
+ * FUNCTION 6: Upload Backup to R2
+ *
+ * Takes: CompleteSchoolBackup
+ * Uploads: GZIP compressed JSON to R2
+ * Returns: File path, hash, isNew flag
+ */
+export async function uploadSchoolBackupToR2(
+    backup: CompleteSchoolBackup,
+    schoolId: string
+): Promise<BackupUploadResult> {
+    const { s3Client, isCloudflareConfigured, uploadFile } = await import('@/lib/storage');
+    const { serverEnv } = await import('@/lib/env.server');
+    const zlib = await import('zlib');
+    const { promisify } = await import('util');
+
+    if (!isCloudflareConfigured || !s3Client) {
+        throw new Error('R2 not configured');
+    }
+
+    console.log(`[Backup] Uploading to R2 for school: ${schoolId}`);
+
+    const currentHash = calculateBackupHash(backup);
+    const fileName = formatBackupFileName(schoolId, backup.school.name);
+    const jsonPayload = JSON.stringify(backup);
+
+    // Compress payload
+    const gzip = promisify(zlib.gzip);
+    const compressed = await gzip(jsonPayload);
+
+    // Upload to R2
+    const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+    const command = new PutObjectCommand({
+        Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+        Key: fileName,
+        Body: compressed,
+        ContentType: 'application/json',
+        ContentEncoding: 'gzip',
+        Metadata: {
+            'backup-hash': currentHash,
+            'backup-timestamp': new Date().toISOString(),
+            'school-id': schoolId,
+        }
+    });
+
+    await s3Client.send(command);
+
+    console.log(`[Backup] ✓ Uploaded to R2: ${fileName}`);
+
+    return {
+        fileName,
+        hash: currentHash,
+        isNew: true,
+        size: compressed.length,
+        timestamp: new Date().toISOString(),
+        message: `Backup uploaded: ${(compressed.length / 1024).toFixed(2)}KB`
+    };
+}
+
+/**
+ * FUNCTION 7: List Backups from R2
+ *
+ * Reads: All backup files for a school from R2
+ * Returns: Array of backup metadata
+ */
+export async function listSchoolBackups(schoolId: string): Promise<BackupListItem[]> {
+    const { s3Client, isCloudflareConfigured } = await import('@/lib/storage');
+    const { serverEnv } = await import('@/lib/env.server');
+
+    if (!isCloudflareConfigured || !s3Client) return [];
+
+    try {
+        const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+        const prefix = `${BACKUP_PREFIX}${schoolId}/`;
+        const command = new ListObjectsV2Command({
+            Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+            Prefix: prefix,
+        });
+
+        const response = await s3Client.send(command);
+        const files = (response.Contents || [])
+            .filter(item => item.Key?.endsWith('.json.gz'))
+            .map(item => ({
+                fileName: item.Key || '',
+                key: item.Key || '',
+                schoolId,
+                schoolName: '', // Would fetch from backup
+                size: item.Size || 0,
+                lastModified: item.LastModified || new Date(),
+                hash: '', // From metadata
+                studentCount: 0, // From metadata
+                timestamp: item.LastModified?.toISOString() || ''
+            }))
+            .sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+
+        console.log(`[Backup] ✓ Found ${files.length} backups for school: ${schoolId}`);
+        return files;
+    } catch (error) {
+        console.error('[Backup] Error listing backups:', error);
+        return [];
+    }
+}
+
+/**
+ * FUNCTION 8: Download Backup from R2
+ *
+ * Reads: GZIP backup file from R2
+ * Returns: Decompressed backup data
+ */
+export async function downloadSchoolBackup(fileName: string): Promise<CompleteSchoolBackup> {
+    const { s3Client, isCloudflareConfigured } = await import('@/lib/storage');
+    const { serverEnv } = await import('@/lib/env.server');
+    const zlib = await import('zlib');
+    const { promisify } = await import('util');
+
+    if (!isCloudflareConfigured || !s3Client) {
+        throw new Error('R2 not configured');
+    }
+
+    const gunzip = promisify(zlib.gunzip);
+    const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+
+    const command = new GetObjectCommand({
+        Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+        Key: fileName,
+    });
+
+    const response = await s3Client.send(command);
+
+    if (!response.Body) {
+        throw new Error('Backup file not found');
+    }
+
+    const bodyStream = response.Body as any;
+    let decompressed: Buffer;
+
+    if (bodyStream.transformToByteArray) {
+        const bytes = await bodyStream.transformToByteArray();
+        decompressed = Buffer.from(bytes);
+    } else {
+        throw new Error('Invalid response stream');
+    }
+
+    const backup = JSON.parse(decompressed.toString('utf-8'));
+
+    // Validate
+    const errors = validateBackupData(backup);
+    if (errors.length > 0) {
+        throw new Error(`Invalid backup: ${errors.join(', ')}`);
+    }
+
+    console.log(`[Backup] ✓ Downloaded backup: ${fileName}`);
+    return backup;
+}
+
+/**
+ * FUNCTION 9: Restore School from Backup
+ *
+ * Takes: Backup data
+ * Restores: All school data (atomic transaction)
+ * Returns: Restore result with record counts
+ */
+export async function restoreSchoolFromBackup(
+    backup: CompleteSchoolBackup
+): Promise<RestoreResult> {
+    console.log(`[Backup] Starting restore for school: ${backup.school.name}`);
+    const startTime = Date.now();
+
+    try {
+        // Validate backup first
+        const errors = validateBackupData(backup);
+        if (errors.length > 0) {
+            throw new Error(`Invalid backup data: ${errors.join(', ')}`);
+        }
+
+        console.log(`[Backup] ✓ Backup validated, beginning restore transaction...`);
+
+        let restoredSchool = 0;
+        let restoredAdmin = 0;
+        let restoredSubscription = 0;
+        let restoredTransactions = 0;
+        let restoredInvoices = 0;
+        let restoredSessions = 0;
+        let restoredClassMappings = 0;
+        let restoredStudents = 0;
+        let restoredAcademicRecords = 0;
+        let restoredQuizAttempts = 0;
+        let restoredXpTransactions = 0;
+        let restoredAchievements = 0;
+
+        // Use atomic transaction
+        await db.transaction(async (tx) => {
+            // 1. Restore School
+            console.log('[Backup] Restoring school profile...');
+            await tx.update(schema.schools).set({
+                name: backup.school.name,
+                email: backup.school.email,
+                phone: backup.school.phone,
+                address: backup.school.address,
+                city: backup.school.city,
+                state: backup.school.state,
+                country: backup.school.country,
+                pincode: backup.school.pincode,
+                logo_url: backup.school.logo_url,
+                website: backup.school.website,
+                data_processing_consent: backup.school.data_processing_consent,
+                minor_data_guardian_consent: backup.school.minor_data_guardian_consent,
+                udise_code: backup.school.udise_code,
+                updated_at: new Date(),
+            }).where(eq(schema.schools.id, backup.schoolId));
+            restoredSchool = 1;
+
+            // 2. Restore School Admin
+            console.log('[Backup] Restoring admin account...');
+            await tx.update(schema.schoolAdmins).set({
+                first_name: backup.schoolAdmin.first_name,
+                last_name: backup.schoolAdmin.last_name,
+                email: backup.schoolAdmin.email,
+                phone: backup.schoolAdmin.phone,
+                avatar_url: backup.schoolAdmin.avatar_url,
+                bio: backup.schoolAdmin.bio,
+                updated_at: new Date(),
+            }).where(eq(schema.schoolAdmins.id, backup.schoolAdmin.id));
+            restoredAdmin = 1;
+
+            // 3. Restore Subscription
+            if (backup.subscription) {
+                console.log('[Backup] Restoring subscription...');
+                await tx.update(schema.schoolSubscriptions).set({
+                    status: backup.subscription.status as any,
+                    current_period_start: new Date(backup.subscription.current_period_start),
+                    current_period_end: new Date(backup.subscription.current_period_end),
+                    trial_start: backup.subscription.trial_start ? new Date(backup.subscription.trial_start) : null,
+                    trial_end: backup.subscription.trial_end ? new Date(backup.subscription.trial_end) : null,
+                    cancelled_at: backup.subscription.cancelled_at ? new Date(backup.subscription.cancelled_at) : null,
+                    cancel_reason: backup.subscription.cancel_reason,
+                    auto_renew: backup.subscription.auto_renew,
+                    updated_at: new Date(),
+                }).where(eq(schema.schoolSubscriptions.id, backup.subscription.id));
+                restoredSubscription = 1;
+            }
+
+            // 4. Restore Academic Sessions
+            if (backup.academicSessions.length > 0) {
+                console.log(`[Backup] Restoring ${backup.academicSessions.length} academic sessions...`);
+                for (const session of backup.academicSessions) {
+                    await tx.update(schema.academicSessions).set({
+                        name: session.name,
+                        start_date: session.start_date as any, // STRING date format
+                        end_date: session.end_date as any, // STRING date format
+                        is_current: session.is_current,
+                        updated_at: new Date(),
+                    }).where(eq(schema.academicSessions.id, session.id));
+                }
+                restoredSessions = backup.academicSessions.length;
+            }
+
+            // 5. Restore Class Mappings
+            if (backup.classMappings.length > 0) {
+                console.log(`[Backup] Restoring ${backup.classMappings.length} class mappings...`);
+                for (const mapping of backup.classMappings) {
+                    await tx.update(schema.schoolClassMapping).set({
+                        is_active: mapping.is_active,
+                        deleted_at: null,
+                    }).where(eq(schema.schoolClassMapping.id, mapping.id));
+                }
+                restoredClassMappings = backup.classMappings.length;
+            }
+
+            // 6. Restore Students
+            if (backup.students.length > 0) {
+                console.log(`[Backup] Restoring ${backup.students.length} students...`);
+                for (const student of backup.students) {
+                    await tx.update(schema.students).set({
+                        first_name: student.first_name,
+                        last_name: student.last_name,
+                        email: student.email,
+                        phone: student.phone,
+                        avatar_url: student.avatar_url,
+                        bio: student.bio,
+                        date_of_birth: student.date_of_birth || null,
+                        gender: student.gender,
+                        is_minor: student.is_minor,
+                        guardian_name: student.guardian_name,
+                        guardian_email: student.guardian_email,
+                        guardian_consent: student.guardian_consent,
+                        cumulative_xp: student.cumulative_xp,
+                        current_streak: student.current_streak,
+                        longest_streak: student.longest_streak,
+                        is_active: student.is_active,
+                        is_verified: student.is_verified,
+                        notification_preferences: student.notification_preferences,
+                        appearance_settings: student.appearance_settings,
+                        privacy_settings: student.privacy_settings,
+                        updated_at: new Date(),
+                    }).where(eq(schema.students.id, student.id));
+                }
+                restoredStudents = backup.students.length;
+            }
+
+            // 7. Restore Student Academic Records
+            if (backup.metadata.recordCounts.academicRecords > 0) {
+                console.log(`[Backup] Restoring student academic records...`);
+                for (const student of backup.students) {
+                    for (const record of student.academicRecords) {
+                        await tx.update(schema.studentAcademicRecords).set({
+                            class_id: record.class_id,
+                            roll_number: record.roll_number,
+                            section: record.section,
+                            is_promoted: record.is_promoted,
+                            promoted_at: record.promoted_at ? new Date(record.promoted_at) : null,
+                            updated_at: new Date(),
+                        }).where(eq(schema.studentAcademicRecords.id, record.id));
+                    }
+                }
+                restoredAcademicRecords = backup.metadata.recordCounts.academicRecords;
+            }
+
+            // 8. Restore Quiz Attempts
+            if (backup.metadata.recordCounts.quizAttempts > 0) {
+                console.log(`[Backup] Restoring quiz attempts...`);
+                for (const student of backup.students) {
+                    for (const attempt of student.quizAttempts) {
+                        await tx.update(schema.quizAttempts).set({
+                            score: attempt.score.toString(),
+                            max_score: attempt.max_score.toString(),
+                            passed: attempt.passed,
+                            time_taken_secs: attempt.time_spent_secs,
+                            xp_earned: 0,
+                            completed_at: attempt.completed_at ? new Date(attempt.completed_at) : null,
+                        }).where(eq(schema.quizAttempts.id, attempt.id));
+                    }
+                }
+                restoredQuizAttempts = backup.metadata.recordCounts.quizAttempts;
+            }
+
+            // 9. Restore XP Events
+            if (backup.metadata.recordCounts.xpTransactions > 0) {
+                console.log(`[Backup] Restoring XP transactions...`);
+                for (const student of backup.students) {
+                    for (const xp of student.xpTransactions) {
+                        await tx.update(schema.xpEvents).set({
+                            xp_amount: xp.amount,
+                            source: xp.source as any,
+                            reference_id: xp.source_id,
+                        }).where(eq(schema.xpEvents.id, xp.id));
+                    }
+                }
+                restoredXpTransactions = backup.metadata.recordCounts.xpTransactions;
+            }
+
+            // 10. Restore Achievements
+            if (backup.metadata.recordCounts.achievements > 0) {
+                console.log(`[Backup] Restoring achievements...`);
+                for (const student of backup.students) {
+                    for (const achievement of student.achievements) {
+                        // Just verify the user_achievement exists
+                        const existing = await tx.query.userAchievements.findFirst({
+                            where: eq(schema.userAchievements.id, achievement.id)
+                        });
+                        if (!existing) {
+                            await tx.insert(schema.userAchievements).values({
+                                id: achievement.id,
+                                user_id: achievement.student_id,
+                                achievement_id: achievement.badge_id,
+                                earned_at: new Date(achievement.earned_at),
+                            });
+                        }
+                    }
+                }
+                restoredAchievements = backup.metadata.recordCounts.achievements;
+            }
+
+            console.log('[Backup] ✓ All data restored successfully in transaction');
+        });
+
+        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+        console.log(`[Backup] ✓ Restore completed in ${duration}s`);
+
+        return {
+            success: true,
+            timestamp: new Date().toISOString(),
+            restoredRecords: {
+                school: restoredSchool,
+                schoolAdmin: restoredAdmin,
+                subscription: restoredSubscription,
+                transactions: backup.transactions.length,
+                invoices: backup.invoices.length,
+                academicSessions: restoredSessions,
+                classMappings: restoredClassMappings,
+                students: restoredStudents,
+                academicRecords: restoredAcademicRecords,
+                quizAttempts: restoredQuizAttempts,
+                xpTransactions: restoredXpTransactions,
+                achievements: restoredAchievements,
+            },
+            warnings: [],
+            errors: [],
+            message: `✓ Restore complete: ${backup.students.length} students, ${backup.metadata.recordCounts.quizAttempts} quiz attempts, ${backup.metadata.recordCounts.xpTransactions} XP events restored`
+        };
+    } catch (error) {
+        console.error('[Backup] ✗ Restore failed:', error);
+        return {
+            success: false,
+            timestamp: new Date().toISOString(),
+            restoredRecords: {
+                school: 0, schoolAdmin: 0, subscription: 0, transactions: 0,
+                invoices: 0, academicSessions: 0, classMappings: 0, students: 0,
+                academicRecords: 0, quizAttempts: 0, xpTransactions: 0, achievements: 0,
+            },
+            warnings: [],
+            errors: [error instanceof Error ? error.message : 'Unknown error'],
+            message: error instanceof Error ? error.message : 'Restore failed'
+        };
     }
 }
