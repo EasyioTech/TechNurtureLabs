@@ -83,21 +83,52 @@ export default function SchoolRegistrationPage() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [orderError, setOrderError] = useState<string>('');
+  const [orderRetry, setOrderRetry] = useState(0);
 
   const validateStep = (stepNumber: number) => {
     const newErrors: Record<string, string> = {};
     if (stepNumber === 1) {
+      // School name validation
       if (!formData.name.trim()) newErrors.name = 'School name is required';
+      else if (formData.name.trim().length < 3) newErrors.name = 'School name must be at least 3 characters';
+
+      // UDISE code: exactly 11 digits
       if (!formData.udise_code.trim()) newErrors.udise_code = 'UDISE code is required';
+      else if (!/^\d{11}$/.test(formData.udise_code.trim())) newErrors.udise_code = 'UDISE code must be exactly 11 digits';
+
+      // Address validation
+      if (!formData.address.trim()) newErrors.address = 'Address is required';
+      else if (formData.address.trim().length < 5) newErrors.address = 'Address must be at least 5 characters';
+
       if (!formData.state) newErrors.state = 'State is required';
       if (!formData.district) newErrors.district = 'District is required';
+
+      // Pincode validation: 6 digits for India
+      if (!formData.pincode.trim()) newErrors.pincode = 'Pincode is required';
+      else if (!/^\d{6}$/.test(formData.pincode.trim())) newErrors.pincode = 'Pincode must be exactly 6 digits';
     } else if (stepNumber === 2) {
       if (formData.classes_available.length === 0) newErrors.classes_available = 'Select at least one class';
+
+      // Student count validation
+      if (!formData.student_count.trim()) newErrors.student_count = 'Student count is required';
+      else {
+        const count = parseInt(formData.student_count, 10);
+        if (isNaN(count)) newErrors.student_count = 'Student count must be a number';
+        else if (count < 10) newErrors.student_count = 'Minimum 10 students required';
+        else if (count > 100000) newErrors.student_count = 'Maximum 100,000 students allowed';
+      }
     } else if (stepNumber === 3) {
       if (!formData.principal_name.trim()) newErrors.principal_name = 'Principal name is required';
+      else if (formData.principal_name.trim().length < 3) newErrors.principal_name = 'Principal name must be at least 3 characters';
+
       if (!formData.contact_email.trim()) newErrors.contact_email = 'Contact email is required';
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email)) newErrors.contact_email = 'Invalid email format';
+
+      // Phone: 10-digit Indian format
       if (!formData.contact_phone.trim()) newErrors.contact_phone = 'Contact phone is required';
+      else if (!/^[6-9]\d{9}$/.test(formData.contact_phone.trim())) newErrors.contact_phone = 'Phone must be 10 digits starting with 6-9 (Indian format)';
+
       if (!formData.password) newErrors.password = 'Password is required';
       else if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
     }
@@ -161,14 +192,24 @@ export default function SchoolRegistrationPage() {
     loadInitialData();
   }, []);
 
-  // Sync checkout order when plan or promo changes in Step 4
+  // Sync checkout order when plan or promo changes in Step 4 with error handling
   useEffect(() => {
     if (step === 4 && formData.plan_id) {
-       createOrder(formData.plan_id, formData.promo_code_id)
-        .then(data => setCheckoutOrder(data))
-        .catch(err => console.error("Order sync failed", err));
+      setCheckoutOrder(null);
+      setOrderError('');
+
+      createOrder(formData.plan_id, formData.promo_code_id)
+        .then(data => {
+          setCheckoutOrder(data);
+          setOrderError('');
+        })
+        .catch(err => {
+          console.error("Order sync failed", err);
+          setCheckoutOrder(null);
+          setOrderError('Failed to calculate order. Please try again.');
+        });
     }
-  }, [step, formData.plan_id, formData.promo_code_id]);
+  }, [step, formData.plan_id, formData.promo_code_id, orderRetry]);
 
   /**
    * Razorpay is loaded via Next.js <Script> component at the bottom
@@ -437,6 +478,38 @@ export default function SchoolRegistrationPage() {
                     />
                     {errors.udise_code && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.udise_code}</p>}
                   </div>
+                  <div className="space-y-2">
+                    <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.address ? 'text-rose-500' : 'text-slate-600'}`}>School Address *</Label>
+                    <Input
+                      type="text"
+                      value={formData.address}
+                      onChange={(e) => {
+                        setFormData({ ...formData, address: e.target.value });
+                        if (errors.address) setErrors(prev => ({ ...prev, address: '' }));
+                      }}
+                      className={`bg-white h-14 px-5 rounded-2xl transition-all font-medium text-base shadow-sm border ${errors.address ? 'border-rose-400 focus:border-rose-500 ring-rose-500/10 focus:ring-4' : 'border-slate-200 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5'
+                        }`}
+                      placeholder="Street Address, Building, Area"
+                    />
+                    {errors.address && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.address}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.pincode ? 'text-rose-500' : 'text-slate-600'}`}>Postal Code *</Label>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={formData.pincode}
+                      onChange={(e) => {
+                        setFormData({ ...formData, pincode: e.target.value });
+                        if (errors.pincode) setErrors(prev => ({ ...prev, pincode: '' }));
+                      }}
+                      className={`bg-white h-14 px-5 rounded-2xl transition-all font-medium text-base shadow-sm border ${errors.pincode ? 'border-rose-400 focus:border-rose-500 ring-rose-500/10 focus:ring-4' : 'border-slate-200 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5'
+                        }`}
+                      placeholder="6-Digit PIN Code"
+                    />
+                    {errors.pincode && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.pincode}</p>}
+                  </div>
                   <div className="pt-4 border-t border-slate-100">
                     <div className="flex items-center gap-2 text-slate-900 text-xs font-black uppercase tracking-widest mb-4">
                       <MapPin size={16} />
@@ -585,14 +658,21 @@ export default function SchoolRegistrationPage() {
                     {errors.classes_available && <p className="text-xs text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.classes_available}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-slate-600 font-bold text-sm ml-1 uppercase tracking-wider">Est. Student Enrollment</Label>
+                    <Label className={`text-[10px] ml-1 uppercase tracking-wider font-bold transition-colors ${errors.student_count ? 'text-rose-500' : 'text-slate-600'}`}>Est. Student Enrollment *</Label>
                     <Input
                       type="number"
+                      min="10"
+                      max="100000"
                       value={formData.student_count}
-                      onChange={(e) => setFormData({ ...formData, student_count: e.target.value })}
-                      className="bg-white border-slate-200 h-14 px-5 text-slate-900 placeholder:text-slate-300 rounded-2xl font-medium shadow-sm"
+                      onChange={(e) => {
+                        setFormData({ ...formData, student_count: e.target.value });
+                        if (errors.student_count) setErrors(prev => ({ ...prev, student_count: '' }));
+                      }}
+                      className={`bg-white h-14 px-5 rounded-2xl transition-all font-medium text-base shadow-sm border ${errors.student_count ? 'border-rose-400 focus:border-rose-500 ring-rose-500/10 focus:ring-4' : 'border-slate-200 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/5'
+                        }`}
                       placeholder="e.g., 500"
                     />
+                    {errors.student_count && <p className="text-[10px] text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{errors.student_count}</p>}
                   </div>
                   <div className="pt-4">
                     <PrimaryButton
@@ -724,27 +804,28 @@ export default function SchoolRegistrationPage() {
                   initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.98 }}
-                  className="space-y-8"
+                  className="space-y-6 md:space-y-8"
                 >
-                  <button type="button" onClick={() => setStep(3)} className="text-sm font-bold text-slate-400 hover:text-slate-900 flex items-center gap-1 cursor-pointer transition-colors mb-4">
+                  <button type="button" onClick={() => setStep(3)} className="text-sm font-bold text-slate-400 hover:text-slate-900 flex items-center gap-1 cursor-pointer transition-colors mb-2 md:mb-4">
                     <ArrowLeft size={16} /> Back to details
                   </button>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                  {/* Responsive Grid: mobile(1col), tablet+(2col) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-12">
                     {/* Plans Selection */}
-                    <div className="space-y-6">
+                    <div className="space-y-4 md:space-y-6">
                       <div className="flex items-center gap-2 text-slate-950 text-xs font-black uppercase tracking-widest">
                         <CreditCard size={16} />
                         Select a Plan
                       </div>
 
                       {plansLoading ? (
-                        <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-4">
+                        <div className="py-16 md:py-20 flex flex-col items-center justify-center text-slate-400 gap-4">
                           <Loader2 className="animate-spin" size={32} />
                           <p className="font-bold uppercase tracking-widest text-[10px]">Loading Plans...</p>
                         </div>
                       ) : (
-                        <div className="grid gap-4">
+                        <div className="grid gap-3 md:gap-4">
                           {paymentPlans.map((plan) => (
                             <div
                               key={plan.id}
@@ -754,23 +835,23 @@ export default function SchoolRegistrationPage() {
                                 setPromoCodeInput('');
                                 setFormData(prev => ({ ...prev, promo_code_id: '' }));
                               }}
-                              className={`relative p-6 rounded-[2rem] border-2 cursor-pointer transition-all ${formData.plan_id === plan.id
+                              className={`relative p-4 md:p-6 rounded-2xl md:rounded-[2rem] border-2 cursor-pointer transition-all ${formData.plan_id === plan.id
                                 ? 'bg-white border-slate-950 shadow-xl ring-4 ring-slate-950/5 scale-[1.02]'
                                 : 'bg-slate-50/50 border-slate-100 hover:border-slate-300'
                                 }`}
                             >
                               {formData.plan_id === plan.id && (
-                                <div className="absolute top-4 right-4 w-6 h-6 rounded-full bg-slate-950 flex items-center justify-center">
+                                <div className="absolute top-3 right-3 md:top-4 md:right-4 w-6 h-6 rounded-full bg-slate-950 flex items-center justify-center">
                                   <Check size={14} className="text-white" />
                                 </div>
                               )}
-                              <div className="flex justify-between items-start mb-2 pr-8">
-                                <div>
-                                  <h3 className={`font-black text-xl tracking-tight ${formData.plan_id === plan.id ? 'text-slate-950' : 'text-slate-900'}`}>{plan.name}</h3>
-                                  <p className="text-xs text-slate-500 font-medium">{plan.description}</p>
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 pr-8 sm:pr-0">
+                                <div className="flex-1">
+                                  <h3 className={`font-black text-lg md:text-xl tracking-tight ${formData.plan_id === plan.id ? 'text-slate-950' : 'text-slate-900'}`}>{plan.name}</h3>
+                                  <p className="text-xs text-slate-500 font-medium mt-1">{plan.description}</p>
                                 </div>
-                                <div className="text-right shrink-0">
-                                  <div className="text-2xl font-black text-slate-900">
+                                <div className="text-right sm:shrink-0">
+                                  <div className="text-xl md:text-2xl font-black text-slate-900">
                                     {plan.currency === 'INR' ? '₹' : plan.currency}{Number(plan.price).toLocaleString('en-IN')}
                                   </div>
                                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Yearly</p>
@@ -782,27 +863,27 @@ export default function SchoolRegistrationPage() {
                       )}
                     </div>
 
-                    {/* Summary & Payment */}
-                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl p-8 space-y-8 sticky top-0">
+                    {/* Summary & Payment: Responsive sticky */}
+                    <div className="bg-white rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-xl md:shadow-2xl p-6 md:p-8 space-y-6 md:space-y-8 md:sticky md:top-6 h-fit">
                       <div>
-                        <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
+                        <h3 className="text-lg md:text-xl font-black text-slate-900 mb-4 md:mb-6 flex items-center gap-2">
                           Order Summary
                         </h3>
 
                         {checkoutOrder ? (
-                          <div className="space-y-4">
+                          <div className="space-y-3 md:space-y-4">
                             <div className="flex justify-between items-center text-sm">
-                              <span className="font-bold text-slate-500">Selected Plan</span>
-                              <span className="font-black text-slate-900">{checkoutOrder.plan.name}</span>
+                              <span className="font-bold text-slate-500 text-xs md:text-sm">Selected Plan</span>
+                              <span className="font-black text-slate-900 text-xs md:text-sm">{checkoutOrder.plan.name}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
-                              <span className="font-bold text-slate-500">Base Price</span>
-                              <span className="font-black text-slate-900">₹{Number(checkoutOrder.original_price).toLocaleString('en-IN')}</span>
+                              <span className="font-bold text-slate-500 text-xs md:text-sm">Base Price</span>
+                              <span className="font-black text-slate-900 text-xs md:text-sm">₹{Number(checkoutOrder.original_price).toLocaleString('en-IN')}</span>
                             </div>
 
-                            <div className="pt-4 border-t border-slate-50 space-y-4">
+                            <div className="pt-3 md:pt-4 border-t border-slate-50 space-y-3 md:space-y-4">
                               <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Promo Code</Label>
+                                <Label className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Promo Code</Label>
                                 {!appliedPromo ? (
                                   <div className="flex gap-2">
                                     <div className="relative flex-1">
@@ -814,82 +895,99 @@ export default function SchoolRegistrationPage() {
                                           setPromoCodeInput(e.target.value.toUpperCase());
                                           setPromoError('');
                                         }}
-                                        className="h-12 pl-10 bg-slate-50 border-slate-100 rounded-xl font-bold uppercase tracking-widest placeholder:normal-case"
+                                        className="h-10 md:h-12 pl-10 bg-slate-50 border-slate-100 rounded-lg md:rounded-xl font-bold uppercase tracking-widest placeholder:normal-case text-sm"
                                       />
                                     </div>
                                     <button
                                       type="button"
                                       onClick={handleApplyPromo}
                                       disabled={promoLoading || !promoCodeInput}
-                                      className="px-4 bg-slate-950 text-white rounded-xl font-black text-xs uppercase tracking-widest disabled:opacity-50"
+                                      className="px-3 md:px-4 bg-slate-950 text-white rounded-lg md:rounded-xl font-black text-xs uppercase tracking-widest disabled:opacity-50 h-10 md:h-12"
                                     >
                                       {promoLoading ? <Loader2 size={16} className="animate-spin" /> : 'Apply'}
                                     </button>
                                   </div>
                                 ) : (
-                                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
+                                  <div className="bg-emerald-50 border border-emerald-100 rounded-lg md:rounded-xl p-3 md:p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-2 md:gap-3">
+                                      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
                                         <Gift size={14} className="text-white" />
                                       </div>
-                                      <div>
-                                        <p className="text-xs font-black text-emerald-900 tracking-widest">{appliedPromo.code}</p>
-                                        <p className="text-[10px] font-bold text-emerald-600">Applied successfully</p>
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-black text-emerald-900 tracking-widest truncate">{appliedPromo.code}</p>
+                                        <p className="text-[9px] font-bold text-emerald-600">Applied</p>
                                       </div>
                                     </div>
-                                    <button onClick={removePromo} className="text-slate-400 hover:text-rose-500 transition-colors">
+                                    <button onClick={removePromo} className="text-slate-400 hover:text-rose-500 transition-colors flex-shrink-0">
                                       <X size={16} />
                                     </button>
                                   </div>
                                 )}
-                                {promoError && <p className="text-[10px] text-rose-500 font-bold ml-1">{promoError}</p>}
+                                {promoError && <p className="text-[9px] text-rose-500 font-bold ml-1">{promoError}</p>}
                               </div>
 
                               {appliedPromo && (
                                 <div className="flex justify-between items-center text-emerald-600">
-                                  <span className="text-sm font-bold flex items-center gap-1.5"><BadgeCheck size={14} /> Discount</span>
-                                  <span className="font-black">- ₹{Number(checkoutOrder.discount_amount).toLocaleString('en-IN')}</span>
+                                  <span className="text-xs md:text-sm font-bold flex items-center gap-1.5"><BadgeCheck size={14} /> Discount</span>
+                                  <span className="font-black text-xs md:text-sm">- ₹{Number(checkoutOrder.discount_amount).toLocaleString('en-IN')}</span>
                                 </div>
                               )}
 
-                              <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
-                                <span className="text-lg font-black text-slate-900">Total Payable</span>
+                              <div className="pt-3 md:pt-4 border-t border-slate-100 flex justify-between items-center">
+                                <span className="text-base md:text-lg font-black text-slate-900">Total Payable</span>
                                 <div className="text-right">
-                                  <span className="text-3xl font-black text-slate-950">
+                                  <span className="text-2xl md:text-3xl font-black text-slate-950">
                                     {checkoutOrder.final_amount === 0 ? 'FREE' : `₹${Number(checkoutOrder.final_amount).toLocaleString('en-IN')}`}
                                   </span>
-                                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Includes all taxes</p>
+                                  <p className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Includes all taxes</p>
                                 </div>
                               </div>
                             </div>
                           </div>
+                        ) : orderError ? (
+                          <div className="py-12 md:py-16 flex flex-col items-center justify-center text-slate-400 gap-4">
+                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-rose-50 flex items-center justify-center">
+                              <X size={24} className="text-rose-500" />
+                            </div>
+                            <div className="text-center">
+                              <p className="font-bold uppercase tracking-widest text-[10px] md:text-xs text-slate-600">{orderError}</p>
+                              <p className="text-[9px] text-slate-400 mt-2">Retrying may resolve the issue</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setOrderRetry(prev => prev + 1)}
+                              className="mt-4 px-4 md:px-6 py-2 md:py-3 bg-slate-950 text-white rounded-lg md:rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-900 transition-colors"
+                            >
+                              Retry
+                            </button>
+                          </div>
                         ) : (
-                          <div className="py-20 flex flex-col items-center justify-center text-slate-300 gap-4">
+                          <div className="py-12 md:py-16 flex flex-col items-center justify-center text-slate-300 gap-4">
                             <Loader2 className="animate-spin" size={32} />
-                            <p className="font-bold uppercase tracking-widest text-[10px]">Calculating Summary...</p>
+                            <p className="font-bold uppercase tracking-widest text-[10px] md:text-xs">Calculating Summary...</p>
                           </div>
                         )}
 
-                        <div className="pt-8">
+                        <div className="pt-6 md:pt-8">
                           <PrimaryButton
                             type="button"
                             onClick={handleRazorpayPayment}
-                            disabled={loading || !checkoutOrder || checkoutLoading}
+                            disabled={loading || !checkoutOrder || checkoutLoading || !!orderError}
                             variant="primary"
-                            className="w-full !h-16 !text-base !rounded-2xl !bg-slate-950 hover:!bg-slate-900 !text-white shadow-2xl shadow-slate-950/20 transition-all font-black uppercase tracking-widest cursor-pointer group"
+                            className="w-full !h-12 md:!h-16 !text-sm md:!text-base !rounded-xl md:!rounded-2xl !bg-slate-950 hover:!bg-slate-900 !text-white shadow-lg md:shadow-2xl shadow-slate-950/20 transition-all font-black uppercase tracking-widest cursor-pointer group disabled:opacity-60"
                           >
                             {loading ? (
-                              <><Loader2 className="mr-2 animate-spin" size={20} /> Processing...</>
+                              <><Loader2 className="mr-2 animate-spin" size={18} /> Processing...</>
                             ) : (
                               <>
                                 {checkoutOrder?.final_amount === 0 ? 'Complete Registration' : 'Proceed to Payment'}
-                                <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
+                                <ArrowRight size={16} className="ml-2 transition-transform group-hover:translate-x-1" />
                               </>
                             )}
                           </PrimaryButton>
-                          <div className="mt-4 flex items-center justify-center gap-4">
-                            <Shield size={14} className="text-slate-400" />
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Secure Payment Gateway • RBI Compliant</p>
+                          <div className="mt-3 md:mt-4 flex items-center justify-center gap-2 md:gap-4">
+                            <Shield size={12} className="text-slate-400 flex-shrink-0" />
+                            <p className="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase tracking-tight">Secure Payment • RBI Compliant</p>
                           </div>
                         </div>
                       </div>
