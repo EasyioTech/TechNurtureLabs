@@ -11,7 +11,7 @@ import { verifySession } from '@/lib/auth';
 
 const createOrderSchema = z.object({
     plan_id: z.string().uuid('Invalid plan ID'),
-    school_id: z.string().uuid('Invalid school ID').optional().nullable(), // Optional for registration flow (school not created yet)
+    school_id: z.string().uuid().nullable().optional().default(null), // Optional for registration (school not created yet)
     promo_code_id: z.string()
         .optional()
         .nullable()
