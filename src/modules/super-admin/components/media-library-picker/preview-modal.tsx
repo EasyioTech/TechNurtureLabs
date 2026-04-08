@@ -46,7 +46,7 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
         </button>
 
         {/* Content - Full Area */}
-        <div className={`w-full h-[90vh] flex items-center justify-center ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}>
+        <div className={`w-full h-[90vh] flex flex-col items-center justify-center overflow-auto ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}>
           {isImage && (
             <img
               src={asset.file_url}
@@ -56,7 +56,9 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
           )}
 
           {isVideo && asset.storage_type === 'cloudflare_stream' && (
-            <CloudflareStreamPlayer streamId={asset.id} />
+            <div className="w-full h-full flex items-center justify-center p-4">
+              <CloudflareStreamPlayer streamId={asset.id} />
+            </div>
           )}
 
           {isVideo && asset.storage_type !== 'cloudflare_stream' && (
@@ -69,15 +71,17 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
           )}
 
           {isPdf && (
-            <PDFViewer
-              url={asset.file_url}
-              onComplete={() => {}}
-              lessonComplete={false}
-              pageNumber={1}
-              docMax={100}
-              canMarkComplete={false}
-              className="w-full h-full rounded-none border-0"
-            />
+            <div className="w-full h-full max-w-4xl flex">
+              <PDFViewer
+                url={asset.file_url}
+                onComplete={() => {}}
+                lessonComplete={false}
+                pageNumber={1}
+                docMax={100}
+                canMarkComplete={false}
+                className="w-full h-full rounded-none border-0"
+              />
+            </div>
           )}
 
           {isDocument && !isPdf && (
@@ -96,11 +100,10 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
 
 function CloudflareStreamPlayer({ streamId }: { streamId: string }) {
   return (
-    <div className="w-full max-w-4xl aspect-video bg-black rounded-lg overflow-hidden">
+    <div className="w-11/12 max-w-4xl aspect-video bg-black rounded-lg overflow-hidden shadow-2xl">
       <iframe
-        src={`https://iframe.mediadelivery.net/embed/${streamId}`}
+        src={`https://iframe.videodelivery.net/${streamId}?autoplay=true&muted=false&preload=auto`}
         allowFullScreen
-        allow="fullscreen"
         className="w-full h-full border-0"
         title="Video Player"
       />
