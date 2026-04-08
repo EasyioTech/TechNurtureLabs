@@ -1477,15 +1477,17 @@ export async function downloadSchoolBackup(fileName: string): Promise<CompleteSc
     }
 
     const bodyStream = response.Body as any;
-    let decompressed: Buffer;
+    let compressed: Buffer;
 
     if (bodyStream.transformToByteArray) {
         const bytes = await bodyStream.transformToByteArray();
-        decompressed = Buffer.from(bytes);
+        compressed = Buffer.from(bytes);
     } else {
         throw new Error('Invalid response stream');
     }
 
+    // Decompress GZIP data
+    const decompressed = await gunzip(compressed);
     const backup = JSON.parse(decompressed.toString('utf-8'));
 
     // Validate backup structure and version
