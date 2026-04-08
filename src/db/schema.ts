@@ -408,7 +408,10 @@ export const quizzes = pgTable('quizzes', {
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
-});
+}, (table) => [
+    check('quiz_pass_percentage_range', sql`${table.pass_percentage} >= 0 AND ${table.pass_percentage} <= 100`),
+    check('quiz_time_limit_positive', sql`${table.time_limit_secs} > 0 OR ${table.time_limit_secs} IS NULL`),
+]);
 
 export const quizQuestions = pgTable('quiz_questions', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -500,6 +503,7 @@ export const lessonProgress = pgTable('lesson_progress', {
 export const lessonSessions = pgTable('lesson_sessions', {
     id: uuid('id').defaultRandom().primaryKey(),
     user_id: uuid('user_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+    school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     lesson_id: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
     session_token: text('session_token').notNull().unique(),
     device_hash: text('device_hash'),
@@ -515,6 +519,7 @@ export const lessonSessions = pgTable('lesson_sessions', {
     metadata: jsonb('metadata').notNull().default({}),
 }, (table) => [
     index('idx_sessions_user_lesson').on(table.user_id, table.lesson_id),
+    index('idx_sessions_school').on(table.school_id),
     index('idx_sessions_token').on(table.session_token),
     index('idx_sessions_active').on(table.is_active),
 ]);
@@ -807,7 +812,7 @@ export const mediaAssets = pgTable('media_assets', {
     id: uuid('id').defaultRandom().primaryKey(),
     file_name: text('file_name').notNull(),         // UUID-based storage key/filename
     original_name: text('original_name').notNull(), // Original filename from the user
-    file_url: text('file_url'),
+    file_url: text('file_url').notNull(),
     file_path: text('file_path').notNull(),          // Storage key (R2) or relative local path
     mime_type: text('mime_type').notNull(),
     file_size: bigint('file_size', { mode: 'number' }).notNull().default(0),
@@ -815,7 +820,7 @@ export const mediaAssets = pgTable('media_assets', {
     storage_type: storageTypeEnum('storage_type').notNull().default('r2'),
     asset_type: assetTypeEnum('asset_type').notNull().default('document'),
     uploaded_by: uuid('uploaded_by'), // Polymorphic - students, school_admins, or super_admins
-    school_id: uuid('school_id').references(() => schools.id, { onDelete: 'cascade' }), // CRITICAL FIX #1: Multi-tenancy enforcement
+    school_id: uuid('school_id').references(() => schools.id, { onDelete: 'cascade' }), // Multi-tenancy: nullable for system-synced assets
     folder: text('folder'), // course, lesson, settings, etc
     processing_status: text('processing_status').notNull().default('completed'), // 'pending', 'processing', 'completed', 'failed'
     error_message: text('error_message'),

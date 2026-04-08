@@ -78,12 +78,11 @@ export async function POST(req: NextRequest) {
                         const fileUrl = `/api/media/r2/${file.Key}`;
 
                         await db.insert(mediaAssets).values({
-                            id: uuidv4(),
                             original_name: filename,
                             file_name: filename,
                             file_url: fileUrl,
                             file_path: file.Key,
-                            mime_type: assetType === 'image' ? `image/${extension === 'jpg' ? 'jpeg' : extension}` : 
+                            mime_type: assetType === 'image' ? `image/${extension === 'jpg' ? 'jpeg' : extension}` :
                                       assetType === 'video' ? `video/${extension}` : 'application/octet-stream',
                             file_size: file.Size || 0,
                             asset_type: assetType,
@@ -118,7 +117,6 @@ export async function POST(req: NextRequest) {
 
                     if (!existing) {
                         await db.insert(mediaAssets).values({
-                            id: uuidv4(),
                             original_name: video.name || video.filename || 'Untitled Stream Video',
                             file_name: uid,
                             file_url: `cf-stream://${uid}`,

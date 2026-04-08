@@ -120,6 +120,41 @@ export function QuizResults({
                 </div>
             </div>
 
+            {/* Feedback section */}
+            {feedbackData && feedbackData.length > 0 && (
+                <div className="space-y-4 sm:space-y-6">
+                    <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-slate-900">Answer Review</h3>
+                    {feedbackData.map((fb, idx) => (
+                        <div
+                            key={idx}
+                            className={cn(
+                                'p-6 sm:p-8 rounded-2xl sm:rounded-3xl border-2 text-left',
+                                fb.is_correct
+                                    ? 'bg-emerald-50 border-emerald-100'
+                                    : 'bg-rose-50 border-rose-100'
+                            )}
+                        >
+                            <div className="flex items-start gap-3 sm:gap-4 mb-3">
+                                <div className={cn(
+                                    'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-1',
+                                    fb.is_correct ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
+                                )}>
+                                    <CheckCircle2 size={18} />
+                                </div>
+                                <p className="text-[10px] sm:text-[11px] font-bold text-slate-600">
+                                    {fb.is_correct ? 'Correct' : 'Incorrect'}
+                                </p>
+                            </div>
+                            {fb.explanation && (
+                                <p className="text-[9px] sm:text-[10px] text-slate-700 leading-relaxed">
+                                    {fb.explanation}
+                                </p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
             <div className="text-center">
                 <Link href="/student">
                     <button className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] hover:text-indigo-500 transition-all flex items-center gap-3 mx-auto">

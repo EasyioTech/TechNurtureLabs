@@ -453,12 +453,12 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
             quiz_id: quizId,
             enrollment_id: enrollment.id,
             attempt_number: previousAttemptCount + 1,
-            score: earnedScore.toString(),
-            max_score: totalScorePossible.toString(),
+            score: earnedScore,
+            max_score: totalScorePossible,
             passed: passed,
             xp_earned: xpEarned,
-            completed_at: new Date()
-        }).returning({ id: quizAttempts.id });
+            completed_at: new Date(),
+        } as any).returning({ id: quizAttempts.id });
 
         if (answerRecords.length > 0) {
             await tx.insert(quizAttemptAnswers).values(
