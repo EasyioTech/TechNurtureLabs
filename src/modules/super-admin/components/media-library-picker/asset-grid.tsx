@@ -1,10 +1,11 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { 
-    Film, ImageIcon, FileText, Trash2, Check, Cloud, HardDrive, Loader2 
+import {
+    Film, ImageIcon, FileText, Trash2, Check, Cloud, HardDrive, Loader2, Eye
 } from 'lucide-react';
 import { useAdminTheme, t } from '../../theme-context';
 import { MediaAsset } from './types';
+import { PreviewModal } from './preview-modal';
 
 interface AssetGridProps {
     assets: MediaAsset[];
@@ -31,9 +32,23 @@ export function AssetGrid({
 }: AssetGridProps) {
     const { isDark, accent } = useAdminTheme();
     const isDocumentView = activeTab === 'document';
+    const [previewAsset, setPreviewAsset] = React.useState<MediaAsset | null>(null);
+    const [previewOpen, setPreviewOpen] = React.useState(false);
+
+    const handlePreview = (asset: MediaAsset, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setPreviewAsset(asset);
+        setPreviewOpen(true);
+    };
 
     return (
-        <div className="space-y-4">
+        <>
+            <PreviewModal
+                asset={previewAsset}
+                open={previewOpen}
+                onOpenChange={setPreviewOpen}
+            />
+            <div className="space-y-4">
             {/* Bulk Selection Controls */}
             <div className={`p-3 rounded-lg border-2 flex items-center justify-between transition-colors ${isMultiSelect ? (isDark ? 'bg-white/[0.04] border-white/10' : 'bg-slate-50 border-slate-200') : 'border-transparent'}`}>
                 <div className="space-y-0.5">
@@ -107,18 +122,28 @@ export function AssetGrid({
                                     </div>
                                 )}
 
-                                <button
-                                    type="button"
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        onDelete(asset, e);
-                                    }}
-                                    disabled={isDeleting}
-                                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-0 group-hover/card:opacity-100
-                                        ${isDark ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white' : 'bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white'}`}
-                                >
-                                    {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                                </button>
+                                <div className="flex gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={e => handlePreview(asset, e)}
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-0 group-hover/card:opacity-100
+                                            ${isDark ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white' : 'bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white'}`}
+                                    >
+                                        <Eye size={12} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            onDelete(asset, e);
+                                        }}
+                                        disabled={isDeleting}
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-0 group-hover/card:opacity-100
+                                            ${isDark ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white' : 'bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white'}`}
+                                    >
+                                        {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                                    </button>
+                                </div>
                             </div>
                         );
                     }
@@ -165,15 +190,25 @@ export function AssetGrid({
                                     {asset.storage_type === 'r2' ? 'R2' : asset.storage_type === 'cloudflare_stream' ? 'Stream' : 'Local'}
                                 </div>
 
-                                <button
-                                    type="button"
-                                    onClick={e => onDelete(asset, e)}
-                                    disabled={isDeleting}
-                                    className={`absolute top-1.5 left-1.5 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 z-10
-                                        ${isDark ? 'bg-rose-500/80 text-white hover:bg-rose-500' : 'bg-rose-500 text-white hover:bg-rose-600'}`}
-                                >
-                                    {isDeleting ? <Loader2 size={9} className="animate-spin" /> : <Trash2 size={9} />}
-                                </button>
+                                <div className="absolute top-1.5 left-1.5 flex gap-1 opacity-0 group-hover/card:opacity-100 z-10">
+                                    <button
+                                        type="button"
+                                        onClick={e => handlePreview(asset, e)}
+                                        className={`w-5 h-5 rounded-full flex items-center justify-center
+                                            ${isDark ? 'bg-blue-500/80 text-white hover:bg-blue-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+                                    >
+                                        <Eye size={9} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={e => onDelete(asset, e)}
+                                        disabled={isDeleting}
+                                        className={`w-5 h-5 rounded-full flex items-center justify-center
+                                            ${isDark ? 'bg-rose-500/80 text-white hover:bg-rose-500' : 'bg-rose-500 text-white hover:bg-rose-600'}`}
+                                    >
+                                        {isDeleting ? <Loader2 size={9} className="animate-spin" /> : <Trash2 size={9} />}
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="p-2 space-y-0.5">
@@ -211,6 +246,7 @@ export function AssetGrid({
                 </div>
             )}
         </div>
+        </>
     );
 }
 
