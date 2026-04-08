@@ -110,6 +110,48 @@ export async function downloadSchoolBackupFileAdmin(schoolId: string, fileName: 
 }
 
 /**
+ * SUPER ADMIN ONLY: Delete a backup file
+ */
+export async function deleteBackupFileAdmin(schoolId: string, fileName: string) {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+
+    if (session.role !== 'super_admin') {
+        throw new Error('Unauthorized: Only super admins can delete backups');
+    }
+
+    try {
+        const { s3Client } = await import('@/lib/storage');
+        const { serverEnv } = await import('@/lib/env.server');
+
+        if (!s3Client) {
+            throw new Error('R2 client is unavailable');
+        }
+
+        const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+        const command = new DeleteObjectCommand({
+            Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+            Key: fileName,
+        });
+
+        await s3Client.send(command);
+
+        console.log(`[Admin Backup] Deleted backup: ${fileName}`);
+
+        return {
+            success: true,
+            message: 'Backup deleted successfully'
+        };
+    } catch (error: any) {
+        console.error('[Admin Backup] Delete failed:', error);
+        return {
+            success: false,
+            error: error.message || 'Delete failed'
+        };
+    }
+}
+
+/**
  * SUPER ADMIN ONLY: Restore from backup
  */
 export async function restoreSchoolFromBackupFileAdmin(schoolId: string, fileName: string) {
