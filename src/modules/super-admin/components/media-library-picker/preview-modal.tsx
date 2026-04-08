@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { X, Download, FileText, ImageIcon, Film } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { X, FileText, ImageIcon, Film } from 'lucide-react';
 import { useAdminTheme, t } from '../../theme-context';
 import { MediaAsset } from './types';
 
@@ -15,9 +14,6 @@ interface PreviewModalProps {
 
 export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
   const { isDark } = useAdminTheme();
-  const [pdfPageNum, setPdfPageNum] = React.useState(1);
-  const [pdfNumPages, setPdfNumPages] = React.useState(0);
-  const [pdfDocument, setPdfDocument] = React.useState<any>(null);
 
   if (!asset) return null;
 
@@ -26,18 +22,13 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
   const isPdf = asset.mime_type === 'application/pdf';
   const isDocument = asset.asset_type === 'document' && !isPdf;
 
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = asset.file_url;
-    link.download = asset.original_name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`max-w-4xl max-h-[90vh] p-0 border-0 overflow-hidden ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}>
+        <DialogTitle className="sr-only">
+          {asset.original_name} Preview
+        </DialogTitle>
+
         {/* Header */}
         <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
           <div className="flex items-center gap-3 min-w-0">
@@ -56,13 +47,14 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
           <button
             onClick={() => onOpenChange(false)}
             className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+            aria-label="Close preview"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Content */}
-        <div className={`flex-1 overflow-auto flex items-center justify-center p-4 ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`} style={{ maxHeight: 'calc(90vh - 140px)' }}>
+        <div className={`flex-1 overflow-auto flex items-center justify-center p-4 ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`} style={{ maxHeight: 'calc(90vh - 120px)' }}>
           {isImage && (
             <img
               src={asset.file_url}
@@ -78,6 +70,7 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
                 allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
                 className="w-full h-full"
+                title={`${asset.original_name} Video`}
               />
             </div>
           )}
@@ -95,6 +88,7 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
             <PdfPreview
               fileUrl={asset.file_url}
               isDark={isDark}
+              filename={asset.original_name}
             />
           )}
 
@@ -107,48 +101,28 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
                 Document preview not available for {asset.mime_type}
               </p>
               <p className={`text-xs font-bold uppercase tracking-wider ${t.textMuted(isDark)}`}>
-                Download to view
+                Close modal to download
               </p>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className={`flex items-center justify-between p-4 border-t ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
-          <p className={`text-xs font-bold uppercase tracking-wider ${t.textMuted(isDark)}`}>
-            {isImage && 'Image Preview'}
-            {isVideo && 'Video Preview'}
-            {isPdf && 'PDF Preview'}
-            {isDocument && !isPdf && 'Document Preview'}
-          </p>
-          <Button
-            onClick={handleDownload}
-            size="sm"
-            variant="outline"
-            className={`rounded-full gap-2 ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-slate-200'}`}
-          >
-            <Download size={14} />
-            Download
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-function PdfPreview({ fileUrl, isDark }: { fileUrl: string; isDark: boolean }) {
-  const themeCtx = useAdminTheme();
-
+function PdfPreview({ fileUrl, isDark, filename }: { fileUrl: string; isDark: boolean; filename: string }) {
   return (
     <div className={`w-full border rounded-lg ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
       <div className="flex flex-col items-center gap-4 p-4">
         <iframe
           src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
           className="w-full h-96 border-0 rounded"
-          title="PDF Viewer"
+          title={`${filename} Preview`}
+          sandbox="allow-same-origin allow-scripts allow-popups"
         />
         <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-          PDF preview (download for full resolution)
+          PDF preview (close to download full resolution)
         </p>
       </div>
     </div>

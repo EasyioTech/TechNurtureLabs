@@ -48,7 +48,7 @@ const nextConfig: NextConfig = {
       "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' https: https://api.razorpay.com https://*.razorpay.com",
       "worker-src 'self' blob:",
-      "frame-src 'self' https://youtube.com https://*.youtube.com https://youtube-nocookie.com https://*.youtube-nocookie.com https://player.vimeo.com https://*.vimeo.com https://*.videodelivery.net https://videodelivery.net https://checkout.razorpay.com https://api.razorpay.com https://*.razorpay.com",
+      "frame-src 'self' https://youtube.com https://*.youtube.com https://youtube-nocookie.com https://*.youtube-nocookie.com https://player.vimeo.com https://*.vimeo.com https://*.videodelivery.net https://videodelivery.net https://checkout.razorpay.com https://api.razorpay.com https://*.razorpay.com https://docs.google.com",
       "frame-ancestors 'none'",
       "object-src 'none'",
       "base-uri 'self'",
