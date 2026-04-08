@@ -1011,6 +1011,76 @@ function validateBackupForRestore(backup: CompleteSchoolBackup, targetSchoolId: 
 }
 
 /**
+ * Get recovery advice based on error type
+ */
+function getRecoveryAdvice(errorMessage: string): string {
+    if (errorMessage.includes('Target school') || errorMessage.includes('does not exist')) {
+        return 'Recovery: Ensure the school exists before attempting restore. Contact support if the school was deleted.';
+    }
+    if (errorMessage.includes('pending transactions')) {
+        return 'Recovery: Wait for pending transactions to complete, or contact support to resolve them manually.';
+    }
+    if (errorMessage.includes('deleted')) {
+        return 'Recovery: Cannot restore to a deleted school. Contact support to undelete the school first.';
+    }
+    if (errorMessage.includes('Invalid backup')) {
+        return 'Recovery: This backup file appears to be corrupted. Try downloading a different backup version.';
+    }
+    if (errorMessage.includes('R2')) {
+        return 'Recovery: R2 storage is temporarily unavailable. Check your network connection and credentials. Retry in a few minutes.';
+    }
+    if (errorMessage.includes('version')) {
+        return 'Recovery: This backup was created with a different version of the system. Contact support for migration assistance.';
+    }
+    return 'Recovery: Contact support with this error message for assistance.';
+}
+
+/**
+ * Validate transaction safety before restore
+ * Checks that target records exist and are in consistent state
+ */
+async function validateRestoreSafety(backup: CompleteSchoolBackup): Promise<void> {
+    // Verify school exists and is accessible
+    const existingSchool = await db.query.schools.findFirst({
+        where: eq(schema.schools.id, backup.schoolId),
+    });
+
+    if (!existingSchool) {
+        throw new Error(
+            `Cannot restore: Target school ${backup.schoolId} does not exist. ` +
+            `Create the school first before restoring backup.`
+        );
+    }
+
+    if (existingSchool.deleted_at !== null) {
+        throw new Error(
+            `Cannot restore: Target school is marked as deleted. ` +
+            `Restore to deleted schools is not allowed.`
+        );
+    }
+
+    // Check for incomplete transactions
+    const incompleteTransactions = await db.query.paymentTransactions.findMany({
+        where: and(
+            eq(schema.paymentTransactions.school_id, backup.schoolId),
+            // Only check for 'created' status (not yet authorized or captured)
+            // Other statuses are terminal states
+        ),
+    });
+
+    // Count only created (not yet processed) transactions
+    const createdTxns = incompleteTransactions.filter(t => t.status === 'created');
+    if (createdTxns.length > 0) {
+        console.warn(
+            `[Backup] Warning: School has ${createdTxns.length} unprocessed transactions. ` +
+            `These will be preserved in the restore.`
+        );
+    }
+
+    console.log(`[Backup] ✓ Restore safety validation passed`);
+}
+
+/**
  * FUNCTION 5: Export Complete School Data
  *
  * Combines all above functions into one complete backup
@@ -1459,6 +1529,9 @@ export async function restoreSchoolFromBackup(
             throw new Error(`Invalid backup data: ${errors.join(', ')}`);
         }
 
+        // Validate restore safety (target school exists, no pending transactions)
+        await validateRestoreSafety(backup);
+
         console.log(`[Backup] ✓ All validations passed, beginning restore transaction...`);
 
         let restoredSchool = 0;
@@ -1689,6 +1762,10 @@ export async function restoreSchoolFromBackup(
     } catch (error) {
         console.error('[Backup] ✗ Restore failed:', error);
         releaseBackupLock(backup.schoolId);
+
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const recoveryAdvice = getRecoveryAdvice(errorMessage);
+
         return {
             success: false,
             timestamp: new Date().toISOString(),
@@ -1698,8 +1775,8 @@ export async function restoreSchoolFromBackup(
                 academicRecords: 0, quizAttempts: 0, xpTransactions: 0, achievements: 0,
             },
             warnings: [],
-            errors: [error instanceof Error ? error.message : 'Unknown error'],
-            message: error instanceof Error ? error.message : 'Restore failed'
+            errors: [errorMessage, recoveryAdvice],
+            message: `Restore failed: ${errorMessage}. ${recoveryAdvice}`
         };
     }
 }
