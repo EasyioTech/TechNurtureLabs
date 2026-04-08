@@ -66,7 +66,8 @@ export const paymentService = {
         }
 
         // CRITICAL FIX #3: Verify school_id from Razorpay notes matches the claimed school_id
-        // This prevents payment hijacking where attacker pays for School A but verifies as School B
+        // Notes: school_id is only included in notes for existing school payments
+        // During registration, school_id may not be in notes (school created after order)
         const notesSchoolId = paymentDetails.notes?.school_id;
         if (notesSchoolId && notesSchoolId !== school_id) {
             logger.error('[PaymentService] FRAUD: School ID mismatch in payment notes', {

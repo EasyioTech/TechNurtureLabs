@@ -11,7 +11,7 @@ import { verifySession } from '@/lib/auth';
 
 const createOrderSchema = z.object({
     plan_id: z.string().uuid('Invalid plan ID'),
-    school_id: z.string().uuid('Invalid school ID'), // CRITICAL FIX #3: Capture school context
+    school_id: z.string().uuid('Invalid school ID').optional().nullable(), // Optional for registration flow (school not created yet)
     promo_code_id: z.string()
         .optional()
         .nullable()
@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: body.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 });
         }
         const { plan_id, school_id, promo_code_id } = body.data;
+        // school_id is optional during registration (before school exists); required for existing schools
 
         // SECURITY: Verify user is authenticated (for in-portal usage)
         // NOTE: Registration endpoint is pre-auth, so we don't require session here
@@ -177,15 +178,20 @@ export async function POST(req: NextRequest) {
         }
 
         try {
+            const notes: Record<string, string> = {
+                plan_id: plan.id,
+                plan_name: plan.name,
+                promo_code_id: promo_code_id || '',
+            };
+            // Only include school_id in notes if provided (for existing school payments)
+            if (school_id) {
+                notes.school_id = school_id;
+            }
+
             const order = await razorpay.orders.create({
                 amount: amountInPaise,
                 currency: plan.currency || 'INR',
-                notes: {
-                    plan_id: plan.id,
-                    plan_name: plan.name,
-                    school_id: school_id, // CRITICAL FIX #3: Store school context for verification
-                    promo_code_id: promo_code_id || '',
-                },
+                notes,
             });
 
             // SECURITY: Validate Razorpay response
