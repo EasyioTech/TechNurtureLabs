@@ -20,7 +20,7 @@ import { BrandingSection } from './settings/branding-section';
 import { AcademicClassesSection } from './settings/classes-section';
 import { HeroVideoSection } from './settings/hero-video-section';
 import { SecuritySection } from './settings/security-section';
-import { MaintenanceSection } from './settings/maintenance-section';
+import { BackupsLinkSection } from './settings/backups-link-section';
 import { StorageSection } from './settings/storage-section';
 
 // ─── Utility: Format bytes to human-readable size ──────────────────────────────
@@ -33,14 +33,14 @@ function formatBytes(bytes: number, decimals = 1): string {
 }
 
 interface SettingsTabProps {
-    // any props?
+    onNavigateToBackups?: () => void;
 }
 
 export interface SettingsTabRef {
     handleSave: () => void;
 }
 
-export const SettingsTab = forwardRef<SettingsTabRef, SettingsTabProps>(function SettingsTab(props, ref) {
+export const SettingsTab = forwardRef<SettingsTabRef, SettingsTabProps>(function SettingsTab({ onNavigateToBackups }, ref) {
     const { isDark, accent } = useAdminTheme();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -501,12 +501,8 @@ export const SettingsTab = forwardRef<SettingsTabRef, SettingsTabProps>(function
                 onChangePassword={handleChangePassword}
             />
 
-            <MaintenanceSection 
-                syncing={syncing}
-                onSyncMetrics={handleSyncMetrics}
-                diagnosing={diagnosing}
-                diagResults={diagResults}
-                onRunDiagnostics={handleRunDiagnostics}
+            <BackupsLinkSection
+                onNavigateToBackups={onNavigateToBackups || (() => {})}
             />
 
             <StorageSection 

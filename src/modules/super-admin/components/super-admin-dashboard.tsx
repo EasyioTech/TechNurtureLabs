@@ -563,7 +563,7 @@ function DashboardContent() {
                                 totalQuizzesPages={data.totalGlobalQuizzesPages}
                             />
                         )}
-                        { activePage === 'settings' && <SettingsTab ref={settingsRef} />}
+                        { activePage === 'settings' && <SettingsTab ref={settingsRef} onNavigateToBackups={() => setActivePage('backups')} />}
                     </motion.div>
                 </AnimatePresence>
 
