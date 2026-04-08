@@ -1021,6 +1021,9 @@ export async function exportCompleteSchoolData(schoolId: string): Promise<Comple
     console.log(`[Backup] Starting complete school export for: ${schoolId}`);
     console.log(`========================================\n`);
 
+    // Acquire backup lock
+    acquireBackupLock(schoolId, 'backup');
+
     const startTime = Date.now();
 
     try {
@@ -1082,9 +1085,11 @@ export async function exportCompleteSchoolData(schoolId: string): Promise<Comple
         console.log(`[Backup] Total Revenue: ₹${totalRevenue}`);
         console.log(`========================================\n`);
 
+        releaseBackupLock(schoolId);
         return backup;
     } catch (error) {
         console.error(`[Backup] ✗ Export failed:`, error);
+        releaseBackupLock(schoolId);
         throw error;
     }
 }
@@ -1092,6 +1097,59 @@ export async function exportCompleteSchoolData(schoolId: string): Promise<Comple
 // ============================================================================
 // PHASE 3: R2 UPLOAD, LIST, DOWNLOAD, RESTORE
 // ============================================================================
+
+// ============================================================================
+// BACKUP OPERATION LOCKING
+// ============================================================================
+
+/**
+ * In-memory backup locks to prevent concurrent operations on same school
+ * Key: schoolId, Value: { type: 'backup'|'restore', startTime: number }
+ */
+const backupLocks = new Map<string, { type: string; startTime: number }>();
+
+/**
+ * Lock timeout in milliseconds (15 minutes)
+ * Prevents deadlocks from crashed operations
+ */
+const LOCK_TIMEOUT_MS = 15 * 60 * 1000;
+
+/**
+ * Acquire a backup operation lock for a school
+ * Prevents concurrent backups/restores on the same school
+ */
+function acquireBackupLock(schoolId: string, operationType: 'backup' | 'restore'): void {
+    // Check for existing lock
+    const existingLock = backupLocks.get(schoolId);
+
+    if (existingLock) {
+        const lockAgeMs = Date.now() - existingLock.startTime;
+
+        // If lock is expired, clean it up
+        if (lockAgeMs > LOCK_TIMEOUT_MS) {
+            console.warn(`[Backup] Expired ${existingLock.type} lock found for school ${schoolId} (${lockAgeMs}ms old). Removing.`);
+            backupLocks.delete(schoolId);
+        } else {
+            // Lock is still valid, throw error
+            throw new Error(
+                `Cannot ${operationType} right now: Another ${existingLock.type} operation is in progress. ` +
+                `Please wait for it to complete (${(LOCK_TIMEOUT_MS / 1000 / 60).toFixed(0)} min timeout).`
+            );
+        }
+    }
+
+    // Acquire lock
+    backupLocks.set(schoolId, { type: operationType, startTime: Date.now() });
+    console.log(`[Backup] ✓ Lock acquired for school ${schoolId} (${operationType})`);
+}
+
+/**
+ * Release a backup operation lock
+ */
+function releaseBackupLock(schoolId: string): void {
+    backupLocks.delete(schoolId);
+    console.log(`[Backup] ✓ Lock released for school ${schoolId}`);
+}
 
 // ============================================================================
 // R2 CREDENTIAL VERIFICATION
@@ -1384,6 +1442,10 @@ export async function restoreSchoolFromBackup(
     backup: CompleteSchoolBackup
 ): Promise<RestoreResult> {
     console.log(`[Backup] Starting restore for school: ${backup.school.name}`);
+
+    // Acquire restore lock
+    acquireBackupLock(backup.schoolId, 'restore');
+
     const startTime = Date.now();
 
     try {
@@ -1601,6 +1663,8 @@ export async function restoreSchoolFromBackup(
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
         console.log(`[Backup] ✓ Restore completed in ${duration}s`);
 
+        releaseBackupLock(backup.schoolId);
+
         return {
             success: true,
             timestamp: new Date().toISOString(),
@@ -1624,6 +1688,7 @@ export async function restoreSchoolFromBackup(
         };
     } catch (error) {
         console.error('[Backup] ✗ Restore failed:', error);
+        releaseBackupLock(backup.schoolId);
         return {
             success: false,
             timestamp: new Date().toISOString(),
