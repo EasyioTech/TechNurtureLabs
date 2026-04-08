@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { X, FileText, ImageIcon, Film } from 'lucide-react';
+import { X, FileText, ImageIcon, Film, Loader2, AlertTriangle } from 'lucide-react';
 import { useAdminTheme, t } from '../../theme-context';
 import { MediaAsset } from './types';
 
@@ -11,6 +12,12 @@ interface PreviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+// Lazy load PDF viewer
+const PDFViewer = dynamic(() => import('@/modules/student/components/learning/pdf-viewer').then(mod => mod.PDFViewer), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="animate-spin" size={32} /></div>,
+});
 
 export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
   const { isDark } = useAdminTheme();
@@ -24,37 +31,22 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`max-w-4xl max-h-[90vh] p-0 border-0 overflow-hidden ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}>
+      <DialogContent className={`max-w-5xl max-h-[90vh] p-0 border-0 overflow-hidden ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}>
         <DialogTitle className="sr-only">
           {asset.original_name} Preview
         </DialogTitle>
 
-        {/* Header */}
-        <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
-          <div className="flex items-center gap-3 min-w-0">
-            {isImage && <ImageIcon size={18} className={t.textMuted(isDark)} />}
-            {isVideo && <Film size={18} className={t.textMuted(isDark)} />}
-            {(isPdf || isDocument) && <FileText size={18} className={t.textMuted(isDark)} />}
-            <div className="min-w-0">
-              <p className={`text-sm font-bold truncate ${t.textPrimary(isDark)}`} title={asset.original_name}>
-                {asset.original_name}
-              </p>
-              <p className={`text-xs font-bold uppercase tracking-wider ${t.textMuted(isDark)}`}>
-                {asset.mime_type} • {Math.round(asset.file_size / 1024)} KB
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => onOpenChange(false)}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
-            aria-label="Close preview"
-          >
-            <X size={18} />
-          </button>
-        </div>
+        {/* Close Button - Absolute Positioned */}
+        <button
+          onClick={() => onOpenChange(false)}
+          className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors z-10 ${isDark ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-100 hover:bg-slate-200'}`}
+          aria-label="Close preview"
+        >
+          <X size={18} />
+        </button>
 
-        {/* Content */}
-        <div className={`flex-1 overflow-auto flex items-center justify-center p-4 ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`} style={{ maxHeight: 'calc(90vh - 120px)' }}>
+        {/* Content - Full Area */}
+        <div className={`w-full h-[90vh] flex items-center justify-center ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}>
           {isImage && (
             <img
               src={asset.file_url}
@@ -64,15 +56,7 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
           )}
 
           {isVideo && asset.storage_type === 'cloudflare_stream' && (
-            <div className="w-full max-w-2xl aspect-video bg-black rounded-lg overflow-hidden">
-              <iframe
-                src={`https://iframe.mediadelivery.net/embed/${asset.id}`}
-                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-                className="w-full h-full"
-                title={`${asset.original_name} Video`}
-              />
-            </div>
+            <CloudflareStreamPlayer streamId={asset.id} />
           )}
 
           {isVideo && asset.storage_type !== 'cloudflare_stream' && (
@@ -85,23 +69,22 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
           )}
 
           {isPdf && (
-            <PdfPreview
-              fileUrl={asset.file_url}
-              isDark={isDark}
-              filename={asset.original_name}
+            <PDFViewer
+              url={asset.file_url}
+              onComplete={() => {}}
+              lessonComplete={false}
+              pageNumber={1}
+              docMax={100}
+              canMarkComplete={false}
+              className="w-full h-full rounded-none border-0"
             />
           )}
 
           {isDocument && !isPdf && (
             <div className="flex flex-col items-center justify-center gap-4">
-              <div className={`w-16 h-16 rounded-lg flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-                <FileText size={32} className={t.textMuted(isDark)} />
-              </div>
+              <AlertTriangle size={48} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
               <p className={`text-sm font-bold text-center ${t.textMuted(isDark)}`}>
-                Document preview not available for {asset.mime_type}
-              </p>
-              <p className={`text-xs font-bold uppercase tracking-wider ${t.textMuted(isDark)}`}>
-                Close modal to download
+                Preview not available
               </p>
             </div>
           )}
@@ -111,20 +94,16 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
   );
 }
 
-function PdfPreview({ fileUrl, isDark, filename }: { fileUrl: string; isDark: boolean; filename: string }) {
+function CloudflareStreamPlayer({ streamId }: { streamId: string }) {
   return (
-    <div className={`w-full border rounded-lg ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
-      <div className="flex flex-col items-center gap-4 p-4">
-        <iframe
-          src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
-          className="w-full h-96 border-0 rounded"
-          title={`${filename} Preview`}
-          sandbox="allow-same-origin allow-scripts allow-popups"
-        />
-        <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-          PDF preview (close to download full resolution)
-        </p>
-      </div>
+    <div className="w-full max-w-4xl aspect-video bg-black rounded-lg overflow-hidden">
+      <iframe
+        src={`https://iframe.mediadelivery.net/embed/${streamId}`}
+        allowFullScreen
+        allow="fullscreen"
+        className="w-full h-full border-0"
+        title="Video Player"
+      />
     </div>
   );
 }
