@@ -11,12 +11,12 @@ import { verifySession } from '@/lib/auth';
 
 const createOrderSchema = z.object({
     plan_id: z.string().uuid('Invalid plan ID'),
-    school_id: z.string().uuid('Invalid school ID').optional(), // Optional for registration flow
-    promo_code_id: z.string()
-        .optional()
-        .nullable()
-        .transform(val => (val === '' ? null : val))
-        .pipe(z.string().uuid('Invalid promo code ID').nullable()),
+    school_id: z.string().uuid('Invalid school ID').optional().catch(undefined),
+    promo_code_id: z.union([
+        z.string().uuid('Invalid promo code ID'),
+        z.null(),
+        z.undefined()
+    ]).transform(val => (val === '' ? null : val)).optional(),
 });
 
 const isBuild = process.env.NEXT_SKIP_TYPECHECK === '1' || process.env.npm_lifecycle_event === 'build';
@@ -42,15 +42,27 @@ export async function POST(req: NextRequest) {
         }
 
         const rawBody = await req.json();
-        // Ensure school_id exists (defaults to null for pre-auth registration)
-        if (!rawBody.school_id) rawBody.school_id = null;
 
-        const body = createOrderSchema.safeParse(rawBody);
-        if (!body.success) {
-            logger.warn('[Create Order] Invalid schema', { errors: body.error.issues });
-            return NextResponse.json({ error: body.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 });
+        // Manual validation: only validate required fields
+        if (!rawBody.plan_id || typeof rawBody.plan_id !== 'string') {
+            return NextResponse.json({ error: 'Invalid plan ID' }, { status: 400 });
         }
-        const { plan_id, school_id, promo_code_id } = body.data;
+
+        const plan_id = rawBody.plan_id;
+        const school_id = rawBody.school_id || null; // Optional, defaults to null
+        const promo_code_id = rawBody.promo_code_id || null; // Optional, defaults to null
+
+        // Validate UUIDs if provided
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(plan_id)) {
+            return NextResponse.json({ error: 'Invalid plan ID format' }, { status: 400 });
+        }
+        if (school_id && !uuidRegex.test(school_id)) {
+            return NextResponse.json({ error: 'Invalid school ID format' }, { status: 400 });
+        }
+        if (promo_code_id && !uuidRegex.test(promo_code_id)) {
+            return NextResponse.json({ error: 'Invalid promo code ID format' }, { status: 400 });
+        }
         // school_id is optional during registration (before school exists); required for existing schools
 
         // SECURITY: Verify user is authenticated (for in-portal usage)
