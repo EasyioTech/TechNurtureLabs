@@ -938,6 +938,78 @@ export async function exportStudentsData(schoolId: string): Promise<{
     };
 }
 
+// ============================================================================
+// VALIDATION & VERSIONING
+// ============================================================================
+
+/**
+ * Validate backup integrity
+ * Checks critical fields and structure
+ */
+function validateBackupStructure(backup: CompleteSchoolBackup): void {
+    // Version check
+    if (!backup.version || backup.version !== BACKUP_VERSION) {
+        throw new Error(
+            `Invalid backup version: ${backup.version}. Expected: ${BACKUP_VERSION}. ` +
+            `Cannot restore backups created with different versions. Contact support.`
+        );
+    }
+
+    // School identity validation
+    if (!backup.schoolId || !backup.school?.id) {
+        throw new Error('Invalid backup: Missing school identity');
+    }
+
+    if (backup.schoolId !== backup.school.id) {
+        throw new Error('Invalid backup: School ID mismatch in backup data');
+    }
+
+    // Metadata validation
+    if (!backup.metadata?.recordCounts) {
+        throw new Error('Invalid backup: Missing record counts metadata');
+    }
+
+    // Timestamp validation
+    if (!backup.timestamp || isNaN(new Date(backup.timestamp).getTime())) {
+        throw new Error('Invalid backup: Missing or invalid timestamp');
+    }
+
+    // Students array validation
+    if (!Array.isArray(backup.students)) {
+        throw new Error('Invalid backup: Missing or invalid students array');
+    }
+
+    // Cross-check student count
+    if (backup.students.length !== backup.metadata.recordCounts.students) {
+        throw new Error(
+            `Data integrity error: Student count mismatch. ` +
+            `Backup contains ${backup.students.length} students but metadata says ${backup.metadata.recordCounts.students}`
+        );
+    }
+
+    console.log(`[Backup] ✓ Backup validation passed (${backup.students.length} students)`);
+}
+
+/**
+ * Validate backup can be restored to this school
+ */
+function validateBackupForRestore(backup: CompleteSchoolBackup, targetSchoolId: string): void {
+    // Check school match
+    if (backup.schoolId !== targetSchoolId) {
+        throw new Error(
+            `Cannot restore: Backup is for school ${backup.schoolId} but target school is ${targetSchoolId}. ` +
+            `Restore would overwrite wrong school's data.`
+        );
+    }
+
+    // Check backup is complete (not partial)
+    if (!backup.school || !backup.schoolAdmin) {
+        throw new Error('Cannot restore: Backup is incomplete (missing school or admin data)');
+    }
+
+    console.log(`[Backup] ✓ Restore validation passed for school ${targetSchoolId}`);
+}
+
 /**
  * FUNCTION 5: Export Complete School Data
  *
@@ -998,6 +1070,9 @@ export async function exportCompleteSchoolData(schoolId: string): Promise<Comple
                 }
             }
         };
+
+        // Validate backup structure before returning
+        validateBackupStructure(backup);
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
         console.log(`\n[Backup] ✓ Complete export successful (${duration}s)`);
@@ -1163,13 +1238,16 @@ export async function downloadSchoolBackup(fileName: string): Promise<CompleteSc
 
     const backup = JSON.parse(decompressed.toString('utf-8'));
 
-    // Validate
+    // Validate backup structure and version
+    validateBackupStructure(backup);
+
+    // Validate backup data completeness
     const errors = validateBackupData(backup);
     if (errors.length > 0) {
         throw new Error(`Invalid backup: ${errors.join(', ')}`);
     }
 
-    console.log(`[Backup] ✓ Downloaded backup: ${fileName}`);
+    console.log(`[Backup] ✓ Downloaded and validated backup: ${fileName}`);
     return backup;
 }
 
@@ -1187,13 +1265,17 @@ export async function restoreSchoolFromBackup(
     const startTime = Date.now();
 
     try {
-        // Validate backup first
+        // Validate backup structure and integrity
+        validateBackupStructure(backup);
+        validateBackupForRestore(backup, backup.schoolId);
+
+        // Validate backup data completeness
         const errors = validateBackupData(backup);
         if (errors.length > 0) {
             throw new Error(`Invalid backup data: ${errors.join(', ')}`);
         }
 
-        console.log(`[Backup] ✓ Backup validated, beginning restore transaction...`);
+        console.log(`[Backup] ✓ All validations passed, beginning restore transaction...`);
 
         let restoredSchool = 0;
         let restoredAdmin = 0;

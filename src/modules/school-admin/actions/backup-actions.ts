@@ -3,18 +3,59 @@
 import { verifySession } from '@/lib/auth';
 import { exportCompleteSchoolData, uploadSchoolBackupToR2, listSchoolBackups, downloadSchoolBackup, restoreSchoolFromBackup } from '@/lib/services/school-backup-service';
 import { revalidatePath } from 'next/cache';
+import { db } from '@/lib/db';
+import { schoolAdmins } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+
+/**
+ * Verify that a school admin has access to a specific school
+ * @param userId - The admin's user ID from session
+ * @param schoolId - The school to verify access for
+ * @returns true if authorized, throws error if not
+ */
+async function verifySchoolAccess(userId: string, userRole: string, schoolId: string): Promise<boolean> {
+    // Super admins can access any school
+    if (userRole === 'super_admin') {
+        return true;
+    }
+
+    // School admins must be associated with the school
+    if (userRole === 'school_admin') {
+        const admin = await db.query.schoolAdmins.findFirst({
+            where: eq(schoolAdmins.id, userId),
+        });
+
+        if (!admin) {
+            throw new Error('Unauthorized: Admin profile not found');
+        }
+
+        if (admin.school_id !== schoolId) {
+            throw new Error('Unauthorized: Admin does not belong to this school');
+        }
+
+        if (!admin.is_active) {
+            throw new Error('Unauthorized: Admin account is inactive');
+        }
+
+        return true;
+    }
+
+    throw new Error('Unauthorized: Only school admins can manage backups');
+}
 
 /**
  * School Admin: Trigger backup for their school
+ */
+/**
+ * School Admin: Trigger backup for their school
+ * Verifies admin has access to the specified school before proceeding
  */
 export async function performSchoolBackup(schoolId: string) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
 
-    // Only school admins and super admins can perform backups
-    if (session.role !== 'school_admin' && session.role !== 'super_admin') {
-        throw new Error('Unauthorized');
-    }
+    // Verify admin has access to this school
+    await verifySchoolAccess(session.userId, session.role, schoolId);
 
     try {
         console.log(`[Action] Backing up school: ${schoolId}`);
@@ -46,13 +87,15 @@ export async function performSchoolBackup(schoolId: string) {
 /**
  * School Admin: List backups for their school
  */
+/**
+ * School Admin: List backups for their school
+ */
 export async function getSchoolBackupList(schoolId: string) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
 
-    if (session.role !== 'school_admin' && session.role !== 'super_admin') {
-        throw new Error('Unauthorized');
-    }
+    // Verify admin has access to this school
+    await verifySchoolAccess(session.userId, session.role, schoolId);
 
     try {
         const backups = await listSchoolBackups(schoolId);
@@ -78,13 +121,15 @@ export async function getSchoolBackupList(schoolId: string) {
 /**
  * School Admin: Download a backup (for preview or download)
  */
+/**
+ * School Admin: Download a backup (for preview or download)
+ */
 export async function downloadSchoolBackupFile(schoolId: string, fileName: string) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
 
-    if (session.role !== 'school_admin' && session.role !== 'super_admin') {
-        throw new Error('Unauthorized');
-    }
+    // Verify admin has access to this school
+    await verifySchoolAccess(session.userId, session.role, schoolId);
 
     try {
         const backup = await downloadSchoolBackup(fileName);
@@ -111,13 +156,15 @@ export async function downloadSchoolBackupFile(schoolId: string, fileName: strin
 /**
  * School Admin: Restore from backup (with confirmation)
  */
+/**
+ * School Admin: Restore from backup (with confirmation)
+ */
 export async function restoreSchoolFromBackupFile(schoolId: string, fileName: string) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
 
-    if (session.role !== 'school_admin' && session.role !== 'super_admin') {
-        throw new Error('Unauthorized');
-    }
+    // Verify admin has access to this school
+    await verifySchoolAccess(session.userId, session.role, schoolId);
 
     try {
         console.log(`[Action] Restoring school ${schoolId} from ${fileName}`);
