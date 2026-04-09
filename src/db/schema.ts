@@ -804,6 +804,23 @@ export const loginAttempts = pgTable('login_attempts', {
     index('idx_login_ip').on(table.ip_address),
 ]);
 
+export const schoolBackups = pgTable('school_backups', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+    file_name: text('file_name').notNull().unique(),
+    file_size: bigint('file_size', { mode: 'number' }).notNull(),
+    hash: text('hash'),
+    student_count: integer('student_count'),
+    revenue_total: numeric('revenue_total', { precision: 12, scale: 2 }),
+    records_count: jsonb('records_count'), // e.g. { students: 10, lessons: 20 }
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    metadata: jsonb('metadata').notNull().default({}),
+}, (table) => [
+    index('idx_backups_school').on(table.school_id),
+    index('idx_backups_timestamp').on(table.timestamp),
+]);
+
 // ============================================================================
 // MEDIA LIBRARY
 // ============================================================================
@@ -924,6 +941,7 @@ export const schoolsRelations = relations(schools, ({ many }) => ({
     academicSessions: many(academicSessions),
     subscriptions: many(schoolSubscriptions),
     classMapping: many(schoolClassMapping),
+    backups: many(schoolBackups),
 }));
 
 export const studentsRelations = relations(students, ({ one, many }) => ({
@@ -1137,6 +1155,10 @@ export const pinResetRequestsRelations = relations(pinResetRequests, ({ one }) =
     student: one(students, { fields: [pinResetRequests.student_id], references: [students.id] }),
     school: one(schools, { fields: [pinResetRequests.school_id], references: [schools.id] }),
     resolver: one(schoolAdmins, { fields: [pinResetRequests.resolved_by], references: [schoolAdmins.id] }),
+}));
+
+export const schoolBackupsRelations = relations(schoolBackups, ({ one }) => ({
+    school: one(schools, { fields: [schoolBackups.school_id], references: [schools.id] }),
 }));
 
 export const passwordResetTokensRelations = relations(passwordResetTokens, () => ({}));

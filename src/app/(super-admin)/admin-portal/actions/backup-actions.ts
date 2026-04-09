@@ -56,6 +56,32 @@ export async function listSchoolBackupsAdmin(schoolId: string) {
     }
 
     try {
+        const { db } = await import('@/lib/db');
+        const { schoolBackups } = await import('@/db/schema');
+        const { eq, desc } = await import('drizzle-orm');
+
+        const dbBackups = await db.query.schoolBackups.findMany({
+            where: eq(schoolBackups.school_id, schoolId),
+            orderBy: [desc(schoolBackups.timestamp)],
+        });
+
+        if (dbBackups.length > 0) {
+            return {
+                success: true,
+                backups: dbBackups.map(b => ({
+                    fileName: b.file_name,
+                    size: b.file_size,
+                    timestamp: b.timestamp.toISOString(),
+                    created: b.timestamp.toLocaleDateString(),
+                    studentCount: b.student_count || 0,
+                    revenueTotal: b.revenue_total || "0",
+                    recordsCount: b.records_count || {},
+                    inDb: true
+                }))
+            };
+        }
+
+        // Fallback to R2 scan if DB is empty
         const backups = await listSchoolBackups(schoolId);
         return {
             success: true,
@@ -63,7 +89,8 @@ export async function listSchoolBackupsAdmin(schoolId: string) {
                 fileName: b.fileName,
                 size: b.size,
                 timestamp: b.timestamp,
-                created: new Date(b.timestamp).toLocaleDateString()
+                created: new Date(b.timestamp).toLocaleDateString(),
+                inDb: false
             }))
         };
     } catch (error: any) {
@@ -136,6 +163,17 @@ export async function deleteBackupFileAdmin(schoolId: string, fileName: string) 
 
         await s3Client.send(command);
 
+        // Also delete from database
+        try {
+            const { db } = await import('@/lib/db');
+            const { schoolBackups } = await import('@/db/schema');
+            const { eq } = await import('drizzle-orm');
+            
+            await db.delete(schoolBackups).where(eq(schoolBackups.file_name, fileName));
+        } catch (dbError) {
+            console.error('[Admin Backup] Failed to delete record from DB, but file was removed from R2:', dbError);
+        }
+
         console.log(`[Admin Backup] Deleted backup: ${fileName}`);
 
         return {
@@ -195,5 +233,85 @@ export async function restoreSchoolFromBackupFileAdmin(schoolId: string, fileNam
             errors: [error.message || 'Restore failed'],
             message: error.message || 'Restore failed'
         };
+    }
+}
+
+/**
+ * SUPER ADMIN ONLY: Sync backups from R2 to Database
+ */
+export async function syncBackupsFromR2Admin(schoolId: string) {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+    if (session.role !== 'super_admin') throw new Error('Unauthorized');
+
+    try {
+        const { syncSchoolBackupsToDb } = await import('@/lib/services/school-backup-service');
+        const count = await syncSchoolBackupsToDb(schoolId);
+        
+        revalidatePath('/admin-portal/admin/backups');
+        
+        return { 
+            success: true, 
+            message: `Synced ${count} backup records from R2` 
+        };
+    } catch (error: any) {
+        console.error('[Admin Backup] Sync failed:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * SUPER ADMIN ONLY: Get detailed preview metadata from a backup file
+ */
+export async function getBackupPreviewAdmin(fileName: string) {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+    if (session.role !== 'super_admin') throw new Error('Unauthorized');
+
+    try {
+        const { downloadSchoolBackup } = await import('@/lib/services/school-backup-service');
+        const backupData = await downloadSchoolBackup(fileName);
+        
+        return {
+            success: true,
+            metadata: {
+                schoolName: backupData.school.name,
+                studentsCount: backupData.students.length,
+                academicRecordsCount: backupData.academicRecords.length,
+                revenueTotal: backupData.metadata.totalRevenue,
+                xpDistributed: backupData.metadata.totalXpDistributed,
+                recordCounts: backupData.metadata.recordCounts,
+                timestamp: backupData.timestamp,
+                coverage: {
+                    academic: true,
+                    enrollments: true,
+                    billing: true,
+                    quizzes: true,
+                    achievements: true
+                }
+            }
+        };
+    } catch (error: any) {
+        console.error('[Admin Backup] Preview failed:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * SUPER ADMIN ONLY: Get a presigned download URL for a backup file
+ */
+export async function getBackupDownloadUrlAdmin(fileName: string) {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+    if (session.role !== 'super_admin') throw new Error('Unauthorized');
+
+    try {
+        const { getSignedDownloadUrl } = await import('@/lib/storage');
+        const url = await getSignedDownloadUrl(`backups/${fileName}`, 600); // 10 minutes
+        
+        return { success: true, url };
+    } catch (error: any) {
+        console.error('[Admin Backup] URL generation failed:', error);
+        return { success: false, error: error.message };
     }
 }

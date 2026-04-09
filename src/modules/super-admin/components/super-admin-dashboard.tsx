@@ -315,18 +315,18 @@ function DashboardContent() {
                             <button
                                 onClick={() => setActivePage('backups')}
                                 title="Data Backups"
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border shadow-lg ${t.border(isDark)} ${activePage === 'backups' ? accent.bg + ' text-slate-900 border-transparent shadow-' + accent.name + '-500/20' : (isDark ? 'bg-white/[0.05] hover:bg-white/[0.1] text-indigo-400' : 'bg-white hover:bg-neutral-50 text-indigo-600')}`}
+                                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all border shadow-lg ${t.border(isDark)} ${activePage === 'backups' ? accent.bg + ' text-slate-900 border-transparent shadow-' + accent.name + '-500/20' : (isDark ? 'bg-white/[0.05] hover:bg-white/[0.1] text-indigo-400' : 'bg-white hover:bg-neutral-50 text-indigo-600')}`}
                             >
-                                <Database size={18} strokeWidth={3} />
+                                <Database size={16} strokeWidth={3} />
                             </button>
 
                             {/* Sign Out Button */}
                             <button 
                                 onClick={() => signOut()}
                                 title="Sign Out"
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border shadow-lg ${t.border(isDark)} ${isDark ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20' : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200 shadow-rose-900/5'}`}
+                                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all border shadow-lg ${t.border(isDark)} ${isDark ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20' : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200 shadow-rose-900/5'}`}
                             >
-                                <LogOut size={16} strokeWidth={3} />
+                                <LogOut size={14} strokeWidth={3} />
                             </button>
 
                             <button

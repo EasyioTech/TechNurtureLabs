@@ -1383,6 +1383,33 @@ export async function uploadSchoolBackupToR2(
     });
 
     await s3Client!.send(command);
+    
+    // Track in database
+    try {
+        await db.insert(schema.schoolBackups).values({
+            school_id: schoolId,
+            file_name: fileName,
+            file_size: compressed.length,
+            hash: currentHash,
+            student_count: backup.students.length,
+            revenue_total: backup.metadata.totalRevenue.toString(),
+            records_count: backup.metadata.recordCounts,
+            timestamp: new Date(),
+        }).onConflictDoUpdate({
+            target: schema.schoolBackups.file_name,
+            set: {
+                file_size: compressed.length,
+                hash: currentHash,
+                student_count: backup.students.length,
+                revenue_total: backup.metadata.totalRevenue.toString(),
+                records_count: backup.metadata.recordCounts,
+                timestamp: new Date(),
+            }
+        });
+    } catch (dbError) {
+        console.error('[Backup] Failed to update backup record in DB:', dbError);
+        // Don't throw here, as R2 upload succeeded
+    }
 
     console.log(`[Backup] ✓ Uploaded to R2: ${fileName}`);
 
@@ -1446,6 +1473,39 @@ export async function listSchoolBackups(schoolId: string): Promise<BackupListIte
         return [];
     }
 }
+
+/**
+ * FUNCTION 8: Sync R2 Backups to Database
+ * 
+ * Scans R2 for files and ensures they are tracked in the SQL database.
+ * Returns number of records synced.
+ */
+export async function syncSchoolBackupsToDb(schoolId: string): Promise<number> {
+    const r2Backups = await listSchoolBackups(schoolId);
+    if (r2Backups.length === 0) return 0;
+
+    let syncCount = 0;
+    
+    // Batch process to avoid too many DB hits? For now one by one is fine for < 100 backups
+    for (const backup of r2Backups) {
+        try {
+            await db.insert(schema.schoolBackups).values({
+                school_id: schoolId,
+                file_name: backup.fileName,
+                file_size: backup.size,
+                timestamp: new Date(backup.timestamp),
+                metadata: { syncedAt: new Date().toISOString() }
+            }).onConflictDoNothing();
+            syncCount++;
+        } catch (err) {
+            console.error(`[Backup Sync] Failed for ${backup.fileName}:`, err);
+        }
+    }
+    
+    return syncCount;
+}
+
+/**
 
 /**
  * FUNCTION 8: Download Backup from R2

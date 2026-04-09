@@ -11,7 +11,17 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { performSchoolBackupAdmin, listSchoolBackupsAdmin, downloadSchoolBackupFileAdmin, restoreSchoolFromBackupFileAdmin } from '@/app/(super-admin)/admin-portal/actions/backup-actions';
+import { 
+    performSchoolBackupAdmin, 
+    listSchoolBackupsAdmin, 
+    downloadSchoolBackupFileAdmin, 
+    restoreSchoolFromBackupFileAdmin,
+    syncBackupsFromR2Admin,
+    getBackupPreviewAdmin,
+    getBackupDownloadUrlAdmin,
+    deleteBackupFileAdmin
+} from '@/app/(super-admin)/admin-portal/actions/backup-actions';
+import { X, ChevronDown } from 'lucide-react';
 
 interface BackupsTabProps {
     schoolsList: Array<{ id: string; name: string }>;
@@ -24,7 +34,9 @@ interface BackupWithMetadata {
     created: string;
     schoolName?: string;
     studentCount?: number;
-    recordsCount?: number;
+    revenueTotal?: string;
+    recordsCount?: any;
+    inDb?: boolean;
 }
 
 export function BackupsTab({ schoolsList }: BackupsTabProps) {
@@ -36,6 +48,8 @@ export function BackupsTab({ schoolsList }: BackupsTabProps) {
     const [selectedBackup, setSelectedBackup] = useState<BackupWithMetadata | null>(null);
     const [showBackupInfo, setShowBackupInfo] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const [previewData, setPreviewData] = useState<any>(null);
 
     const currentSchool = schoolsList.find(s => s.id === selectedSchoolId);
 
@@ -108,16 +122,76 @@ export function BackupsTab({ schoolsList }: BackupsTabProps) {
 
     const handleDownload = async (backup: BackupWithMetadata) => {
         try {
-            const result = await downloadSchoolBackupFileAdmin(selectedSchoolId, backup.fileName);
-            if (result.success) {
-                toast.success('Backup meta-info retrieved');
-                setSelectedBackup(backup);
-                setShowBackupInfo(true);
+            const result = await getBackupDownloadUrlAdmin(backup.fileName);
+            if (result.success && result.url) {
+                // Trigger actual download
+                const link = document.createElement('a');
+                link.href = result.url;
+                link.download = backup.fileName.split('/').pop() || 'backup.json.gz';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast.success('Download initiated');
             } else {
-                toast.error(result.error || 'Failed to fetch backup info');
+                toast.error(result.error || 'Failed to generate download link');
             }
         } catch (error: any) {
             toast.error(error.message || 'Download error');
+        }
+    };
+
+    const handleDelete = async (backup: BackupWithMetadata) => {
+        if (!window.confirm(`Are you sure you want to PERMANENTLY delete this backup?\n\nFile: ${backup.fileName}`)) {
+            return;
+        }
+
+        try {
+            const result = await deleteBackupFileAdmin(selectedSchoolId, backup.fileName);
+            if (result.success) {
+                toast.success('Backup deleted permanently');
+                await loadBackups();
+            } else {
+                toast.error(result.error || 'Delete failed');
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'Delete error');
+        }
+    };
+
+    const handleSync = async () => {
+        setIsLoading(true);
+        try {
+            const result = await syncBackupsFromR2Admin(selectedSchoolId);
+            if (result.success) {
+                toast.success(result.message);
+                await loadBackups();
+            } else {
+                toast.error(result.error || 'Sync failed');
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'Sync error');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handlePreview = async (backup: BackupWithMetadata) => {
+        setSelectedBackup(backup);
+        setShowBackupInfo(true);
+        setPreviewLoading(true);
+        setPreviewData(null);
+        
+        try {
+            const result = await getBackupPreviewAdmin(backup.fileName);
+            if (result.success) {
+                setPreviewData(result.metadata);
+            } else {
+                toast.error(result.error || 'Failed to load preview');
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'Preview error');
+        } finally {
+            setPreviewLoading(false);
         }
     };
 
@@ -187,7 +261,7 @@ export function BackupsTab({ schoolsList }: BackupsTabProps) {
                                 </Button>
                                 
                                 <Button
-                                    onClick={loadBackups}
+                                    onClick={handleSync}
                                     disabled={isLoading}
                                     variant="outline"
                                     className={`w-14 h-14 rounded-2xl border ${t.border(isDark)} ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-100'}`}
@@ -267,10 +341,17 @@ export function BackupsTab({ schoolsList }: BackupsTabProps) {
                                         <div className="flex items-center gap-2">
                                             <Button
                                                 variant="ghost"
-                                                onClick={() => handleDownload(backup)}
+                                                onClick={() => handlePreview(backup)}
                                                 className={`h-11 px-4 rounded-xl gap-2 font-black text-[10px] uppercase tracking-widest ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-neutral-100 text-slate-700'}`}
                                             >
                                                 <Info size={14} /> Details
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                onClick={() => handleDownload(backup)}
+                                                className={`h-11 px-4 rounded-xl gap-2 font-black text-[10px] uppercase tracking-widest ${isDark ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}
+                                            >
+                                                <Download size={14} /> Download
                                             </Button>
                                             <Button
                                                 variant="ghost"
@@ -281,6 +362,7 @@ export function BackupsTab({ schoolsList }: BackupsTabProps) {
                                             </Button>
                                             <Button
                                                 variant="ghost"
+                                                onClick={() => handleDelete(backup)}
                                                 className={`h-11 px-4 rounded-xl text-rose-500 ${isDark ? 'hover:bg-rose-500/20' : 'hover:bg-rose-50'}`}
                                             >
                                                 <Trash2 size={16} />
@@ -437,8 +519,25 @@ export function BackupsTab({ schoolsList }: BackupsTabProps) {
                             <DetailItem label="SNAPSHOT SIZE" value={formatFileSize(selectedBackup.size)} isDark={isDark} />
                             <DetailItem label="TIMESTAMP" value={formatDate(selectedBackup.timestamp)} isDark={isDark} />
                             <DetailItem label="SCHOOL NODE" value={currentSchool?.name || 'N/A'} isDark={isDark} />
-                            <DetailItem label="DATA SOURCE" value="System Core" isDark={isDark} />
-                            <DetailItem label="STATUS" value="Verified" isDark={isDark} />
+                            
+                            {previewLoading ? (
+                                <div className="col-span-2 py-4 flex items-center gap-3">
+                                    <RefreshCw size={14} className="animate-spin text-indigo-500" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Fetching detailed manifest...</span>
+                                </div>
+                            ) : previewData ? (
+                                <>
+                                    <DetailItem label="TOTAL STUDENTS" value={(previewData.studentsCount || 0).toString()} isDark={isDark} />
+                                    <DetailItem label="TOTAL REVENUE" value={`₹${parseFloat(previewData.revenueTotal || '0').toLocaleString()}`} isDark={isDark} />
+                                    <DetailItem label="RECORDS COUNT" value={Object.values(previewData.recordCounts || {}).reduce((a: any, b: any) => a + b, 0).toString()} isDark={isDark} />
+                                    <DetailItem label="COVERAGE" value="Full Academic + Billing" isDark={isDark} />
+                                </>
+                            ) : (
+                                <>
+                                    <DetailItem label="STUDENTS" value={(selectedBackup.studentCount || '---').toString()} isDark={isDark} />
+                                    <DetailItem label="REVENUE" value={selectedBackup.revenueTotal ? `₹${parseFloat(selectedBackup.revenueTotal).toLocaleString()}` : '---'} isDark={isDark} />
+                                </>
+                            )}
                         </div>
 
                         <div className="flex gap-3">
@@ -453,11 +552,11 @@ export function BackupsTab({ schoolsList }: BackupsTabProps) {
                                 <RotateCcw size={18} /> Restore Now
                             </Button>
                             <Button
-                                onClick={() => setShowBackupInfo(false)}
+                                onClick={() => handleDownload(selectedBackup)}
                                 variant="outline"
                                 className={`h-14 px-8 rounded-2xl border ${t.border(isDark)} font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}
                             >
-                                CLOSE
+                                <DownloadCloud size={18} />
                             </Button>
                         </div>
                     </motion.div>
