@@ -3,6 +3,7 @@
 import { verifySession } from '@/lib/auth';
 import { exportCompleteSchoolData, uploadSchoolBackupToR2, listSchoolBackups, downloadSchoolBackup, restoreSchoolFromBackup } from '@/lib/services/school-backup-service';
 import { revalidatePath } from 'next/cache';
+import { createAuditLog } from '@/lib/audit';
 
 /**
  * SUPER ADMIN ONLY: Trigger backup for a specific school
@@ -25,6 +26,21 @@ export async function performSchoolBackupAdmin(schoolId: string) {
 
         // 2. Upload to R2
         const result = await uploadSchoolBackupToR2(backup, schoolId);
+
+        // 3. Log the action
+        await createAuditLog({
+            userId: session.userId,
+            userType: 'super_admin',
+            schoolId: schoolId,
+            action: 'backup',
+            entityType: 'backup',
+            entityId: result.fileName,
+            metadata: {
+                fileName: result.fileName,
+                size: result.size,
+                type: 'manual'
+            }
+        });
 
         revalidatePath('/admin-portal/admin/backups');
 
@@ -75,6 +91,20 @@ export async function performSystemWideBackupAdmin() {
                 results.push({ schoolId: school.id, name: school.name, success: false, error: 'Timed out or failed' });
             }
         }
+
+        // Log system-wide backup
+        await createAuditLog({
+            userId: session.userId,
+            userType: 'super_admin',
+            action: 'backup',
+            entityType: 'backup',
+            entityId: 'system-wide',
+            metadata: {
+                schoolCount: allSchools.length,
+                type: 'system-wide-manual',
+                results: results.map(r => ({ id: r.schoolId, success: r.success }))
+            }
+        });
 
         revalidatePath('/admin-portal/admin/backups');
 

@@ -21,6 +21,7 @@ const serverSchema = z.object({
     RAZORPAY_KEY_SECRET: z.string().optional().default(''),
     NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().optional().default(''),
     NEXT_PUBLIC_APP_URL: z.string().url().optional().default('http://localhost:3000'),
+    CRON_SECRET: z.string().optional().default(''),
 });
 
 let _serverEnv = serverSchema.safeParse(process.env);
