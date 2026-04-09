@@ -1,0 +1,1 @@
+- [Media Library Icon Visibility Fix](media-library-icon-fixes.md) — Fixed icon contrast and visibility for all themes; proper strokeWidth and colors

@@ -126,8 +126,9 @@ export function AssetGrid({
                                     <button
                                         type="button"
                                         onClick={e => handlePreview(asset, e)}
-                                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-0 group-hover/card:opacity-100
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-all md:opacity-0 md:group-hover/card:opacity-100
                                             ${isDark ? 'bg-blue-500/30 text-blue-300 hover:bg-blue-500 hover:text-white' : 'bg-blue-100 text-blue-600 hover:bg-blue-500 hover:text-white'}`}
+                                        title="Preview"
                                     >
                                         <Eye size={12} strokeWidth={2.5} />
                                     </button>
@@ -138,8 +139,9 @@ export function AssetGrid({
                                             onDelete(asset, e);
                                         }}
                                         disabled={isDeleting}
-                                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-0 group-hover/card:opacity-100
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-all md:opacity-0 md:group-hover/card:opacity-100
                                             ${isDark ? 'bg-rose-500/30 text-rose-300 hover:bg-rose-500 hover:text-white' : 'bg-rose-100 text-rose-600 hover:bg-rose-500 hover:text-white'}`}
+                                        title="Delete"
                                     >
                                         {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} strokeWidth={2.5} />}
                                     </button>
@@ -190,12 +192,13 @@ export function AssetGrid({
                                     {asset.storage_type === 'r2' ? 'R2' : asset.storage_type === 'cloudflare_stream' ? 'Stream' : 'Local'}
                                 </div>
 
-                                <div className="absolute top-1.5 left-1.5 flex gap-1 opacity-0 group-hover/card:opacity-100 z-10">
+                                <div className="absolute top-1.5 left-1.5 flex gap-1 md:opacity-0 md:group-hover/card:opacity-100 z-10 transition-opacity">
                                     <button
                                         type="button"
                                         onClick={e => handlePreview(asset, e)}
                                         className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors shadow-md
                                             ${isDark ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+                                        title="Preview"
                                     >
                                         <Eye size={9} strokeWidth={2.5} />
                                     </button>
@@ -205,6 +208,7 @@ export function AssetGrid({
                                         disabled={isDeleting}
                                         className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors shadow-md
                                             ${isDark ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-rose-500 text-white hover:bg-rose-600'}`}
+                                        title="Delete"
                                     >
                                         {isDeleting ? <Loader2 size={9} className="animate-spin" /> : <Trash2 size={9} strokeWidth={2.5} />}
                                     </button>
