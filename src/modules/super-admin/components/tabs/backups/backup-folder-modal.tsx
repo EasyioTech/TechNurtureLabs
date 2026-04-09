@@ -66,14 +66,14 @@ export function BackupFolderModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className={`max-w-4xl w-full border-0 p-0 overflow-hidden rounded-[2.5rem] shadow-2xl ${
+            <DialogContent className={`w-full max-w-4xl border-0 p-0 overflow-hidden rounded-t-[2rem] rounded-b-none sm:rounded-[2.5rem] shadow-2xl max-h-[95vh] sm:max-h-[85vh] ${
                 isDark ? 'bg-neutral-950/95 backdrop-blur-2xl' : 'bg-white'
             }`}>
                <DialogTitle className="sr-only">Exploration of {fileName}</DialogTitle>
-                
-                <div className="flex h-[80vh] overflow-hidden">
+
+                <div className="flex flex-col md:flex-row h-auto md:h-[80vh] overflow-hidden">
                     {/* LEFT PANEL: MANIFEST SUMMARY */}
-                    <div className={`w-80 border-r flex flex-col p-8 shrink-0 ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-neutral-50/50 border-neutral-100'}`}>
+                    <div className={`w-full md:w-72 border-b md:border-b-0 md:border-r flex flex-col p-6 md:p-8 md:h-full overflow-y-auto shrink-0 ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-neutral-50/50 border-neutral-100'}`}>
                         <div className="mb-8">
                             <div className={`w-14 h-14 rounded-2xl mb-4 flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-white shadow-sm'}`}>
                                 <ShieldCheck size={28} className={isDark ? accent.text : 'text-slate-900'} />
@@ -110,19 +110,10 @@ export function BackupFolderModal({
                     </div>
 
                     {/* RIGHT PANEL: BROWSER */}
-                    <div className="flex-1 flex flex-col min-w-0">
-                        <div className={`p-8 border-b flex items-center justify-between ${t.border(isDark)}`}>
-                            <div className="flex items-center gap-4 flex-1">
-                                <div className="relative flex-1 max-w-sm">
-                                    <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${t.textMuted(isDark)}`} />
-                                    <input 
-                                        type="text" 
-                                        placeholder="Search school nodes..." 
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className={`w-full pl-10 pr-4 py-2 rounded-xl text-[11px] font-bold border transition-all ${isDark ? 'bg-white/5 border-white/10 focus:bg-white/10' : 'bg-neutral-50 border-neutral-200'}`}
-                                    />
-                                </div>
+                    <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                        <div className={`px-4 sm:px-6 py-4 border-b flex items-center justify-between ${t.border(isDark)}`}>
+                            <div className="flex items-center gap-2 flex-1">
+                                <span className={`text-xs font-bold shrink-0 ${t.textMuted(isDark)}`}>Nodes:</span>
                             </div>
                             <DialogClose asChild>
                                 <button className={`p-2 rounded-full transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-neutral-100'}`}>
@@ -131,7 +122,7 @@ export function BackupFolderModal({
                             </DialogClose>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
                             {isLoading ? (
                                 <div className="h-full flex flex-col items-center justify-center space-y-4 opacity-50">
                                     <RotateCcw size={32} className="animate-spin" />
@@ -211,7 +202,7 @@ function MetaItem({ label, value, isDark }: { label: string; value: string; isDa
     return (
         <div>
             <p className={`text-[8px] font-black uppercase tracking-[0.2em] mb-1 opacity-50 ${t.textMuted(isDark)}`}>{label}</p>
-            <p className={`text-[10px] font-black truncate ${t.textPrimary(isDark)}`}>{value}</p>
+            <p className={`text-xs font-black truncate ${t.textPrimary(isDark)}`}>{value}</p>
         </div>
     );
 }

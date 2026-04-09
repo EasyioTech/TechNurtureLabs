@@ -160,23 +160,25 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                     <Button
                         onClick={handleSync}
                         disabled={isSyncing || !activeSchoolId}
                         variant="ghost"
-                        className={`h-12 px-6 rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-100'}`}
+                        className={`h-10 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-100'}`}
                     >
                         <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
-                        Sync Nodes
+                        <span className="hidden sm:inline">Sync Nodes</span>
+                        <span className="sm:hidden">Sync</span>
                     </Button>
                     <Button
                         onClick={handleInitiateBackup}
                         disabled={isBackingUp}
-                        className={`h-12 px-8 rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 ${t.btnPrimary(isDark, accent)}`}
+                        className={`h-10 sm:h-12 px-4 sm:px-8 rounded-xl sm:rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 ${t.btnPrimary(isDark, accent)}`}
                     >
                         <CloudUpload size={18} className={isBackingUp ? 'animate-bounce' : ''} />
-                        Vault Now
+                        <span className="hidden sm:inline">Vault Now</span>
+                        <span className="sm:hidden">Vault</span>
                     </Button>
                 </div>
             </div>
@@ -235,8 +237,8 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
             </div>
 
             {/* Roadmap Section */}
-            <div className={`mt-20 p-10 rounded-[3rem] border overflow-hidden relative ${isDark ? 'bg-gradient-to-br from-neutral-900 to-black border-white/5' : 'bg-slate-900 border-slate-800'}`}>
-                <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
+            <div className={`mt-10 sm:mt-20 p-6 sm:p-10 rounded-2xl sm:rounded-[3rem] border overflow-hidden relative ${isDark ? 'bg-gradient-to-br from-neutral-900 to-black border-white/5' : 'bg-slate-900 border-slate-800'}`}>
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 sm:gap-12">
                     <div className="flex-1 space-y-6">
                         <Badge className="bg-amber-500/20 text-amber-500 border-0 font-black text-[10px] uppercase px-4 py-1.5 rounded-full">Coming Soon</Badge>
                         <h3 className="text-3xl font-black text-white">Advanced Data Sovereignty</h3>

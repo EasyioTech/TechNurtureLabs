@@ -67,9 +67,9 @@ export function BackupCard({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05, duration: 0.4 }}
-            className={`group relative p-6 rounded-[2.5rem] border transition-all duration-500 overflow-hidden cursor-pointer
-                ${isDark 
-                    ? 'bg-neutral-900 border-white/5 hover:bg-neutral-800/80 hover:border-white/10 hover:-translate-y-1' 
+            className={`group relative p-6 rounded-3xl border transition-all duration-500 overflow-hidden cursor-pointer
+                ${isDark
+                    ? 'bg-neutral-900 border-white/5 hover:bg-neutral-800/80 hover:border-white/10 hover:-translate-y-1'
                     : 'bg-white border-neutral-100 hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-1'}`}
             onClick={onPreview}
         >
@@ -82,7 +82,7 @@ export function BackupCard({
             <div className="flex flex-col h-full gap-6">
                 {/* Header: Icon & Meta */}
                 <div className="flex items-start justify-between">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 ${isDark ? 'bg-white/5' : 'bg-neutral-50'}`}>
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110 ${isDark ? 'bg-white/5' : 'bg-neutral-50'}`}>
                         <div className="relative">
                             <Database size={28} className={isDark ? accent.text : 'text-slate-900'} />
                             <div className="absolute -top-1 -right-1 flex">
@@ -124,7 +124,7 @@ export function BackupCard({
 
                 {/* Footer: Quick Actions (Visible on Hover in Desktop, always on mobile) */}
                 <div className="mt-auto pt-4 border-t border-dashed border-white/5 flex items-center justify-between gap-2">
-                    <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                         <Button
                             variant="ghost"
                             size="icon"
