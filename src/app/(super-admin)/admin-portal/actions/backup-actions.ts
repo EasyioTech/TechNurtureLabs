@@ -45,6 +45,50 @@ export async function performSchoolBackupAdmin(schoolId: string) {
 }
 
 /**
+ * SUPER ADMIN ONLY: Trigger backup for ALL schools
+ */
+export async function performSystemWideBackupAdmin() {
+    const session = await verifySession();
+    if (!session) throw new Error('Unauthorized');
+
+    if (session.role !== 'super_admin') {
+        throw new Error('Unauthorized');
+    }
+
+    try {
+        const { db } = await import('@/lib/db');
+        const { schools } = await import('@/db/schema');
+        const { eq } = await import('drizzle-orm');
+
+        const allSchools = await db.query.schools.findMany({
+            where: eq(schools.is_active, true)
+        });
+
+        console.log(`[Admin Backup] Starting system-wide backup for ${allSchools.length} schools`);
+        
+        const results = [];
+        for (const school of allSchools) {
+            try {
+                const res = await performSchoolBackupAdmin(school.id);
+                results.push({ schoolId: school.id, name: school.name, success: res.success });
+            } catch (err) {
+                results.push({ schoolId: school.id, name: school.name, success: false, error: 'Timed out or failed' });
+            }
+        }
+
+        revalidatePath('/admin-portal/admin/backups');
+
+        return {
+            success: true,
+            message: `System-wide backup initiated for ${allSchools.length} schools.`,
+            details: results
+        };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * SUPER ADMIN ONLY: List backups for a specific school
  */
 export async function listSchoolBackupsAdmin(schoolId: string) {
@@ -60,10 +104,18 @@ export async function listSchoolBackupsAdmin(schoolId: string) {
         const { schoolBackups } = await import('@/db/schema');
         const { eq, desc } = await import('drizzle-orm');
 
-        const dbBackups = await db.query.schoolBackups.findMany({
-            where: eq(schoolBackups.school_id, schoolId),
-            orderBy: [desc(schoolBackups.timestamp)],
-        });
+        // If schoolId is empty string or null, we're in System-Wide mode
+        const isSystemWide = !schoolId || schoolId === '';
+
+        const dbBackups = isSystemWide
+            ? await db.query.schoolBackups.findMany({
+                orderBy: [desc(schoolBackups.timestamp)],
+                limit: 50
+              })
+            : await db.query.schoolBackups.findMany({
+                where: eq(schoolBackups.school_id, schoolId),
+                orderBy: [desc(schoolBackups.timestamp)],
+              });
 
         if (dbBackups.length > 0) {
             return {
@@ -81,8 +133,8 @@ export async function listSchoolBackupsAdmin(schoolId: string) {
             };
         }
 
-        // Fallback to R2 scan if DB is empty
-        const backups = await listSchoolBackups(schoolId);
+        // Fallback to R2 scan
+        const backups = await listSchoolBackups(isSystemWide ? '' : schoolId);
         return {
             success: true,
             backups: backups.map(b => ({

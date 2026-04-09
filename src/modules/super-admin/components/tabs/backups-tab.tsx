@@ -7,12 +7,13 @@ import {
     HardDrive, Download, RotateCcw, AlertCircle, CheckCircle2, 
     Trash2, Info, RefreshCw, Calendar, Database, Users, 
     ShieldAlert, Clock, ArrowRight, Server, Search, Filter, 
-    DownloadCloud, History, Zap, Sparkles, LayoutGrid, Check, X, ChevronDown
+    DownloadCloud, History, Zap, Sparkles, LayoutGrid, Check, X, ChevronDown, ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { 
     performSchoolBackupAdmin, 
+    performSystemWideBackupAdmin,
     listSchoolBackupsAdmin, 
     downloadSchoolBackupFileAdmin, 
     restoreSchoolFromBackupFileAdmin,
@@ -85,22 +86,28 @@ export function BackupsTab({ schoolsList }: BackupsTabProps) {
     };
 
     const handleBackup = async () => {
-        if (!selectedSchoolId) {
-            toast.error('No school selected');
-            return;
-        }
-
         setIsBackingUp(true);
+        toast.info(selectedSchoolId ? 'Initiating secure snapshot...' : 'Initiating system-wide multi-node backup...', {
+            icon: <ShieldCheck className="text-indigo-500" />
+        });
+
         try {
-            const result = await performSchoolBackupAdmin(selectedSchoolId);
+            const result = selectedSchoolId 
+                ? await performSchoolBackupAdmin(selectedSchoolId)
+                : await performSystemWideBackupAdmin();
+
             if (result.success) {
-                toast.success(`✓ Backup created successfully`);
-                await loadBackups();
+                toast.success(result.message || 'Backup completed successfully!', {
+                    description: 'Data has been vaulted and synchronized to R2.'
+                });
+                loadBackups();
             } else {
-                toast.error(result.error || 'Backup failed');
+                throw new Error(result.error);
             }
         } catch (error: any) {
-            toast.error(error.message || 'Backup error');
+            toast.error('Vault sequence failed', {
+                description: error.message
+            });
         } finally {
             setIsBackingUp(false);
         }
@@ -297,7 +304,7 @@ export function BackupsTab({ schoolsList }: BackupsTabProps) {
                             <div className="flex gap-2">
                                 <Button
                                     onClick={handleBackup}
-                                    disabled={isBackingUp || !selectedSchoolId}
+                                    disabled={isBackingUp}
                                     className={`rounded-2xl h-14 px-8 font-black text-sm gap-3 shadow-2xl ${t.btnPrimary(isDark, accent)}`}
                                     style={isDark ? { boxShadow: t.glowStyle(isDark, accent).boxShadow } : {}}
                                 >
