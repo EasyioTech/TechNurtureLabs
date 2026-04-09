@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
     LayoutGrid, BookOpen, CreditCard, Users, BarChart3,
     Building2, Bell, Search, Sun, Moon, Filter, LogOut, Plus, Palette, Check, Settings,
-    Menu, X, Save, Library, Activity, Zap, GraduationCap, ChevronDown
+    Menu, X, Save, Library, Activity, Zap, GraduationCap, ChevronDown, Database
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -35,6 +35,7 @@ import { PromoCodesTab } from './tabs/promo-codes-tab';
 import { SystemHealthTab } from './tabs/system-health-tab';
 import { LibraryTab } from './tabs/library-tab';
 import { CertificationsTab } from './tabs/certifications-tab';
+import { BackupsTab } from './tabs/backups-tab';
 import { GlobalLogo } from '@/modules/shared/components/global-logo';
 
 import {
@@ -64,6 +65,7 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
     schools: { title: 'Schools & Partners', subtitle: 'View and manage all registered school accounts.' },
     users: { title: 'Student Management', subtitle: 'Track student progress and overall engagement.' },
     library: { title: 'Content Library', subtitle: 'Browse and reuse content across the platform.' },
+    backups: { title: 'System Backups', subtitle: 'Manage school data backups, restoration, and retention policies.' },
     settings: { title: 'Platform Settings', subtitle: 'Manage global platform configuration and infrastructure health.' },
 };
 
@@ -309,14 +311,22 @@ function DashboardContent() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
+                            {/* Backups Shortcut */}
+                            <button
+                                onClick={() => setActivePage('backups')}
+                                title="Data Backups"
+                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border shadow-lg ${t.border(isDark)} ${activePage === 'backups' ? accent.bg + ' text-slate-900 border-transparent shadow-' + accent.name + '-500/20' : (isDark ? 'bg-white/[0.05] hover:bg-white/[0.1] text-indigo-400' : 'bg-white hover:bg-neutral-50 text-indigo-600')}`}
+                            >
+                                <Database size={18} strokeWidth={3} />
+                            </button>
+
                             {/* Sign Out Button */}
                             <button 
                                 onClick={() => signOut()}
                                 title="Sign Out"
-                                className={`flex items-center gap-2 h-10 px-4 rounded-full transition-all border font-black text-[10px] uppercase tracking-widest ${t.accentSoft(isDark, accent)} ${isDark ? 'hover:bg-rose-500/20' : 'hover:bg-rose-100'}`}
+                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border shadow-lg ${t.border(isDark)} ${isDark ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20' : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200 shadow-rose-900/5'}`}
                             >
-                                <LogOut size={14} strokeWidth={3} />
-                                <span className="hidden sm:inline">Sign Out</span>
+                                <LogOut size={16} strokeWidth={3} />
                             </button>
 
                             <button
@@ -557,7 +567,12 @@ function DashboardContent() {
                                 totalQuizzesPages={data.totalGlobalQuizzesPages}
                             />
                         )}
-                        { activePage === 'settings' && <SettingsTab ref={settingsRef} schoolsList={data.schoolsList} />}
+                        { activePage === 'backups' && (
+                            <BackupsTab 
+                                schoolsList={data.schoolsList}
+                            />
+                        )}
+                        { activePage === 'settings' && <SettingsTab ref={settingsRef} schoolsList={data.schoolsList} onTabChange={setActivePage} />}
                     </motion.div>
                 </AnimatePresence>
 
