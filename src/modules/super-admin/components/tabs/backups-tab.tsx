@@ -12,7 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useAdminTheme, t } from '../theme-context';
 import { 
-    initiateBackupAdmin, 
+    performSystemWideBackupAdmin,
+    performSchoolBackupAdmin,
     syncBackupsFromR2Admin, 
     getBackupPreviewAdmin, 
     deleteBackupFileAdmin, 
@@ -65,13 +66,18 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
     };
 
     const handleInitiateBackup = async () => {
-        if (!activeSchoolId) return;
         setIsBackingUp(true);
         try {
-            const result = await initiateBackupAdmin(activeSchoolId);
+            // If a specific school is selected, back up only that school.
+            // Otherwise, perform a system-wide backup of all active schools.
+            const result = activeSchoolId
+                ? await performSchoolBackupAdmin(activeSchoolId)
+                : await performSystemWideBackupAdmin();
             if (result.success) {
-                toast.success("Storage node updated successfully.");
+                toast.success(activeSchoolId ? "School snapshot created successfully." : "System-wide vault initiated for all schools.");
                 window.location.reload();
+            } else {
+                toast.error((result as any).error || 'Backup failed');
             }
         } catch (error: any) {
             toast.error(error.message);
@@ -109,7 +115,10 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
     const handleDelete = async (backup: any) => {
         if (!confirm("Are you sure? This will remove the archive from both R2 and Database.")) return;
         try {
-            const result = await deleteBackupFileAdmin(backup.fileName);
+            // Extract schoolId from fileName path: backups/schools/{schoolId}/...
+            const parts = backup.fileName.split('/');
+            const schoolId = parts.length >= 3 ? parts[2] : (activeSchoolId || '');
+            const result = await deleteBackupFileAdmin(schoolId, backup.fileName);
             if (result.success) {
                 toast.success("The backup has been permanently deleted.");
                 setBackups(prev => prev.filter(b => b.fileName !== backup.fileName));
@@ -123,10 +132,15 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
         if (!selectedBackup) return;
         setIsRestoring(true);
         try {
-            const result = await restoreSchoolFromBackupFileAdmin(selectedBackup.fileName, schoolId);
+            // Extract schoolId from the backup filename path if not passed explicitly
+            const parts = selectedBackup.fileName.split('/');
+            const targetSchoolId = schoolId || (parts.length >= 3 ? parts[2] : (activeSchoolId || ''));
+            const result = await restoreSchoolFromBackupFileAdmin(targetSchoolId, selectedBackup.fileName);
             if (result.success) {
                 toast.success("The node state has been reverted successfully.");
                 setSelectedBackup(null);
+            } else {
+                toast.error((result as any).message || 'Restore failed');
             }
         } catch (error: any) {
             toast.error(error.message);
@@ -158,7 +172,7 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                     </Button>
                     <Button
                         onClick={handleInitiateBackup}
-                        disabled={isBackingUp || !activeSchoolId}
+                        disabled={isBackingUp}
                         className={`h-12 px-8 rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 ${t.btnPrimary(isDark, accent)}`}
                     >
                         <CloudUpload size={18} className={isBackingUp ? 'animate-bounce' : ''} />

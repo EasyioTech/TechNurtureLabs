@@ -7,7 +7,7 @@ import {
     AlertCircle, Filter, ArrowRightCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAdminTheme, t } from '../../theme-context';
+import { useAdminTheme, t } from '../../../theme-context';
 
 interface BackupSchoolNode {
     id: string;

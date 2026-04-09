@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useAdminTheme, t } from '../../theme-context';
+import { useAdminTheme, t } from '../../../theme-context';
 
 interface BackupWithMetadata {
     fileName: string;

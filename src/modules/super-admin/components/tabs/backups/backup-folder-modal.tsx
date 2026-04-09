@@ -10,7 +10,7 @@ import {
     Clock, HardDrive, AlertCircle, CheckCircle2, ShieldCheck, X, 
     Database, Users, IndianRupee, RotateCcw, ChevronRight, Server, Search
 } from 'lucide-react';
-import { useAdminTheme, t } from '../../theme-context';
+import { useAdminTheme, t } from '../../../theme-context';
 import { BackupSchoolList } from './backup-school-list';
 import { motion, AnimatePresence } from 'framer-motion';
 
