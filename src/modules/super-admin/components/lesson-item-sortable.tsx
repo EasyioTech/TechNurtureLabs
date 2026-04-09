@@ -3,7 +3,7 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Edit, Trash2, Play, MonitorPlay, FileText, HelpCircle, ChevronRight, Database, Clock, Zap } from 'lucide-react';
+import { GripVertical, Edit, Trash2, Play, MonitorPlay, FileText, HelpCircle, ChevronRight, Database, Clock, Zap, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Lesson } from '../types';
@@ -14,6 +14,7 @@ interface SortableLessonItemProps {
     index: number;
     onEdit: () => void;
     onDelete: () => void;
+    onPreview?: () => void;
     onBackup?: () => void;
 }
 
@@ -24,7 +25,7 @@ const CONTENT_TYPES = [
     { id: 'quiz', label: 'Quiz', icon: HelpCircle },
 ];
 
-export function SortableLessonItem({ lesson, index, onEdit, onDelete, onBackup }: SortableLessonItemProps) {
+export function SortableLessonItem({ lesson, index, onEdit, onDelete, onPreview, onBackup }: SortableLessonItemProps) {
     const { isDark, accent } = useAdminTheme();
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
 
@@ -82,14 +83,19 @@ export function SortableLessonItem({ lesson, index, onEdit, onDelete, onBackup }
 
                 <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                     {onBackup && (
-                        <Button variant="ghost" size="icon" className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all lg:opacity-0 lg:group-hover:opacity-100 ${isDark ? `text-slate-400 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`} onClick={(e) => { e.stopPropagation(); onBackup(); }}>
+                        <Button variant="ghost" size="icon" className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all md:opacity-0 md:group-hover:opacity-100 ${isDark ? `text-slate-400 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`} onClick={(e) => { e.stopPropagation(); onBackup(); }} title="Backup lesson">
                             <Database size={13} className="sm:w-3.5 sm:h-3.5" />
                         </Button>
                     )}
-                    <Button variant="ghost" size="icon" className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all lg:opacity-0 lg:group-hover:opacity-100 ${isDark ? `text-slate-400 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`} onClick={onEdit}>
+                    {onPreview && (
+                        <Button variant="ghost" size="icon" className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all md:opacity-0 md:group-hover:opacity-100 ${isDark ? `text-blue-400 hover:text-blue-300 hover:bg-blue-500/10` : 'text-blue-600 hover:text-blue-700 hover:bg-blue-100'}`} onClick={(e) => { e.stopPropagation(); onPreview(); }} title="Preview lesson">
+                            <Eye size={13} className="sm:w-3.5 sm:h-3.5" strokeWidth={2.5} />
+                        </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all md:opacity-0 md:group-hover:opacity-100 ${isDark ? `text-slate-400 ${accent.hoverText} hover:bg-white/[0.06]` : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`} onClick={onEdit} title="Edit lesson">
                         <Edit size={13} className="sm:w-3.5 sm:h-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all lg:opacity-0 lg:group-hover:opacity-100 ${isDark ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-500 hover:text-rose-600 hover:bg-rose-100'}`} onClick={onDelete}>
+                    <Button variant="ghost" size="icon" className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all md:opacity-0 md:group-hover:opacity-100 ${isDark ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-500 hover:text-rose-600 hover:bg-rose-100'}`} onClick={onDelete} title="Delete lesson">
                         <Trash2 size={13} className="sm:w-3.5 sm:h-3.5" />
                     </Button>
                 </div>

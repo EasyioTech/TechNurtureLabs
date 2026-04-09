@@ -16,6 +16,7 @@ import { Plus, Save, Edit, Trash2, BookOpen, Layers, AlertOctagon, Database, Ref
 import { SortableLessonItem } from '../lesson-item-sortable';
 import { CourseDialog } from '../course-dialog';
 import { LessonDialog } from '../lesson-dialog';
+import { LessonPreviewModal } from '../lesson-preview-modal';
 import { Course, Lesson, SchoolClass, CourseClassMapping } from '../../types';
 import { useAdminTheme, t } from '../../theme-context';
 import {
@@ -78,6 +79,10 @@ export function CourseBuilderTab({
     const [showBackupsDialog, setShowBackupsDialog] = useState(false);
     const [selectedBackupPreview, setSelectedBackupPreview] = useState<any>(null);
     const [showBackupPreview, setShowBackupPreview] = useState(false);
+
+    // Lesson preview state
+    const [previewLesson, setPreviewLesson] = useState<Lesson | null>(null);
+    const [showLessonPreview, setShowLessonPreview] = useState(false);
 
 
     useEffect(() => { setIsDirtyOrder(false); }, [selectedCourse?.id]);
@@ -442,6 +447,7 @@ export function CourseBuilderTab({
                                     <SortableContext items={lessons.map(l => l.id)} strategy={verticalListSortingStrategy}>
                                         <div className="space-y-3">{lessons.map((lesson, index) => (
                                             <SortableLessonItem key={lesson.id} lesson={lesson} index={index}
+                                                onPreview={() => { setPreviewLesson(lesson); setShowLessonPreview(true); }}
                                                 onEdit={() => { setEditingLesson(lesson); setShowLessonDialog(true); }}
                                                 onDelete={() => setItemToDelete({ type: 'lesson', id: lesson.id, name: lesson.title })} />
                                         ))}</div>
@@ -479,6 +485,7 @@ export function CourseBuilderTab({
 
             <CourseDialog open={showCourseDialog} onOpenChange={setShowCourseDialog} editingCourse={editingCourse} setEditingCourse={setEditingCourse} onSave={onSaveCourse} classes={classes} courseClassMappings={courseClassMappings} />
             <LessonDialog open={showLessonDialog} onOpenChange={setShowLessonDialog} editingLesson={editingLesson} setEditingLesson={setEditingLesson} onSave={onSaveLesson} />
+            <LessonPreviewModal lesson={previewLesson} open={showLessonPreview} onOpenChange={setShowLessonPreview} />
 
             {/* Global Delete Confirmation Dialog */}
             <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
