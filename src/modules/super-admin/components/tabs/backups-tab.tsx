@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { useAdminTheme, t } from '../theme-context';
+import { useAdminTheme, t } from '../../theme-context';
 import { 
     performSystemWideBackupAdmin,
     performSchoolBackupAdmin,
