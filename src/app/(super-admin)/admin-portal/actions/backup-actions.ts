@@ -383,6 +383,7 @@ export async function getBackupPreviewAdmin(fileName: string) {
         return {
             success: true,
             metadata: {
+                ...backupData,
                 schoolName: backupData.school.name,
                 studentsCount: backupData.students.length,
                 academicRecordsCount: backupData.metadata.recordCounts.academicRecords,

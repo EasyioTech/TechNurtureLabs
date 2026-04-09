@@ -1,633 +1,264 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAdminTheme, t } from '../../theme-context';
 import { 
-    HardDrive, Download, RotateCcw, AlertCircle, CheckCircle2, 
-    Trash2, Info, RefreshCw, Calendar, Database, Users, 
-    ShieldAlert, Clock, ArrowRight, Server, Search, Filter, 
-    DownloadCloud, History, Zap, Sparkles, LayoutGrid, Check, X, ChevronDown, ShieldCheck
+    CloudUpload, RefreshCw, AlertCircle, Info, 
+    Search, Filter, LayoutGrid, List, Database,
+    Clock, HardDrive, ShieldCheck, ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
+import { useAdminTheme, t } from '../../theme-context';
 import { 
-    performSchoolBackupAdmin, 
-    performSystemWideBackupAdmin,
-    listSchoolBackupsAdmin, 
-    downloadSchoolBackupFileAdmin, 
+    initiateBackupAdmin, 
+    syncBackupsFromR2Admin, 
+    getBackupPreviewAdmin, 
+    deleteBackupFileAdmin, 
     restoreSchoolFromBackupFileAdmin,
-    syncBackupsFromR2Admin,
-    getBackupPreviewAdmin,
-    getBackupDownloadUrlAdmin,
-    deleteBackupFileAdmin
+    getBackupDownloadUrlAdmin
 } from '@/app/(super-admin)/admin-portal/actions/backup-actions';
-import { 
-    DropdownMenu, 
-    DropdownMenuContent, 
-    DropdownMenuItem, 
-    DropdownMenuTrigger,
-    DropdownMenuLabel,
-    DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
+import { BackupCard } from './backups/backup-card';
+import { BackupFolderModal } from './backups/backup-folder-modal';
 
 interface BackupsTabProps {
-    schoolsList: Array<{ id: string; name: string }>;
+    backups: any[];
+    activeSchoolId?: string;
 }
 
-interface BackupWithMetadata {
-    fileName: string;
-    size: number;
-    timestamp: string;
-    created: string;
-    schoolName?: string;
-    studentCount?: number;
-    revenueTotal?: string;
-    recordsCount?: any;
-    inDb?: boolean;
-}
-
-export function BackupsTab({ schoolsList }: BackupsTabProps) {
+export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsTabProps) {
     const { isDark, accent } = useAdminTheme();
-    const [backups, setBackups] = useState<BackupWithMetadata[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const { toast } = useToast();
+    
+    // State
+    const [backups, setBackups] = useState(initialBackups);
+    const [isSyncing, setIsSyncing] = useState(false);
     const [isBackingUp, setIsBackingUp] = useState(false);
-    const [selectedSchoolId, setSelectedSchoolId] = useState(schoolsList[0]?.id || '');
-    const [selectedBackup, setSelectedBackup] = useState<BackupWithMetadata | null>(null);
-    const [showBackupInfo, setShowBackupInfo] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [previewLoading, setPreviewLoading] = useState(false);
+    const [selectedBackup, setSelectedBackup] = useState<any>(null);
     const [previewData, setPreviewData] = useState<any>(null);
+    const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+    const [isRestoring, setIsRestoring] = useState(false);
 
-    const currentSchool = schoolsList.find(s => s.id === selectedSchoolId);
+    // Derived
+    const filteredBackups = useMemo(() => {
+        return backups.filter(b => 
+            b.fileName.toLowerCase().includes(searchQuery.toLowerCase())
+        ).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }, [backups, searchQuery]);
 
-    useEffect(() => {
-        if (selectedSchoolId) {
-            loadBackups();
-        }
-    }, [selectedSchoolId]);
-
-    const loadBackups = async () => {
-        setIsLoading(true);
-        try {
-            const result = await listSchoolBackupsAdmin(selectedSchoolId);
-            if (result.success && result.backups) {
-                setBackups(result.backups as BackupWithMetadata[]);
-            } else {
-                toast.error(result.error || 'Failed to load backups');
-                setBackups([]);
-            }
-        } catch (error: any) {
-            toast.error(error.message || 'Error loading backups');
-            setBackups([]);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleBackup = async () => {
-        setIsBackingUp(true);
-        toast.info(selectedSchoolId ? 'Initiating secure snapshot...' : 'Initiating system-wide multi-node backup...', {
-            icon: <ShieldCheck className="text-indigo-500" />
-        });
-
-        try {
-            const result = selectedSchoolId 
-                ? await performSchoolBackupAdmin(selectedSchoolId)
-                : await performSystemWideBackupAdmin();
-
-            if (result.success) {
-                toast.success(result.message || 'Backup completed successfully!', {
-                    description: 'Data has been vaulted and synchronized to R2.'
-                });
-                loadBackups();
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error: any) {
-            toast.error('Vault sequence failed', {
-                description: error.message
-            });
-        } finally {
-            setIsBackingUp(false);
-        }
-    };
-
-    const handleRestore = async (backup: BackupWithMetadata) => {
-        if (!window.confirm(`⚠️ CRITICAL WARNING: This will restore ALL data for ${currentSchool?.name}.\n\nCurrent data will be OVERWRITTEN.\n\nRestore from: ${backup.created}?\n\nThis action is irreversible.`)) {
-            return;
-        }
-
-        setIsBackingUp(true);
-        try {
-            const result = await restoreSchoolFromBackupFileAdmin(selectedSchoolId, backup.fileName);
-            if (result.success) {
-                toast.success('✓ Restore completed successfully');
-                setTimeout(() => window.location.reload(), 2000);
-            } else {
-                toast.error(result.message || 'Restore failed');
-            }
-        } catch (error: any) {
-            toast.error(error.message || 'Restore error');
-        } finally {
-            setIsBackingUp(false);
-        }
-    };
-
-    const handleDownload = async (backup: BackupWithMetadata) => {
-        try {
-            const result = await getBackupDownloadUrlAdmin(backup.fileName);
-            if (result.success && result.url) {
-                // Trigger actual download
-                const link = document.createElement('a');
-                link.href = result.url;
-                link.download = backup.fileName.split('/').pop() || 'backup.json.gz';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                toast.success('Download initiated');
-            } else {
-                toast.error(result.error || 'Failed to generate download link');
-            }
-        } catch (error: any) {
-            toast.error(error.message || 'Download error');
-        }
-    };
-
-    const handleDelete = async (backup: BackupWithMetadata) => {
-        if (!window.confirm(`Are you sure you want to PERMANENTLY delete this backup?\n\nFile: ${backup.fileName}`)) {
-            return;
-        }
-
-        try {
-            const result = await deleteBackupFileAdmin(selectedSchoolId, backup.fileName);
-            if (result.success) {
-                toast.success('Backup deleted permanently');
-                await loadBackups();
-            } else {
-                toast.error(result.error || 'Delete failed');
-            }
-        } catch (error: any) {
-            toast.error(error.message || 'Delete error');
-        }
-    };
-
+    // Actions
     const handleSync = async () => {
-        setIsLoading(true);
+        if (!activeSchoolId) return;
+        setIsSyncing(true);
         try {
-            const result = await syncBackupsFromR2Admin(selectedSchoolId);
+            const result = await syncBackupsFromR2Admin(activeSchoolId);
             if (result.success) {
-                toast.success(result.message);
-                await loadBackups();
-            } else {
-                toast.error(result.error || 'Sync failed');
+                toast({ title: "Sync Discovery Successful", description: result.message });
+                window.location.reload();
             }
         } catch (error: any) {
-            toast.error(error.message || 'Sync error');
+            toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
         } finally {
-            setIsLoading(false);
+            setIsSyncing(false);
         }
     };
 
-    const handlePreview = async (backup: BackupWithMetadata) => {
+    const handleInitiateBackup = async () => {
+        if (!activeSchoolId) return;
+        setIsBackingUp(true);
+        try {
+            const result = await initiateBackupAdmin(activeSchoolId);
+            if (result.success) {
+                toast({ title: "Backup Instance Created", description: "Storage node updated successfully." });
+                window.location.reload();
+            }
+        } catch (error: any) {
+            toast({ title: "Backup Failed", description: error.message, variant: "destructive" });
+        } finally {
+            setIsBackingUp(false);
+        }
+    };
+
+    const handlePreview = async (backup: any) => {
         setSelectedBackup(backup);
-        setShowBackupInfo(true);
-        setPreviewLoading(true);
-        setPreviewData(null);
-        
+        setIsLoadingPreview(true);
         try {
             const result = await getBackupPreviewAdmin(backup.fileName);
             if (result.success) {
                 setPreviewData(result.metadata);
-            } else {
-                toast.error(result.error || 'Failed to load preview');
             }
         } catch (error: any) {
-            toast.error(error.message || 'Preview error');
+            toast({ title: "Inspection Failed", description: error.message, variant: "destructive" });
         } finally {
-            setPreviewLoading(false);
+            setIsLoadingPreview(false);
         }
     };
 
-    const formatFileSize = (bytes: number) => {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-    };
-
-    const formatDate = (dateString: string) => {
+    const handleDownload = async (backup: any) => {
         try {
-            return new Date(dateString).toLocaleString('en-IN', {
-                day: '2-digit', month: 'short', year: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-            });
-        } catch {
-            return dateString;
+            const result = await getBackupDownloadUrlAdmin(backup.fileName);
+            if (result.success && result.url) {
+                window.open(result.url, '_blank');
+            }
+        } catch (error: any) {
+            toast({ title: "Download Failed", description: error.message, variant: "destructive" });
         }
     };
 
-    const filteredBackups = backups.filter(b => 
-        b.fileName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const handleDelete = async (backup: any) => {
+        if (!confirm("Are you sure? This will remove the archive from both R2 and Database.")) return;
+        try {
+            const result = await deleteBackupFileAdmin(backup.fileName);
+            if (result.success) {
+                toast({ title: "Archive Purged", description: "The backup has been permanently deleted." });
+                setBackups(prev => prev.filter(b => b.fileName !== backup.fileName));
+            }
+        } catch (error: any) {
+            toast({ title: "Deletion Failed", description: error.message, variant: "destructive" });
+        }
+    };
+
+    const handleRestore = async (schoolId?: string) => {
+        if (!selectedBackup) return;
+        setIsRestoring(true);
+        try {
+            const result = await restoreSchoolFromBackupFileAdmin(selectedBackup.fileName, schoolId);
+            if (result.success) {
+                toast({ title: "Restoration Complete", description: "The node state has been reverted successfully." });
+                setSelectedBackup(null);
+            }
+        } catch (error: any) {
+            toast({ title: "Restoration Failed", description: error.message, variant: "destructive" });
+        } finally {
+            setIsRestoring(false);
+        }
+    };
 
     return (
-        <div className="max-w-7xl mx-auto pb-20">
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-                
-                {/* ── Left Column: Controls & List ── */}
-                <div className="xl:col-span-8 space-y-6">
-                    
-                    {/* TOP ACTIONS CARD */}
-                    <div className={`p-6 rounded-[2.5rem] border transition-all duration-300 ${t.card(isDark)} ${t.border(isDark)} shadow-xl shadow-black/5`}>
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                            <div className="flex-1">
-                                <label className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 block ${t.textMuted(isDark)}`}>ACTIVE SCHOOL NODE</label>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <div className="relative group">
-                                            <Server size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${t.textMuted(isDark)} group-hover:text-amber-400`} />
-                                            <button className={`w-full flex items-center justify-between pl-11 pr-4 py-3 rounded-2xl border font-black text-sm transition-all outline-none cursor-pointer
-                                                ${isDark 
-                                                    ? 'bg-neutral-900 border-white/10 text-white hover:border-white/30' 
-                                                    : 'bg-white border-neutral-200 text-slate-900 hover:border-slate-300 shadow-sm'}`}>
-                                                <span className="truncate">
-                                                    {selectedSchoolId 
-                                                        ? schoolsList.find(s => s.id === selectedSchoolId)?.name || 'Unknown School'
-                                                        : 'System-Wide (All Schools)'}
-                                                </span>
-                                                <ChevronDown size={16} className={t.textMuted(isDark)} />
-                                            </button>
-                                        </div>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="start" className={`w-[calc(100vw-2rem)] md:w-[400px] max-h-[40vh] overflow-y-auto p-2 rounded-2xl border shadow-2xl ${t.card(isDark)} ${t.border(isDark)}`}>
-                                        <DropdownMenuLabel className={`text-[10px] uppercase tracking-widest font-black mb-1 opacity-50 ${t.textPrimary(isDark)}`}>
-                                            Select School Node
-                                        </DropdownMenuLabel>
-                                        <DropdownMenuItem 
-                                            onClick={() => setSelectedSchoolId('')}
-                                            className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${selectedSchoolId === '' ? (isDark ? 'bg-white/10' : 'bg-neutral-100') : (isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50')}`}
-                                        >
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedSchoolId === '' ? accent.bg + ' text-slate-900' : (isDark ? 'bg-white/[0.03]' : 'bg-neutral-100')}`}>
-                                                <LayoutGrid size={14} />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className={`text-xs font-bold ${t.textPrimary(isDark)}`}>System-Wide</span>
-                                                <span className={`text-[10px] ${t.textMuted(isDark)}`}>Backups from all institutional nodes</span>
-                                            </div>
-                                            {selectedSchoolId === '' && <Check size={14} className={`ml-auto ${isDark ? accent.text : 'text-slate-900'}`} strokeWidth={3} />}
-                                        </DropdownMenuItem>
-
-                                        <DropdownMenuSeparator className={`my-2 opacity-50 ${isDark ? 'bg-white/10' : 'bg-neutral-200'}`} />
-
-                                        {schoolsList.map(school => (
-                                            <DropdownMenuItem 
-                                                key={school.id}
-                                                onClick={() => setSelectedSchoolId(school.id)}
-                                                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${selectedSchoolId === school.id ? (isDark ? 'bg-white/10' : 'bg-neutral-100') : (isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50')}`}
-                                            >
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedSchoolId === school.id ? accent.bg + ' text-slate-900' : (isDark ? 'bg-white/[0.03]' : 'bg-neutral-100')}`}>
-                                                    <Server size={14} />
-                                                </div>
-                                                <div className="flex flex-col min-w-0 flex-1">
-                                                    <span className={`text-xs font-bold truncate ${t.textPrimary(isDark)}`}>{school.name}</span>
-                                                    <span className={`text-[10px] truncate ${t.textMuted(isDark)}`}>{school.id.slice(0, 12)}...</span>
-                                                </div>
-                                                {selectedSchoolId === school.id && <Check size={14} className={`ml-auto ${isDark ? accent.text : 'text-slate-900'}`} strokeWidth={3} />}
-                                            </DropdownMenuItem>
-                                        ))}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                            
-                            <div className="flex gap-2">
-                                <Button
-                                    onClick={handleBackup}
-                                    disabled={isBackingUp}
-                                    className={`rounded-2xl h-14 px-8 font-black text-sm gap-3 shadow-2xl ${t.btnPrimary(isDark, accent)}`}
-                                    style={isDark ? { boxShadow: t.glowStyle(isDark, accent).boxShadow } : {}}
-                                >
-                                    {isBackingUp ? (
-                                        <RefreshCw size={20} className="animate-spin" />
-                                    ) : (
-                                        <Database size={20} />
-                                    )}
-                                    {isBackingUp ? 'SNAPSHOTTING...' : 'INITIATE BACKUP'}
-                                </Button>
-                                
-                                <Button
-                                    onClick={handleSync}
-                                    disabled={isLoading}
-                                    variant="outline"
-                                    className={`w-14 h-14 rounded-2xl border ${t.border(isDark)} ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-100'}`}
-                                >
-                                    <RefreshCw size={20} className={isLoading ? 'animate-spin opacity-50' : ''} />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* SEARCH & FILTERS */}
-                    <div className="flex items-center gap-3">
-                        <div className="relative flex-1">
-                            <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${t.textMuted(isDark)}`} />
-                            <input 
-                                type="text"
-                                placeholder="Search backup archives..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className={`w-full pl-11 pr-4 py-4 rounded-[1.25rem] border text-xs font-bold transition-all outline-none ${isDark ? 'bg-white/[0.02] border-white/10 text-white focus:bg-white/[0.05]' : 'bg-white border-neutral-200 text-slate-900 focus:bg-neutral-50'}`}
-                            />
-                        </div>
-                        <Button variant="outline" className={`h-[52px] px-5 rounded-[1.25rem] border ${t.border(isDark)}`}>
-                            <Filter size={18} />
-                        </Button>
-                    </div>
-
-                    {/* BACKUPS LIST */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between px-2">
-                            <h3 className={`text-[10px] font-black uppercase tracking-[0.25em] ${t.textMuted(isDark)}`}>ARCHIVE HISTORY</h3>
-                            <span className={`text-[10px] font-black ${t.textMuted(isDark)}`}>{filteredBackups.length} TOTAL SNAPS</span>
-                        </div>
-                        
-                        {isLoading ? (
-                            <div className="py-20 text-center space-y-4">
-                                <motion.div 
-                                    animate={{ rotate: 360 }} 
-                                    transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                                    className={`w-12 h-12 rounded-full border-4 border-t-transparent mx-auto ${isDark ? 'border-white/10' : 'border-neutral-200'}`}
-                                    style={{ borderTopColor: isDark ? accent.swatchDark : accent.swatchLight }}
-                                />
-                                <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>Decrypting Archive Nodes...</p>
-                            </div>
-                        ) : filteredBackups.length > 0 ? (
-                            <div className="grid gap-3">
-                                {filteredBackups.map((backup, idx) => (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: idx * 0.05 }}
-                                        key={idx}
-                                        className={`group p-5 rounded-[2rem] border flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all hover:scale-[1.01] ${isDark ? 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-white/20' : 'bg-white border-neutral-200 hover:shadow-xl hover:shadow-black/5'}`}
-                                    >
-                                        <div className="flex items-start gap-4 flex-1">
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${isDark ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-neutral-100'}`}>
-                                                <History size={20} className={isDark ? accent.text : 'text-slate-900'} />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className={`text-sm font-black truncate max-w-[300px] ${t.textPrimary(isDark)}`}>
-                                                    {backup.fileName.split('/').pop()?.replace('.json.gz', '')}
-                                                </p>
-                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
-                                                    <span className={`flex items-center gap-1.5 text-[10px] font-bold ${t.textMuted(isDark)}`}>
-                                                        <Clock size={12} /> {formatDate(backup.timestamp)}
-                                                    </span>
-                                                    <span className={`flex items-center gap-1.5 text-[10px] font-bold ${t.textMuted(isDark)}`}>
-                                                        <HardDrive size={12} /> {formatFileSize(backup.size)}
-                                                    </span>
-                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                        ENCRYPTED
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => handlePreview(backup)}
-                                                className={`h-11 px-4 rounded-xl gap-2 font-black text-[10px] uppercase tracking-widest ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-neutral-100 text-slate-700'}`}
-                                            >
-                                                <Info size={14} /> Details
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => handleDownload(backup)}
-                                                className={`h-11 px-4 rounded-xl gap-2 font-black text-[10px] uppercase tracking-widest ${isDark ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}
-                                            >
-                                                <Download size={14} /> Download
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => handleRestore(backup)}
-                                                className={`h-11 px-4 rounded-xl gap-2 font-black text-[10px] uppercase tracking-widest ${isDark ? 'hover:bg-emerald-500/20 text-emerald-400' : 'hover:bg-emerald-50 text-emerald-600'}`}
-                                            >
-                                                <RotateCcw size={14} /> Restore
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => handleDelete(backup)}
-                                                className={`h-11 px-4 rounded-xl text-rose-500 ${isDark ? 'hover:bg-rose-500/20' : 'hover:bg-rose-50'}`}
-                                            >
-                                                <Trash2 size={16} />
-                                            </Button>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className={`p-16 rounded-[3rem] border-2 border-dashed text-center ${isDark ? 'border-white/5 bg-white/[0.02]' : 'border-neutral-100 bg-neutral-50/50'}`}>
-                                <div className={`w-16 h-16 rounded-3xl mx-auto mb-6 flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-white shadow-sm'}`}>
-                                    <ShieldAlert size={32} className={`opacity-20 ${isDark ? 'text-white' : 'text-slate-400'}`} />
-                                </div>
-                                <h4 className={`text-sm font-black uppercase tracking-widest mb-2 ${t.textPrimary(isDark)}`}>Isolated Vault Empty</h4>
-                                <p className={`text-xs font-semibold max-w-[240px] mx-auto ${t.textMuted(isDark)}`}>No secure snapshots found for this node. Initialize a new backup to secure your data.</p>
-                            </div>
-                        )}
-                    </div>
+        <div className="space-y-10 py-6">
+            {/* Control Center */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="space-y-2">
+                    <h2 className={`text-4xl font-black tracking-tight ${t.textPrimary(isDark)}`}>Archive Vault</h2>
+                    <p className={`text-sm font-bold opacity-60 ${t.textMuted(isDark)}`}>
+                        Manage cross-node backups and historical snapshots.
+                    </p>
                 </div>
 
-                {/* ── Right Column: Stats & Missing Features ── */}
-                <div className="xl:col-span-4 space-y-6">
-                    
-                    {/* STATS OVERVIEW */}
-                    <div className={`p-8 rounded-[2.5rem] border overflow-hidden relative ${t.card(isDark)} ${t.border(isDark)} shadow-2xl shadow-black/5`}>
-                        <div className={`absolute -top-12 -right-12 w-40 h-40 rounded-full blur-[80px] opacity-20 ${isDark ? accent.bg : 'bg-indigo-500'}`} />
-                        
-                        <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] mb-8 ${t.textMuted(isDark)}`}>SYSTEM SNAPSHOT</h3>
-                        
-                        <div className="space-y-6 relative z-10">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-neutral-100'}`}>
-                                        <Database size={14} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
-                                    </div>
-                                    <span className={`text-xs font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Total Storage</span>
-                                </div>
-                                <span className={`text-lg font-black tracking-tighter ${t.textPrimary(isDark)}`}>
-                                    {formatFileSize(backups.reduce((sum, b) => sum + b.size, 0))}
-                                </span>
-                            </div>
+                <div className="flex items-center gap-3">
+                    <Button
+                        onClick={handleSync}
+                        disabled={isSyncing || !activeSchoolId}
+                        variant="ghost"
+                        className={`h-12 px-6 rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-100'}`}
+                    >
+                        <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+                        Sync Nodes
+                    </Button>
+                    <Button
+                        onClick={handleInitiateBackup}
+                        disabled={isBackingUp || !activeSchoolId}
+                        className={`h-12 px-8 rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 ${t.btnPrimary(isDark, accent)}`}
+                    >
+                        <CloudUpload size={18} className={isBackingUp ? 'animate-bounce' : ''} />
+                        Vault Now
+                    </Button>
+                </div>
+            </div>
 
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-neutral-100'}`}>
-                                        <Clock size={14} className={isDark ? 'text-amber-400' : 'text-amber-600'} />
-                                    </div>
-                                    <span className={`text-xs font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Retention</span>
-                                </div>
-                                <span className={`text-[10px] px-3 py-1 rounded-full font-black uppercase ${isDark ? 'bg-white/10 text-white' : 'bg-neutral-100 text-slate-700'}`}>
-                                    30 DAYS ACTIVE
-                                </span>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-neutral-100'}`}>
-                                        <Zap size={14} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
-                                    </div>
-                                    <span className={`text-xs font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Auto-Sync</span>
-                                </div>
-                                <span className={`text-[10px] px-3 py-1 rounded-full font-black uppercase ${isDark ? 'bg-rose-500/10 text-rose-500' : 'bg-rose-50 text-rose-600'}`}>
-                                    DISABLED
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className={`mt-8 pt-8 border-t border-dashed ${t.border(isDark)}`}>
-                            <div className="flex items-center gap-2 mb-4">
-                                <ShieldAlert size={14} className="text-amber-500" />
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}>Risk Assessment</span>
-                            </div>
-                            <div className="space-y-2">
-                                <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-neutral-100'}`}>
-                                    <div className="h-full bg-amber-500 rounded-full" style={{ width: '65%' }} />
-                                </div>
-                                <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Critical data uncovered. Manual backup policy active.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ROADMAP / MISSING FEATURES (Explicitly asked by user) */}
-                    <div className={`p-8 rounded-[2.5rem] border ${t.card(isDark)} ${t.border(isDark)} bg-gradient-to-br from-indigo-500/5 to-purple-500/5`}>
-                        <div className="flex items-center gap-2 mb-6 text-indigo-500">
-                            <Sparkles size={16} />
-                            <h3 className={`text-[10px] font-[1000] uppercase tracking-[0.3em]`}>SYSTEM ROADMAP</h3>
-                        </div>
-                        
-                        <div className="space-y-4">
-                            {[
-                                { title: 'Automated Daily Backups', desc: 'Trigger CRON jobs for nightly data redundancy.', status: 'PLANNING' },
-                                { title: 'Cross-Region Replication', desc: 'Mirror snapshots to secondary cloud nodes (AWS S3/GCP).', status: 'IN LOG' },
-                                { title: 'Custom Retention Policies', desc: 'Configurable TTL for individual school archives.', status: 'PENDING' },
-                                { title: 'Point-in-Time Recovery', desc: 'Granular log-based restoration to any specific second.', status: 'RESEARCH' },
-                                { title: 'Backup Audit Logs', desc: 'Detailed tracking of who accessed or deleted archives.', status: 'TODO' },
-                                { title: 'S3 Direct Sync', desc: 'Automated off-site storage synchronization.', status: 'MISSING' }
-                            ].map((item, i) => (
-                                <div key={i} className="group cursor-help">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div>
-                                            <p className={`text-xs font-black ${t.textPrimary(isDark)}`}>{item.title}</p>
-                                            <p className={`text-[9px] font-bold leading-tight mt-1 ${t.textMuted(isDark)}`}>{item.desc}</p>
-                                        </div>
-                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded border whitespace-nowrap ${isDark ? 'border-white/10 text-white/40' : 'border-neutral-200 text-slate-400'}`}>
-                                            {item.status}
-                                        </span>
-                                    </div>
-                                </div>
+            {/* Browser Header */}
+            <div className={`p-4 rounded-3xl border flex flex-col md:flex-row items-center gap-4 ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-neutral-50 border-neutral-100'}`}>
+                <div className="relative flex-1 w-full">
+                    <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 opacity-30 ${t.textMuted(isDark)}`} />
+                    <input 
+                        type="text" 
+                        placeholder="Scan archives by name, ID or date..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className={`w-full pl-12 pr-4 py-3 rounded-2xl text-xs font-bold border transition-all ${isDark ? 'bg-black/40 border-white/10 focus:border-white/20' : 'bg-white border-neutral-200'}`}
+                    />
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <div className={`px-4 py-2 rounded-xl flex items-center gap-3 border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-neutral-200'}`}>
+                        <div className="flex -space-x-2">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className={`w-6 h-6 rounded-full border-2 ${isDark ? 'bg-neutral-800 border-neutral-900' : 'bg-neutral-100 border-white'}`} />
                             ))}
                         </div>
-                    </div>
-
-                    {/* WARNING BOX */}
-                    <div className={`p-6 rounded-[2rem] border-l-4 border-rose-500 flex gap-4 ${isDark ? 'bg-rose-500/5 text-rose-200' : 'bg-rose-50 text-rose-800'}`}>
-                        <ShieldAlert size={20} className="shrink-0 text-rose-500" />
-                        <p className="text-[10px] font-bold leading-relaxed">
-                            <span className="font-black uppercase tracking-wider block mb-1">Critical Security Note</span>
-                            Restoring any archive node completely wipes existing state. Perform a manual "Pre-Restore" snapshot before any destructive action.
-                        </p>
+                        <span className="text-[10px] font-black uppercase tracking-tight opacity-50">Active Nodes</span>
                     </div>
                 </div>
             </div>
 
-            {/* BACKUP INFO MODAL */}
-            {showBackupInfo && selectedBackup && (
-                <div className={`fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl ${isDark ? 'bg-black/60' : 'bg-white/40'}`}>
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className={`rounded-[3rem] p-8 max-w-lg w-full border shadow-2xl overflow-hidden relative ${isDark ? 'bg-neutral-900 border-white/10' : 'bg-white border-neutral-200'}`}
-                    >
-                        <div className={`absolute top-0 left-0 w-full h-1.5 ${accent.bg}`} />
-                        
-                        <div className="flex items-center justify-between mb-8">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-neutral-50'}`}>
-                                    <DownloadCloud size={24} className={isDark ? accent.text : 'text-slate-900'} />
-                                </div>
-                                <div>
-                                    <h3 className={`text-xl font-black ${t.textPrimary(isDark)}`}>Node Manifest</h3>
-                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>Archive Details</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setShowBackupInfo(false)}
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-neutral-100 text-slate-900'}`}
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
+            {/* Grid View */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <AnimatePresence mode="popLayout">
+                    {filteredBackups.map((backup, idx) => (
+                        <BackupCard 
+                            key={backup.fileName}
+                            backup={backup}
+                            index={idx}
+                            onPreview={() => handlePreview(backup)}
+                            onDownload={() => handleDownload(backup)}
+                            onDelete={() => handleDelete(backup)}
+                            onRestore={() => handlePreview(backup)}
+                        />
+                    ))}
+                </AnimatePresence>
 
-                        <div className="grid grid-cols-2 gap-6 mb-8">
-                            <DetailItem label="ARCHIVE NAME" value={selectedBackup.fileName.split('/').pop() || ''} isDark={isDark} />
-                            <DetailItem label="SNAPSHOT SIZE" value={formatFileSize(selectedBackup.size)} isDark={isDark} />
-                            <DetailItem label="TIMESTAMP" value={formatDate(selectedBackup.timestamp)} isDark={isDark} />
-                            <DetailItem label="SCHOOL NODE" value={currentSchool?.name || 'N/A'} isDark={isDark} />
-                            
-                            {previewLoading ? (
-                                <div className="col-span-2 py-4 flex items-center gap-3">
-                                    <RefreshCw size={14} className="animate-spin text-indigo-500" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Fetching detailed manifest...</span>
-                                </div>
-                            ) : previewData ? (
-                                <>
-                                    <DetailItem label="TOTAL STUDENTS" value={(previewData.studentsCount || 0).toString()} isDark={isDark} />
-                                    <DetailItem label="TOTAL REVENUE" value={`₹${parseFloat(previewData.revenueTotal || '0').toLocaleString()}`} isDark={isDark} />
-                                    <DetailItem label="RECORDS COUNT" value={Object.values((previewData.recordCounts || {}) as Record<string, number>).reduce((a: number, b: number) => a + b, 0).toString()} isDark={isDark} />
-                                    <DetailItem label="COVERAGE" value="Full Academic + Billing" isDark={isDark} />
-                                </>
-                            ) : (
-                                <>
-                                    <DetailItem label="STUDENTS" value={(selectedBackup.studentCount || '---').toString()} isDark={isDark} />
-                                    <DetailItem label="REVENUE" value={selectedBackup.revenueTotal ? `₹${parseFloat(selectedBackup.revenueTotal).toLocaleString()}` : '---'} isDark={isDark} />
-                                </>
-                            )}
+                {filteredBackups.length === 0 && (
+                    <div className={`col-span-full py-32 rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center space-y-4 opacity-30 ${t.border(isDark)}`}>
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-neutral-50'}`}>
+                            <Database size={40} />
                         </div>
+                        <div className="text-center">
+                            <h3 className="text-xl font-black">No Vaults Found</h3>
+                            <p className="text-xs font-bold max-w-xs mx-auto mt-2">Initialize your first school backup to start securing institutional data.</p>
+                        </div>
+                    </div>
+                )}
+            </div>
 
-                        <div className="flex gap-3">
-                            <Button
-                                onClick={() => {
-                                    handleRestore(selectedBackup);
-                                    setShowBackupInfo(false);
-                                }}
-                                disabled={isBackingUp}
-                                className={`flex-1 h-14 rounded-2xl font-black uppercase tracking-widest gap-2 ${t.btnPrimary(isDark, accent)}`}
-                            >
-                                <RotateCcw size={18} /> Restore Now
-                            </Button>
-                            <Button
-                                onClick={() => handleDownload(selectedBackup)}
-                                variant="outline"
-                                className={`h-14 px-8 rounded-2xl border ${t.border(isDark)} font-black uppercase tracking-widest ${t.textPrimary(isDark)}`}
-                            >
-                                <DownloadCloud size={18} />
-                            </Button>
+            {/* Roadmap Section */}
+            <div className={`mt-20 p-10 rounded-[3rem] border overflow-hidden relative ${isDark ? 'bg-gradient-to-br from-neutral-900 to-black border-white/5' : 'bg-slate-900 border-slate-800'}`}>
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
+                    <div className="flex-1 space-y-6">
+                        <Badge className="bg-amber-500/20 text-amber-500 border-0 font-black text-[10px] uppercase px-4 py-1.5 rounded-full">Coming Soon</Badge>
+                        <h3 className="text-3xl font-black text-white">Advanced Data Sovereignty</h3>
+                        <p className="text-slate-400 font-bold leading-relaxed max-w-md text-sm">
+                            We're engineering granular row-level restoration, automated cross-region replication, and institutional audit trails for maximum security.
+                        </p>
+                        <div className="grid grid-cols-2 gap-4">
+                            {[
+                                { icon: ShieldCheck, text: "Zero Trust Enc." },
+                                { icon: HardDrive, text: "Cold Storage" },
+                                { icon: RefreshCw, text: "Auto Replicate" },
+                                { icon: AlertCircle, text: "DR Testing" }
+                            ].map((item, i) => (
+                                <div key={i} className="flex items-center gap-2 text-white/60">
+                                    <item.icon size={14} className="text-emerald-500" />
+                                    <span className="text-[10px] font-black uppercase tracking-tight">{item.text}</span>
+                                </div>
+                            ))}
                         </div>
-                    </motion.div>
+                    </div>
+                    <div className="shrink-0 scale-110 opacity-20 md:opacity-100">
+                        <Database size={240} className="text-white/5" strokeWidth={1} />
+                    </div>
                 </div>
-            )}
+            </div>
+
+            {/* Folder Exploration Modal */}
+            <BackupFolderModal 
+                isOpen={!!selectedBackup}
+                onClose={() => setSelectedBackup(null)}
+                backup={selectedBackup}
+                previewData={previewData}
+                isLoading={isLoadingPreview}
+                isRestoring={isRestoring}
+                onRestore={handleRestore}
+            />
         </div>
     );
 }
-
-function DetailItem({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
-    return (
-        <div className="min-w-0">
-            <p className={`text-[8px] font-black uppercase tracking-[0.2em] mb-1.5 ${t.textMuted(isDark)}`}>{label}</p>
-            <p className={`text-[11px] font-bold truncate ${t.textPrimary(isDark)}`}>{value}</p>
-        </div>
-    );
-}
-
