@@ -11,6 +11,7 @@ import {
     Database, Users, IndianRupee, RotateCcw, ChevronRight, Server, Search
 } from 'lucide-react';
 import { useAdminTheme, t } from '../../theme-context';
+import { BackupSchoolList } from './backup-school-list';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface BackupFolderModalProps {
@@ -137,35 +138,17 @@ export function BackupFolderModal({
                                     <p className="text-[10px] font-black uppercase tracking-widest">Parsing Archive Nodes...</p>
                                 </div>
                             ) : previewData ? (
-                                <div className="grid grid-cols-1 gap-4">
-                                   <div className={`p-6 rounded-3xl border transition-all group hover:scale-[1.01] ${isDark ? 'bg-white/[0.03] border-white/5 hover:bg-white/[0.05]' : 'bg-white border-neutral-200 shadow-sm'}`}>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-neutral-50'}`}>
-                                                    <Server size={20} className={isDark ? accent.text : 'text-slate-900'} />
-                                                </div>
-                                                <div>
-                                                    <h4 className={`font-black text-sm ${t.textPrimary(isDark)}`}>{previewData.school?.name}</h4>
-                                                    <div className="flex items-center gap-3 mt-1">
-                                                        <span className={`flex items-center gap-1 text-[10px] font-black ${t.textMuted(isDark)}`}>
-                                                            <Users size={12} /> {previewData.students?.length || 0} Learners
-                                                        </span>
-                                                        <span className={`flex items-center gap-1 text-[10px] font-black ${isDark ? accent.text : 'text-indigo-600'}`}>
-                                                            <IndianRupee size={12} /> ₹{parseFloat(previewData.metadata?.totalRevenue || '0').toLocaleString()}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <Button
-                                                onClick={() => setConfirmTarget(previewData.schoolId)}
-                                                variant="outline"
-                                                className={`h-10 px-6 rounded-xl font-black text-[10px] uppercase tracking-tighter ${isDark ? 'border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10' : 'border-emerald-100 text-emerald-600 hover:bg-emerald-50'}`}
-                                            >
-                                                SELECT NODE
-                                            </Button>
-                                        </div>
-                                   </div>
-                                </div>
+                                <BackupSchoolList 
+                                    schools={previewData?.schools || (previewData?.students?.length > 0 ? [{
+                                        id: previewData.schoolId,
+                                        name: previewData.school?.name || 'Institutional Node',
+                                        students: previewData.students.length,
+                                        revenue: parseFloat(previewData.metadata?.totalRevenue || '0')
+                                    }] : [])}
+                                    isRestoring={isRestoring}
+                                    onRestore={onRestore}
+                                    onRestoreAll={() => onRestore()}
+                                />
                             ) : (
                                 <div className="h-full flex flex-col items-center justify-center space-y-4 opacity-30 text-center">
                                     <Database size={48} />
