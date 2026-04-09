@@ -400,12 +400,12 @@ export function MediaLibraryPicker({
 
                     {loading ? (
                         <div className="flex flex-col items-center justify-center h-48 gap-3">
-                            <Loader2 size={28} className={`animate-spin ${isDark ? accent.text : 'text-slate-900'}`} />
+                            <Loader2 size={28} className={`animate-spin ${isDark ? 'text-slate-400' : 'text-slate-500'}`} strokeWidth={2} />
                             <p className={`text-sm font-bold ${t.textMuted(isDark)}`}>Loading library...</p>
                         </div>
                     ) : error ? (
                         <div className={`flex flex-col items-center justify-center h-48 gap-3 rounded-2xl border-2 ${isDark ? 'border-rose-500/20 bg-rose-500/5' : 'border-rose-200 bg-rose-50'}`}>
-                            <AlertCircle size={28} className="text-rose-500" />
+                            <AlertCircle size={28} className="text-rose-500" strokeWidth={2} />
                             <p className={`text-sm font-bold text-center ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>{error}</p>
                             <Button
                                 size="sm" variant="outline"
@@ -417,8 +417,8 @@ export function MediaLibraryPicker({
                         </div>
                     ) : assets.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-48 gap-3">
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
-                                <ImageIcon size={24} className={t.textMuted(isDark)} />
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                                <ImageIcon size={24} className={isDark ? 'text-slate-500' : 'text-slate-400'} strokeWidth={1.5} />
                             </div>
                             <p className={`text-sm font-bold ${t.textMuted(isDark)}`}>
                                 {search ? 'No assets match your search.' : 'No assets uploaded yet.'}

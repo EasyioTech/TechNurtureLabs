@@ -70,10 +70,10 @@ export function LibraryHeader({
                             disabled={isSyncing || isUploading}
                             onClick={onSync}
                             title="Sync with storage"
-                            className={`w-9 h-9 p-0 rounded-lg border-2 ${t.border(isDark)} ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100'}`}
+                            className={`w-9 h-9 p-0 rounded-lg border-2 ${t.border(isDark)} ${isDark ? 'hover:bg-white/5 text-slate-300' : 'hover:bg-slate-100 text-slate-600'}`}
                         >
-                            <Loader2 size={14} className={isSyncing ? 'animate-spin' : 'hidden'} />
-                            {!isSyncing && <Cloud size={14} className={t.textMuted(isDark)} />}
+                            <Loader2 size={14} className={isSyncing ? 'animate-spin' : 'hidden'} strokeWidth={2} />
+                            {!isSyncing && <Cloud size={14} strokeWidth={2} />}
                         </Button>
                     )}
 
@@ -83,7 +83,7 @@ export function LibraryHeader({
                         onClick={onUploadClick}
                         className={`rounded-lg h-9 px-5 text-xs font-black uppercase tracking-wider ${accent.bg} text-slate-900 hover:shadow-lg transition-all`}
                     >
-                        {isUploading ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Upload size={14} className="mr-1.5" />}
+                        {isUploading ? <Loader2 size={14} className="animate-spin mr-1.5" strokeWidth={2} /> : <Upload size={14} className="mr-1.5" strokeWidth={2} />}
                         Upload
                     </Button>
 
@@ -91,12 +91,12 @@ export function LibraryHeader({
                         <button
                             onClick={onClose}
                             className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
-                                isDark 
-                                ? 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white' 
-                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900'
+                                isDark
+                                ? 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800'
                             }`}
                         >
-                            <X size={16} />
+                            <X size={16} strokeWidth={2} />
                         </button>
                     )}
                 </div>
@@ -104,7 +104,7 @@ export function LibraryHeader({
 
             {/* Search Bar */}
             <div className="relative mt-5">
-                <Search size={16} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${t.textMuted(isDark)}`} />
+                <Search size={16} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} strokeWidth={2} />
                 <Input
                     placeholder="Search by filename..."
                     value={search}
@@ -132,7 +132,7 @@ export function LibraryHeader({
                                             ? 'bg-white/[0.08] text-slate-400 border border-white/10 hover:bg-white/[0.12]'
                                             : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-150')}`}
                             >
-                                <tab.icon size={14} />
+                                <tab.icon size={14} strokeWidth={2} />
                                 {tab.label}
                             </button>
                         );

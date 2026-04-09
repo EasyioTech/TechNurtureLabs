@@ -16,7 +16,7 @@ interface PreviewModalProps {
 // Lazy load PDF viewer
 const PDFViewer = dynamic(() => import('@/modules/student/components/learning/pdf-viewer').then(mod => mod.PDFViewer), {
   ssr: false,
-  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="animate-spin" size={32} /></div>,
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="animate-spin text-slate-400" size={32} strokeWidth={2} /></div>,
 });
 
 export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
@@ -39,10 +39,10 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
         {/* Close Button - Absolute Positioned */}
         <button
           onClick={() => onOpenChange(false)}
-          className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors z-10 ${isDark ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-100 hover:bg-slate-200'}`}
+          className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors z-10 shadow-lg ${isDark ? 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'}`}
           aria-label="Close preview"
         >
-          <X size={18} />
+          <X size={18} strokeWidth={2.5} />
         </button>
 
         {/* Content - Full Area */}
@@ -86,7 +86,7 @@ export function PreviewModal({ asset, open, onOpenChange }: PreviewModalProps) {
 
           {isDocument && !isPdf && (
             <div className="flex flex-col items-center justify-center gap-4">
-              <AlertTriangle size={48} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+              <AlertTriangle size={48} className={isDark ? 'text-slate-500' : 'text-slate-400'} strokeWidth={1.5} />
               <p className={`text-sm font-bold text-center ${t.textMuted(isDark)}`}>
                 Preview not available
               </p>

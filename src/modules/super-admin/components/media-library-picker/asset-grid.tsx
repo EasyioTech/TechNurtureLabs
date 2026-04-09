@@ -104,8 +104,8 @@ export function AssetGrid({
                                     onSelect(asset);
                                 }}
                             >
-                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 ${isDark ? 'bg-white/5' : 'bg-white border border-slate-200'}`}>
-                                    <FileText size={20} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 ${isDark ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
+                                    <FileText size={20} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
                                 </div>
                                 <div className="flex-1 min-w-0 pr-10">
                                     <p className={`text-[11px] font-bold truncate ${t.textPrimary(isDark)}`} title={asset.original_name}>
@@ -127,9 +127,9 @@ export function AssetGrid({
                                         type="button"
                                         onClick={e => handlePreview(asset, e)}
                                         className={`w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-0 group-hover/card:opacity-100
-                                            ${isDark ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white' : 'bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white'}`}
+                                            ${isDark ? 'bg-blue-500/30 text-blue-300 hover:bg-blue-500 hover:text-white' : 'bg-blue-100 text-blue-600 hover:bg-blue-500 hover:text-white'}`}
                                     >
-                                        <Eye size={12} />
+                                        <Eye size={12} strokeWidth={2.5} />
                                     </button>
                                     <button
                                         type="button"
@@ -139,9 +139,9 @@ export function AssetGrid({
                                         }}
                                         disabled={isDeleting}
                                         className={`w-7 h-7 rounded-full flex items-center justify-center transition-opacity opacity-0 group-hover/card:opacity-100
-                                            ${isDark ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white' : 'bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white'}`}
+                                            ${isDark ? 'bg-rose-500/30 text-rose-300 hover:bg-rose-500 hover:text-white' : 'bg-rose-100 text-rose-600 hover:bg-rose-500 hover:text-white'}`}
                                     >
-                                        {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                                        {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} strokeWidth={2.5} />}
                                     </button>
                                 </div>
                             </div>
@@ -194,19 +194,19 @@ export function AssetGrid({
                                     <button
                                         type="button"
                                         onClick={e => handlePreview(asset, e)}
-                                        className={`w-5 h-5 rounded-full flex items-center justify-center
-                                            ${isDark ? 'bg-blue-500/80 text-white hover:bg-blue-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+                                        className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors shadow-md
+                                            ${isDark ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
                                     >
-                                        <Eye size={9} />
+                                        <Eye size={9} strokeWidth={2.5} />
                                     </button>
                                     <button
                                         type="button"
                                         onClick={e => onDelete(asset, e)}
                                         disabled={isDeleting}
-                                        className={`w-5 h-5 rounded-full flex items-center justify-center
-                                            ${isDark ? 'bg-rose-500/80 text-white hover:bg-rose-500' : 'bg-rose-500 text-white hover:bg-rose-600'}`}
+                                        className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors shadow-md
+                                            ${isDark ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-rose-500 text-white hover:bg-rose-600'}`}
                                     >
-                                        {isDeleting ? <Loader2 size={9} className="animate-spin" /> : <Trash2 size={9} />}
+                                        {isDeleting ? <Loader2 size={9} className="animate-spin" /> : <Trash2 size={9} strokeWidth={2.5} />}
                                     </button>
                                 </div>
                             </div>
@@ -257,7 +257,7 @@ function AssetImagePreview({ asset }: { asset: MediaAsset }) {
     if (failed) {
         return (
             <div className="w-full h-full flex items-center justify-center">
-                <ImageIcon size={24} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+                <ImageIcon size={32} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
             </div>
         );
     }
@@ -279,7 +279,7 @@ function VideoPreview({ asset, isDark }: { asset: MediaAsset; isDark: boolean })
     if (!hasThumbnail) {
         return (
             <div className="w-full h-full flex items-center justify-center">
-                <Film size={24} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+                <Film size={32} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
             </div>
         );
     }
@@ -294,7 +294,7 @@ function VideoPreview({ asset, isDark }: { asset: MediaAsset; isDark: boolean })
             />
             {/* Overlay play button indicator */}
             <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
-                <Film size={28} className="text-white drop-shadow-lg" />
+                <Film size={32} className="text-white drop-shadow-lg" strokeWidth={1.5} />
             </div>
         </>
     );
