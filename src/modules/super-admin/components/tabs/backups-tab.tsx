@@ -529,7 +529,7 @@ export function BackupsTab({ schoolsList }: BackupsTabProps) {
                                 <>
                                     <DetailItem label="TOTAL STUDENTS" value={(previewData.studentsCount || 0).toString()} isDark={isDark} />
                                     <DetailItem label="TOTAL REVENUE" value={`₹${parseFloat(previewData.revenueTotal || '0').toLocaleString()}`} isDark={isDark} />
-                                    <DetailItem label="RECORDS COUNT" value={Object.values(previewData.recordCounts || {}).reduce((a: any, b: any) => a + b, 0).toString()} isDark={isDark} />
+                                    <DetailItem label="RECORDS COUNT" value={Object.values((previewData.recordCounts || {}) as Record<string, number>).reduce((a: number, b: number) => a + b, 0).toString()} isDark={isDark} />
                                     <DetailItem label="COVERAGE" value="Full Academic + Billing" isDark={isDark} />
                                 </>
                             ) : (
@@ -575,4 +575,3 @@ function DetailItem({ label, value, isDark }: { label: string; value: string; is
     );
 }
 
-import { ChevronDown, X } from 'lucide-react';

@@ -277,7 +277,7 @@ export async function getBackupPreviewAdmin(fileName: string) {
             metadata: {
                 schoolName: backupData.school.name,
                 studentsCount: backupData.students.length,
-                academicRecordsCount: backupData.academicRecords.length,
+                academicRecordsCount: backupData.metadata.recordCounts.academicRecords,
                 revenueTotal: backupData.metadata.totalRevenue,
                 xpDistributed: backupData.metadata.totalXpDistributed,
                 recordCounts: backupData.metadata.recordCounts,
