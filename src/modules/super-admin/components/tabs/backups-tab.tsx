@@ -7,7 +7,7 @@ import {
     HardDrive, Download, RotateCcw, AlertCircle, CheckCircle2, 
     Trash2, Info, RefreshCw, Calendar, Database, Users, 
     ShieldAlert, Clock, ArrowRight, Server, Search, Filter, 
-    DownloadCloud, History, Zap, Sparkles
+    DownloadCloud, History, Zap, Sparkles, LayoutGrid, Check, X, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -21,7 +21,14 @@ import {
     getBackupDownloadUrlAdmin,
     deleteBackupFileAdmin
 } from '@/app/(super-admin)/admin-portal/actions/backup-actions';
-import { X, ChevronDown } from 'lucide-react';
+import { 
+    DropdownMenu, 
+    DropdownMenuContent, 
+    DropdownMenuItem, 
+    DropdownMenuTrigger,
+    DropdownMenuLabel,
+    DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
 
 interface BackupsTabProps {
     schoolsList: Array<{ id: string; name: string }>;
@@ -230,19 +237,61 @@ export function BackupsTab({ schoolsList }: BackupsTabProps) {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="flex-1">
                                 <label className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 block ${t.textMuted(isDark)}`}>ACTIVE SCHOOL NODE</label>
-                                <div className="relative">
-                                    <Server size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${t.textMuted(isDark)}`} />
-                                    <select
-                                        value={selectedSchoolId}
-                                        onChange={(e) => setSelectedSchoolId(e.target.value)}
-                                        className={`w-full pl-11 pr-4 py-3 rounded-2xl border font-black text-sm transition-all outline-none appearance-none ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-white/20' : 'bg-neutral-50 border-neutral-200 text-slate-900 focus:border-slate-300'}`}
-                                    >
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <div className="relative group">
+                                            <Server size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${t.textMuted(isDark)} group-hover:text-amber-400`} />
+                                            <button className={`w-full flex items-center justify-between pl-11 pr-4 py-3 rounded-2xl border font-black text-sm transition-all outline-none cursor-pointer
+                                                ${isDark 
+                                                    ? 'bg-neutral-900 border-white/10 text-white hover:border-white/30' 
+                                                    : 'bg-white border-neutral-200 text-slate-900 hover:border-slate-300 shadow-sm'}`}>
+                                                <span className="truncate">
+                                                    {selectedSchoolId 
+                                                        ? schoolsList.find(s => s.id === selectedSchoolId)?.name || 'Unknown School'
+                                                        : 'System-Wide (All Schools)'}
+                                                </span>
+                                                <ChevronDown size={16} className={t.textMuted(isDark)} />
+                                            </button>
+                                        </div>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start" className={`w-[calc(100vw-2rem)] md:w-[400px] max-h-[40vh] overflow-y-auto p-2 rounded-2xl border shadow-2xl ${t.card(isDark)} ${t.border(isDark)}`}>
+                                        <DropdownMenuLabel className={`text-[10px] uppercase tracking-widest font-black mb-1 opacity-50 ${t.textPrimary(isDark)}`}>
+                                            Select School Node
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuItem 
+                                            onClick={() => setSelectedSchoolId('')}
+                                            className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${selectedSchoolId === '' ? (isDark ? 'bg-white/10' : 'bg-neutral-100') : (isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50')}`}
+                                        >
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedSchoolId === '' ? accent.bg + ' text-slate-900' : (isDark ? 'bg-white/[0.03]' : 'bg-neutral-100')}`}>
+                                                <LayoutGrid size={14} />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className={`text-xs font-bold ${t.textPrimary(isDark)}`}>System-Wide</span>
+                                                <span className={`text-[10px] ${t.textMuted(isDark)}`}>Backups from all institutional nodes</span>
+                                            </div>
+                                            {selectedSchoolId === '' && <Check size={14} className={`ml-auto ${isDark ? accent.text : 'text-slate-900'}`} strokeWidth={3} />}
+                                        </DropdownMenuItem>
+
+                                        <DropdownMenuSeparator className={`my-2 opacity-50 ${isDark ? 'bg-white/10' : 'bg-neutral-200'}`} />
+
                                         {schoolsList.map(school => (
-                                            <option key={school.id} value={school.id} className="bg-neutral-900">{school.name}</option>
+                                            <DropdownMenuItem 
+                                                key={school.id}
+                                                onClick={() => setSelectedSchoolId(school.id)}
+                                                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${selectedSchoolId === school.id ? (isDark ? 'bg-white/10' : 'bg-neutral-100') : (isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50')}`}
+                                            >
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedSchoolId === school.id ? accent.bg + ' text-slate-900' : (isDark ? 'bg-white/[0.03]' : 'bg-neutral-100')}`}>
+                                                    <Server size={14} />
+                                                </div>
+                                                <div className="flex flex-col min-w-0 flex-1">
+                                                    <span className={`text-xs font-bold truncate ${t.textPrimary(isDark)}`}>{school.name}</span>
+                                                    <span className={`text-[10px] truncate ${t.textMuted(isDark)}`}>{school.id.slice(0, 12)}...</span>
+                                                </div>
+                                                {selectedSchoolId === school.id && <Check size={14} className={`ml-auto ${isDark ? accent.text : 'text-slate-900'}`} strokeWidth={3} />}
+                                            </DropdownMenuItem>
                                         ))}
-                                    </select>
-                                    <ChevronDown size={16} className={`absolute right-4 top-1/2 -translate-y-1/2 ${t.textMuted(isDark)} pointer-events-none`} />
-                                </div>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                             
                             <div className="flex gap-2">
