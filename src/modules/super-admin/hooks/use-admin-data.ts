@@ -6,6 +6,7 @@ import { useAdminCourses } from './use-admin-courses';
 import { useAdminSchools } from './use-admin-schools';
 import { useAdminLibrary } from './use-admin-library';
 import { useAdminCertifications } from './use-admin-certifications';
+import { useAdminBackups } from './use-admin-backups';
 
 export { USER_METRICS_PAGE_SIZE } from './use-admin-schools';
 
@@ -20,6 +21,7 @@ export function useAdminData() {
     const schools = useAdminSchools();
     const library = useAdminLibrary();
     const certs   = useAdminCertifications();
+    const backups = useAdminBackups();
 
     // Load stats + metadata once on mount
     useEffect(() => { meta.fetchInitialData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -115,5 +117,13 @@ export function useAdminData() {
         getCompletedStudents:  certs.getCompletedStudents,
         issueCert:             certs.issueCert,
         revokeCert:            certs.revokeCert,
+
+        // ── Backups ────────────────────────────────────────────────
+        backups:               backups.backups,
+        setBackups:            backups.setBackups,
+        backupsLoading:        backups.backupsLoading,
+        backupsInitialized:    backups.backupsInitialized,
+        selectedSchoolId:      backups.selectedSchoolId,
+        loadBackups:           backups.loadBackups,
     };
 }

@@ -148,6 +148,8 @@ function DashboardContent() {
         } else if (activePage === 'library') {
             data.loadGlobalLessons(data.globalLessonsPage, searchQuery);
             data.loadGlobalQuizzes(data.globalQuizzesPage, searchQuery);
+        } else if (activePage === 'backups') {
+            data.loadBackups();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activePage, data.userMetricsPage, searchQuery]);
@@ -568,8 +570,9 @@ function DashboardContent() {
                             />
                         )}
                         { activePage === 'backups' && (
-                            <BackupsTab 
-                                schoolsList={data.schoolsList}
+                            <BackupsTab
+                                backups={data.backups}
+                                activeSchoolId={data.selectedSchoolId}
                             />
                         )}
                         { activePage === 'settings' && <SettingsTab ref={settingsRef} schoolsList={data.schoolsList} onTabChange={setActivePage} />}
