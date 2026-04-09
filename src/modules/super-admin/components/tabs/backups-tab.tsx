@@ -21,7 +21,7 @@ import {
     getBackupDownloadUrlAdmin
 } from '@/app/(super-admin)/admin-portal/actions/backup-actions';
 import { BackupCard } from './backups/backup-card';
-import { BackupFolderModal } from './backups/backup-folder-modal';
+import { BackupDetailView } from './backups/backup-detail-view';
 
 interface BackupsTabProps {
     backups: any[];
@@ -149,6 +149,20 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
         }
     };
 
+    // Show detail view if a backup is selected
+    if (selectedBackup) {
+        return (
+            <BackupDetailView
+                backup={selectedBackup}
+                previewData={previewData}
+                isLoading={isLoadingPreview}
+                isRestoring={isRestoring}
+                onRestore={handleRestore}
+                onBack={() => setSelectedBackup(null)}
+            />
+        );
+    }
+
     return (
         <div className="space-y-10 py-6">
             {/* Control Center */}
@@ -265,16 +279,6 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                 </div>
             </div>
 
-            {/* Folder Exploration Modal */}
-            <BackupFolderModal 
-                isOpen={!!selectedBackup}
-                onClose={() => setSelectedBackup(null)}
-                backup={selectedBackup}
-                previewData={previewData}
-                isLoading={isLoadingPreview}
-                isRestoring={isRestoring}
-                onRestore={handleRestore}
-            />
         </div>
     );
 }
