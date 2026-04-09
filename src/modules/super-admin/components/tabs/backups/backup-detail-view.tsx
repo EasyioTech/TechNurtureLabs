@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft, ShieldCheck, Clock, HardDrive, Database, Users,
     IndianRupee, Server, AlertCircle, RotateCcw, CheckCircle2,
-    BookOpen, Award, Zap
+    BookOpen, Award, Zap, Search, CreditCard, Calendar, GraduationCap,
+    Globe, Mail, Phone, MapPin, Link as LinkIcon, Code2, TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +22,8 @@ interface BackupDetailViewProps {
     onBack: () => void;
 }
 
+type TabType = 'overview' | 'students' | 'billing' | 'classes';
+
 export function BackupDetailView({
     backup,
     previewData,
@@ -30,8 +33,10 @@ export function BackupDetailView({
     onBack
 }: BackupDetailViewProps) {
     const { isDark, accent } = useAdminTheme();
+    const [activeTab, setActiveTab] = useState<TabType>('overview');
     const [confirmTarget, setConfirmTarget] = useState<'all' | string | null>(null);
-    const [expandedSchool, setExpandedSchool] = useState<string | null>(null);
+    const [studentSearch, setStudentSearch] = useState('');
+    const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
 
     if (!backup) return null;
 
@@ -42,239 +47,98 @@ export function BackupDetailView({
     const formattedDate = format(backupDate, 'MMM dd, yyyy');
     const formattedTime = format(backupDate, 'hh:mm a');
 
-    const schools = previewData?.schools || (previewData?.students?.length > 0 ? [{
-        id: previewData.schoolId,
-        name: previewData.school?.name || 'Institutional Node',
-        students: previewData.students.length,
-        revenue: parseFloat(previewData.metadata?.totalRevenue || '0')
-    }] : []);
+    const filteredStudents = useMemo(() => {
+        if (!previewData?.students) return [];
+        return previewData.students.filter((s: any) =>
+            `${s.first_name} ${s.last_name}`.toLowerCase().includes(studentSearch.toLowerCase()) ||
+            s.email.toLowerCase().includes(studentSearch.toLowerCase())
+        );
+    }, [previewData?.students, studentSearch]);
+
+    const maxXp = useMemo(() => {
+        if (!previewData?.students) return 0;
+        return Math.max(...previewData.students.map((s: any) => s.cumulative_xp || 0), 1);
+    }, [previewData?.students]);
+
+    const getTierColor = (tier: string, isDark: boolean) => {
+        const colors: Record<string, string> = {
+            bronze: isDark ? 'bg-amber-900/20 text-amber-300 border-amber-700' : 'bg-amber-50 text-amber-700 border-amber-200',
+            silver: isDark ? 'bg-slate-600/20 text-slate-200 border-slate-500' : 'bg-slate-100 text-slate-700 border-slate-300',
+            gold: isDark ? 'bg-yellow-900/20 text-yellow-300 border-yellow-700' : 'bg-yellow-50 text-yellow-700 border-yellow-200',
+            platinum: isDark ? 'bg-cyan-900/20 text-cyan-300 border-cyan-700' : 'bg-cyan-50 text-cyan-700 border-cyan-200'
+        };
+        return colors[tier] || colors.bronze;
+    };
+
+    const formatCurrency = (val: number | string) => {
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            maximumFractionDigits: 0
+        }).format(num);
+    };
 
     return (
         <div className="space-y-8 py-6">
-            {/* Top bar with back button */}
-            <div className="flex items-center gap-4">
-                <Button
-                    onClick={onBack}
-                    variant="ghost"
-                    className={`gap-2 h-10 px-4 rounded-xl font-semibold text-sm ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-900'}`}
-                >
-                    <ArrowLeft size={18} />
-                    Back to Vaults
-                </Button>
-                <h2 className={`text-2xl font-black ${t.textPrimary(isDark)}`}>{fileName}</h2>
+            {/* Header */}
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <Button
+                        onClick={onBack}
+                        variant="ghost"
+                        className={`gap-2 h-10 px-4 rounded-xl font-semibold text-sm ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-900'}`}
+                    >
+                        <ArrowLeft size={18} />
+                        Back
+                    </Button>
+                    <h2 className={`text-2xl font-black ${t.textPrimary(isDark)}`}>{fileName}</h2>
+                    <span className={`text-xs font-bold ${t.textMuted(isDark)}`}>{relativeTime}</span>
+                </div>
             </div>
 
-            {/* Loading state */}
-            {isLoading ? (
-                <div className={`p-12 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center space-y-4 ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
-                    <RotateCcw size={40} className={`animate-spin ${isDark ? 'text-white/40' : 'text-slate-300'}`} />
-                    <p className={`text-sm font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>Loading archive contents...</p>
-                </div>
-            ) : previewData ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* LEFT: Metadata Summary Card */}
-                    <div className={`lg:col-span-1 p-6 rounded-3xl border ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
-                        <div className="space-y-6">
-                            {/* Header */}
-                            <div>
-                                <div className={`w-12 h-12 rounded-2xl mb-4 flex items-center justify-center ${isDark ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
-                                    <ShieldCheck size={24} className={isDark ? accent.text : 'text-slate-900'} />
-                                </div>
-                                <h3 className={`text-lg font-black ${t.textPrimary(isDark)}`}>Archive Vault</h3>
-                                <p className={`text-xs font-bold uppercase tracking-widest opacity-50 ${t.textMuted(isDark)}`}>Secure Snapshot</p>
-                            </div>
-
-                            {/* Metadata items */}
-                            <div className="space-y-4">
-                                <InfoItem
-                                    label="Archive ID"
-                                    value={fileName}
-                                    isDark={isDark}
-                                />
-                                <InfoItem
-                                    label="Created"
-                                    value={`${formattedDate} at ${formattedTime}`}
-                                    isDark={isDark}
-                                />
-                                <InfoItem
-                                    label="Created"
-                                    value={relativeTime}
-                                    isDark={isDark}
-                                />
-                                <InfoItem
-                                    label="Encryption"
-                                    value="AES-256 GZIP"
-                                    isDark={isDark}
-                                />
-                                <InfoItem
-                                    label="File Size"
-                                    value={`${fileSize} KB`}
-                                    isDark={isDark}
-                                />
-                            </div>
-
-                            {/* Stats grid */}
-                            <div className={`pt-6 border-t ${t.border(isDark)} grid grid-cols-2 gap-4`}>
-                                <StatBox
-                                    icon={Server}
-                                    label="Nodes"
-                                    value="1"
-                                    isDark={isDark}
-                                />
-                                <StatBox
-                                    icon={Users}
-                                    label="Students"
-                                    value={previewData.students?.length?.toString() || '0'}
-                                    isDark={isDark}
-                                />
-                                <StatBox
-                                    icon={IndianRupee}
-                                    label="Revenue"
-                                    value={formatCurrency(parseFloat(previewData.metadata?.totalRevenue || '0'))}
-                                    isDark={isDark}
-                                />
-                                <StatBox
-                                    icon={Database}
-                                    label="Records"
-                                    value={previewData.metadata?.recordCounts?.students?.toString() || '0'}
-                                    isDark={isDark}
-                                />
-                            </div>
-
-                            {/* Global restore button */}
-                            <Button
-                                onClick={() => setConfirmTarget('all')}
-                                disabled={isRestoring}
-                                className={`w-full h-12 rounded-xl font-black text-sm uppercase tracking-widest gap-2 shadow-xl ${t.btnPrimary(isDark, accent)}`}
-                            >
-                                <RotateCcw size={16} />
-                                Global Restore
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* RIGHT: School Nodes */}
-                    <div className="lg:col-span-2 space-y-4">
-                        <h3 className={`text-lg font-black px-2 ${t.textPrimary(isDark)}`}>School Nodes</h3>
-
-                        {schools.map((school: any) => (
+            {/* Tabs */}
+            <div className={`flex gap-2 border-b ${isDark ? 'border-white/5' : 'border-slate-200'}`}>
+                {(['overview', 'students', 'billing', 'classes'] as TabType[]).map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`px-4 py-3 font-bold text-sm uppercase tracking-widest transition-all relative ${
+                            activeTab === tab
+                                ? isDark
+                                    ? `text-white`
+                                    : `text-slate-900`
+                                : isDark
+                                ? `text-white/50 hover:text-white/70`
+                                : `text-slate-500 hover:text-slate-700`
+                        }`}
+                    >
+                        {tab === 'overview' && <span className="flex items-center gap-2"><ShieldCheck size={16} /> Overview</span>}
+                        {tab === 'students' && <span className="flex items-center gap-2"><Users size={16} /> Students</span>}
+                        {tab === 'billing' && <span className="flex items-center gap-2"><CreditCard size={16} /> Billing</span>}
+                        {tab === 'classes' && <span className="flex items-center gap-2"><GraduationCap size={16} /> Classes</span>}
+                        {activeTab === tab && (
                             <motion.div
-                                key={school.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className={`rounded-2xl border transition-all ${
-                                    expandedSchool === school.id
-                                        ? isDark
-                                            ? 'bg-white/[0.05] border-white/10'
-                                            : 'bg-white border-slate-200 shadow-lg'
-                                        : isDark
-                                        ? 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]'
-                                        : 'bg-slate-50/50 border-slate-100 hover:shadow-md'
-                                }`}
-                            >
-                                {/* Card Header */}
-                                <button
-                                    onClick={() => setExpandedSchool(expandedSchool === school.id ? null : school.id)}
-                                    className="w-full p-4 sm:p-6 flex items-center justify-between"
-                                >
-                                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/5' : 'bg-white shadow-sm'}`}>
-                                            <Server size={20} className={isDark ? accent.text : 'text-slate-900'} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className={`text-sm sm:text-base font-black truncate ${t.textPrimary(isDark)}`}>
-                                                {school.name}
-                                            </h4>
-                                            <div className="flex items-center gap-3 mt-1.5 text-xs opacity-60 overflow-hidden">
-                                                <span className="flex items-center gap-1 shrink-0">
-                                                    <Users size={12} />
-                                                    {school.students} Students
-                                                </span>
-                                                <span className="flex items-center gap-1 shrink-0">
-                                                    <IndianRupee size={12} />
-                                                    ₹{formatCurrency(school.revenue)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <Badge className={`ml-2 shrink-0 ${expandedSchool === school.id ? (isDark ? 'bg-white/20' : 'bg-slate-200') : (isDark ? 'bg-white/10' : 'bg-slate-100')}`}>
-                                        {expandedSchool === school.id ? 'Collapse' : 'Details'}
-                                    </Badge>
-                                </button>
+                                layoutId="activeTab"
+                                className={`absolute bottom-0 left-0 right-0 h-1 ${accent.bg}`}
+                                initial={false}
+                                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                            />
+                        )}
+                    </button>
+                ))}
+            </div>
 
-                                {/* Expanded Content */}
-                                <AnimatePresence>
-                                    {expandedSchool === school.id && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            className={`border-t overflow-hidden ${isDark ? 'border-white/5' : 'border-slate-100'}`}
-                                        >
-                                            <div className="p-4 sm:p-6 space-y-4">
-                                                {/* Admin info */}
-                                                {previewData.schoolAdmin && (
-                                                    <div className={`p-4 rounded-lg ${isDark ? 'bg-white/5' : 'bg-white'}`}>
-                                                        <p className={`text-xs font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>Admin</p>
-                                                        <p className={`text-sm font-black mt-1 ${t.textPrimary(isDark)}`}>
-                                                            {previewData.schoolAdmin.first_name} {previewData.schoolAdmin.last_name}
-                                                        </p>
-                                                    </div>
-                                                )}
-
-                                                {/* Subscription info */}
-                                                {previewData.subscription && (
-                                                    <div className={`p-4 rounded-lg ${isDark ? 'bg-white/5' : 'bg-white'}`}>
-                                                        <p className={`text-xs font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>Subscription</p>
-                                                        <div className="flex items-center gap-2 mt-2">
-                                                            <Badge className={isDark ? 'bg-blue-500/20 text-blue-300 border-0' : 'bg-blue-50 text-blue-700 border-0'}>
-                                                                {previewData.paymentPlan?.name || 'Premium'}
-                                                            </Badge>
-                                                            {previewData.subscription?.status && (
-                                                                <Badge className={previewData.subscription.status === 'active' ? (isDark ? 'bg-emerald-500/20 text-emerald-300 border-0' : 'bg-emerald-50 text-emerald-700 border-0') : (isDark ? 'bg-red-500/20 text-red-300 border-0' : 'bg-red-50 text-red-700 border-0')}>
-                                                                    {previewData.subscription.status}
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Record counts grid */}
-                                                <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                                                    <RecordBox label="Academic Records" value={previewData.metadata?.recordCounts?.academicRecords} icon={BookOpen} isDark={isDark} />
-                                                    <RecordBox label="Quiz Attempts" value={previewData.metadata?.recordCounts?.quizAttempts} icon={Zap} isDark={isDark} />
-                                                    <RecordBox label="Achievements" value={previewData.metadata?.recordCounts?.achievements} icon={Award} isDark={isDark} />
-                                                    <RecordBox label="Invoices" value={previewData.metadata?.recordCounts?.invoices} icon={IndianRupee} isDark={isDark} />
-                                                </div>
-
-                                                {/* Coverage badges */}
-                                                <div className="pt-4 border-t" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0' }}>
-                                                    <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${t.textMuted(isDark)}`}>Coverage</p>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {previewData.coverage?.academic && <Badge className={isDark ? 'bg-purple-500/20 text-purple-300 border-0' : 'bg-purple-50 text-purple-700 border-0'}>Academic</Badge>}
-                                                        {previewData.coverage?.enrollments && <Badge className={isDark ? 'bg-blue-500/20 text-blue-300 border-0' : 'bg-blue-50 text-blue-700 border-0'}>Enrollments</Badge>}
-                                                        {previewData.coverage?.billing && <Badge className={isDark ? 'bg-green-500/20 text-green-300 border-0' : 'bg-green-50 text-green-700 border-0'}>Billing</Badge>}
-                                                        {previewData.coverage?.quizzes && <Badge className={isDark ? 'bg-orange-500/20 text-orange-300 border-0' : 'bg-orange-50 text-orange-700 border-0'}>Quizzes</Badge>}
-                                                    </div>
-                                                </div>
-
-                                                {/* Restore button */}
-                                                <Button
-                                                    onClick={() => setConfirmTarget(school.id)}
-                                                    disabled={isRestoring}
-                                                    className={`w-full h-11 rounded-lg font-bold text-sm uppercase tracking-widest gap-2 ${isDark ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'}`}
-                                                >
-                                                    <RotateCcw size={14} />
-                                                    Restore School
-                                                </Button>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
+            {/* Content */}
+            {isLoading ? (
+                <LoadingState isDark={isDark} />
+            ) : previewData ? (
+                <>
+                    {activeTab === 'overview' && <OverviewTab previewData={previewData} isDark={isDark} accent={accent} isRestoring={isRestoring} onRestore={onRestore} setConfirmTarget={setConfirmTarget} formatCurrency={formatCurrency} formattedDate={formattedDate} formattedTime={formattedTime} fileSize={fileSize} />}
+                    {activeTab === 'students' && <StudentsTab previewData={previewData} isDark={isDark} studentSearch={studentSearch} setStudentSearch={setStudentSearch} filteredStudents={filteredStudents} expandedStudent={expandedStudent} setExpandedStudent={setExpandedStudent} maxXp={maxXp} getTierColor={getTierColor} />}
+                    {activeTab === 'billing' && <BillingTab previewData={previewData} isDark={isDark} formatCurrency={formatCurrency} />}
+                    {activeTab === 'classes' && <ClassesTab previewData={previewData} isDark={isDark} />}
+                </>
             ) : null}
 
             {/* Confirmation Overlay */}
@@ -332,41 +196,423 @@ export function BackupDetailView({
     );
 }
 
-function InfoItem({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
+// ==================== TAB COMPONENTS ====================
+
+function LoadingState({ isDark }: { isDark: boolean }) {
     return (
-        <div>
-            <p className={`text-xs font-bold uppercase tracking-widest opacity-50 ${t.textMuted(isDark)}`}>{label}</p>
-            <p className={`text-sm font-bold mt-1 truncate ${t.textPrimary(isDark)}`}>{value}</p>
+        <div className={`p-12 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center space-y-4 ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
+            <RotateCcw size={40} className={`animate-spin ${isDark ? 'text-white/40' : 'text-slate-300'}`} />
+            <p className={`text-sm font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>Loading backup data...</p>
         </div>
     );
 }
 
-function StatBox({ icon: Icon, label, value, isDark }: { icon: any; label: string; value: string; isDark: boolean }) {
+function OverviewTab({ previewData, isDark, accent, isRestoring, onRestore, setConfirmTarget, formatCurrency, formattedDate, formattedTime, fileSize }: any) {
     return (
-        <div className={`p-3 rounded-lg ${isDark ? 'bg-white/5' : 'bg-white'}`}>
-            <Icon size={16} className={`mb-1.5 ${isDark ? 'text-white/40' : 'text-slate-300'}`} />
-            <p className={`text-[10px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>{label}</p>
-            <p className={`text-sm font-black mt-1 ${t.textPrimary(isDark)}`}>{value}</p>
-        </div>
-    );
-}
+        <div className="space-y-6">
+            {/* School Info */}
+            <Card isDark={isDark} title="School Information">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <InfoRow label="School Name" value={previewData.school?.name} isDark={isDark} />
+                    <InfoRow label="Email" value={previewData.school?.email} isDark={isDark} icon={Mail} />
+                    <InfoRow label="Phone" value={previewData.school?.phone || '—'} isDark={isDark} icon={Phone} />
+                    <InfoRow label="Website" value={previewData.school?.website || '—'} isDark={isDark} icon={LinkIcon} />
+                    <InfoRow label="Location" value={`${previewData.school?.city || '—'}, ${previewData.school?.state || '—'} ${previewData.school?.country || '—'}`} isDark={isDark} icon={MapPin} />
+                    <InfoRow label="UDISE Code" value={previewData.school?.udise_code || '—'} isDark={isDark} icon={Code2} />
+                </div>
+            </Card>
 
-function RecordBox({ icon: Icon, label, value, isDark }: { icon: any; label: string; value?: number; isDark: boolean }) {
-    return (
-        <div className={`p-3 rounded-lg flex items-start gap-2 ${isDark ? 'bg-white/5' : 'bg-white'}`}>
-            <Icon size={14} className={`flex-shrink-0 mt-0.5 ${isDark ? 'text-white/40' : 'text-slate-400'}`} />
-            <div className="flex-1 min-w-0">
-                <p className={`text-[9px] font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>{label}</p>
-                <p className={`text-xs font-black mt-1 ${t.textPrimary(isDark)}`}>{value?.toLocaleString() || '0'}</p>
+            {/* Admin & Subscription */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Admin */}
+                <Card isDark={isDark} title="Admin">
+                    <div className="space-y-4">
+                        <InfoRow label="Name" value={`${previewData.schoolAdmin?.first_name} ${previewData.schoolAdmin?.last_name}`} isDark={isDark} />
+                        <InfoRow label="Email" value={previewData.schoolAdmin?.email} isDark={isDark} />
+                    </div>
+                </Card>
+
+                {/* Subscription */}
+                <Card isDark={isDark} title="Subscription">
+                    <div className="space-y-4">
+                        <InfoRow label="Plan" value={previewData.paymentPlan?.name || 'N/A'} isDark={isDark} />
+                        <div>
+                            <p className={`text-xs font-bold uppercase opacity-50 ${t.textMuted(isDark)}`}>Status</p>
+                            <div className="mt-2">
+                                <Badge className={getStatusColor(previewData.subscription?.status, isDark)}>
+                                    {previewData.subscription?.status || 'N/A'}
+                                </Badge>
+                            </div>
+                        </div>
+                        <InfoRow label="Billing Cycle" value={previewData.paymentPlan?.billing_cycle || 'N/A'} isDark={isDark} />
+                        <InfoRow label="Price" value={formatCurrency(previewData.paymentPlan?.price || '0')} isDark={isDark} />
+                        <InfoRow label="Max Students" value={previewData.paymentPlan?.max_students || 'Unlimited'} isDark={isDark} />
+                        {previewData.subscription?.current_period_start && (
+                            <InfoRow label="Period" value={`${format(new Date(previewData.subscription.current_period_start), 'MMM d')} - ${format(new Date(previewData.subscription.current_period_end), 'MMM d, yyyy')}`} isDark={isDark} />
+                        )}
+                    </div>
+                </Card>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                <StatBox icon={Users} label="Students" value={previewData.students?.length || 0} isDark={isDark} />
+                <StatBox icon={Zap} label="XP Distributed" value={(previewData.metadata?.totalXpDistributed || 0).toLocaleString()} isDark={isDark} />
+                <StatBox icon={IndianRupee} label="Revenue" value={formatCurrency(previewData.metadata?.totalRevenue || 0)} isDark={isDark} />
+                <StatBox icon={BookOpen} label="Academic Records" value={previewData.metadata?.recordCounts?.academicRecords || 0} isDark={isDark} />
+                <StatBox icon={Award} label="Quiz Attempts" value={previewData.metadata?.recordCounts?.quizAttempts || 0} isDark={isDark} />
+                <StatBox icon={TrendingUp} label="Achievements" value={previewData.metadata?.recordCounts?.achievements || 0} isDark={isDark} />
+            </div>
+
+            {/* Record Counts */}
+            <Card isDark={isDark} title="Record Counts">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <RecordCountBox label="Students" value={previewData.metadata?.recordCounts?.students} isDark={isDark} />
+                    <RecordCountBox label="Sessions" value={previewData.metadata?.recordCounts?.academicSessions} isDark={isDark} />
+                    <RecordCountBox label="Classes" value={previewData.metadata?.recordCounts?.classMappings} isDark={isDark} />
+                    <RecordCountBox label="Transactions" value={previewData.metadata?.recordCounts?.transactions} isDark={isDark} />
+                    <RecordCountBox label="Invoices" value={previewData.metadata?.recordCounts?.invoices} isDark={isDark} />
+                    <RecordCountBox label="Academic Records" value={previewData.metadata?.recordCounts?.academicRecords} isDark={isDark} />
+                    <RecordCountBox label="Quiz Attempts" value={previewData.metadata?.recordCounts?.quizAttempts} isDark={isDark} />
+                    <RecordCountBox label="XP Transactions" value={previewData.metadata?.recordCounts?.xpTransactions} isDark={isDark} />
+                    <RecordCountBox label="Achievements" value={previewData.metadata?.recordCounts?.achievements} isDark={isDark} />
+                </div>
+            </Card>
+
+            {/* Academic Sessions */}
+            {previewData.academicSessions?.length > 0 && (
+                <Card isDark={isDark} title="Academic Sessions">
+                    <div className="space-y-3">
+                        {previewData.academicSessions.map((session: any) => (
+                            <div key={session.id} className={`p-4 rounded-lg flex items-center justify-between ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                                <div>
+                                    <p className={`font-bold ${t.textPrimary(isDark)}`}>{session.name}</p>
+                                    <p className={`text-xs ${t.textMuted(isDark)}`}>{format(new Date(session.start_date), 'MMM d')} - {format(new Date(session.end_date), 'MMM d, yyyy')}</p>
+                                </div>
+                                {session.is_current && <Badge className={isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}>Current</Badge>}
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
+
+            {/* Global Restore */}
+            <div className={`p-6 rounded-2xl border-2 ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                <Button
+                    onClick={() => setConfirmTarget('all')}
+                    disabled={isRestoring}
+                    className={`w-full h-12 rounded-xl font-black text-sm uppercase tracking-widest gap-2 shadow-xl ${t.btnPrimary(isDark, accent)}`}
+                >
+                    <RotateCcw size={18} />
+                    Global Restore
+                </Button>
             </div>
         </div>
     );
 }
 
-function formatCurrency(val: number) {
-    return new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        maximumFractionDigits: 0
-    }).format(val);
+function StudentsTab({ previewData, isDark, studentSearch, setStudentSearch, filteredStudents, expandedStudent, setExpandedStudent, maxXp, getTierColor }: any) {
+    return (
+        <div className="space-y-6">
+            {/* Search */}
+            <div className="relative">
+                <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 opacity-40 ${t.textMuted(isDark)}`} />
+                <input
+                    type="text"
+                    placeholder="Search by name or email..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    className={`w-full pl-12 pr-4 py-3 rounded-xl font-bold border transition-all ${isDark ? 'bg-white/5 border-white/10 focus:border-white/20 focus:bg-white/10' : 'bg-white border-slate-200 focus:border-slate-300'}`}
+                />
+            </div>
+
+            {/* Students List */}
+            <div className="space-y-3">
+                {filteredStudents.length > 0 ? (
+                    filteredStudents.map((student: any) => (
+                        <StudentCard
+                            key={student.id}
+                            student={student}
+                            isDark={isDark}
+                            isExpanded={expandedStudent === student.id}
+                            onToggle={() => setExpandedStudent(expandedStudent === student.id ? null : student.id)}
+                            maxXp={maxXp}
+                            getTierColor={getTierColor}
+                        />
+                    ))
+                ) : (
+                    <div className={`p-8 rounded-xl text-center ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                        <Users size={32} className={`mx-auto mb-2 ${isDark ? 'text-white/20' : 'text-slate-300'}`} />
+                        <p className={`text-sm font-bold ${t.textMuted(isDark)}`}>No students found</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function StudentCard({ student, isDark, isExpanded, onToggle, maxXp, getTierColor }: any) {
+    const xpPercent = (student.cumulative_xp / maxXp) * 100;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`rounded-2xl border transition-all ${isExpanded ? (isDark ? 'bg-white/[0.05] border-white/10' : 'bg-white border-slate-200 shadow-lg') : (isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100')}`}
+        >
+            {/* Header */}
+            <button onClick={onToggle} className="w-full p-4 text-left">
+                <div className="flex items-center gap-4 justify-between">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
+                                {student.first_name?.[0]}{student.last_name?.[0]}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className={`font-black truncate ${t.textPrimary(isDark)}`}>{student.first_name} {student.last_name}</p>
+                                <p className={`text-xs truncate ${t.textMuted(isDark)}`}>{student.email}</p>
+                            </div>
+                        </div>
+                        {/* XP Bar */}
+                        <div className="mt-3 space-y-1">
+                            <div className="flex items-center justify-between text-xs mb-1">
+                                <span className={`font-bold ${t.textMuted(isDark)}`}>XP: {student.cumulative_xp?.toLocaleString() || 0}</span>
+                                <span className={`font-bold ${t.textMuted(isDark)}`}>Streak: {student.current_streak || 0}🔥</span>
+                            </div>
+                            <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
+                                <div
+                                    className={`h-full ${isDark ? 'bg-purple-500' : 'bg-purple-600'}`}
+                                    style={{ width: `${Math.min(xpPercent, 100)}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-2 shrink-0">
+                        {student.is_active && <Badge className={isDark ? 'bg-emerald-500/20 text-emerald-300 border-0' : 'bg-emerald-50 text-emerald-700 border-0'}>Active</Badge>}
+                        {student.is_verified && <Badge className={isDark ? 'bg-blue-500/20 text-blue-300 border-0' : 'bg-blue-50 text-blue-700 border-0'}>Verified</Badge>}
+                    </div>
+                </div>
+            </button>
+
+            {/* Expanded Content */}
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className={`border-t overflow-hidden ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+                        <div className="p-4 space-y-4">
+                            {/* Achievements */}
+                            {student.achievements?.length > 0 && (
+                                <div>
+                                    <p className={`text-xs font-black uppercase tracking-widest mb-2 ${t.textMuted(isDark)}`}>Achievements ({student.achievements.length})</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {student.achievements.map((ach: any) => (
+                                            <Badge key={ach.id} className={`border ${getTierColor(ach.tier, isDark)}`}>
+                                                {ach.badge_name}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Quiz Attempts */}
+                            {student.quizAttempts?.length > 0 && (
+                                <div>
+                                    <p className={`text-xs font-black uppercase tracking-widest mb-2 ${t.textMuted(isDark)}`}>Quiz Attempts ({student.quizAttempts.length})</p>
+                                    <div className="space-y-1">
+                                        {student.quizAttempts.slice(0, 5).map((attempt: any, i: number) => (
+                                            <div key={i} className={`flex items-center justify-between text-xs p-2 rounded ${isDark ? 'bg-white/5' : 'bg-white'}`}>
+                                                <span className={t.textMuted(isDark)}>Score: {attempt.percentage}%</span>
+                                                <span className={attempt.passed ? 'text-green-500' : 'text-red-500'}>
+                                                    {attempt.passed ? '✓ Passed' : '✗ Failed'}
+                                                </span>
+                                            </div>
+                                        ))}
+                                        {student.quizAttempts.length > 5 && (
+                                            <p className={`text-xs ${t.textMuted(isDark)}`}>+{student.quizAttempts.length - 5} more</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* XP Breakdown */}
+                            {student.xpTransactions?.length > 0 && (
+                                <div>
+                                    <p className={`text-xs font-black uppercase tracking-widest mb-2 ${t.textMuted(isDark)}`}>XP Sources</p>
+                                    <XpBreakdown transactions={student.xpTransactions} isDark={isDark} />
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
+    );
+}
+
+function XpBreakdown({ transactions, isDark }: any) {
+    const sources = transactions.reduce((acc: any, t: any) => {
+        acc[t.source] = (acc[t.source] || 0) + t.amount;
+        return acc;
+    }, {});
+
+    return (
+        <div className="grid grid-cols-2 gap-2">
+            {Object.entries(sources).map(([source, amount]: any) => (
+                <div key={source} className={`p-2 rounded text-xs ${isDark ? 'bg-white/5' : 'bg-white'}`}>
+                    <p className={`font-bold capitalize ${t.textPrimary(isDark)}`}>{source.replace(/_/g, ' ')}</p>
+                    <p className={t.textMuted(isDark)}>+{amount}</p>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function BillingTab({ previewData, isDark, formatCurrency }: any) {
+    const paidInvoices = previewData.invoices?.filter((inv: any) => inv.status === 'paid').length || 0;
+    const totalTransactions = previewData.transactions?.length || 0;
+
+    return (
+        <div className="space-y-6">
+            {/* Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard label="Total Revenue" value={formatCurrency(previewData.metadata?.totalRevenue || 0)} isDark={isDark} />
+                <StatCard label="Total Transactions" value={totalTransactions.toString()} isDark={isDark} />
+                <StatCard label="Paid Invoices" value={`${paidInvoices} / ${previewData.invoices?.length || 0}`} isDark={isDark} />
+            </div>
+
+            {/* Transactions */}
+            {previewData.transactions?.length > 0 && (
+                <Card isDark={isDark} title={`Transactions (${previewData.transactions.length})`}>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {previewData.transactions.map((txn: any, i: number) => (
+                            <div key={i} className={`p-3 rounded-lg flex items-center justify-between text-sm ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                                <div>
+                                    <p className={`font-bold ${t.textPrimary(isDark)}`}>{formatCurrency(txn.amount)}</p>
+                                    <p className={`text-xs ${t.textMuted(isDark)}`}>{format(new Date(txn.created_at), 'MMM d, yyyy')}</p>
+                                </div>
+                                <Badge className={getStatusColor(txn.status, isDark)}>{txn.status}</Badge>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
+
+            {/* Invoices */}
+            {previewData.invoices?.length > 0 && (
+                <Card isDark={isDark} title={`Invoices (${previewData.invoices.length})`}>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {previewData.invoices.map((inv: any, i: number) => (
+                            <div key={i} className={`p-3 rounded-lg flex items-center justify-between text-sm ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                                <div>
+                                    <p className={`font-bold ${t.textPrimary(isDark)}`}>{inv.invoice_number}</p>
+                                    <p className={`text-xs ${t.textMuted(isDark)}`}>{inv.billing_name} - {formatCurrency(inv.total)}</p>
+                                </div>
+                                <Badge className={getStatusColor(inv.status, isDark)}>{inv.status}</Badge>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
+        </div>
+    );
+}
+
+function ClassesTab({ previewData, isDark }: any) {
+    return (
+        <div className="space-y-6">
+            {/* Academic Sessions */}
+            {previewData.academicSessions?.length > 0 && (
+                <Card isDark={isDark} title={`Academic Sessions (${previewData.academicSessions.length})`}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {previewData.academicSessions.map((session: any) => (
+                            <div key={session.id} className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100'}`}>
+                                <p className={`font-black text-lg ${t.textPrimary(isDark)}`}>{session.name}</p>
+                                <p className={`text-xs ${t.textMuted(isDark)} mt-2`}>{format(new Date(session.start_date), 'MMM d')} - {format(new Date(session.end_date), 'MMM d, yyyy')}</p>
+                                {session.is_current && <Badge className={`mt-3 ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>Current</Badge>}
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
+
+            {/* Classes */}
+            {previewData.classes?.length > 0 && (
+                <Card isDark={isDark} title={`Classes (${previewData.classes.length})`}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {previewData.classes.map((cls: any) => (
+                            <div key={cls.id} className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100'}`}>
+                                <p className={`font-black text-lg ${t.textPrimary(isDark)}`}>{cls.name}</p>
+                                <p className={`text-xs ${t.textMuted(isDark)} mt-2`}>Level {cls.level}</p>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
+        </div>
+    );
+}
+
+// ==================== SHARED COMPONENTS ====================
+
+function Card({ isDark, title, children }: { isDark: boolean; title: string; children: React.ReactNode }) {
+    return (
+        <div className={`p-6 rounded-2xl border ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50/50 border-slate-100'}`}>
+            {title && <h3 className={`text-lg font-black mb-4 ${t.textPrimary(isDark)}`}>{title}</h3>}
+            {children}
+        </div>
+    );
+}
+
+function InfoRow({ label, value, isDark, icon: Icon }: any) {
+    return (
+        <div>
+            <p className={`text-xs font-bold uppercase opacity-50 ${t.textMuted(isDark)}`}>{label}</p>
+            <div className="flex items-center gap-2 mt-2">
+                {Icon && <Icon size={14} className={`flex-shrink-0 ${t.textMuted(isDark)}`} />}
+                <p className={`font-bold ${t.textPrimary(isDark)}`}>{value || '—'}</p>
+            </div>
+        </div>
+    );
+}
+
+function StatBox({ icon: Icon, label, value, isDark }: any) {
+    return (
+        <div className={`p-4 rounded-xl ${isDark ? 'bg-white/5' : 'bg-white'}`}>
+            <Icon size={20} className={`mb-2 ${isDark ? 'text-white/40' : 'text-slate-300'}`} />
+            <p className={`text-xs font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>{label}</p>
+            <p className={`text-lg font-black mt-1 ${t.textPrimary(isDark)}`}>{value.toLocaleString ? value.toLocaleString() : value}</p>
+        </div>
+    );
+}
+
+function StatCard({ label, value, isDark }: any) {
+    return (
+        <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100'}`}>
+            <p className={`text-xs font-bold uppercase opacity-50 ${t.textMuted(isDark)}`}>{label}</p>
+            <p className={`text-2xl font-black mt-2 ${t.textPrimary(isDark)}`}>{value}</p>
+        </div>
+    );
+}
+
+function RecordCountBox({ label, value, isDark }: any) {
+    return (
+        <div className={`p-3 rounded-lg text-center ${isDark ? 'bg-white/5' : 'bg-white'}`}>
+            <p className={`text-xs font-bold uppercase ${t.textMuted(isDark)}`}>{label}</p>
+            <p className={`text-2xl font-black mt-1 ${t.textPrimary(isDark)}`}>{value || 0}</p>
+        </div>
+    );
+}
+
+function getStatusColor(status: string, isDark: boolean): string {
+    const colors: Record<string, string> = {
+        active: isDark ? 'bg-emerald-500/20 text-emerald-300 border-0' : 'bg-emerald-50 text-emerald-700 border-0',
+        paid: isDark ? 'bg-emerald-500/20 text-emerald-300 border-0' : 'bg-emerald-50 text-emerald-700 border-0',
+        captured: isDark ? 'bg-emerald-500/20 text-emerald-300 border-0' : 'bg-emerald-50 text-emerald-700 border-0',
+        issued: isDark ? 'bg-blue-500/20 text-blue-300 border-0' : 'bg-blue-50 text-blue-700 border-0',
+        pending: isDark ? 'bg-yellow-500/20 text-yellow-300 border-0' : 'bg-yellow-50 text-yellow-700 border-0',
+        trialing: isDark ? 'bg-purple-500/20 text-purple-300 border-0' : 'bg-purple-50 text-purple-700 border-0',
+        cancelled: isDark ? 'bg-red-500/20 text-red-300 border-0' : 'bg-red-50 text-red-700 border-0',
+        failed: isDark ? 'bg-red-500/20 text-red-300 border-0' : 'bg-red-50 text-red-700 border-0',
+        void: isDark ? 'bg-slate-500/20 text-slate-300 border-0' : 'bg-slate-50 text-slate-700 border-0'
+    };
+    return colors[status] || colors.pending;
 }
