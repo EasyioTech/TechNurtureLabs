@@ -258,6 +258,17 @@ export async function deleteBackupFileAdmin(schoolId: string, fileName: string) 
 
         console.log(`[Admin Backup] Deleted backup: ${fileName}`);
 
+        // 2. Log the deletion
+        await createAuditLog({
+            userId: session.userId,
+            userType: 'super_admin',
+            schoolId: schoolId,
+            action: 'delete',
+            entityType: 'backup',
+            entityId: fileName,
+            metadata: { fileName, schoolId }
+        });
+
         return {
             success: true,
             message: 'Backup deleted successfully'
@@ -297,6 +308,21 @@ export async function restoreSchoolFromBackupFileAdmin(schoolId: string, fileNam
         const result = await restoreSchoolFromBackup(backup);
 
         if (result.success) {
+            // 3. Log the restoration
+            await createAuditLog({
+                userId: session.userId,
+                userType: 'super_admin',
+                schoolId: schoolId,
+                action: 'restore',
+                entityType: 'backup',
+                entityId: fileName,
+                metadata: {
+                    fileName,
+                    schoolId,
+                    restoreType: 'full-overwrite'
+                }
+            });
+
             revalidatePath('/admin-portal/admin/backups');
         }
 

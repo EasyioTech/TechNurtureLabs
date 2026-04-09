@@ -2,8 +2,8 @@ import { db } from '@/lib/db';
 import { auditLogs } from '@/db/schema';
 import { type PgTransaction } from 'drizzle-orm/pg-core';
 
-type AuditLogAction = 'create' | 'update' | 'delete' | 'login' | 'logout' | 'verify' | 'reject' | 'approved' | 'rejected' | 'backup' | 'restore';
-type AuditEntityType = 'school' | 'student' | 'course' | 'lesson' | 'quiz' | 'subscription' | 'transaction' | 'user' | 'setting' | 'promoCode' | 'paymentPlan' | 'class' | 'backup';
+type AuditLogAction = 'create' | 'update' | 'delete' | 'login' | 'logout' | 'password_change' | 'role_change' | 'subscription_change' | 'payment' | 'promotion' | 'pin_reset_request' | 'backup' | 'restore' | 'verify' | 'reject' | 'approved' | 'rejected';
+type AuditEntityType = 'school' | 'student' | 'course' | 'lesson' | 'quiz' | 'subscription' | 'transaction' | 'user' | 'setting' | 'promoCode' | 'paymentPlan' | 'class' | 'backup' | 'system';
 
 interface CreateAuditLogParams {
     userId: string;

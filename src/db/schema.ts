@@ -10,7 +10,7 @@ import { relations, sql } from 'drizzle-orm';
 // ============================================================================
 
 // SCHEMA FIX: Unified user type enum (removed duplicate userRoleEnum — was identical to userTypeEnum)
-export const userTypeEnum = pgEnum('user_type', ['super_admin', 'school_admin', 'student']);
+export const userTypeEnum = pgEnum('user_type', ['super_admin', 'school_admin', 'student', 'system']);
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'trialing', 'past_due', 'cancelled', 'expired']);
 export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'quarterly', 'semi_annual', 'annual']);
 export const paymentStatusEnum = pgEnum('payment_status', ['created', 'authorized', 'captured', 'failed', 'refunded']);
@@ -19,7 +19,7 @@ export const questionTypeEnum = pgEnum('question_type', ['mcq', 'true_false', 'f
 export const xpSourceEnum = pgEnum('xp_source', ['lesson_completion', 'quiz_score', 'daily_streak', 'challenge_win', 'badge_earned', 'bonus', 'manual_adjustment']);
 export const achievementTierEnum = pgEnum('achievement_tier', ['bronze', 'silver', 'gold', 'platinum']);
 export const challengeStatusEnum = pgEnum('challenge_status', ['active', 'completed', 'expired']);
-export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion', 'pin_reset_request']);
+export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion', 'pin_reset_request', 'backup', 'restore']);
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'issued', 'paid', 'void', 'overdue']);
 // SCHEMA FIX: Removed 'local' (dead value — all storage is R2-only after C4 fixes)
 export const storageTypeEnum = pgEnum('storage_type', ['r2', 'cloudflare_stream']);
@@ -748,12 +748,12 @@ export const courseMetricsDaily = pgTable('course_metrics_daily', {
 
 export const auditLogs = pgTable('audit_logs', {
     id: uuid('id').defaultRandom(),
-    user_id: uuid('user_id'),
+    user_id: text('user_id'),
     user_type: userTypeEnum('user_type'),
     school_id: uuid('school_id').references(() => schools.id, { onDelete: 'set null' }),
     action: auditActionEnum('action').notNull(),
     entity_type: text('entity_type').notNull(),
-    entity_id: uuid('entity_id'),
+    entity_id: text('entity_id'),
     old_values: jsonb('old_values'),
     new_values: jsonb('new_values'),
     metadata: jsonb('metadata').notNull().default({}),
