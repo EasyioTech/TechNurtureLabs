@@ -19,7 +19,7 @@ export const questionTypeEnum = pgEnum('question_type', ['mcq', 'true_false', 'f
 export const xpSourceEnum = pgEnum('xp_source', ['lesson_completion', 'quiz_score', 'daily_streak', 'challenge_win', 'badge_earned', 'bonus', 'manual_adjustment']);
 export const achievementTierEnum = pgEnum('achievement_tier', ['bronze', 'silver', 'gold', 'platinum']);
 export const challengeStatusEnum = pgEnum('challenge_status', ['active', 'completed', 'expired']);
-export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion', 'pin_reset_request', 'backup', 'restore']);
+export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'delete', 'login', 'logout', 'password_change', 'role_change', 'subscription_change', 'payment', 'promotion', 'pin_reset_request', 'backup', 'restore', 'approved', 'rejected']);
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'issued', 'paid', 'void', 'overdue']);
 // SCHEMA FIX: Removed 'local' (dead value — all storage is R2-only after C4 fixes)
 export const storageTypeEnum = pgEnum('storage_type', ['r2', 'cloudflare_stream']);
