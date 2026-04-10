@@ -61,10 +61,7 @@ export function useAdminMeta() {
             setPlatformMetrics(metaData.platformMetrics);
             setLoginHeatmap(extras.loginHeatmap);
         } catch (err: any) {
-            if (err?.message === 'UNAUTHORIZED') {
-                window.location.href = '/admin-portal/login';
-                return;
-            }
+            // No forced redirect - AuthProvider or Middleware handles auth state
             toast.error('Failed to load dashboard stats');
         } finally {
             setLoading(false);
@@ -108,7 +105,7 @@ export function useAdminMeta() {
             });
             toast.success(editingPlan.id ? 'Plan updated' : 'Plan created');
         } catch (err: any) {
-            if (err?.message === 'UNAUTHORIZED') { window.location.href = '/admin-portal/login'; return; }
+            // No forced redirect
             toast.error(err?.message || 'Failed to save plan'); return;
         }
         setShowPlanDialog(false);
@@ -142,7 +139,7 @@ export function useAdminMeta() {
             });
             toast.success(editingPromoCode.id ? 'Promo Code updated' : 'Promo Code created');
         } catch (err: any) {
-            if (err?.message === 'UNAUTHORIZED') { window.location.href = '/admin-portal/login'; return; }
+            // No forced redirect here - let AuthProvider or global middleware handleauth transitions
             toast.error(err?.message || 'Failed to save promo code'); return;
         }
         setShowPromoCodeDialog(false);

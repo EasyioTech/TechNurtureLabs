@@ -124,7 +124,9 @@ export async function proxy(request: NextRequest) {
   }
 
   // ─── SESSION VALIDATION ──────────────────────────────────────────────
-  if (sessionToken) {
+  const isAuthApi = url.pathname.startsWith('/api/auth/');
+
+  if (sessionToken && !isAuthApi) {
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret || jwtSecret.trim() === '') {
       console.warn('[Proxy] JWT_SECRET is missing or empty — session checks will be skipped');
@@ -205,6 +207,22 @@ export async function proxy(request: NextRequest) {
         url.pathname.startsWith('/forgot-password');
 
       if (!isPublicPath) {
+        // If it's an API request, return 401 instead of redirecting to a page.
+        // This prevents the browser from changing the URL during background XHR/Fech calls.
+        if (isApi || request.headers.get('accept')?.includes('application/json')) {
+          const res = new NextResponse(JSON.stringify({ 
+            success: false, 
+            error: 'Session expired', 
+            code: 'UNAUTHORIZED' 
+          }), { 
+            status: 401, 
+            headers: { 'Content-Type': 'application/json' } 
+          });
+          res.cookies.delete('session');
+          res.cookies.delete('refresh_token');
+          return withTrace(res);
+        }
+
         const redirectPath = url.pathname;
         const safeFrom = isValidRedirect(redirectPath, request.url) ? encodeURIComponent(redirectPath) : '';
         const errorType = (e.message === 'Revoked') ? 'revoked' : 'expired';

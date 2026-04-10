@@ -74,15 +74,14 @@
    npm run dev
    ```
 
-### 🌍 Deployment to Production
-
-The project includes an **Operations (ops)** suite of automated scripts for seamless VPS deployment.
+### 🌍 Deployment & Operations
+The project includes an **Operations (ops)** suite of automated scripts for seamless VPS deployment and maintenance.
 
 - **Initial Setup**: `bash ops/setup.sh` (installs Docker, configures firewall/Caddy)
 - **Deployment**: `bash ops/deploy.sh` (automates builds, migrations, and service restarts)
 - **Maintenance**: `bash ops/doctor.sh` (system-wide health check and diagnostics)
 
-For more detailed deployment instructions, refer to **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** and the **[Operations Manual](ops/README.md)**.
+For more detailed instructions, refer to the **[Centralized Documentation](docs/README.md)**.
 
 ---
 

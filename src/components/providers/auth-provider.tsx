@@ -133,6 +133,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchProfile().finally(() => setLoading(false));
+
+    // Refresh profile on window focus to handle session rotation/expiration
+    const handleFocus = () => {
+      if (!document.hidden) {
+        fetchProfile();
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleFocus);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('visibilitychange', handleFocus);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [fetchProfile]);
 
   return (

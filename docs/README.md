@@ -10,8 +10,10 @@ Complete documentation for the TechNurture Learning Management System, organized
 
 ### 🔧 Deploying to Production
 1. **[deployment/README_DEPLOYMENT.md](deployment/README_DEPLOYMENT.md)** - Complete deployment guide
-2. **[deployment/DOCKER_DEPLOYMENT_STATUS.md](deployment/DOCKER_DEPLOYMENT_STATUS.md)** - Docker setup & verification
-3. **[deployment/MASTER_DEPLOYMENT_INDEX.md](deployment/MASTER_DEPLOYMENT_INDEX.md)** - Deployment procedures
+2. **[deployment/DEPLOYMENT_GUIDE.md](deployment/DEPLOYMENT_GUIDE.md)** - Visual/Quick reference guide
+3. **[deployment/DOCKER_DEPLOYMENT_STATUS.md](deployment/DOCKER_DEPLOYMENT_STATUS.md)** - Docker setup & verification
+4. **[deployment/MASTER_DEPLOYMENT_INDEX.md](deployment/MASTER_DEPLOYMENT_INDEX.md)** - Deployment procedures
+5. **[deployment/DEPLOYMENT_CHECKLIST.md](deployment/DEPLOYMENT_CHECKLIST.md)** - Final verification checklist
 
 ### 🏗️ Architecture & Design
 1. **[architecture/EXECUTIVE_SUMMARY.md](architecture/EXECUTIVE_SUMMARY.md)** - High-level system overview
@@ -19,10 +21,13 @@ Complete documentation for the TechNurture Learning Management System, organized
 
 ### 🔒 Security & Hardening
 - **[security/FULL_HARDENING_SUMMARY.md](security/FULL_HARDENING_SUMMARY.md)** - Security audit & fixes
+- **[security/MIDDLEWARE_AUDIT.md](security/MIDDLEWARE_AUDIT.md)** - Edge security & proxy verification
 - **[security/HARDENING_PHASE_2_3_FINAL_REPORT.md](security/HARDENING_PHASE_2_3_FINAL_REPORT.md)** - Implementation details
 - **[security/PHASE_4_5_COMPREHENSIVE_REPORT.md](security/PHASE_4_5_COMPREHENSIVE_REPORT.md)** - Additional hardening
 
 ### ⚡ Performance & Operations
+- **[operations/OPERATIONS.md](operations/OPERATIONS.md)** - Core admin platform operations
+- **[operations/BACKUP_PLAN.md](operations/BACKUP_PLAN.md)** - Data durability & recovery strategy
 - **[operations/PERFORMANCE_OPTIMIZATION_PLAN.md](operations/PERFORMANCE_OPTIMIZATION_PLAN.md)** - Performance tuning
 - **[operations/PERFORMANCE_TEST_GUIDE.md](operations/PERFORMANCE_TEST_GUIDE.md)** - Load testing procedures
 - **[operations/LOAD_TEST_10K_USERS.md](operations/LOAD_TEST_10K_USERS.md)** - Large-scale testing results
@@ -135,5 +140,14 @@ Module-specific documentation:
 
 ---
 
-**Last Updated**: April 3, 2026  
+## 🤖 For AI Agents
+
+When assisting with this codebase, please prioritize reading the following files to gain context:
+1. **[docs/README.md](README.md)** (this file) - For the documentation index.
+2. **[docs/architecture/ARCHITECTURE_BOUNDARIES.md](architecture/ARCHITECTURE_BOUNDARIES.md)** - To understand module isolation.
+3. **[docs/security/MIDDLEWARE_AUDIT.md](security/MIDDLEWARE_AUDIT.md)** - To understand edge security and session logic.
+
+---
+
+**Last Updated**: April 10, 2026  
 **System Status**: ✅ Production Ready
