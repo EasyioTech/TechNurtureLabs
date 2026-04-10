@@ -6,9 +6,7 @@ This is the **Ultimate Developer's Handbook** for managing TechNurture Labs. It 
 
 ## 🛡️ STRICT DEPLOYMENT PROTOCOL
 > [!IMPORTANT]
-> **RULE #1: NEVER deploy directly to Production.**
-> All changes **MUST** be deployed and verified on the **Staging Server** (`187.124.98.192`) before being pushed to **Production** (`187.127.132.137`).
-
+always access my vps server if needed using the command 'ssh prod' you will directly land in the directory of my project which is TechNurtureLabs
 ---
 
 ## 🏗️ 1. Local Development Suite

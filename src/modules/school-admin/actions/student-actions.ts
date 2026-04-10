@@ -174,7 +174,7 @@ export async function verifyStudentAction(userId: string, isVerified: boolean) {
             userId: session.userId,
             userType: session.userType,
             schoolId: student.school_id!,
-            action: 'verify',
+            action: 'update',
             entityType: 'student',
             entityId: userId,
             oldValues: { is_verified: false },
@@ -194,7 +194,7 @@ export async function verifyStudentAction(userId: string, isVerified: boolean) {
             userId: session.userId,
             userType: session.userType,
             schoolId: student.school_id!,
-            action: 'reject',
+            action: 'delete',
             entityType: 'student',
             entityId: userId,
             metadata: { reason: 'verification_rejected' }

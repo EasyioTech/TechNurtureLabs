@@ -5,40 +5,6 @@
 
 ---
 
-## 📋 Quick Reference Commands
-
-### Deploy to Staging VPS (187.124.98.192)
-
-```bash
-# SSH into staging
-ssh staging
-
-# Navigate to project
-cd ~/TechNurtureLabs
-
-# Pull latest code from main branch
-git pull origin main
-
-# Stop all containers (if running)
-docker compose down
-
-# Remove old image to force rebuild
-docker image rm technurturelabs-app:latest 2>/dev/null || true
-
-# Build fresh Docker image (no cache)
-docker compose build --no-cache app
-
-# Start all services
-docker compose up -d
-
-# Verify all containers are healthy (wait 30 seconds)
-sleep 30
-docker compose ps
-
-# Verify API health
-docker exec LMS_caddy wget -q -O - http://app:3000/api/health
-```
-
 ### Deploy to Production VPS (187.127.132.137)
 
 ```bash

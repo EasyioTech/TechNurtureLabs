@@ -81,10 +81,10 @@ export async function resolvePinRequest(requestId: string, action: 'approved' | 
             userId: session.userId,
             userType: session.userType,
             schoolId: request.school_id,
-            action: 'reject',
+            action: 'pin_reset_request',
             entityType: 'student',
             entityId: request.student_id,
-            metadata: { field: 'pin_reset', requestId }
+            metadata: { field: 'pin_reset', requestId, status: 'rejected' }
         });
     }
 
