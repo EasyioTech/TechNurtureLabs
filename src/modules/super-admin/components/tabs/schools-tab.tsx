@@ -11,9 +11,7 @@ interface SchoolsTabProps {
     stats: Stats;
     schoolsList: SchoolInfo[];
     paymentPlans?: PaymentPlan[];
-    onToggleStatus: (schoolId: string, isActive: boolean) => void;
     onSaveSchool: (data: Partial<SchoolInfo>) => void;
-    onAssignPlan?: (schoolId: string, planId: string) => void;
     showEditDialog: boolean;
     setShowEditDialog: (v: boolean) => void;
     editingSchool: Partial<SchoolInfo> | null;
@@ -31,7 +29,7 @@ interface SchoolsTabProps {
 }
 
 export function SchoolsTab({
-    stats, schoolsList, paymentPlans = [], onToggleStatus, onSaveSchool, onAssignPlan,
+    stats, schoolsList, paymentPlans = [], onSaveSchool,
     showEditDialog, setShowEditDialog, editingSchool, setEditingSchool, searchQuery = '',
     classes, onSync, page = 0, setPage, totalPages = 1,
     hasMore = false, loadingMore = false, onLoadMore
@@ -48,11 +46,7 @@ export function SchoolsTab({
         } 
     }
 
-    function handleAssignPlan(schoolId: string, planId: string) {
-        if (onAssignPlan) {
-            onAssignPlan(schoolId, planId);
-        }
-    }
+
 
     const filteredSchools = searchQuery
         ? schoolsList.filter(s =>
@@ -68,14 +62,7 @@ export function SchoolsTab({
 
             <SchoolList 
                 schools={filteredSchools}
-                paymentPlans={paymentPlans}
-                onToggleStatus={onToggleStatus}
                 onEdit={openEdit}
-                onRegister={() => {
-                    setEditingSchool({ is_active: true, classIds: [] });
-                    setShowEditDialog(true);
-                }}
-                onAssignPlan={handleAssignPlan}
                 page={page}
                 searchQuery={searchQuery}
                 hasMore={hasMore}

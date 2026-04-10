@@ -171,6 +171,7 @@ export type ServerHealthMetrics = {
     appUptimeHours: number;
     heapUsedMb: number;
     heapTotalMb: number;
+    heapLimitMb?: number;
     heapUsagePercent: number;
     cloudflare?: {
         status: string;

@@ -215,7 +215,7 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                         placeholder="Scan archives by name, ID or date..." 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className={`w-full pl-12 pr-4 py-3 rounded-2xl text-xs font-bold border transition-all outline-none ${isDark ? 'bg-black/40 border-white/10 focus:border-white/20' : 'bg-white border-neutral-200 focus:border-neutral-300'}`}
+                        className={`w-full pl-12 pr-4 py-3 rounded-2xl text-xs font-bold border transition-all outline-none ${t.textPrimary(isDark)} ${isDark ? 'bg-black/40 border-white/10 focus:border-white/20' : 'bg-white border-neutral-200 focus:border-neutral-300'}`}
                     />
                 </div>
                 <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
@@ -225,7 +225,7 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                                 <div key={i} className={`w-6 h-6 rounded-full border-2 ${i === 1 ? accent.bg : isDark ? 'bg-neutral-800' : 'bg-neutral-100'} ${isDark ? 'border-neutral-900' : 'border-white'}`} />
                             ))}
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-tight opacity-50">Active Nodes</span>
+                        <span className={`text-[10px] font-black uppercase tracking-tight opacity-50 ${t.textMuted(isDark)}`}>Active Nodes</span>
                     </div>
                 </div>
             </div>
@@ -252,8 +252,8 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                             <Database size={40} />
                         </div>
                         <div className="text-center px-4">
-                            <h3 className="text-lg sm:text-xl font-black">No Vaults Found</h3>
-                            <p className="text-xs font-bold max-w-xs mx-auto mt-2">Initialize your first school backup to start securing institutional data.</p>
+                            <h3 className={`text-lg sm:text-xl font-black ${t.textPrimary(isDark)}`}>No Vaults Found</h3>
+                            <p className={`text-xs font-bold max-w-xs mx-auto mt-2 ${t.textMuted(isDark)}`}>Initialize your first school backup to start securing institutional data.</p>
                         </div>
                     </div>
                 )}

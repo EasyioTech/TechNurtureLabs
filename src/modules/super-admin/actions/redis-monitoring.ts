@@ -144,6 +144,11 @@ export async function getSystemHealth(): Promise<SystemHealthData> {
         const memUsage = process.memoryUsage();
         const heapUsedMb = Math.round(memUsage.heapUsed / 1024 / 1024);
         const heapTotalMb = Math.round(memUsage.heapTotal / 1024 / 1024);
+        
+        // Get VS stats for the true heap limit
+        const { getHeapStatistics } = require('v8');
+        const v8Stats = getHeapStatistics();
+        const heapLimitMb = Math.round(v8Stats.heap_size_limit / 1024 / 1024);
 
         const serverHealth: ServerHealthMetrics = {
             cpuCount: os.cpus().length,
@@ -162,7 +167,8 @@ export async function getSystemHealth(): Promise<SystemHealthData> {
             appUptimeHours: Number((process.uptime() / 3600).toFixed(2)),
             heapUsedMb,
             heapTotalMb,
-            heapUsagePercent: heapTotalMb ? (heapUsedMb / heapTotalMb) * 100 : 0,
+            heapLimitMb,
+            heapUsagePercent: heapLimitMb ? (heapUsedMb / heapLimitMb) * 100 : 0,
             cloudflare: {
                 status: r2Status,
                 bucket: r2Bucket,

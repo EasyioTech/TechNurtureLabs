@@ -35,12 +35,6 @@ export function PromoCodesTab({
                     <h2 className={`text-3xl font-black tracking-tighter ${t.textPrimary(isDark)}`}>Growth Incentives</h2>
                     <p className={`text-xs font-bold uppercase tracking-[0.2em] mt-1 ${t.textMuted(isDark)}`}>Manage and track platform discount codes</p>
                 </div>
-                <Button 
-                    onClick={() => { setEditingCode({}); setShowDialog(true); }}
-                    className={`h-12 rounded-2xl px-6 font-black text-xs uppercase tracking-widest shadow-xl transition-all ${t.btnPrimary(isDark, accent)}`}
-                >
-                    <Plus className="mr-2 h-4 w-4" strokeWidth={3} /> Create Promo
-                </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

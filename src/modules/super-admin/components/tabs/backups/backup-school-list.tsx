@@ -152,8 +152,8 @@ export function BackupSchoolList({
                 ) : (
                     <div className="h-full flex flex-col items-center justify-center py-20 px-8 text-center opacity-20">
                         <Filter size={48} className="mb-4" />
-                        <h4 className="text-xl font-black uppercase tracking-tighter">No Nodes Filtered</h4>
-                        <p className="text-sm font-bold max-w-xs mx-auto mt-2">Adjust your refinement parameters to locate specific institutional snapshots.</p>
+                        <h4 className={`text-xl font-black uppercase tracking-tighter ${t.textPrimary(isDark)}`}>No Nodes Filtered</h4>
+                        <p className={`text-sm font-bold max-w-xs mx-auto mt-2 ${t.textMuted(isDark)}`}>Adjust your refinement parameters to locate specific institutional snapshots.</p>
                     </div>
                 )}
             </div>

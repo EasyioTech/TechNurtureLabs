@@ -105,12 +105,12 @@ export function BackupCard({
                 {/* Content: Title & Stats */}
                 <div className="space-y-3 sm:space-y-4">
                     <div className="min-w-0">
-                        <h4 className={`text-sm sm:text-base font-black tracking-tight truncate leading-tight transition-colors ${isDark ? 'group-hover:text-white' : 'group-hover:text-slate-900 text-slate-800'}`}>
+                        <h4 className={`text-sm sm:text-base font-black tracking-tight truncate leading-tight transition-colors ${t.textPrimary(isDark)} ${isDark ? 'group-hover:text-white' : 'group-hover:text-slate-900 text-slate-800'}`}>
                             {fileNameDisplay}
                         </h4>
                         <div className="flex items-center gap-2 mt-1.5 opacity-60">
                             <Clock size={12} className={isDark ? accent.text : 'text-indigo-500'} />
-                            <span className="text-[10px] font-bold">{formatDate(backup.timestamp)}</span>
+                            <span className={`text-[10px] font-bold ${t.textSecondary(isDark)}`}>{formatDate(backup.timestamp)}</span>
                         </div>
                         {backup.type === 'system-wide' && (
                             <div className="flex items-center gap-1.5 mt-2">

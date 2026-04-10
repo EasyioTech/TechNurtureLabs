@@ -46,10 +46,10 @@ export function SchoolEditDialog({
             <DialogContent className={`sm:max-w-[540px] rounded-[24px] border overflow-y-auto max-h-[90vh] shadow-2xl p-6 ${t.card(isDark)}`}>
                 <DialogHeader className="mb-4">
                     <DialogTitle className={`text-xl font-[1000] tracking-tight ${t.textPrimary(isDark)}`}>
-                        {editingSchool?.id ? 'Edit School Details' : 'Register New School'}
+                        Edit School Details
                     </DialogTitle>
                     <DialogDescription className="sr-only">
-                        {editingSchool?.id ? 'Update the details for the selected school.' : 'Fill in the information to register a new school.'}
+                        Update the details for the selected school.
                     </DialogDescription>
                 </DialogHeader>
                 
@@ -107,7 +107,6 @@ export function SchoolEditDialog({
                     <div className="space-y-3 pt-2">
                         <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${isDark ? 'bg-white/[0.02] border-white/10' : 'bg-slate-50 border-slate-200'}`}><Label className={`text-xs font-bold leading-normal ${t.textSecondary(isDark)}`}>Data Processing Consent</Label><Switch checked={editingSchool.data_processing_consent || false} onCheckedChange={v => setEditingSchool({ ...editingSchool, data_processing_consent: v })} className={`data-[state=checked]:${accent.bg}`} /></div>
                         <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${isDark ? 'bg-white/[0.02] border-white/10' : 'bg-slate-50 border-slate-200'}`}><Label className={`text-xs font-bold leading-normal ${t.textSecondary(isDark)}`}>Guardian Consent</Label><Switch checked={editingSchool.minor_data_guardian_consent || false} onCheckedChange={v => setEditingSchool({ ...editingSchool, minor_data_guardian_consent: v })} className={`data-[state=checked]:${accent.bg}`} /></div>
-                        <div className={`flex flex-row items-center justify-between rounded-xl border p-3.5 shadow-sm ${(editingSchool.is_active ?? true) ? (isDark ? `border-${accent.name}-400/30 ${accent.softDark.split(' ')[0].replace('/10', '/5')}` : `border-${accent.name}-300/50 ${accent.softLight.split(' ')[0]}`) : (isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50')}`}><Label className={`text-xs font-bold leading-normal ${((editingSchool.is_active ?? true) && isDark) ? accent.text : t.textPrimary(isDark)}`}>Account Status</Label><Switch checked={editingSchool.is_active || false} onCheckedChange={v => setEditingSchool({ ...editingSchool, is_active: v })} className={`data-[state=checked]:${accent.bg}`} /></div>
                     </div>
 
                     <div className="space-y-3">
@@ -155,7 +154,7 @@ export function SchoolEditDialog({
                 <DialogFooter className={`pt-6 border-t mt-6 ${t.border(isDark)}`}>
                     <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className={`rounded-full h-11 px-7 font-bold text-sm bg-transparent ${isDark ? 'hover:bg-white/10 text-white hover:text-white' : 'hover:bg-slate-200 text-slate-700'}`}>Cancel</Button>
                     <Button type="button" className={`rounded-full h-11 px-9 font-black text-sm shadow-xl transition-all border-0 ${t.btnPrimary(isDark, accent)}`} style={t.glowStyle(isDark, accent)} onClick={onSave}>
-                        {editingSchool?.id ? 'Save Changes' : 'Register School'}
+                        Save Changes
                     </Button>
                 </DialogFooter>
             </DialogContent>

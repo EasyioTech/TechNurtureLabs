@@ -494,9 +494,7 @@ function DashboardContent() {
                                 stats={data.stats}
                                 schoolsList={data.schoolsList}
                                 paymentPlans={data.paymentPlans}
-                                onToggleStatus={data.toggleSchoolStatus}
                                 onSaveSchool={data.saveSchool}
-                                onAssignPlan={data.assignPlan}
                                 showEditDialog={data.showSchoolDialog}
                                 setShowEditDialog={data.setShowSchoolDialog}
                                 editingSchool={data.editingSchoolItem}
