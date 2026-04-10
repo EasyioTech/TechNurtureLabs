@@ -11,14 +11,16 @@ import { Badge } from '@/components/ui/badge';
 import { useAdminTheme, t } from '../../../theme-context';
 
 interface BackupWithMetadata {
+    id: string;
+    type: 'system-wide' | 'single';
     fileName: string;
     size: number;
     timestamp: string;
     created: string;
     schoolName?: string;
     studentCount?: number;
-    revenueTotal?: string;
-    recordsCount?: any;
+    nodeCount?: number;
+    nodes?: any[];
     inDb?: boolean;
 }
 
@@ -60,16 +62,18 @@ export function BackupCard({
         return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
     };
 
-    const fileNameDisplay = backup.fileName.split('/').pop()?.replace('.json.gz', '') || 'Untitled Archive';
+    const fileNameDisplay = backup.type === 'system-wide' 
+        ? `SYSTEM WIDE VAULT (${backup.nodeCount} NODES)`
+        : (backup.schoolName ? `${backup.schoolName.toUpperCase()} ARCHIVE` : (backup.fileName.split('/').pop()?.replace('.json.gz', '') || 'Untitled Archive'));
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05, duration: 0.4 }}
-            className={`group relative p-6 rounded-3xl border transition-all duration-500 overflow-hidden cursor-pointer
+            className={`group relative p-5 sm:p-6 rounded-3xl border transition-all duration-500 overflow-hidden cursor-pointer
                 ${isDark
-                    ? 'bg-neutral-900 border-white/5 hover:bg-neutral-800/80 hover:border-white/10 hover:-translate-y-1'
+                    ? 'bg-neutral-900/90 border-white/10 hover:bg-neutral-800 hover:border-white/20 hover:-translate-y-1 shadow-2xl shadow-black/40'
                     : 'bg-white border-neutral-100 hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-1'}`}
             onClick={onPreview}
         >
@@ -108,13 +112,24 @@ export function BackupCard({
                             <Clock size={12} className={isDark ? accent.text : 'text-indigo-500'} />
                             <span className="text-[10px] font-bold">{formatDate(backup.timestamp)}</span>
                         </div>
+                        {backup.type === 'system-wide' && (
+                            <div className="flex items-center gap-1.5 mt-2">
+                                <ShieldCheck size={12} className="text-emerald-500" />
+                                <span className={`text-[9px] font-black uppercase tracking-wider ${accent.text}`}>Consolidated Snapshot</span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <Badge className={`h-5 text-[8px] font-black tracking-wider px-2 border-0 ${isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
                             <Lock size={8} className="mr-1" /> SECURE
                         </Badge>
-                        {backup.studentCount && (
+                        {backup.nodeCount && backup.nodeCount > 1 && (
+                            <Badge className={`h-5 text-[8px] font-black tracking-wider px-2 border-0 ${isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>
+                                <Database size={8} className="mr-1" /> {backup.nodeCount} NODES
+                            </Badge>
+                        )}
+                        {backup.studentCount !== undefined && (
                              <Badge className={`h-5 text-[8px] font-black tracking-wider px-2 border-0 ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-700'}`}>
                                 <Database size={8} className="mr-1" /> {backup.studentCount} RECORDS
                             </Badge>

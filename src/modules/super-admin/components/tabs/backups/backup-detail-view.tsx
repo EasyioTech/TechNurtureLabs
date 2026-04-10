@@ -20,9 +20,10 @@ interface BackupDetailViewProps {
     isRestoring: boolean;
     onRestore: (schoolId?: string) => void;
     onBack: () => void;
+    onSelectNode?: (fileName: string) => void;
 }
 
-type TabType = 'overview' | 'students' | 'billing' | 'classes';
+type TabType = 'nodes' | 'overview' | 'students' | 'billing' | 'classes';
 
 export function BackupDetailView({
     backup,
@@ -30,10 +31,11 @@ export function BackupDetailView({
     isLoading,
     isRestoring,
     onRestore,
-    onBack
+    onBack,
+    onSelectNode
 }: BackupDetailViewProps) {
     const { isDark, accent } = useAdminTheme();
-    const [activeTab, setActiveTab] = useState<TabType>('overview');
+    const [activeTab, setActiveTab] = useState<TabType>(backup.type === 'system-wide' ? 'nodes' : 'overview');
     const [confirmTarget, setConfirmTarget] = useState<'all' | string | null>(null);
     const [studentSearch, setStudentSearch] = useState('');
     const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
@@ -100,10 +102,13 @@ export function BackupDetailView({
             {/* Tabs */}
             <div className="relative">
                 <div className={`flex gap-2 border-b overflow-x-auto no-scrollbar scroll-smooth ${isDark ? 'border-white/5' : 'border-slate-200'}`}>
-                    {(['overview', 'students', 'billing', 'classes'] as TabType[]).map(tab => (
+                    {(backup.type === 'system-wide'
+                        ? ['nodes', 'overview', 'students', 'billing', 'classes']
+                        : ['overview', 'students', 'billing', 'classes']
+                    ).map(tab => (
                         <button
                             key={tab}
-                            onClick={() => setActiveTab(tab)}
+                            onClick={() => setActiveTab(tab as TabType)}
                             className={`px-4 py-3 font-bold text-[10px] sm:text-sm uppercase tracking-widest transition-all relative whitespace-nowrap ${
                                 activeTab === tab
                                     ? isDark
@@ -115,6 +120,7 @@ export function BackupDetailView({
                             }`}
                         >
                             <span className="flex items-center gap-2">
+                                {tab === 'nodes' && <Database size={16} />}
                                 {tab === 'overview' && <ShieldCheck size={16} />}
                                 {tab === 'students' && <Users size={16} />}
                                 {tab === 'billing' && <CreditCard size={16} />}
@@ -135,6 +141,19 @@ export function BackupDetailView({
             </div>
 
             {/* Content */}
+            {activeTab === 'nodes' && backup.nodes && (
+                <NodesTab 
+                    nodes={backup.nodes} 
+                    isDark={isDark} 
+                    accent={accent} 
+                    onSelect={(node: any) => {
+                        if (onSelectNode) onSelectNode(node.fileName);
+                        setActiveTab('overview');
+                    }}
+                    currentFileName={previewData?.fileName || ''}
+                />
+            )}
+
             {isLoading ? (
                 <LoadingState isDark={isDark} />
             ) : previewData ? (
@@ -144,7 +163,12 @@ export function BackupDetailView({
                     {activeTab === 'billing' && <BillingTab previewData={previewData} isDark={isDark} formatCurrency={formatCurrency} />}
                     {activeTab === 'classes' && <ClassesTab previewData={previewData} isDark={isDark} />}
                 </>
-            ) : null}
+            ) : activeTab !== 'nodes' && (
+                <div className={`p-8 sm:p-12 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center space-y-4 ${isDark ? 'border-white/10 bg-neutral-900/40' : 'border-slate-200 bg-slate-50'}`}>
+                    <AlertCircle size={40} className={`opacity-20 ${isDark ? 'text-white' : 'text-slate-900'}`} />
+                    <p className={`text-[10px] sm:text-xs text-center font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>Select a node from the Nodes tab to view details</p>
+                </div>
+            )}
 
             {/* Confirmation Overlay */}
             <AnimatePresence>
@@ -205,9 +229,9 @@ export function BackupDetailView({
 
 function LoadingState({ isDark }: { isDark: boolean }) {
     return (
-        <div className={`p-12 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center space-y-4 ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
+        <div className={`p-8 sm:p-12 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center space-y-4 ${isDark ? 'border-white/10 bg-neutral-900/40' : 'border-slate-200 bg-slate-50'}`}>
             <RotateCcw size={40} className={`animate-spin ${isDark ? 'text-white/40' : 'text-slate-300'}`} />
-            <p className={`text-sm font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>Loading backup data...</p>
+            <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>Loading backup data...</p>
         </div>
     );
 }
@@ -363,7 +387,7 @@ function StudentCard({ student, isDark, isExpanded, onToggle, maxXp, getTierColo
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`rounded-2xl border transition-all ${isExpanded ? (isDark ? 'bg-white/[0.05] border-white/10' : 'bg-white border-slate-200 shadow-lg') : (isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100')}`}
+            className={`rounded-2xl border transition-all ${isExpanded ? (isDark ? 'bg-neutral-800 border-white/20 shadow-xl shadow-black/40' : 'bg-white border-slate-200 shadow-lg') : (isDark ? 'bg-neutral-900/50 border-white/10' : 'bg-slate-50 border-slate-100')}`}
         >
             {/* Header */}
             <button onClick={onToggle} className="w-full p-4 text-left">
@@ -560,8 +584,8 @@ function ClassesTab({ previewData, isDark }: any) {
 
 function Card({ isDark, title, children }: { isDark: boolean; title: string; children: React.ReactNode }) {
     return (
-        <div className={`p-6 rounded-2xl border ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50/50 border-slate-100'}`}>
-            {title && <h3 className={`text-lg font-black mb-4 ${t.textPrimary(isDark)}`}>{title}</h3>}
+        <div className={`p-5 sm:p-6 rounded-2xl border ${isDark ? 'bg-neutral-900/80 border-white/10' : 'bg-slate-50/50 border-slate-100'}`}>
+            {title && <h3 className={`text-base sm:text-lg font-black mb-4 ${t.textPrimary(isDark)}`}>{title}</h3>}
             {children}
         </div>
     );
@@ -590,7 +614,7 @@ function StatBox({ icon: Icon, label, value, isDark, color = 'indigo' }: any) {
     };
 
     return (
-        <div className={`p-4 rounded-2xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/[0.03] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+        <div className={`p-4 rounded-2xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-neutral-900/90 border-white/10 shadow-lg shadow-black/20' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${colorClasses[color]}`}>
                 <Icon size={20} />
             </div>
@@ -614,6 +638,59 @@ function RecordCountBox({ label, value, isDark }: any) {
         <div className={`p-3 rounded-lg text-center ${isDark ? 'bg-white/5' : 'bg-white'}`}>
             <p className={`text-xs font-bold uppercase ${t.textMuted(isDark)}`}>{label}</p>
             <p className={`text-2xl font-black mt-1 ${t.textPrimary(isDark)}`}>{value || 0}</p>
+        </div>
+    );
+}
+
+function NodesTab({ nodes, isDark, accent, onSelect, currentFileName }: any) {
+    const formatFileSize = (bytes: number) => {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+    };
+
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {nodes.map((node: any) => (
+                <motion.div
+                    key={node.fileName}
+                    whileHover={{ scale: 1.02 }}
+                    className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group
+                        ${node.fileName === currentFileName 
+                            ? (isDark ? 'bg-indigo-500/20 border-indigo-500/50 ring-1 ring-indigo-500/20 shadow-lg shadow-indigo-500/10' : 'bg-indigo-50 border-indigo-200')
+                            : (isDark ? 'bg-neutral-900/90 border-white/10 hover:bg-neutral-800' : 'bg-white border-slate-100 hover:shadow-md')}`}
+                    onClick={() => onSelect(node)}
+                >
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-start justify-between">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                                <Server size={18} className={node.fileName === currentFileName ? 'text-indigo-500' : (isDark ? 'text-white/40' : 'text-slate-400')} />
+                            </div>
+                            <div className="text-right">
+                                <p className={`text-[8px] font-black uppercase tracking-widest opacity-40 ${t.textMuted(isDark)}`}>Payload</p>
+                                <p className={`text-xs font-black ${t.textPrimary(isDark)}`}>{formatFileSize(node.size)}</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className={`text-sm font-black truncate ${t.textPrimary(isDark)}`}>{node.schoolName}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                                <Users size={12} className="opacity-40" />
+                                <span className={`text-[10px] font-bold opacity-60 ${t.textMuted(isDark)}`}>{node.studentCount || 0} Students</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-2 pt-3 border-t border-dashed opacity-100 group-hover:opacity-100 transition-opacity">
+                            <span className={`text-[9px] font-black uppercase tracking-widest ${node.fileName === currentFileName ? 'text-indigo-500' : 'text-slate-400'}`}>
+                                {node.fileName === currentFileName ? 'Currently Inspecting' : 'Click to Inspect'}
+                            </span>
+                            <ArrowLeft size={14} className="rotate-180 opacity-40" />
+                        </div>
+                    </div>
+                </motion.div>
+            ))}
         </div>
     );
 }

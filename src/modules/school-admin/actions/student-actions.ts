@@ -126,88 +126,97 @@ export async function getPendingStudents(schoolId: string) {
 }
 
 export async function verifyStudentAction(userId: string, isVerified: boolean) {
-    const session = await verifySession();
-    if (!session) {
-        redirect('/school-portal/login');
-    }
-    await verifyStudentContext(userId);
+    try {
+        const session = await verifySession();
+        if (!session) {
+            redirect('/school-portal/login');
+        }
+        await verifyStudentContext(userId);
 
-    const student = await db.query.students.findFirst({ where: eq(students.id, userId) });
-    if (!student) throw new Error('Student not found');
+        const student = await db.query.students.findFirst({ where: eq(students.id, userId) });
+        if (!student) throw new Error('Student not found');
 
-    if (isVerified) {
-        const subscription = await db.query.schoolSubscriptions.findFirst({
-            where: and(
-                eq(schoolSubscriptions.school_id, student.school_id!),
-                eq(schoolSubscriptions.status, 'active')
-            ),
-            with: { plan: true }
-        });
+        if (isVerified) {
+            const subscription = await db.query.schoolSubscriptions.findFirst({
+                where: and(
+                    eq(schoolSubscriptions.school_id, student.school_id!),
+                    eq(schoolSubscriptions.status, 'active')
+                ),
+                with: { plan: true }
+            });
 
-        if (subscription && subscription.plan && subscription.plan.max_students !== null) {
-            const maxStudents = subscription.plan.max_students;
-            const verifiedCountRes = await db.select({
-                count: sql<number>`cast(count(*) as integer)`
-            }).from(students).where(
-                and(
-                    eq(students.school_id, student.school_id!),
-                    eq(students.is_verified, true),
-                    isNull(students.deleted_at)
-                )
-            );
-
-            const currentVerifiedCount = verifiedCountRes[0]?.count || 0;
-
-            if (currentVerifiedCount >= maxStudents) {
-                throw new Error(
-                    `Your school has reached its student limit of ${maxStudents} for the current plan. ` +
-                    `To verify more students, please upgrade your subscription plan.`
+            if (subscription && subscription.plan && subscription.plan.max_students !== null) {
+                const maxStudents = subscription.plan.max_students;
+                const verifiedCountRes = await db.select({
+                    count: count()
+                }).from(students).where(
+                    and(
+                        eq(students.school_id, student.school_id!),
+                        eq(students.is_verified, true),
+                        isNull(students.deleted_at)
+                    )
                 );
+
+                const currentVerifiedCount = verifiedCountRes[0]?.count || 0;
+
+                if (currentVerifiedCount >= maxStudents) {
+                    throw new Error(
+                        `Your school has reached its student limit of ${maxStudents} for the current plan. ` +
+                        `To verify more students, please upgrade your subscription plan.`
+                    );
+                }
             }
+
+            await db.update(students)
+                .set({ is_verified: true, updated_at: new Date() })
+                .where(eq(students.id, userId));
+
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                schoolId: student.school_id!,
+                action: 'update',
+                entityType: 'student',
+                entityId: userId,
+                oldValues: { is_verified: false },
+                newValues: { is_verified: true },
+                metadata: { field: 'is_verified' }
+            });
+        } else {
+            await db.update(students)
+                .set({
+                    deleted_at: new Date(),
+                    is_active: false,
+                    updated_at: new Date()
+                })
+                .where(eq(students.id, userId));
+
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                schoolId: student.school_id!,
+                action: 'delete',
+                entityType: 'student',
+                entityId: userId,
+                metadata: { reason: 'verification_rejected' }
+            });
         }
 
-        await db.update(students)
-            .set({ is_verified: true, updated_at: new Date() })
-            .where(eq(students.id, userId));
+        try {
+            await cacheService.invalidateTag(`user:${userId}:profile`);
+            await cacheService.invalidateTag(`user:${userId}:dashboard`);
+            await invalidateSchoolCache(student.school_id!);
+        } catch (err) {}
 
-        await createAuditLog({
-            userId: session.userId,
-            userType: session.userType,
-            schoolId: student.school_id!,
-            action: 'update',
-            entityType: 'student',
-            entityId: userId,
-            oldValues: { is_verified: false },
-            newValues: { is_verified: true },
-            metadata: { field: 'is_verified' }
-        });
-    } else {
-        await db.update(students)
-            .set({
-                deleted_at: new Date(),
-                is_active: false,
-                updated_at: new Date()
-            })
-            .where(eq(students.id, userId));
-
-        await createAuditLog({
-            userId: session.userId,
-            userType: session.userType,
-            schoolId: student.school_id!,
-            action: 'delete',
-            entityType: 'student',
-            entityId: userId,
-            metadata: { reason: 'verification_rejected' }
-        });
+        return { success: true };
+    } catch (err: any) {
+        if (err.digest?.startsWith('NEXT_REDIRECT')) throw err;
+        console.error('[Verify Student Action Failure]:', err);
+        return { 
+            success: false, 
+            error: err.message || 'Failed to process verification' 
+        };
     }
-
-    try {
-        await cacheService.invalidateTag(`user:${userId}:profile`);
-        await cacheService.invalidateTag(`user:${userId}:dashboard`);
-    } catch (err) {}
-
-    invalidateSchoolCache(student.school_id!);
-    return { success: true };
 }
 
 export async function toggleStudentStatus(userId: string, isActive: boolean) {

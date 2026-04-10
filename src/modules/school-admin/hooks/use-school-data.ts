@@ -134,20 +134,21 @@ export function useSchoolData(schoolId: string) {
 
     async function verifyStudent(userId: string, isVerified: boolean) {
         try {
-            await verifyStudentAction(userId, isVerified);
-            if (isVerified) {
-                toast.success('Student verified successfully');
-                // Move from pending to paged if we're on the first page and it matches search
-                // But simpler to just refresh all
+            const res = await verifyStudentAction(userId, isVerified);
+            if (res.success) {
+                toast.success(isVerified ? 'Student verified successfully' : 'Student verification rejected');
                 loadPending();
-                loadStudents();
+                if (isVerified) {
+                    loadStudents();
+                }
                 loadCoreData();
             } else {
-                toast.success('Student verification rejected');
-                loadPending();
-                loadCoreData();
+                toast.error(res.error || 'Failed to verify student');
             }
-        } catch { toast.error('Failed to verify student'); }
+        } catch (err) {
+            console.error('Verify student hook error:', err);
+            toast.error('Connection error or operation failed');
+        }
     }
 
     return {

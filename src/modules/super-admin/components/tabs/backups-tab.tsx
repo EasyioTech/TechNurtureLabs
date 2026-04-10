@@ -86,13 +86,22 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
         }
     };
 
-    const handlePreview = async (backup: any) => {
-        setSelectedBackup(backup);
+    const handlePreview = async (backupOrFileName: any) => {
+        const isString = typeof backupOrFileName === 'string';
+        const fileName = isString ? backupOrFileName : backupOrFileName.fileName;
+        
+        if (!isString) setSelectedBackup(backupOrFileName);
+        
         setIsLoadingPreview(true);
+        setPreviewData(null); // Clear previous preview
+        
         try {
-            const result = await getBackupPreviewAdmin(backup.fileName);
+            const result = await getBackupPreviewAdmin(fileName);
             if (result.success) {
-                setPreviewData(result.metadata);
+                setPreviewData({
+                    ...result.metadata,
+                    fileName // Ensure fileName is present for the detail view
+                });
             }
         } catch (error: any) {
             toast.error(error.message);
@@ -159,6 +168,7 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                 isRestoring={isRestoring}
                 onRestore={handleRestore}
                 onBack={() => setSelectedBackup(null)}
+                onSelectNode={(fileName) => handlePreview(fileName)}
             />
         );
     }

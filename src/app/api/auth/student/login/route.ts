@@ -71,7 +71,7 @@ export const POST = createApiHandler(
         const isValidPassword = await bcrypt.compare(password, user?.password_hash ?? DUMMY_HASH);
 
         if (!user || !isValidPassword) {
-            throw new AppError('Invalid credentials', 'UNAUTHORIZED', 401);
+            throw new AppError('Invalid PIN. Please check your email/phone and 6-digit PIN.', 'UNAUTHORIZED', 401);
         }
 
         if (!user.is_verified) {

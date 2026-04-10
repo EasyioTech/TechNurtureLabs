@@ -82,8 +82,11 @@ export default function StudentLoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      setErrors({ password: 'PIN must be 6 digits' });
+
+    // Validate PIN: exactly 6 digits
+    const pinRegex = /^\d{6}$/;
+    if (!pinRegex.test(password)) {
+      setErrors({ password: 'PIN must be exactly 6 digits' });
       return;
     }
 
@@ -96,12 +99,16 @@ export default function StudentLoginPage() {
         toast.success('Access granted!', { id: toastId });
         router.push('/student');
       } else {
-        toast.error(result.error || 'Invalid PIN provided', { id: toastId });
+        // Show specific error message from API or fallback to generic message
+        const errorMsg = result.error || 'Invalid PIN. Please check your email/phone and 6-digit PIN.';
+        toast.error(errorMsg, { id: toastId });
+        setErrors({ password: errorMsg });
         setLoading(false);
       }
     } catch (err: any) {
       setLoading(false);
-      toast.error('Session authentication failed', { id: toastId });
+      console.error('[Student Login Error]:', err);
+      toast.error('Session authentication failed. Please try again.', { id: toastId });
     }
   };
 

@@ -1333,7 +1333,8 @@ async function testR2Connectivity(): Promise<boolean> {
  */
 export async function uploadSchoolBackupToR2(
     backup: CompleteSchoolBackup,
-    schoolId: string
+    schoolId: string,
+    batchId?: string
 ): Promise<BackupUploadResult> {
     const { s3Client, isCloudflareConfigured, uploadFile } = await import('@/lib/storage');
     const { serverEnv } = await import('@/lib/env.server');
@@ -1379,6 +1380,7 @@ export async function uploadSchoolBackupToR2(
             'backup-hash': currentHash,
             'backup-timestamp': new Date().toISOString(),
             'school-id': schoolId,
+            'batch-id': batchId || '',
         }
     });
 
@@ -1395,6 +1397,7 @@ export async function uploadSchoolBackupToR2(
             revenue_total: backup.metadata.totalRevenue.toString(),
             records_count: backup.metadata.recordCounts,
             timestamp: new Date(),
+            metadata: { batchId: batchId || null }
         }).onConflictDoUpdate({
             target: schema.schoolBackups.file_name,
             set: {
@@ -1404,6 +1407,7 @@ export async function uploadSchoolBackupToR2(
                 revenue_total: backup.metadata.totalRevenue.toString(),
                 records_count: backup.metadata.recordCounts,
                 timestamp: new Date(),
+                metadata: { batchId: batchId || null }
             }
         });
     } catch (dbError) {

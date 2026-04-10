@@ -97,8 +97,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = await res.json();
       if (!res.ok) {
-        // Safely extract error message from response object
-        const errorMessage = getResponseErrorMessage(data, 'Invalid credentials');
+        // Safely extract error message from response object with role-specific fallback
+        const defaultError = role === 'student'
+          ? 'Invalid PIN. Please check your email/phone and 6-digit PIN.'
+          : 'Invalid credentials';
+        const errorMessage = getResponseErrorMessage(data, defaultError);
         return { success: false, error: errorMessage };
       }
 
