@@ -95,7 +95,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password })
       });
 
-      const data = await res.json();
+      // Always try to parse JSON for error details
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        console.error('[Auth] Failed to parse response:', parseErr);
+      }
+
       if (!res.ok) {
         // Safely extract error message from response object with role-specific fallback
         const defaultError = role === 'student'
@@ -116,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await fetchProfile();
       return { success: true };
     } catch (e) {
+      console.error('[Auth SignIn Error]:', e);
       return { success: false, error: 'Connection failed' };
     }
   }, [fetchProfile]);

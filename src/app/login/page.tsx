@@ -101,13 +101,14 @@ export default function StudentLoginPage() {
       } else {
         // Show specific error message from API or fallback to generic message
         const errorMsg = result.error || 'Invalid PIN. Please check your email/phone and 6-digit PIN.';
+        console.log('[Student Login] Error response:', { error: errorMsg, result });
         toast.error(errorMsg, { id: toastId });
         setErrors({ password: errorMsg });
         setLoading(false);
       }
     } catch (err: any) {
       setLoading(false);
-      console.error('[Student Login Error]:', err);
+      console.error('[Student Login] Caught exception:', err, { email, passwordLength: password?.length });
       toast.error('Session authentication failed. Please try again.', { id: toastId });
     }
   };
