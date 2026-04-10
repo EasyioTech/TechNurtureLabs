@@ -40,7 +40,13 @@ async function runMigrations() {
       // Ignore "already exists" errors for enum values - these are safe to skip
       // This happens when migrations have been partially applied or in multi-instance deploys
       const errorMsg = migrationError?.message || migrationError?.cause?.message || '';
-      if (errorMsg.includes('already exists') || errorMsg.includes('42P06') || errorMsg.includes('42P07') || errorMsg.includes('42710')) {
+      const errorStr = JSON.stringify(migrationError);
+
+      console.log('[DEBUG] Error message:', errorMsg);
+      console.log('[DEBUG] Error code:', migrationError?.cause?.code);
+      console.log('[DEBUG] Error string:', errorStr.substring(0, 200));
+
+      if (errorMsg.includes('already exists') || errorMsg.includes('42P06') || errorMsg.includes('42P07') || errorMsg.includes('42710') || migrationError?.cause?.code === '42710') {
         console.log('⚠️  Skipping duplicate enum/schema errors (already applied):', errorMsg.split('\n')[0]);
         console.log('✅ Database state is consistent - proceeding with app startup');
         // Don't throw - migration errors for existing enums are safe to ignore
