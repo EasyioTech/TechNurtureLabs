@@ -73,16 +73,21 @@ export function BackupFolderModal({
 
                 <div className="flex flex-col md:flex-row h-auto md:h-[80vh] overflow-hidden">
                     {/* LEFT PANEL: MANIFEST SUMMARY */}
-                    <div className={`w-full md:w-72 border-b md:border-b-0 md:border-r flex flex-col p-6 md:p-8 md:h-full overflow-y-auto shrink-0 ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-neutral-50/50 border-neutral-100'}`}>
-                        <div className="mb-8">
-                            <div className={`w-14 h-14 rounded-2xl mb-4 flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-white shadow-sm'}`}>
-                                <ShieldCheck size={28} className={isDark ? accent.text : 'text-slate-900'} />
+                    <div className={`w-full md:w-72 border-b md:border-b-0 md:border-r flex flex-col p-6 md:p-8 md:h-full overflow-y-auto shrink-0 ${isDark ? 'bg-white/[0.02] border-white/5' : 'bg-neutral-50/80 border-neutral-100'}`}>
+                        <div className="mb-8 flex md:block items-center justify-between">
+                            <div>
+                                <div className={`w-14 h-14 rounded-2xl mb-4 flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-white shadow-sm border border-neutral-100'}`}>
+                                    <ShieldCheck size={28} className={isDark ? accent.text : 'text-indigo-600'} />
+                                </div>
+                                <h3 className={`text-xl font-black ${t.textPrimary(isDark)}`}>Archive Vault</h3>
+                                <p className={`text-[10px] font-black uppercase tracking-widest opacity-50 ${t.textMuted(isDark)}`}>Secure Snapshot</p>
                             </div>
-                            <h3 className={`text-xl font-black ${t.textPrimary(isDark)}`}>Archive Vault</h3>
-                            <p className={`text-[10px] font-black uppercase tracking-widest opacity-50 ${t.textMuted(isDark)}`}>Secure Snapshot</p>
+                            <div className="md:hidden">
+                                <Badge className={`${isDark ? accent.bg : 'bg-indigo-600'} text-white border-0`}>{formatFileSize(backup.size)}</Badge>
+                            </div>
                         </div>
 
-                        <div className="space-y-6 flex-1">
+                        <div className="space-y-6 flex-1 hidden md:block">
                             <MetaItem label="SNAPSHOT ID" value={fileName.replace('.json.gz', '')} isDark={isDark} />
                             <MetaItem label="VAULTED AT" value={formatDate(backup.timestamp)} isDark={isDark} />
                             <MetaItem label="ENCRYPTION" value="AES-256 GZIP" isDark={isDark} />
@@ -98,7 +103,7 @@ export function BackupFolderModal({
                             )}
                         </div>
 
-                        <div className="mt-auto pt-6">
+                        <div className="mt-8 md:mt-auto">
                             <Button
                                 onClick={() => setConfirmTarget('all')}
                                 disabled={isRestoring || isLoading}

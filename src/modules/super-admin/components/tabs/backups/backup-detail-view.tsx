@@ -98,35 +98,40 @@ export function BackupDetailView({
             </div>
 
             {/* Tabs */}
-            <div className={`flex gap-2 border-b ${isDark ? 'border-white/5' : 'border-slate-200'}`}>
-                {(['overview', 'students', 'billing', 'classes'] as TabType[]).map(tab => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`px-4 py-3 font-bold text-sm uppercase tracking-widest transition-all relative ${
-                            activeTab === tab
-                                ? isDark
-                                    ? `text-white`
-                                    : `text-slate-900`
-                                : isDark
-                                ? `text-white/50 hover:text-white/70`
-                                : `text-slate-500 hover:text-slate-700`
-                        }`}
-                    >
-                        {tab === 'overview' && <span className="flex items-center gap-2"><ShieldCheck size={16} /> Overview</span>}
-                        {tab === 'students' && <span className="flex items-center gap-2"><Users size={16} /> Students</span>}
-                        {tab === 'billing' && <span className="flex items-center gap-2"><CreditCard size={16} /> Billing</span>}
-                        {tab === 'classes' && <span className="flex items-center gap-2"><GraduationCap size={16} /> Classes</span>}
-                        {activeTab === tab && (
-                            <motion.div
-                                layoutId="activeTab"
-                                className={`absolute bottom-0 left-0 right-0 h-1 ${accent.bg}`}
-                                initial={false}
-                                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                            />
-                        )}
-                    </button>
-                ))}
+            <div className="relative">
+                <div className={`flex gap-2 border-b overflow-x-auto no-scrollbar scroll-smooth ${isDark ? 'border-white/5' : 'border-slate-200'}`}>
+                    {(['overview', 'students', 'billing', 'classes'] as TabType[]).map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-4 py-3 font-bold text-[10px] sm:text-sm uppercase tracking-widest transition-all relative whitespace-nowrap ${
+                                activeTab === tab
+                                    ? isDark
+                                        ? `text-white`
+                                        : `text-slate-900`
+                                    : isDark
+                                    ? `text-white/50 hover:text-white/70`
+                                    : `text-slate-400 hover:text-slate-600`
+                            }`}
+                        >
+                            <span className="flex items-center gap-2">
+                                {tab === 'overview' && <ShieldCheck size={16} />}
+                                {tab === 'students' && <Users size={16} />}
+                                {tab === 'billing' && <CreditCard size={16} />}
+                                {tab === 'classes' && <GraduationCap size={16} />}
+                                {tab}
+                            </span>
+                            {activeTab === tab && (
+                                <motion.div
+                                    layoutId="activeTabDetail"
+                                    className={`absolute bottom-0 left-0 right-0 h-1 ${accent.bg}`}
+                                    initial={false}
+                                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                />
+                            )}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Content */}
@@ -255,13 +260,13 @@ function OverviewTab({ previewData, isDark, accent, isRestoring, onRestore, setC
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-                <StatBox icon={Users} label="Students" value={previewData.students?.length || 0} isDark={isDark} />
-                <StatBox icon={Zap} label="XP Distributed" value={(previewData.metadata?.totalXpDistributed || 0).toLocaleString()} isDark={isDark} />
-                <StatBox icon={IndianRupee} label="Revenue" value={formatCurrency(previewData.metadata?.totalRevenue || 0)} isDark={isDark} />
-                <StatBox icon={BookOpen} label="Academic Records" value={previewData.metadata?.recordCounts?.academicRecords || 0} isDark={isDark} />
-                <StatBox icon={Award} label="Quiz Attempts" value={previewData.metadata?.recordCounts?.quizAttempts || 0} isDark={isDark} />
-                <StatBox icon={TrendingUp} label="Achievements" value={previewData.metadata?.recordCounts?.achievements || 0} isDark={isDark} />
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+                <StatBox icon={Users} label="Students" value={previewData.students?.length || 0} isDark={isDark} color="indigo" />
+                <StatBox icon={Zap} label="XP Dist." value={(previewData.metadata?.totalXpDistributed || 0).toLocaleString()} isDark={isDark} color="purple" />
+                <StatBox icon={IndianRupee} label="Revenue" value={formatCurrency(previewData.metadata?.totalRevenue || 0)} isDark={isDark} color="emerald" />
+                <StatBox icon={BookOpen} label="Acad. Logs" value={previewData.metadata?.recordCounts?.academicRecords || 0} isDark={isDark} color="blue" />
+                <StatBox icon={Award} label="Quiz Try" value={previewData.metadata?.recordCounts?.quizAttempts || 0} isDark={isDark} color="amber" />
+                <StatBox icon={TrendingUp} label="Achievements" value={previewData.metadata?.recordCounts?.achievements || 0} isDark={isDark} color="rose" />
             </div>
 
             {/* Record Counts */}
@@ -574,12 +579,23 @@ function InfoRow({ label, value, isDark, icon: Icon }: any) {
     );
 }
 
-function StatBox({ icon: Icon, label, value, isDark }: any) {
+function StatBox({ icon: Icon, label, value, isDark, color = 'indigo' }: any) {
+    const colorClasses: Record<string, string> = {
+        indigo: isDark ? 'text-indigo-400 bg-indigo-500/10' : 'text-indigo-600 bg-indigo-50',
+        purple: isDark ? 'text-purple-400 bg-purple-500/10' : 'text-purple-600 bg-purple-50',
+        emerald: isDark ? 'text-emerald-400 bg-emerald-500/10' : 'text-emerald-600 bg-emerald-50',
+        blue: isDark ? 'text-blue-400 bg-blue-500/10' : 'text-blue-600 bg-blue-50',
+        amber: isDark ? 'text-amber-400 bg-amber-500/10' : 'text-amber-600 bg-amber-50',
+        rose: isDark ? 'text-rose-400 bg-rose-500/10' : 'text-rose-600 bg-rose-50'
+    };
+
     return (
-        <div className={`p-4 rounded-xl ${isDark ? 'bg-white/5' : 'bg-white'}`}>
-            <Icon size={20} className={`mb-2 ${isDark ? 'text-white/40' : 'text-slate-300'}`} />
-            <p className={`text-xs font-black uppercase tracking-widest ${t.textMuted(isDark)}`}>{label}</p>
-            <p className={`text-lg font-black mt-1 ${t.textPrimary(isDark)}`}>{value.toLocaleString ? value.toLocaleString() : value}</p>
+        <div className={`p-4 rounded-2xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/[0.03] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${colorClasses[color]}`}>
+                <Icon size={20} />
+            </div>
+            <p className={`text-[10px] font-black uppercase tracking-wider opacity-60 ${t.textMuted(isDark)}`}>{label}</p>
+            <p className={`text-xl font-black mt-1 ${t.textPrimary(isDark)}`}>{value.toLocaleString ? value.toLocaleString() : value}</p>
         </div>
     );
 }

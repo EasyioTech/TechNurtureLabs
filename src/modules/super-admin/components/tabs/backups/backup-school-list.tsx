@@ -127,23 +127,25 @@ export function BackupSchoolList({
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-3">
-                                    <div className="hidden sm:flex flex-col items-end mr-4">
-                                        <span className={`text-[8px] font-black uppercase tracking-[0.2em] opacity-40 ${t.textMuted(isDark)}`}>NODE STATUS</span>
-                                        <span className={`text-[10px] font-black text-emerald-500 uppercase tracking-widest`}>HEALTHY</span>
-                                    </div>
-                                    
-                                    <Button
-                                        onClick={() => setConfirmTarget(school.id)}
-                                        disabled={isRestoring}
-                                        className={`h-11 px-6 rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${
-                                            isDark ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-lg'
-                                        }`}
-                                    >
-                                        Restore
-                                        <ArrowRightCircle size={14} className="opacity-50" />
-                                    </Button>
-                                </div>
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+                                     <div className="hidden sm:flex flex-col items-end mr-4">
+                                         <span className={`text-[8px] font-black uppercase tracking-[0.2em] opacity-40 ${t.textMuted(isDark)}`}>NODE STATUS</span>
+                                         <span className={`text-[10px] font-black text-emerald-500 uppercase tracking-widest`}>HEALTHY</span>
+                                     </div>
+                                     
+                                     <Button
+                                         onClick={() => setConfirmTarget(school.id)}
+                                         disabled={isRestoring}
+                                         className={`h-11 sm:h-12 px-6 rounded-xl sm:rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 border shadow-xl ${
+                                             isDark 
+                                                 ? 'bg-white/10 hover:bg-white/20 text-white border-white/5' 
+                                                 : 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 shadow-indigo-200'
+                                         }`}
+                                     >
+                                         Restore Node
+                                         <ArrowRightCircle size={14} className="opacity-70 group-hover:translate-x-1 transition-transform" />
+                                     </Button>
+                                 </div>
                             </div>
                         </motion.div>
                     ))
