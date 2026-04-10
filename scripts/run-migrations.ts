@@ -21,6 +21,8 @@ async function runMigrations() {
     max_lifetime: 60,
   });
 
+  let migrationFailed = false;
+
   try {
     const db = drizzle(client);
 
@@ -41,15 +43,18 @@ async function runMigrations() {
       if (errorMsg.includes('already exists') || errorMsg.includes('42P06') || errorMsg.includes('42P07') || errorMsg.includes('42710')) {
         console.log('⚠️  Skipping duplicate enum/schema errors (already applied):', errorMsg.split('\n')[0]);
         console.log('✅ Database state is consistent - proceeding with app startup');
+        // Don't throw - migration errors for existing enums are safe to ignore
+        migrationFailed = false;
       } else {
+        console.error('❌ Migration failed:', migrationError);
+        if (migrationError instanceof Error) {
+          console.error('Error details:', migrationError.message);
+        }
         throw migrationError;
       }
     }
   } catch (error) {
-    console.error('❌ Migration failed:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', error.message);
-    }
+    console.error('Fatal error during migrations:', error);
     throw error;
   } finally {
     try {
