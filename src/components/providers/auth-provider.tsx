@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
+import { getResponseErrorMessage } from '@/lib/error-utils';
 
 type UserProfile = {
   id: string;
@@ -95,7 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       const data = await res.json();
-      if (!res.ok) return { success: false, error: data.error || 'Invalid credentials' };
+      if (!res.ok) {
+        // Safely extract error message from response object
+        const errorMessage = getResponseErrorMessage(data, 'Invalid credentials');
+        return { success: false, error: errorMessage };
+      }
 
       if (data.two_factor_required) {
         return {

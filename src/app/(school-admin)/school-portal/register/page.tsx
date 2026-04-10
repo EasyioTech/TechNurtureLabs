@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { registerSchool, fetchActivePaymentPlans, fetchGlobalClasses, checkIdentifierExists } from '@/modules/auth/register-actions';
 import { validatePromoCode } from '@/modules/super-admin/actions';
+import { getResponseErrorMessage } from '@/lib/error-utils';
 import { toast } from 'sonner';
 import {
   ArrowLeft, Users, CheckCircle2, Loader2,
@@ -232,7 +233,7 @@ export default function SchoolRegistrationPage() {
       body: JSON.stringify({ plan_id: planId, promo_code_id: promoCodeId }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    if (!res.ok) throw new Error(getResponseErrorMessage(data, 'Request failed'));
     return data;
   };
 
@@ -249,7 +250,7 @@ export default function SchoolRegistrationPage() {
         setCheckoutOrder(updatedOrder);
         toast.success('Promo code applied successfully!');
       } else {
-        setPromoError(res.error || 'Invalid promo code');
+        setPromoError(getResponseErrorMessage(res, 'Invalid promo code'));
         setAppliedPromo(null);
         setFormData(prev => ({ ...prev, promo_code_id: '' }));
       }

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useSchoolTheme, ts } from '../../theme-context';
 import { toast } from 'sonner';
 import { getAvailablePlans } from '../../actions';
+import { getResponseErrorMessage } from '@/lib/error-utils';
 
 declare global {
     interface Window {
@@ -77,7 +78,7 @@ export function UpgradePlanModal({ schoolId, currentPlanName, isOpen, onClose, o
             });
 
             const orderData = await orderRes.json();
-            if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create order');
+            if (!orderRes.ok) throw new Error(getResponseErrorMessage(orderData, 'Failed to create order'));
 
             // 2. Open Razorpay Checkout
             const options = {
@@ -105,7 +106,7 @@ export function UpgradePlanModal({ schoolId, currentPlanName, isOpen, onClose, o
                             if (onUpdate) onUpdate();
                             onClose();
                         } else {
-                            throw new Error(verifyData.error || 'Verification failed');
+                            throw new Error(getResponseErrorMessage(verifyData, 'Verification failed'));
                         }
                     } catch (err: any) {
                         toast.error(err.message || 'Payment verification failed');
