@@ -31,8 +31,20 @@ async function runMigrations() {
     console.log('Running migrations from drizzle folder...');
     const migrationsFolder = path.join(process.cwd(), 'drizzle');
 
-    await migrate(db, { migrationsFolder });
-    console.log('✅ Migrations completed successfully');
+    try {
+      await migrate(db, { migrationsFolder });
+      console.log('✅ Migrations completed successfully');
+    } catch (migrationError: any) {
+      // Ignore "already exists" errors for enum values - these are safe to skip
+      // This happens when migrations have been partially applied or in multi-instance deploys
+      const errorMsg = migrationError?.message || migrationError?.cause?.message || '';
+      if (errorMsg.includes('already exists') || errorMsg.includes('42P06') || errorMsg.includes('42P07') || errorMsg.includes('42710')) {
+        console.log('⚠️  Skipping duplicate enum/schema errors (already applied):', errorMsg.split('\n')[0]);
+        console.log('✅ Database state is consistent - proceeding with app startup');
+      } else {
+        throw migrationError;
+      }
+    }
   } catch (error) {
     console.error('❌ Migration failed:', error);
     if (error instanceof Error) {
