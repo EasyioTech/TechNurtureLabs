@@ -212,7 +212,7 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                     <div className={`flex-1 md:flex-none px-4 py-2 rounded-xl flex items-center justify-center md:justify-start gap-3 border ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-neutral-200'}`}>
                         <div className="flex -space-x-2">
                             {[1, 2, 3].map(i => (
-                                <div key={i} className={`w-6 h-6 rounded-full border-2 ${isDark ? 'bg-neutral-800 border-neutral-900' : 'bg-neutral-100 border-white'}`} style={i === 1 ? { backgroundColor: accent.color } : {}} />
+                                <div key={i} className={`w-6 h-6 rounded-full border-2 ${i === 1 ? accent.bg : isDark ? 'bg-neutral-800' : 'bg-neutral-100'} ${isDark ? 'border-neutral-900' : 'border-white'}`} />
                             ))}
                         </div>
                         <span className="text-[10px] font-black uppercase tracking-tight opacity-50">Active Nodes</span>
