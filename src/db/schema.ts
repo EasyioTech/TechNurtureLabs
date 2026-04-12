@@ -112,8 +112,8 @@ export const students = pgTable('students', {
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     first_name: text('first_name').notNull(),
     last_name: text('last_name').notNull(),
-    // SCHEMA FIX: Email now required (was nullable, but critical for identity)
-    email: text('email').notNull(),
+    // Schema update: Email is optional to support phone-only registration
+    email: text('email'),
     password_hash: text('password_hash').notNull(), // Student PIN
     phone: text('phone'),
     avatar_url: text('avatar_url'),

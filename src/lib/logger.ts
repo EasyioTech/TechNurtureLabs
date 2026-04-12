@@ -28,6 +28,14 @@ function normalizeError(err: unknown): LogMeta {
     if (err instanceof Error) {
         return { error: err.message, stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined };
     }
+    if (err && typeof err === 'object') {
+        const e = err as any;
+        return {
+            error: e.message || e.error || (typeof err === 'object' ? JSON.stringify(err) : String(err)),
+            stack: e.stack,
+            ...e
+        };
+    }
     return { error: String(err) };
 }
 

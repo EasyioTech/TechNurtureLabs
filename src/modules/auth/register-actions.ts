@@ -252,7 +252,7 @@ export async function registerStudent(formData: any) {
         }
         return result;
     } catch (error: any) {
-        logger.error('Student registration error', { message: error.message });
+        logger.error('Student registration error', error);
         return { success: false, error: error.message || 'An unexpected error occurred.' };
     }
 }
@@ -425,7 +425,7 @@ export async function registerSchool(formData: any, paymentDetails?: { order_id:
 
         return result;
     } catch (error: any) {
-        logger.error('School registration error', { message: error.message });
+        logger.error('School registration error', error);
         return { success: false, error: error.message || 'An unexpected error occurred.' };
     }
 }
