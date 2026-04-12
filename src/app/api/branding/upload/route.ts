@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
                 .values({ id: 'global', [field]: dataUri, [urlField]: url });
         }
 
-        revalidateTag('platform-settings');
+        revalidateTag('platform-settings', 'layout');
         revalidatePath('/', 'layout');
 
         return NextResponse.json({ success: true, url });
@@ -85,7 +85,7 @@ export async function DELETE(request: NextRequest) {
             .set({ [field]: null, [urlField]: null, updated_at: new Date() })
             .where(eq(platformSettings.id, 'global'));
 
-        revalidateTag('platform-settings');
+        revalidateTag('platform-settings', 'layout');
         revalidatePath('/', 'layout');
 
         return NextResponse.json({ success: true });
