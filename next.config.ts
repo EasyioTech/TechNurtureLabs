@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   output: 'standalone',
-  cacheComponents: true,
+  cacheComponents: false,
   cacheLife: {
     layout: {
       stale: 3600, // 1 hour
