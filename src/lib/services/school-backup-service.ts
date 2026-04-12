@@ -268,7 +268,7 @@ export interface StudentBackup {
     school_id: string;
     first_name: string;
     last_name: string;
-    email: string;
+    email?: string | null;
     phone?: string;
     avatar_url?: string;
     bio?: string;
@@ -890,7 +890,7 @@ export async function exportStudentsData(schoolId: string): Promise<{
             school_id: studentData.school_id,
             first_name: studentData.first_name,
             last_name: studentData.last_name,
-            email: studentData.email,
+            email: studentData.email || undefined,
             phone: studentData.phone || undefined,
             avatar_url: studentData.avatar_url || undefined,
             bio: studentData.bio || undefined,

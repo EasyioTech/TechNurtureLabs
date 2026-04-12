@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-    AlertDialog, AlertDialogContent,
+    AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription,
 } from '@/components/ui/alert-dialog';
 import { Plus, Edit, Trash2, Check, Users, Sparkles, AlertOctagon } from 'lucide-react';
 import { PaymentPlanDialog } from '../plan-dialog';
@@ -116,15 +116,17 @@ export function PaymentPlansTab({
             <AlertDialog open={!!planToDelete} onOpenChange={(open) => !open && setPlanToDelete(null)}>
                 <AlertDialogContent className={`w-[90vw] max-w-[420px] rounded-[24px] border-0 shadow-2xl p-0 overflow-hidden ${isDark ? 'bg-[#0f1219]' : 'bg-white'}`}>
                     <div className="p-8 pb-6 flex flex-col items-center text-center">
-                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-6 shadow-xl ${isDark ? 'bg-rose-500/10 text-rose-500 shadow-rose-500/10' : 'bg-rose-50 text-rose-500'}`}>
+                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-6 shadow-xl ${isDark ? 'bg-rose-500/10 text-rose-500 shadow-rose-500/10' : 'bg-rose-50 text-rose-500 shadow-rose-500/10'}`}>
                             <AlertOctagon size={32} />
                         </div>
-                        <h2 className={`text-xl font-[1000] tracking-tight mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>Delete Plan?</h2>
-                        <p className={`text-sm font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <AlertDialogTitle className={`text-xl font-[1000] tracking-tight mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                            Delete Plan?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className={`text-sm font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                             Are you sure you want to delete the plan <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>"{planToDelete?.name}"</span>?
                             <br /><br />
                             Schools with active subscriptions on this plan will be blocked from deletion.
-                        </p>
+                        </AlertDialogDescription>
                     </div>
                     <div className={`px-8 py-5 flex items-center gap-3 border-t ${isDark ? 'border-white/10 bg-[#0f1219]' : 'border-slate-100 bg-slate-50'}`}>
                         <Button variant="ghost" onClick={() => setPlanToDelete(null)}

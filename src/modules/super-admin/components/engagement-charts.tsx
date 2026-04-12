@@ -38,7 +38,7 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className={`lg:col-span-2 rounded-[24px] border p-7 transition-all duration-500 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
+                <div className={`lg:col-span-2 rounded-[24px] border p-7 transition-all duration-500 shadow-xl shadow-black/5 min-w-0 ${t.card(isDark)}`}>
                     <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-[#171717] text-white'}`}>
@@ -50,8 +50,8 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                             </div>
                         </div>
                     </div>
-                    <div className="h-[280px] w-full relative">
-                        {!mounted ? <div className="h-[280px] w-full" /> : <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={280} debounce={50}>
+                    <div className="h-[280px] w-full relative min-w-0">
+                        {!mounted ? <div className="h-[280px] w-full" /> : <ResponsiveContainer width="99%" height="99%" minHeight={280}>
                             <AreaChart data={engagementData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1">
@@ -82,7 +82,7 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                     </div>
                 </div>
 
-                <div className={`rounded-[24px] border p-7 transition-all duration-500 shadow-xl shadow-black/5 ${t.card(isDark)}`}>
+                <div className={`rounded-[24px] border p-7 transition-all duration-500 shadow-xl shadow-black/5 min-w-0 ${t.card(isDark)}`}>
                     <div className="flex items-center gap-3 mb-8">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-white/[0.04]' : 'bg-[#171717] text-white'}`}>
                             <PieChartIcon size={16} />
@@ -92,8 +92,8 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                             <p className={`text-[10px] font-bold ${t.textMuted(isDark)}`}>Current market share across pricing tiers.</p>
                         </div>
                     </div>
-                    <div className="h-[200px] w-full relative">
-                        {!mounted ? <div className="h-[200px] w-full" /> : <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200} debounce={50}>
+                    <div className="h-[200px] w-full relative min-w-0">
+                        {!mounted ? <div className="h-[200px] w-full" /> : <ResponsiveContainer width="99%" height="99%" minHeight={200}>
                             <PieChart>
                                 <Pie data={planDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value" strokeWidth={0}>
                                     {planDistribution.map((_, i) => (
@@ -133,8 +133,8 @@ export function EngagementCharts({ engagementData, planDistribution, revenueData
                         LAST 30 DAYS
                     </div>
                 </div>
-                <div className="h-[240px] w-full relative">
-                    {!mounted ? <div className="h-[240px] w-full" /> : <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240} debounce={50}>
+                <div className="h-[240px] w-full relative min-w-0">
+                    {!mounted ? <div className="h-[240px] w-full" /> : <ResponsiveContainer width="99%" height="99%" minHeight={240}>
                         <BarChart data={revenueData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
                             <XAxis dataKey="month" stroke={axis} axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 700 }} />
