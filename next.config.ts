@@ -32,16 +32,16 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   output: 'standalone',
-    experimental: {
-        cacheComponents: true,
-        cacheLife: {
-            layout: {
-                stale: 3600, // 1 hour
-                revalidate: 86400, // 1 day
-                expire: 604800, // 1 week
-            }
-        }
-    },
+  cacheComponents: true,
+  cacheLife: {
+    layout: {
+      stale: 3600, // 1 hour
+      revalidate: 86400, // 1 day
+      expire: 604800, // 1 week
+    }
+  },
+  experimental: {
+  },
   async headers() {
     const isDev = process.env.NODE_ENV !== 'production';
     // CSP: restrictive but practical — covers Vidstack (blob:), PDF.js worker,
