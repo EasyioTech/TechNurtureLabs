@@ -106,7 +106,7 @@ export async function saveCourseAdmin(courseData: unknown) {
     const data = courseSchema.parse(courseData);
     let slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const thumbnailUrl = data.thumbnail ?? data.thumbnail_url ?? '';
-    const isPublished = data.published ?? data.is_published ?? false;
+    const isPublished = data.published ?? data.is_published ?? true; // ← Default to published so students see courses
 
     let courseId = data.id;
     let isNew = false;

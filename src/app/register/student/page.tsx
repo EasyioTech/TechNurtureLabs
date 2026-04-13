@@ -198,6 +198,19 @@ export default function StudentRegistrationPage() {
     setLoading(true);
     const toastId = toast.loading('Creating your account…');
     try {
+      // CRITICAL FIX: Recheck student limit before submission to catch race conditions
+      // Another student might have registered between school selection and form submission
+      if (formData.school_id && studentLimitInfo && !studentLimitInfo.can_add) {
+        toast.error('Student registration limit has been reached for this school. Please contact your school administrator.', { id: toastId });
+        setLoading(false);
+        return;
+      }
+
+      // If we don't have limit info, fetch it fresh
+      if (formData.school_id && !studentLimitInfo) {
+        await checkStudentLimit(formData.school_id);
+      }
+
       const result = await registerStudent(formData);
       if (result.success) {
         const isExisting = 'isExisting' in result && (result as any).isExisting;
@@ -213,7 +226,13 @@ export default function StudentRegistrationPage() {
           router.push('/student');
         }
       } else {
-        toast.error(result.error || 'Something went wrong. Please try again.', { id: toastId });
+        // Handle limit exceeded error from backend (race condition case)
+        const errorMsg = result.error || 'Something went wrong. Please try again.';
+        if ((result as any).errorCode === 'STUDENT_LIMIT_EXCEEDED') {
+          toast.error('Your school has reached its student limit. Please contact your school administrator to upgrade the plan.', { id: toastId });
+        } else {
+          toast.error(errorMsg, { id: toastId });
+        }
       }
     } catch {
       toast.error('Connection problem. Please check your internet and try again.', { id: toastId });
@@ -518,10 +537,13 @@ export default function StudentRegistrationPage() {
                           <AlertCircle className="text-rose-500 mt-0.5 shrink-0" size={20} />
                           <div>
                             <p className="text-sm font-bold text-rose-900 mb-1">
-                              Registration Limit Reached
+                              Registration Not Available
                             </p>
                             <p className="text-xs text-rose-700 leading-relaxed">
                               {studentLimitInfo.message}
+                            </p>
+                            <p className="text-xs text-rose-600 mt-2 font-semibold">
+                              ℹ️ The registration button below will be disabled. Please contact your school administrator to upgrade the plan.
                             </p>
                           </div>
                         </div>
@@ -541,11 +563,11 @@ export default function StudentRegistrationPage() {
                         <div className="flex items-start gap-3">
                           <CheckCircle2 className="text-emerald-600 mt-0.5 shrink-0" size={20} />
                           <div>
-                            <p className="text-sm font-bold text-emerald-900 mb-0.5">
-                              Plan: {studentLimitInfo.plan_name}
+                            <p className="text-sm font-bold text-emerald-900 mb-1">
+                              {studentLimitInfo.plan_name}{studentLimitInfo.max_students ? ` (${studentLimitInfo.available_slots} slot${studentLimitInfo.available_slots !== 1 ? 's' : ''} available)` : ' (Unlimited)'}
                             </p>
                             <p className="text-xs text-emerald-700 font-medium">
-                              {studentLimitInfo.message}
+                              ✓ You can register for this school
                             </p>
                           </div>
                         </div>
@@ -794,8 +816,14 @@ export default function StudentRegistrationPage() {
                     {contactVerified && (
                       <button
                         type="submit"
-                        disabled={loading || formData.password.length !== 6 || formData.confirm_password !== formData.password}
+                        disabled={
+                          loading ||
+                          formData.password.length !== 6 ||
+                          formData.confirm_password !== formData.password ||
+                          (studentLimitInfo && !studentLimitInfo.can_add)
+                        }
                         className="flex-1 h-14 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-indigo-200 flex items-center justify-center gap-3 group"
+                        title={studentLimitInfo && !studentLimitInfo.can_add ? 'Student registration limit reached for this school' : ''}
                       >
                         {loading
                           ? <><Loader2 className="animate-spin" size={18} /> Creating…</>
