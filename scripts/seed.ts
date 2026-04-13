@@ -91,13 +91,7 @@ async function seed() {
         await sql`
             INSERT INTO payment_plans (name, description, billing_cycle, price, max_students, features, is_active, is_popular)
             VALUES (${plan.name}, ${plan.description}, ${plan.billing_cycle}, ${plan.price}, ${plan.max_students}, ${JSON.stringify(plan.features)}, ${plan.is_active}, ${plan.is_popular})
-            ON CONFLICT (name) WHERE deleted_at IS NULL DO UPDATE SET
-                description = EXCLUDED.description,
-                price = EXCLUDED.price,
-                max_students = EXCLUDED.max_students,
-                features = EXCLUDED.features,
-                is_popular = EXCLUDED.is_popular,
-                updated_at = NOW()
+            ON CONFLICT (name) WHERE deleted_at IS NULL DO NOTHING
         `;
     }
 
