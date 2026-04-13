@@ -135,7 +135,7 @@ export async function seedAchievementsData() {
             criteria: { type: 'course_progress', value: 50 }
         },
         {
-            name: 'Course Master',
+            name: 'Module Completionist',
             description: 'Successfully concluded all requirements for a complete module',
             icon_url: 'award',
             tier: 'gold' as const,
@@ -446,6 +446,18 @@ export async function getStudentAchievementsData() {
         };
     }
 
+    // CACHING FIX #1: Try Redis cache first (5 min TTL)
+    const cacheKey = `achievements:${userId}`;
+    let cached: string | null = null;
+    try {
+        cached = await redis.get(cacheKey);
+        if (cached) {
+            return JSON.parse(cached);
+        }
+    } catch (err) {
+        console.warn('[Achievements] Redis cache fetch error:', (err as any).message);
+    }
+
     // Run the achievement check directly (skips a second verifySession round-trip).
     // Uses the internal function so it can also be called from background workers.
     await checkAndAwardAchievementsInternal(userId);
@@ -480,7 +492,7 @@ export async function getStudentAchievementsData() {
     // Fetch rank metrics
     const rankMetrics = await getStudentRankMetrics(userId, profile?.school_id || '');
 
-    return {
+    const result = {
         achievements: formattedAchievements,
         stats: {
             xp: Number(profile?.cumulative_xp) || 0,
@@ -489,4 +501,13 @@ export async function getStudentAchievementsData() {
             rankPercentage: rankMetrics.rankPercentage
         }
     };
+
+    // CACHING FIX #1: Cache for 5 minutes
+    try {
+        await redis.set(cacheKey, JSON.stringify(result), 'EX', 300);
+    } catch (err) {
+        console.warn('[Achievements] Redis cache set error:', (err as any).message);
+    }
+
+    return result;
 }

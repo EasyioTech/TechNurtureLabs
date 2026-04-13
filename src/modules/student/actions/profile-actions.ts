@@ -7,6 +7,7 @@ import { students, schools, achievements, userAchievements, lessonProgress, quiz
 import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { cacheService } from '@/lib/cache';
+import { redis } from '@/lib/redis';
 
 export async function getStudentProfileData() {
     const session = await verifySession();
@@ -14,6 +15,18 @@ export async function getStudentProfileData() {
         // Return null instead of redirect — redirect() throws errors that bypass Promise.all().catch()
         // Dashboard page checks statsData and handles redirect properly
         return null;
+    }
+
+    // CACHING FIX #2: Try Redis cache first (3 min TTL)
+    const cacheKey = `profile:${session.userId}`;
+    let cached: string | null = null;
+    try {
+        cached = await redis.get(cacheKey);
+        if (cached) {
+            return JSON.parse(cached);
+        }
+    } catch (err) {
+        console.warn('[Profile] Redis cache fetch error:', (err as any).message);
     }
 
     const profile = await db.query.students.findFirst({
@@ -113,7 +126,7 @@ export async function getStudentProfileData() {
           })
         : null;
 
-    return {
+    const result = {
         profile: profile ? {
             ...profile,
             className: (profile.academicRecords?.[0] as any)?.academicClass?.name || 'Unassigned',
@@ -132,6 +145,15 @@ export async function getStudentProfileData() {
         rankPercentage,
         school: school ?? null,
     };
+
+    // CACHING FIX #2: Cache for 3 minutes
+    try {
+        await redis.set(cacheKey, JSON.stringify(result), 'EX', 180);
+    } catch (err) {
+        console.warn('[Profile] Redis cache set error:', (err as any).message);
+    }
+
+    return result;
 }
 
 export async function updateStudentBio(bio: string) {
@@ -143,6 +165,8 @@ export async function updateStudentBio(bio: string) {
 
     // CRITICAL FIX #4: Invalidate profile cache after update
     try {
+        await redis.del(`profile:${session.userId}`);
+        await redis.del(`achievements:${session.userId}`);
         await cacheService.invalidateTag(`user:${session.userId}:profile`);
         await cacheService.invalidateTag(`user:${session.userId}:dashboard`);
     } catch (err) {
@@ -176,6 +200,8 @@ export async function updateStudentProfile(data: {
 
     // CRITICAL FIX #4: Invalidate profile cache after update
     try {
+        await redis.del(`profile:${session.userId}`);
+        await redis.del(`achievements:${session.userId}`);
         await cacheService.invalidateTag(`user:${session.userId}:profile`);
         await cacheService.invalidateTag(`user:${session.userId}:dashboard`);
         await cacheService.invalidateTag(`user:${session.userId}:stats`);
@@ -195,6 +221,8 @@ export async function updateStudentAvatar(avatarStyle: string) {
 
     // CRITICAL FIX #4: Invalidate profile cache after update
     try {
+        await redis.del(`profile:${session.userId}`);
+        await redis.del(`achievements:${session.userId}`);
         await cacheService.invalidateTag(`user:${session.userId}:profile`);
         await cacheService.invalidateTag(`user:${session.userId}:dashboard`);
     } catch (err) {
