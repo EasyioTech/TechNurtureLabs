@@ -12,6 +12,54 @@ import { SchoolStats, SchoolCourseMetric, SchoolLeaderboardEntry } from '../type
 export async function getSchoolCourseAnalytics(schoolId: string): Promise<SchoolCourseMetric[]> {
     await verifySchoolAdminContext(schoolId);
 
+    // 1. Get school's class IDs
+    const schoolClasses = await db.query.schoolClassMapping.findMany({
+        where: eq(schoolClassMapping.school_id, schoolId)
+    });
+    const schoolClassIds = schoolClasses.map(m => m.class_id);
+
+    // 2. Get all courses available to this school (mapped to school's classes or all_classes=true)
+    let allSchoolCourses: any[] = [];
+
+    if (schoolClassIds.length > 0) {
+        const mappings = await db.query.courseClassMapping.findMany({
+            where: inArray(courseClassMapping.class_id, schoolClassIds)
+        });
+        const courseIds = Array.from(new Set(mappings.map(m => m.course_id)));
+
+        allSchoolCourses = await db.query.courses.findMany({
+            where: and(
+                isNull(courses.deleted_at),
+                or(eq(courses.all_classes, true), inArray(courses.id, courseIds))
+            ),
+            with: {
+                classMapping: {
+                    with: {
+                        academicClass: true
+                    }
+                }
+            }
+        });
+    } else {
+        allSchoolCourses = await db.query.courses.findMany({
+            where: and(
+                isNull(courses.deleted_at),
+                eq(courses.all_classes, true)
+            ),
+            with: {
+                classMapping: {
+                    with: {
+                        academicClass: true
+                    }
+                }
+            }
+        });
+    }
+
+    if (allSchoolCourses.length === 0) return [];
+
+    // 3. Get progress stats for these courses
+    const allCourseIds = allSchoolCourses.map(c => c.id);
     const stats = await db
         .select({
             course_id: courseProgress.course_id,
@@ -22,28 +70,18 @@ export async function getSchoolCourseAnalytics(schoolId: string): Promise<School
         })
         .from(courseProgress)
         .innerJoin(students, eq(courseProgress.user_id, students.id))
-        .where(and(eq(students.school_id, schoolId), isNull(students.deleted_at)))
+        .where(and(
+            eq(students.school_id, schoolId),
+            isNull(students.deleted_at),
+            inArray(courseProgress.course_id, allCourseIds)
+        ))
         .groupBy(courseProgress.course_id);
 
-    if (stats.length === 0) return [];
+    const statsMap = new Map(stats.map(s => [s.course_id, s]));
 
-    const courseIds = stats.map(s => s.course_id);
-    const courseDetails = await db.query.courses.findMany({
-        where: and(inArray(courses.id, courseIds), isNull(courses.deleted_at)),
-        with: {
-            classMapping: {
-                with: {
-                    academicClass: true
-                }
-            }
-        }
-    });
-
-    const courseMap = new Map(courseDetails.map(c => [c.id, c]));
-
-    return stats.map(s => {
-        const course = courseMap.get(s.course_id);
-        if (!course) return null;
+    // 4. Combine course details with stats (courses without stats get defaults)
+    return allSchoolCourses.map((course: any) => {
+        const stat = statsMap.get(course.id);
 
         return {
             id: course.id,
@@ -51,14 +89,14 @@ export async function getSchoolCourseAnalytics(schoolId: string): Promise<School
             thumbnail_url: course.thumbnail_url,
             is_published: course.is_published,
             lesson_count: course.total_lessons,
-            enrolled_count: Number(s.count),
-            completion_rate: Math.round(Number(s.avg_progress || 0)),
-            avg_xp: Math.round(Number(s.avg_xp || 0)),
-            total_time_mins: Math.round(Number(s.total_time || 0) / 60),
-            mapped_classes: course.classMapping?.map(cm => cm.academicClass?.name).filter(Boolean) || [],
+            enrolled_count: stat ? Number(stat.count) : 0,
+            completion_rate: stat ? Math.round(Number(stat.avg_progress || 0)) : 0,
+            avg_xp: stat ? Math.round(Number(stat.avg_xp || 0)) : 0,
+            total_time_mins: stat ? Math.round(Number(stat.total_time || 0) / 60) : 0,
+            mapped_classes: (course.classMapping || []).map((cm: any) => cm.academicClass?.name).filter(Boolean),
             description: course.description
         };
-    }).filter(Boolean) as SchoolCourseMetric[];
+    });
 }
 
 export async function getSchoolStats(schoolId: string): Promise<SchoolStats> {
