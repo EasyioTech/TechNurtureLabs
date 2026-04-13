@@ -95,21 +95,43 @@ export default function StudentLoginPage() {
 
     try {
       const result = await signIn(email, password, 'student');
-      if (result.success) {
+
+      // CRITICAL: Only redirect if success === true (explicit check)
+      // Never redirect on error, always show error message instead
+      if (result && result.success === true) {
         toast.success('Access granted!', { id: toastId });
+        // Small delay to let toast show before navigating
+        await new Promise(resolve => setTimeout(resolve, 300));
         router.push('/student');
-      } else {
-        // Show specific error message from API or fallback to generic message
-        const errorMsg = result.error || 'Invalid PIN. Please check your email/phone and 6-digit PIN.';
-        console.log('[Student Login] Error response:', { error: errorMsg, result });
-        toast.error(errorMsg, { id: toastId });
-        setErrors({ password: errorMsg });
-        setLoading(false);
+        return; // Stop here, don't fall through
       }
+
+      // Handle errors: show message, don't redirect
+      setLoading(false);
+      const errorMsg = result?.error || 'Invalid PIN. Please check your email/phone and 6-digit PIN.';
+      console.log('[Student Login] Error response:', {
+        error: errorMsg,
+        resultSuccess: result?.success,
+        hasError: result?.error
+      });
+
+      toast.error(errorMsg, { id: toastId });
+      setErrors({ password: errorMsg });
+      // Clear password field on error for security
+      setPassword('');
+
     } catch (err: any) {
       setLoading(false);
-      console.error('[Student Login] Caught exception:', err, { email, passwordLength: password?.length });
+      console.error('[Student Login] Caught exception:', {
+        message: err?.message,
+        stack: err?.stack,
+        emailLength: email?.length,
+        passwordLength: password?.length
+      });
       toast.error('Session authentication failed. Please try again.', { id: toastId });
+      setErrors({ password: 'Authentication error. Please try again.' });
+      // Clear password on error
+      setPassword('');
     }
   };
 

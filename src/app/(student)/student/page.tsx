@@ -19,7 +19,8 @@ export default async function StudentDashboardPage() {
     redirect('/login');
   }
 
-  // Fetch all data in parallel on the server
+  // Fetch all data in parallel with individual error handling
+  // Never throw — always return fallback data instead
   const [
     statsData,
     coursesData,
@@ -28,22 +29,45 @@ export default async function StudentDashboardPage() {
     platformSettings,
     challenges
   ] = await Promise.all([
-    getStudentProfileAndStats(),
-    getStudentDashboardCourses(),
-    getStudentAchievementsAction(),
-    getStudentActivitiesAction(),
-    getPlatformSettings(),
-    getOrGenerateDailyChallenges(session.userId)
+    getStudentProfileAndStats().catch((e) => {
+      console.error('[Dashboard] getStudentProfileAndStats error:', e?.message || e);
+      return null;
+    }),
+    getStudentDashboardCourses().catch((e) => {
+      console.error('[Dashboard] getStudentDashboardCourses error:', e?.message || e);
+      return { courses: [] };
+    }),
+    getStudentAchievementsAction().catch((e) => {
+      console.error('[Dashboard] getStudentAchievementsAction error:', e?.message || e);
+      return { achievements: [] };
+    }),
+    getStudentActivitiesAction().catch((e) => {
+      console.error('[Dashboard] getStudentActivitiesAction error:', e?.message || e);
+      return [];
+    }),
+    getPlatformSettings().catch((e) => {
+      console.error('[Dashboard] getPlatformSettings error:', e?.message || e);
+      return null;
+    }),
+    getOrGenerateDailyChallenges(session.userId).catch((e) => {
+      console.error('[Dashboard] getOrGenerateDailyChallenges error:', e?.message || e);
+      return [];
+    })
   ]);
+
+  // If profile fetch failed completely, redirect to login
+  if (!statsData) {
+    redirect('/login');
+  }
 
   const initialData = {
     profile: statsData.profile,
     stats: statsData.stats,
     school: statsData.school,
-    courses: coursesData.courses as any[],
-    achievements: ((achievements as any)?.achievements ?? achievements) as any[],
-    activities: activities as any[],
-    challenges: challenges as any[],
+    courses: coursesData?.courses || [],
+    achievements: ((achievements as any)?.achievements ?? achievements ?? []) as any[],
+    activities: (activities as any[]) || [],
+    challenges: (challenges as any[]) || [],
     platformSettings
   };
 

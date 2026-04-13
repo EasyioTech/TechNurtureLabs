@@ -95,20 +95,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password })
       });
 
+      // Determine role-specific error message before parsing
+      const defaultError = role === 'student'
+        ? 'Invalid PIN. Please check your email/phone and 6-digit PIN.'
+        : 'Invalid credentials';
+
       // Always try to parse JSON for error details
       let data: any = {};
       try {
         data = await res.json();
       } catch (parseErr) {
-        console.error('[Auth] Failed to parse response:', parseErr);
+        console.error('[Auth] Failed to parse JSON response:', {
+          status: res.status,
+          statusText: res.statusText,
+          parseError: parseErr
+        });
+        // If we got non-200 and can't parse JSON, it's likely an error
+        if (!res.ok) {
+          return { success: false, error: defaultError };
+        }
+        // If status 200+ but parse failed, it's also an error
+        return { success: false, error: 'Invalid server response format' };
       }
 
       if (!res.ok) {
         // Safely extract error message from response object with role-specific fallback
-        const defaultError = role === 'student'
-          ? 'Invalid PIN. Please check your email/phone and 6-digit PIN.'
-          : 'Invalid credentials';
         const errorMessage = getResponseErrorMessage(data, defaultError);
+        console.log('[Auth] Login failed:', { status: res.status, error: errorMessage });
         return { success: false, error: errorMessage };
       }
 
@@ -122,9 +135,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       await fetchProfile();
       return { success: true };
-    } catch (e) {
-      console.error('[Auth SignIn Error]:', e);
-      return { success: false, error: 'Connection failed' };
+    } catch (e: any) {
+      console.error('[Auth SignIn Error]:', {
+        message: e?.message,
+        stack: e?.stack,
+        emailLength: email?.length,
+        passwordLength: password?.length
+      });
+      return { success: false, error: 'Connection failed. Please check your internet and try again.' };
     }
   }, [fetchProfile]);
 
