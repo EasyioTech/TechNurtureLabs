@@ -13,6 +13,7 @@ import {
     cloneLessonAction,
     cloneQuizAction,
     deleteQuizAdmin,
+    fetchCourseClassMappings,
 } from '../actions';
 import { Course, Lesson } from '../types';
 
@@ -29,7 +30,7 @@ export function useAdminCourses() {
     const [lessons, setLessons] = useState<Lesson[]>([]);
     const [coursesPage, setCoursesPage] = useState(0);
     const [totalCoursesPages, setTotalCoursesPages] = useState(0);
-    const [courseClassMappings] = useState<any[]>([]);
+    const [courseClassMappings, setCourseClassMappings] = useState<any[]>([]);
 
     // Dialog state
     const [showCourseDialog, setShowCourseDialog] = useState(false);
@@ -39,10 +40,14 @@ export function useAdminCourses() {
 
     async function loadCourses(page = 0) {
         try {
-            const res = await fetchAdminCourses(page, 50);
-            setCourses(res.data as any);
+            const [coursesRes, mappings] = await Promise.all([
+                fetchAdminCourses(page, 50),
+                fetchCourseClassMappings()
+            ]);
+            setCourses(coursesRes.data as any);
+            setCourseClassMappings(mappings as any);
             setCoursesPage(page);
-            setTotalCoursesPages(res.pages);
+            setTotalCoursesPages(coursesRes.pages);
         } catch (err) {
             if (isUnauthorized(err)) { handleUnauthorized(); return; }
             toast.error('Failed to load courses');

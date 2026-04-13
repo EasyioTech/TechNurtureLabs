@@ -432,12 +432,18 @@ export async function getStudentAchievementsData() {
     // Return fallback instead of redirect — redirect() throws errors that bypass Promise.all().catch()
     // Dashboard page checks achievements and handles redirect properly
     if (!session) {
-        return { achievements: [] };
+        return {
+            achievements: [],
+            stats: { xp: 0, level: 1, rank: 0, rankPercentage: 0 }
+        };
     }
     const userId = session.userId;
 
     if (session.role !== 'student') {
-        return { achievements: [] };
+        return {
+            achievements: [],
+            stats: { xp: 0, level: 1, rank: 0, rankPercentage: 0 }
+        };
     }
 
     // Run the achievement check directly (skips a second verifySession round-trip).

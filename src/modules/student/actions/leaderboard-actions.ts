@@ -51,7 +51,7 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
             scope,
             data: JSON.parse(cached),
             title: scope === 'class' ? 'Class Leaderboard' : 'School Leaderboard',
-            userStats: profileData.stats,
+            userStats: profileData?.stats ?? { xp: 0, level: 1, rank: 0, rankPercentage: 0, streak: 0, lessonsCompleted: 0, learningTimeMinutes: 0, quizzesPassed: 0, accuracy: 0, efficiency: 0 },
             cached: true
         };
     }
@@ -203,6 +203,6 @@ export async function getStudentLeaderboard(scope: 'school' | 'class') {
 
     return {
         ...sharedData,
-        userStats: profileData.stats
+        userStats: profileData?.stats ?? { xp: 0, level: 1, rank: 0, rankPercentage: 0, streak: 0, lessonsCompleted: 0, learningTimeMinutes: 0, quizzesPassed: 0, accuracy: 0, efficiency: 0 }
     };
 }

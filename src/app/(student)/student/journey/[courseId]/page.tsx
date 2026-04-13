@@ -49,12 +49,14 @@ export default function JourneyPage({ params }: { params: Promise<{ courseId: st
           getCourseJourneyData(courseId),
           getStudentProfileData()
         ]);
-        
+
         setCourse(journeyData.course as any);
         setLessons(journeyData.lessons as any);
         setSchool(journeyData.school);
-        setProfile(profileData.profile);
-        setStats(profileData.stats);
+        if (profileData) {
+          setProfile(profileData.profile);
+          setStats(profileData.stats);
+        }
       } catch (err) {
         console.error("Error fetching journey data:", err);
       }

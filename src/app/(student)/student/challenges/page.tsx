@@ -18,11 +18,24 @@ export default async function ChallengesPage() {
         getOrGenerateDailyChallenges(session.userId),
     ]);
 
+    const stats = data?.stats ?? {
+        xp: 0,
+        level: 1,
+        rank: 0,
+        rankPercentage: 0,
+        streak: 0,
+        lessonsCompleted: 0,
+        learningTimeMinutes: 0,
+        quizzesPassed: 0,
+        accuracy: 0,
+        efficiency: 0
+    };
+
     return (
         <ChallengesClient
             initialData={{
                 dailyChallenges,
-                stats: data.stats,
+                stats,
             }}
         />
     );

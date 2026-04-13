@@ -14,6 +14,10 @@ export default async function StudentProfilePage() {
 
     const data = await getStudentProfileData();
 
+    if (!data) {
+        redirect('/login');
+    }
+
     const initialData = {
         profile: data.profile as any,
         stats: data.stats,

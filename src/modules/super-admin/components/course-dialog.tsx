@@ -49,7 +49,7 @@ export function CourseDialog({
                 setSelectedClassIds([]);
             }
         }
-    }, [open]); // Only run when dialog opens
+    }, [open, editingCourse?.id, courseClassMappings]); // Run when dialog opens or course/mappings change
 
     const handleToggleClass = (classId: string) => {
         const newIds = selectedClassIds.includes(classId)

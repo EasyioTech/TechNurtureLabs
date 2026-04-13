@@ -14,5 +14,9 @@ export default async function StudentSettingsPage() {
 
     const data = await getStudentProfileAndStats();
 
+    if (!data) {
+        redirect('/login');
+    }
+
     return <SettingsClient initialData={data} />;
 }

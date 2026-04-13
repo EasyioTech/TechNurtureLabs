@@ -54,6 +54,15 @@ export async function fetchAdminCourses(page: number = 0, limit: number = 50) {
     };
 }
 
+export async function fetchCourseClassMappings() {
+    const session = await requireSuperAdmin();
+
+    return await db.select({
+        course_id: courseClassMapping.course_id,
+        class_id: courseClassMapping.class_id,
+    }).from(courseClassMapping);
+}
+
 export async function updateCourseTotals(courseId: string, txContext?: any) {
     const dbClient = txContext ?? db;
 
