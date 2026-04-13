@@ -429,13 +429,15 @@ export async function getStudentAchievementsData() {
     // Lazy-load verifySession to avoid pulling server-only modules into worker contexts
     const { verifySession } = await import('@/lib/auth');
     const session = await verifySession();
+    // Return fallback instead of redirect — redirect() throws errors that bypass Promise.all().catch()
+    // Dashboard page checks achievements and handles redirect properly
     if (!session) {
-        redirect('/login');
+        return { achievements: [] };
     }
     const userId = session.userId;
 
     if (session.role !== 'student') {
-        throw new Error('Access denied: Student access only');
+        return { achievements: [] };
     }
 
     // Run the achievement check directly (skips a second verifySession round-trip).

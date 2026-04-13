@@ -11,7 +11,9 @@ import { cacheService } from '@/lib/cache';
 export async function getStudentProfileData() {
     const session = await verifySession();
     if (!session) {
-        redirect('/login');
+        // Return null instead of redirect — redirect() throws errors that bypass Promise.all().catch()
+        // Dashboard page checks statsData and handles redirect properly
+        return null;
     }
 
     const profile = await db.query.students.findFirst({

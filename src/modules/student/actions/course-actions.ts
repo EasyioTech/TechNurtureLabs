@@ -291,7 +291,9 @@ export async function getCourseDetailsData(courseId: string, bypassCache = false
  */
 export async function getStudentDashboardCourses(bypassCache = false) {
     const session = await verifySession();
-    if (!session || session.role !== 'student') redirect('/login');
+    // Return fallback instead of redirect — redirect() throws errors that bypass Promise.all().catch()
+    // Dashboard page checks coursesData and handles redirect properly
+    if (!session || session.role !== 'student') return { courses: [] };
     const userId = session.userId;
 
     const cacheKey = `cache:student:${userId}:dashboard`;
