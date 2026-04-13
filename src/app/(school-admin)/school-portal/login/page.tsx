@@ -88,15 +88,21 @@ export default function SchoolLoginPage() {
           </Link>
 
           <div className="mb-6 lg:hidden flex items-center gap-3">
-            {platformSettings?.logo_url ? (
-              <div className="w-10 h-10 flex items-center justify-center">
-                <img src={platformSettings.logo_url} alt="Logo" className="w-full h-full object-contain" />
-              </div>
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center">
-                <School className="text-white" size={20} />
-              </div>
-            )}
+            <div className="w-10 h-10 flex items-center justify-center rounded-lg overflow-hidden">
+              <img
+                src={platformSettings?.logo_url || '/assets/logo.jpg'}
+                alt="Logo"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  img.style.display = 'none';
+                  const parent = img.parentElement;
+                  if (parent) {
+                    parent.classList.add('bg-slate-900');
+                  }
+                }}
+              />
+            </div>
             <span className="text-xl font-bold tracking-tight text-slate-900">{platformSettings?.platform_name || 'Schools'}</span>
           </div>
 

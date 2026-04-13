@@ -1,6 +1,5 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Sparkles } from 'lucide-react';
 
 export interface GlobalLogoProps {
     settings?: {
@@ -79,14 +78,36 @@ export const GlobalLogo: React.FC<GlobalLogoProps> = ({
                         className="h-full w-auto object-contain"
                         style={{ height: finalHeight }}
                         onError={(e) => {
-                            // Fallback if image fails to load
-                            (e.target as HTMLImageElement).style.display = 'none';
-                            const parent = (e.target as HTMLImageElement).parentElement;
-                            if (parent) parent.classList.add('bg-slate-900', 'rounded-lg', 'p-2');
+                            // Fallback if image fails to load — try default logo
+                            (e.target as HTMLImageElement).src = '/assets/logo.jpg';
                         }}
                     />
                 ) : (
-                    <Sparkles className="text-white" size={finalHeight * 0.5} />
+                    <img
+                        src="/assets/logo.jpg"
+                        alt={platformName}
+                        className="h-full w-auto object-contain"
+                        style={{ height: finalHeight }}
+                        onError={(e) => {
+                            // If fallback logo fails, show icon
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            const parent = (e.target as HTMLImageElement).parentElement;
+                            if (parent) {
+                                parent.classList.remove('bg-slate-900', 'rounded-xl');
+                                parent.classList.add('bg-slate-900', 'rounded-xl', 'p-2');
+                                if (!parent.querySelector('svg')) {
+                                    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                                    svg.setAttribute('viewBox', '0 0 24 24');
+                                    svg.setAttribute('fill', 'none');
+                                    svg.setAttribute('stroke', 'white');
+                                    svg.setAttribute('stroke-width', '2');
+                                    svg.style.width = (finalHeight * 0.5) + 'px';
+                                    svg.style.height = (finalHeight * 0.5) + 'px';
+                                    parent.appendChild(svg);
+                                }
+                            }
+                        }}
+                    />
                 )}
             </div>
 

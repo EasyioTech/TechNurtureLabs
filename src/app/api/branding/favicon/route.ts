@@ -31,7 +31,21 @@ export async function GET(request: NextRequest) {
         console.error('Failed to serve favicon from DB:', error);
     }
 
-    // Fallback: serve the static favicon.ico from public/
+    // Fallback 1: serve the default logo.jpg from public/assets
+    try {
+        const logoPath = path.join(process.cwd(), 'public', 'assets', 'logo.jpg');
+        const buffer = await readFile(logoPath);
+        return new NextResponse(buffer, {
+            headers: {
+                'Content-Type': 'image/jpeg',
+                'Cache-Control': 'public, max-age=3600',
+            },
+        });
+    } catch (error) {
+        console.error('Failed to serve logo as favicon:', error);
+    }
+
+    // Fallback 2: serve the static favicon.ico from public/
     try {
         const faviconPath = path.join(process.cwd(), 'public', 'favicon.ico');
         const buffer = await readFile(faviconPath);

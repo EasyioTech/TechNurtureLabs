@@ -259,14 +259,26 @@ export default function StudentRegistrationPage() {
 
           {/* Mobile logo */}
           <div className="mb-6 lg:hidden flex items-center gap-3">
-            <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
-              {settings?.logo_url ? (
-                <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
-              ) : (
-                <div className="w-9 h-9 rounded-xl bg-slate-950 flex items-center justify-center shadow-lg">
-                  <GraduationCap className="text-white" size={18} />
-                </div>
-              )}
+            <div className="w-9 h-9 flex items-center justify-center overflow-hidden rounded-lg">
+              <img
+                src={settings?.logo_url || '/assets/logo.jpg'}
+                alt="Logo"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  // Fallback to gradient icon if logo fails
+                  const img = e.target as HTMLImageElement;
+                  img.style.display = 'none';
+                  const parent = img.parentElement;
+                  if (parent) {
+                    parent.classList.add('bg-slate-950');
+                    if (!parent.querySelector('svg')) {
+                      const div = document.createElement('div');
+                      div.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M22 10v6m0 0v2c0 1.1-.9 2-2 2h-4l-6 4v-4H4c-1.1 0-2-.9-2-2v-2m0 0V4c0-1.1.9-2 2-2h16c1.1 0 2 .9 2 2v6"></path></svg>';
+                      parent.appendChild(div.firstElementChild!);
+                    }
+                  }
+                }}
+              />
             </div>
             <span className="text-lg font-black tracking-tighter text-slate-950">
               {settings?.platform_name || 'TechNurture'}
