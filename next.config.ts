@@ -41,6 +41,9 @@ const nextConfig: NextConfig = {
     }
   },
   experimental: {
+    serverActions: {
+      bodySizeLimit: '1gb',
+    },
   },
   async headers() {
     const isDev = process.env.NODE_ENV !== 'production';
