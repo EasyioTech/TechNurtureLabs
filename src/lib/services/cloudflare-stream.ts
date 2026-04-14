@@ -40,7 +40,15 @@ function getAccountUrl() {
 export interface DirectUploadResult {
     /** One-time upload URL — client POSTs the video file here */
     uploadUrl: string;
-    /** Cloudflare Stream video UID */
+    /** Cloudflare Stream video UID (optional for TUS since it's in the URL) */
+    uid: string;
+}
+
+/** Result for a TUS resumable upload */
+export interface TusUploadResult {
+    /** The resumable TUS endpoint for the client to use */
+    uploadUrl: string;
+    /** The UID assigned to this video upload */
     uid: string;
 }
 
@@ -83,6 +91,59 @@ export async function createDirectUpload(
     return {
         uploadUrl: data.result.uploadURL,
         uid: data.result.uid,
+    };
+}
+
+/**
+ * Initialize a TUS (resumable) upload with Cloudflare Stream.
+ * Returns a unique upload URL that the client can use with a TUS client.
+ * 
+ * @param fileSize - Size of the file in bytes
+ * @param meta - Optional metadata
+ */
+export async function createTusUpload(
+    fileSize: number,
+    meta?: Record<string, string>
+): Promise<TusUploadResult> {
+    if (!isStreamConfigured()) {
+        throw new Error('Cloudflare Stream is not configured.');
+    }
+
+    // Prepare metadata for TUS (keys/values must be base64 encoded)
+    const metadataString = Object.entries(meta || {})
+        .map(([k, v]) => `${k} ${Buffer.from(v).toString('base64')}`)
+        .join(',');
+
+    const headers: Record<string, string> = {
+        'Authorization': `Bearer ${serverEnv.CLOUDFLARE_STREAM_API_TOKEN}`,
+        'Tus-Resumable': '1.0.0',
+        'Upload-Length': fileSize.toString(),
+    };
+
+    if (metadataString) {
+        headers['Upload-Metadata'] = metadataString;
+    }
+
+    const res = await fetch(getAccountUrl(), {
+        method: 'POST',
+        headers,
+    });
+
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Cloudflare Stream TUS init failed (${res.status}): ${text}`);
+    }
+
+    const uploadUrl = res.headers.get('Location');
+    const uid = res.headers.get('stream-media-id');
+
+    if (!uploadUrl || !uid) {
+        throw new Error('Cloudflare Stream failed to return TUS Location or Media ID');
+    }
+
+    return {
+        uploadUrl,
+        uid,
     };
 }
 

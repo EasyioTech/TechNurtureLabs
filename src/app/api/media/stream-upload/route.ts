@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
-import { createDirectUpload, isStreamConfigured } from '@/lib/services/cloudflare-stream';
+import { createDirectUpload, createTusUpload, isStreamConfigured } from '@/lib/services/cloudflare-stream';
 
 /**
  * POST /api/media/stream-upload
  *
- * Generates a Cloudflare Stream Direct Creator Upload URL.
- * The client will upload the video directly to Cloudflare's servers,
- * bypassing our Node.js API entirely.
+ * Generates a Cloudflare Stream Upload URL.
+ * Supports both TUS (resumable) and Direct Creator Upload.
  *
  * Request body:
- *   { fileName: string, maxDurationSeconds?: number }
- *
- * Response:
- *   { uploadUrl: string, uid: string }
+ *   { fileName: string, fileSize?: number, maxDurationSeconds?: number }
  */
 export async function POST(req: NextRequest) {
     try {
@@ -36,17 +32,27 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { fileName, maxDurationSeconds = 36000 } = body;
+        const { fileName, fileSize, maxDurationSeconds = 36000 } = body;
 
-        const meta: Record<string, string> = {};
+        const meta: Record<string, string> = {
+            maxDurationSeconds: maxDurationSeconds.toString(),
+        };
         if (fileName) meta.name = fileName;
         if (session.userId) meta.uploadedBy = session.userId;
 
-        const result = await createDirectUpload(maxDurationSeconds, meta);
+        let result;
+        if (fileSize) {
+            // Use TUS for resumable uploads
+            result = await createTusUpload(fileSize, meta);
+        } else {
+            // Fallback to direct upload if size unknown
+            result = await createDirectUpload(maxDurationSeconds, meta);
+        }
 
         return NextResponse.json({
             uploadUrl: result.uploadUrl,
             uid: result.uid,
+            isResumable: !!fileSize,
         });
     } catch (err: any) {
         console.error('[Stream Upload Error]:', err);

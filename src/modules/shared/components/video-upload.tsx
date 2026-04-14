@@ -5,6 +5,7 @@ import { Video, UploadCloud, Loader2 } from 'lucide-react';
 import { MediaLibraryPicker } from '@/modules/super-admin/components/media-library-picker';
 import { useAuth } from '@/components/providers/auth-provider';
 import { toast } from 'sonner';
+import * as tus from 'tus-js-client';
 
 interface VideoUploadProps {
     value: string;
@@ -60,7 +61,7 @@ export function VideoUpload({
                 ?.split('=')[1];
             
             if (useCloudflareStream) {
-                // Cloudflare Stream path
+                // Cloudflare Stream resumable path
                 const csrfToken = getCsrfToken();
                 const res = await fetch('/api/media/stream-upload', {
                     method: 'POST',
@@ -68,7 +69,10 @@ export function VideoUpload({
                         'Content-Type': 'application/json',
                         ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
                     },
-                    body: JSON.stringify({ fileName: file.name }),
+                    body: JSON.stringify({ 
+                        fileName: file.name,
+                        fileSize: file.size // Required for TUS resumable
+                    }),
                 });
                 
                 if (!res.ok) {
@@ -76,37 +80,65 @@ export function VideoUpload({
                     throw new Error(error.error || 'Failed to initialise stream upload');
                 }
                 
-                const { uploadUrl, uid } = await res.json();
+                const { uploadUrl, uid, isResumable } = await res.json();
                 
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', uploadUrl, true);
-                
-                xhr.upload.onprogress = (event) => {
-                    if (event.lengthComputable) {
-                        const percent = Math.round((event.loaded / event.total) * 100);
-                        setUploadProgress(percent);
-                    }
-                };
-                
-                xhr.onload = () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        onChange(`cf-stream://${uid}`);
-                        setUploadProgress(100);
-                        toast.success('Video uploaded to Cloudflare Stream');
-                    } else {
-                        toast.error('Cloudflare upload failed');
-                    }
-                    setIsUploading(false);
-                };
+                if (isResumable) {
+                    // Start TUS Resumable Upload
+                    const upload = new tus.Upload(file, {
+                        uploadUrl: uploadUrl,
+                        retryDelays: [0, 3000, 5000, 10000, 20000],
+                        onError: (error) => {
+                            console.error('[TUS Error]:', error);
+                            toast.error(`Upload failed: ${error.message}`);
+                            setIsUploading(false);
+                            setUploadProgress(0);
+                        },
+                        onProgress: (bytesUploaded, bytesTotal) => {
+                            const percent = Math.round((bytesUploaded / bytesTotal) * 100);
+                            setUploadProgress(percent);
+                        },
+                        onSuccess: () => {
+                            onChange(`cf-stream://${uid}`);
+                            setUploadProgress(100);
+                            toast.success('Video uploaded (Resumable)');
+                            setIsUploading(false);
+                        },
+                    });
 
-                xhr.onerror = () => {
-                    toast.error('Network error during upload');
-                    setIsUploading(false);
-                };
+                    // Start the upload
+                    upload.start();
+                } else {
+                    // Fallback to standard POST
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', uploadUrl, true);
+                    
+                    xhr.upload.onprogress = (event) => {
+                        if (event.lengthComputable) {
+                            const percent = Math.round((event.loaded / event.total) * 100);
+                            setUploadProgress(percent);
+                        }
+                    };
+                    
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            onChange(`cf-stream://${uid}`);
+                            setUploadProgress(100);
+                            toast.success('Video uploaded');
+                        } else {
+                            toast.error('Cloudflare upload failed');
+                        }
+                        setIsUploading(false);
+                    };
+                    
+                    xhr.onerror = () => {
+                        toast.error('Network error during upload');
+                        setIsUploading(false);
+                    };
 
-                const fd = new FormData();
-                fd.append('file', file);
-                xhr.send(fd);
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    xhr.send(fd);
+                }
             } else {
                 // R2 path
                 const formData = new FormData();

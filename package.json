@@ -120,6 +120,7 @@
         "stripe": "^19.2.0",
         "tailwind-merge": "^3.5.0",
         "tailwindcss-animate": "^1.0.7",
+        "tus-js-client": "^4.3.1",
         "uuid": "^11.0.0",
         "vaul": "^1.1.2",
         "zod": "^4.1.12"
