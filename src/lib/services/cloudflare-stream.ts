@@ -244,6 +244,7 @@ export async function listStreamVideos(limit: number = 20, search?: string) {
         uid: r.uid,
         name: r.meta?.name || 'Untitled Video',
         duration: r.duration,
+        size: r.size || 0,
         thumbnail: r.thumbnail,
         readyToStream: r.readyToStream,
         created: r.created,

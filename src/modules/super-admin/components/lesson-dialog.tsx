@@ -22,6 +22,7 @@ import { cloneQuizAction } from '@/modules/super-admin/actions';
 import { useUpload } from '@/hooks/use-upload';
 import { uploadStore } from '@/lib/upload-store';
 import { cn } from '@/lib/utils';
+import * as tus from 'tus-js-client';
 
 // ── BUILDER COMPONENTS ──────────────────────────────────────────
 import {
@@ -70,6 +71,14 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     const initialDataRef = React.useRef<string>('');
 
     const [showValidation, setShowValidation] = React.useState(false);
+    const tusUploadRef = React.useRef<tus.Upload | null>(null);
+
+    const abortStreamUpload = React.useCallback(() => {
+        if (tusUploadRef.current) {
+            tusUploadRef.current.abort();
+            tusUploadRef.current = null;
+        }
+    }, []);
 
     React.useEffect(() => {
         if (open && editingLesson) {
@@ -166,28 +175,55 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         setActiveUploadItemId(itemId);
         setUploadFile(file);
 
+        // Pre-upload validation for 100% reliability
+        if (!file || file.size === 0) {
+            toast.error('File is empty or invalid');
+            return;
+        }
+
         try {
             if (isVideoFile) {
-                const res = await fetch('/api/media/stream-upload', {
+                const initRes = await fetch('/api/media/stream-upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fileName: file.name }),
+                    body: JSON.stringify({ 
+                        fileName: file.name,
+                        fileSize: file.size 
+                    }),
                 });
-                if (!res.ok) throw new Error('Failed to initialise stream upload');
-                const { uploadUrl, uid } = await res.json();
+                if (!initRes.ok) throw new Error('Failed to initialise stream upload');
+                
+                const { uploadUrl, uid } = await initRes.json();
                 setIsStreamUploading(true);
                 setStreamProgress(0);
+
                 await new Promise<void>((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('POST', uploadUrl, true);
-                    xhr.upload.onprogress = (e) => e.lengthComputable && setStreamProgress(Math.round((e.loaded / e.total) * 100));
-                    xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error('Cloudflare upload failed'));
-                    xhr.onerror = () => reject(new Error('Network error'));
-                    const fd = new FormData(); fd.append('file', file);
-                    xhr.send(fd);
+                    const uploadInstance = new tus.Upload(file, {
+                        uploadUrl,
+                        chunkSize: 5 * 1024 * 1024, // 5MB chunks for better reliability on flaky networks
+                        retryDelays: [0, 1000, 3000, 5000, 10000, 20000], // Auto-retry up to 40 seconds total delay
+                        onProgress: (bytesUploaded, bytesTotal) => {
+                            const pct = bytesTotal > 0 ? Math.round((bytesUploaded / bytesTotal) * 100) : 0;
+                            setStreamProgress(pct);
+                        },
+                        onSuccess: () => {
+                            tusUploadRef.current = null;
+                            resolve();
+                        },
+                        onError: (error) => {
+                            tusUploadRef.current = null;
+                            // Clean up on fatal error
+                            setIsStreamUploading(false);
+                            reject(error);
+                        }
+                    });
+
+                    tusUploadRef.current = uploadInstance;
+                    uploadInstance.start();
                 });
+
                 applyBlockUpdate(itemId, 'url', `cf-stream://${uid}`);
-                toast.success('Video uploaded!');
+                toast.success('Video uploaded successfully!');
                 return;
             }
             const result = await upload(file, { purpose: 'library', storagePreference: 'r2', folder }) as { url: string } | undefined;
@@ -349,7 +385,22 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                                 setShowBlockPicker={setShowBlockPicker} onAddBlock={addBlock} onRemoveBlock={removeBlock}
                                                 onUpdateBlock={applyBlockUpdate} onImageSync={applyImageUrls} onFileUpload={handleFileUpload}
                                                 onLibraryRequest={(id) => { setLibraryTargetId(id); setLibraryOpen(true); }}
-                                                abort={abort} resetUpload={resetUpload} upload={upload}
+                                                abort={() => {
+                                                    if (isStreamUploading && activeUploadItemId) {
+                                                        abortStreamUpload();
+                                                        setIsStreamUploading(false);
+                                                        setActiveUploadItemId(null);
+                                                        setUploadFile(null);
+                                                    } else {
+                                                        abort();
+                                                    }
+                                                }}
+                                                resetUpload={() => {
+                                                    resetUpload();
+                                                    setStreamProgress(0);
+                                                    setIsStreamUploading(false);
+                                                }}
+                                                upload={upload}
                                             />
                                         </div>
                                     )}

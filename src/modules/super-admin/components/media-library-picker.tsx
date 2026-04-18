@@ -20,10 +20,12 @@ import { AssetType, MediaAsset, MediaLibraryPickerProps } from './media-library-
 
 // ─── Utilities ──────────────────────────────────────────────────────────────
 function formatBytes(bytes: number): string {
-    if (!bytes) return '0 B';
+    if (bytes === undefined || bytes === null || isNaN(bytes)) return '0 B';
+    if (bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
+    if (isNaN(i) || i < 0) return '0 B';
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
@@ -198,9 +200,10 @@ export function MediaLibraryPicker({
 
             // Transform stream videos to asset format for compatibility
             const transformedAssets = videos.map((video: any) => {
-                // Calculate file_size from duration (approximate: assuming 1MB per minute)
+                // Calculate file_size: use actual size if available, otherwise approximate from duration
                 const durationSeconds = video.duration || 0;
                 const approximateSize = Math.round((durationSeconds / 60) * 1024 * 1024);
+                const fileSize = video.size || approximateSize;
 
                 return {
                     id: video.uid || video.id,
@@ -209,7 +212,7 @@ export function MediaLibraryPicker({
                     file_url: `cf-stream://${video.uid || video.id}`,
                     file_path: `stream/${video.uid || video.id}`,
                     mime_type: 'video/mp4',
-                    file_size: approximateSize,
+                    file_size: fileSize,
                     storage_type: 'cloudflare_stream',
                     asset_type: 'video',
                     created_at: video.created || new Date().toISOString(),
