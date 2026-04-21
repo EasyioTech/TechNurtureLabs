@@ -5,7 +5,6 @@ import { Video, UploadCloud, Loader2 } from 'lucide-react';
 import { MediaLibraryPicker } from '@/modules/super-admin/components/media-library-picker';
 import { useAuth } from '@/components/providers/auth-provider';
 import { toast } from 'sonner';
-import * as tus from 'tus-js-client';
 
 interface VideoUploadProps {
     value: string;
@@ -78,7 +77,6 @@ export function VideoUpload({
         }
 
         abortControllerRef.current = new AbortController();
-        let tusUpload: any = null;
 
         try {
             setIsUploading(true);
@@ -196,45 +194,43 @@ export function VideoUpload({
                 throw new Error('Missing upload URL or video ID');
             }
 
-            if (isResumable) {
-                tusUpload = new tus.Upload(file, {
-                    uploadUrl: uploadUrl,
-                    chunkSize: 5 * 1024 * 1024,
-                    retryDelays: [0, 3000, 5000, 10000, 20000],
-                    parallelUploads: 1,
-                    removeFingerprintOnSuccess: true,
-                    metadata: {
-                        filename: file.name,
-                        filetype: file.type,
-                    },
-                    onBeforeRequest: (req) => {
-                        req.setHeader('Tus-Resumable', '1.0.0');
-                    },
-                    onError: (error) => {
-                        const msg = error.message?.includes('400')
-                            ? 'Upload expired: Please try again'
-                            : `Upload failed: ${error.message || 'Unknown error'}`;
-                        toast.error(msg);
-                    },
-                    onProgress: (bytesUploaded, bytesTotal) => {
-                        const percent = Math.round((bytesUploaded / bytesTotal) * 100);
-                        setUploadProgress(percent);
-                    },
-                    onSuccess: () => {
-                        lastFileHashRef.current = fileHash;
-                        onChange(`cf-stream://${uid}`);
-                        setUploadProgress(100);
-                        toast.success('Video uploaded successfully');
-                        if (fileInputRef.current) {
-                            fileInputRef.current.value = '';
-                        }
-                    },
-                });
+            // Direct Creator Upload via XHR (no CORS issues)
+            const xhr = new XMLHttpRequest();
 
-                tusUpload.start();
-            } else {
-                throw new Error('Resumable upload not available. Please try again.');
-            }
+            xhr.upload.addEventListener('progress', (event) => {
+                if (event.lengthComputable) {
+                    const percent = Math.round((event.loaded / event.total) * 100);
+                    setUploadProgress(percent);
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                setIsUploading(false);
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    lastFileHashRef.current = fileHash;
+                    onChange(`cf-stream://${uid}`);
+                    setUploadProgress(100);
+                    toast.success('Video uploaded successfully');
+                    if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                    }
+                } else {
+                    toast.error(`Upload failed with status ${xhr.status}`);
+                }
+            });
+
+            xhr.addEventListener('error', () => {
+                setIsUploading(false);
+                toast.error('Network error during upload');
+            });
+
+            xhr.addEventListener('abort', () => {
+                setIsUploading(false);
+                toast.info('Upload cancelled');
+            });
+
+            xhr.open('POST', uploadUrl);
+            xhr.send(file);
         } catch (error: any) {
             if (error.name === 'AbortError') {
                 toast.info('Upload cancelled');

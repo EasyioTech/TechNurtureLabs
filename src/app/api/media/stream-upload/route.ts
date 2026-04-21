@@ -46,19 +46,14 @@ export async function POST(req: NextRequest) {
         if (fileName) meta.name = fileName;
         if (session.userId) meta.uploadedBy = session.userId;
 
-        let result;
-        if (fileSize) {
-            // Use TUS for resumable uploads
-            result = await createTusUpload(fileSize, meta);
-        } else {
-            // Fallback to direct upload if size unknown
-            result = await createDirectUpload(maxDurationSeconds, meta);
-        }
+        // Use Direct Creator Upload (simple POST, no CORS issues)
+        // TUS would require server-side proxy due to Cloudflare's CORS restrictions
+        const result = await createDirectUpload(finalMaxDuration, meta);
 
         return NextResponse.json({
             uploadUrl: result.uploadUrl,
             uid: result.uid,
-            isResumable: !!fileSize,
+            isResumable: false,
         });
     } catch (err: any) {
         console.error('[Stream Upload Error]:', err);
