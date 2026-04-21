@@ -192,9 +192,9 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                 <div 
                     className={`p-5 sm:p-8 ${ts.card(isDark)} rounded-2xl sm:rounded-[32px] animate-in fade-in duration-500`}>
                     <SectionHeader title="Learning Activity" sub="Student login and interaction frequency" icon={Activity} />
-                    <div className="h-[260px] w-full">
+                    <div className="h-[280px] w-full overflow-hidden">
                         {isMounted && (
-                            <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
+                            <ResponsiveContainer width="100%" height="100%" minHeight={280}>
                                 <AreaChart data={activityData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
@@ -226,9 +226,9 @@ export function SchoolOverviewTab({ stats, leaderboard, courseMetrics }: Overvie
                     className={`p-5 sm:p-8 ${ts.card(isDark)} rounded-2xl sm:rounded-[32px] flex flex-col animate-in fade-in duration-500`}>
                     <SectionHeader title="Student Engagement" sub="Active vs Inactive students overview" icon={BarChart3} />
                     <div className="flex-1 flex flex-col sm:flex-row items-center gap-8">
-                        <div className="w-full sm:w-1/2 h-[200px]">
+                        <div className="w-full sm:w-1/2 h-[220px] overflow-hidden">
                             {isMounted && (
-                                <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
+                                <ResponsiveContainer width="100%" height="100%" minHeight={220}>
                                     <PieChart>
                                         <Pie data={studentActivityData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={8} strokeWidth={0}>
                                             {studentActivityData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i] || '#94a3b8'} />)}

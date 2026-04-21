@@ -65,6 +65,7 @@ const nextConfig: NextConfig = {
       "frame-ancestors 'none'",
       "object-src 'none'",
       "base-uri 'self'",
+      "report-uri /api/csp-report",
     ].join('; ');
 
     return [
