@@ -5,6 +5,7 @@ import { Video, UploadCloud, Loader2 } from 'lucide-react';
 import { MediaLibraryPicker } from '@/modules/super-admin/components/media-library-picker';
 import { useAuth } from '@/components/providers/auth-provider';
 import { toast } from 'sonner';
+import * as tus from 'tus-js-client';
 
 interface VideoUploadProps {
     value: string;
@@ -194,19 +195,35 @@ export function VideoUpload({
                 throw new Error('Missing upload URL or video ID');
             }
 
-            // Direct Creator Upload via XHR (no CORS issues)
-            const xhr = new XMLHttpRequest();
+            // TUS Resumable Upload via server proxy (no CORS issues)
+            // Server proxy relays all TUS requests to Cloudflare
+            const proxiedUrl = `/api/media/tus-proxy?url=${encodeURIComponent(uploadUrl)}`;
 
-            xhr.upload.addEventListener('progress', (event) => {
-                if (event.lengthComputable) {
-                    const percent = Math.round((event.loaded / event.total) * 100);
+            const tusUpload = new tus.Upload(file, {
+                uploadUrl: proxiedUrl,
+                chunkSize: 5 * 1024 * 1024,
+                retryDelays: [0, 3000, 5000, 10000, 20000],
+                parallelUploads: 1,
+                removeFingerprintOnSuccess: true,
+                metadata: {
+                    filename: file.name,
+                    filetype: file.type,
+                },
+                onBeforeRequest: (req) => {
+                    req.setHeader('Tus-Resumable', '1.0.0');
+                },
+                onError: (error) => {
+                    setIsUploading(false);
+                    const msg = error.message?.includes('400')
+                        ? 'Upload expired: Please try again'
+                        : `Upload failed: ${error.message || 'Unknown error'}`;
+                    toast.error(msg);
+                },
+                onProgress: (bytesUploaded, bytesTotal) => {
+                    const percent = Math.round((bytesUploaded / bytesTotal) * 100);
                     setUploadProgress(percent);
-                }
-            });
-
-            xhr.addEventListener('load', () => {
-                setIsUploading(false);
-                if (xhr.status >= 200 && xhr.status < 300) {
+                },
+                onSuccess: () => {
                     lastFileHashRef.current = fileHash;
                     onChange(`cf-stream://${uid}`);
                     setUploadProgress(100);
@@ -214,23 +231,10 @@ export function VideoUpload({
                     if (fileInputRef.current) {
                         fileInputRef.current.value = '';
                     }
-                } else {
-                    toast.error(`Upload failed with status ${xhr.status}`);
-                }
+                },
             });
 
-            xhr.addEventListener('error', () => {
-                setIsUploading(false);
-                toast.error('Network error during upload');
-            });
-
-            xhr.addEventListener('abort', () => {
-                setIsUploading(false);
-                toast.info('Upload cancelled');
-            });
-
-            xhr.open('POST', uploadUrl);
-            xhr.send(file);
+            tusUpload.start();
         } catch (error: any) {
             if (error.name === 'AbortError') {
                 toast.info('Upload cancelled');

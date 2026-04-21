@@ -46,14 +46,14 @@ export async function POST(req: NextRequest) {
         if (fileName) meta.name = fileName;
         if (session.userId) meta.uploadedBy = session.userId;
 
-        // Use Direct Creator Upload (simple POST, no CORS issues)
-        // TUS would require server-side proxy due to Cloudflare's CORS restrictions
-        const result = await createDirectUpload(finalMaxDuration, meta);
+        // Initialize TUS resumable upload (browser will use server proxy)
+        const result = await createTusUpload(fileSize || 1024, meta);
 
         return NextResponse.json({
             uploadUrl: result.uploadUrl,
             uid: result.uid,
-            isResumable: false,
+            isResumable: true,
+            tusEndpoint: '/api/media/tus-proxy',
         });
     } catch (err: any) {
         console.error('[Stream Upload Error]:', err);
