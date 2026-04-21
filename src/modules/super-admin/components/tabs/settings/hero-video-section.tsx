@@ -101,7 +101,6 @@ export function HeroVideoSection({
                                 onChange={(url) => setVideoUrl(url)}
                                 isDark={isDark}
                                 folder="landing"
-                                useCloudflareStream={true}
                             />
                         </div>
                     ) : (

@@ -13,6 +13,28 @@
 import { serverEnv } from '../env.server';
 
 const CF_API_BASE = 'https://api.cloudflare.com/client/v4';
+const DEFAULT_TIMEOUT_MS = 30000;
+
+/**
+ * Wraps fetch with timeout abort controller
+ */
+async function fetchWithTimeout(
+    url: string,
+    options?: RequestInit,
+    timeoutMs: number = DEFAULT_TIMEOUT_MS
+): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        return await fetch(url, {
+            ...options,
+            signal: controller.signal,
+        });
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
 
 /** Whether Cloudflare Stream is configured */
 export function isStreamConfigured(): boolean {
@@ -75,7 +97,7 @@ export async function createDirectUpload(
         body.meta = meta;
     }
 
-    const res = await fetch(`${getAccountUrl()}/direct_upload`, {
+    const res = await fetchWithTimeout(`${getAccountUrl()}/direct_upload`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(body),
@@ -124,7 +146,7 @@ export async function createTusUpload(
         headers['Upload-Metadata'] = metadataString;
     }
 
-    const res = await fetch(getAccountUrl(), {
+    const res = await fetchWithTimeout(getAccountUrl(), {
         method: 'POST',
         headers,
     });
@@ -141,8 +163,13 @@ export async function createTusUpload(
         throw new Error('Cloudflare Stream failed to return TUS Location or Media ID');
     }
 
+    // Ensure absolute URL (prepending base if Cloudflare returns relative, though unlikely)
+    const absoluteUploadUrl = uploadUrl.startsWith('http')
+        ? uploadUrl
+        : `${CF_API_BASE}${uploadUrl.startsWith('/') ? '' : '/'}${uploadUrl}`;
+
     return {
-        uploadUrl,
+        uploadUrl: absoluteUploadUrl,
         uid,
     };
 }
@@ -169,7 +196,7 @@ export async function getVideoStatus(uid: string): Promise<StreamVideoStatus> {
         throw new Error('Cloudflare Stream is not configured.');
     }
 
-    const res = await fetch(`${getAccountUrl()}/${uid}`, {
+    const res = await fetchWithTimeout(`${getAccountUrl()}/${uid}`, {
         headers: getHeaders(),
     });
 
@@ -204,15 +231,10 @@ export async function deleteStreamVideo(uid: string): Promise<void> {
         throw new Error('Cloudflare Stream is not configured.');
     }
 
-    const res = await fetch(`${getAccountUrl()}/${uid}`, {
+    const res = await fetchWithTimeout(`${getAccountUrl()}/${uid}`, {
         method: 'DELETE',
         headers: getHeaders(),
     });
-
-    if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        console.error(`[CF Stream] Delete failed for ${uid}: ${text}`);
-    }
 }
 
 /**
@@ -230,7 +252,7 @@ export async function listStreamVideos(limit: number = 20, search?: string) {
     });
     if (search) params.set('search', search);
 
-    const res = await fetch(`${getAccountUrl()}?${params.toString()}`, {
+    const res = await fetchWithTimeout(`${getAccountUrl()}?${params.toString()}`, {
         headers: getHeaders(),
     });
 

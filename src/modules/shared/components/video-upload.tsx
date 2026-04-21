@@ -15,23 +15,24 @@ interface VideoUploadProps {
     isDark?: boolean;
     compact?: boolean;
     folder?: string;
-    useCloudflareStream?: boolean;
 }
 
-export function VideoUpload({ 
-    value, 
-    onChange, 
-    label, 
-    description, 
-    isDark = false, 
-    compact = false, 
-    folder,
-    useCloudflareStream = false
+export function VideoUpload({
+    value,
+    onChange,
+    label,
+    description,
+    isDark = false,
+    compact = false,
+    folder
 }: VideoUploadProps) {
     const { profile } = useAuth();
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const abortControllerRef = React.useRef<AbortController | null>(null);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const lastFileHashRef = React.useRef<string | null>(null);
     
     // Only super-admins can use the media library through this component
     const isSuperAdmin = profile?.role === 'super_admin';
@@ -41,147 +42,208 @@ export function VideoUpload({
         setIsPickerOpen(true);
     };
 
+    const parseErrorResponse = (response: Response): string => {
+        try {
+            const json = response.statusText || 'Upload failed';
+            return json;
+        } catch {
+            return 'Upload failed with status ' + response.status;
+        }
+    };
+
+    const cancelUpload = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+    };
+
+    const computeFileHash = (file: File): string => {
+        return `${file.name}|${file.size}|${file.type}|${file.lastModified}`;
+    };
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !isSuperAdmin) return;
 
-        // Basic validation
         if (!file.type.startsWith('video/')) {
             toast.error('Please upload a valid video file');
             return;
         }
 
+        const fileHash = computeFileHash(file);
+        if (lastFileHashRef.current === fileHash && value) {
+            toast.info('This video was already uploaded');
+            return;
+        }
+
+        abortControllerRef.current = new AbortController();
+        let tusUpload: any = null;
+
         try {
             setIsUploading(true);
-            setUploadProgress(5);
+            setUploadProgress(1); // Analysis phase
 
-            const getCsrfToken = () => document.cookie
-                .split('; ')
-                .find(row => row.startsWith('csrf_token='))
-                ?.split('=')[1];
+            // ─── STEP 1: PRE-UPLOAD ANALYSIS ─────────────────────────────────────────
+            // We analyze the video to detect its duration and metadata location.
+            // This prevents "Infinite Loop" processing in Cloudflare Stream and 
+            // resolves "hundreds of minutes" duration reporting errors.
             
-            if (useCloudflareStream) {
-                // Cloudflare Stream resumable path
-                const csrfToken = getCsrfToken();
-                const res = await fetch('/api/media/stream-upload', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
-                    },
-                    body: JSON.stringify({ 
-                        fileName: file.name,
-                        fileSize: file.size // Required for TUS resumable
-                    }),
+            const analyzeVideo = (f: File): Promise<{ duration: number, isFastStart: boolean }> => {
+                return new Promise((resolve) => {
+                    const video = document.createElement('video');
+                    video.preload = 'metadata';
+                    const videoUrl = URL.createObjectURL(f);
+                    
+                    const timeout = setTimeout(() => {
+                        cleanup();
+                        resolve({ duration: 0, isFastStart: false });
+                    }, 4000);
+
+                    const cleanup = () => {
+                        clearTimeout(timeout);
+                        video.onloadedmetadata = null;
+                        video.onerror = null;
+                        URL.revokeObjectURL(videoUrl);
+                    };
+
+                    video.onloadedmetadata = () => {
+                        const duration = video.duration;
+                        cleanup();
+                        
+                        // Check for moov atom in first 128KB (Fast Start)
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const buffer = e.target?.result as ArrayBuffer;
+                            if (!buffer) return resolve({ duration, isFastStart: false });
+                            
+                            const bytes = new Uint8Array(buffer);
+                            let isFastStart = false;
+                            // Search for 'moov' string
+                            for (let i = 0; i < bytes.length - 4; i++) {
+                                if (bytes[i] === 109 && bytes[i+1] === 111 && bytes[i+2] === 111 && bytes[i+3] === 118) {
+                                    isFastStart = true;
+                                    break;
+                                }
+                            }
+                            resolve({ duration, isFastStart });
+                        };
+                        reader.readAsArrayBuffer(f.slice(0, 131072)); // 128KB
+                    };
+
+                    video.onerror = () => {
+                        cleanup();
+                        resolve({ duration: 0, isFastStart: false });
+                    };
+
+                    video.src = videoUrl;
                 });
-                
-                if (!res.ok) {
-                    const error = await res.json();
-                    throw new Error(error.error || 'Failed to initialise stream upload');
+            };
+
+            const { duration: durationHint, isFastStart } = await analyzeVideo(file);
+            
+            if (!isFastStart && durationHint > 0) {
+                toast.info('Non-optimized video detected. Stabilizing metadata markers...', { icon: '⚙️' });
+            } else if (!isFastStart && durationHint === 0) {
+                toast.warning('Metadata markers not found at start. Processing may take longer.', { duration: 5000 });
+            }
+
+            setUploadProgress(5);
+            // ─────────────────────────────────────────────────────────────────────────
+
+            const getCsrfToken = () => {
+                const cookieStr = document.cookie;
+                const match = cookieStr.match(/csrf_token=([^;]+)/);
+                return match?.[1] || '';
+            };
+
+            const csrfToken = getCsrfToken();
+            const res = await fetch('/api/media/stream-upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+                },
+                body: JSON.stringify({
+                    fileName: file.name,
+                    fileSize: file.size,
+                    durationHint: durationHint // Pass hint to CF Stream via API
+                }),
+                signal: abortControllerRef.current.signal,
+            });
+
+            if (!res.ok) {
+                let errorMsg = parseErrorResponse(res);
+                try {
+                    const errorData = await res.json();
+                    errorMsg = errorData.error || errorMsg;
+                } catch {
+                    // use default errorMsg if JSON parsing fails
                 }
-                
-                const { uploadUrl, uid, isResumable } = await res.json();
-                
-                if (isResumable) {
-                    // Start TUS Resumable Upload
-                    const upload = new tus.Upload(file, {
-                        uploadUrl: uploadUrl,
-                        retryDelays: [0, 3000, 5000, 10000, 20000],
-                        onError: (error) => {
-                            console.error('[TUS Error]:', error);
-                            toast.error(`Upload failed: ${error.message}`);
-                            setIsUploading(false);
-                            setUploadProgress(0);
-                        },
-                        onProgress: (bytesUploaded, bytesTotal) => {
-                            const percent = Math.round((bytesUploaded / bytesTotal) * 100);
-                            setUploadProgress(percent);
-                        },
-                        onSuccess: () => {
-                            onChange(`cf-stream://${uid}`);
-                            setUploadProgress(100);
-                            toast.success('Video uploaded (Resumable)');
-                            setIsUploading(false);
-                        },
-                    });
+                throw new Error(errorMsg);
+            }
 
-                    // Start the upload
-                    upload.start();
-                } else {
-                    // Fallback to standard POST
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('POST', uploadUrl, true);
-                    
-                    xhr.upload.onprogress = (event) => {
-                        if (event.lengthComputable) {
-                            const percent = Math.round((event.loaded / event.total) * 100);
-                            setUploadProgress(percent);
-                        }
-                    };
-                    
-                    xhr.onload = () => {
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            onChange(`cf-stream://${uid}`);
-                            setUploadProgress(100);
-                            toast.success('Video uploaded');
-                        } else {
-                            toast.error('Cloudflare upload failed');
-                        }
-                        setIsUploading(false);
-                    };
-                    
-                    xhr.onerror = () => {
-                        toast.error('Network error during upload');
-                        setIsUploading(false);
-                    };
+            let uploadData;
+            try {
+                uploadData = await res.json();
+            } catch {
+                throw new Error('Server returned invalid response');
+            }
 
-                    const fd = new FormData();
-                    fd.append('file', file);
-                    xhr.send(fd);
-                }
-            } else {
-                // R2 path
-                const formData = new FormData();
-                formData.append('file', file);
-                if (folder) formData.append('folder', folder);
+            const { uploadUrl, uid, isResumable } = uploadData;
 
-                const csrfToken = getCsrfToken();
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', '/api/media/upload', true);
-                if (csrfToken) {
-                    xhr.setRequestHeader('x-csrf-token', csrfToken);
-                }
+            if (!uploadUrl || !uid) {
+                throw new Error('Missing upload URL or video ID');
+            }
 
-                xhr.upload.onprogress = (event) => {
-                    if (event.lengthComputable) {
-                        const percent = Math.round((event.loaded / event.total) * 90) + 5;
+            if (isResumable) {
+                tusUpload = new tus.Upload(file, {
+                    uploadUrl: uploadUrl,
+                    chunkSize: 5 * 1024 * 1024,
+                    retryDelays: [0, 3000, 5000, 10000, 20000],
+                    parallelUploads: 1,
+                    removeFingerprintOnSuccess: true,
+                    metadata: {
+                        filename: file.name,
+                        filetype: file.type,
+                    },
+                    onBeforeRequest: (req) => {
+                        req.setHeader('Tus-Resumable', '1.0.0');
+                    },
+                    onError: (error) => {
+                        const msg = error.message?.includes('400')
+                            ? 'Upload expired: Please try again'
+                            : `Upload failed: ${error.message || 'Unknown error'}`;
+                        toast.error(msg);
+                    },
+                    onProgress: (bytesUploaded, bytesTotal) => {
+                        const percent = Math.round((bytesUploaded / bytesTotal) * 100);
                         setUploadProgress(percent);
-                    }
-                };
-
-                xhr.onload = () => {
-                    if (xhr.status === 200) {
-                        const response = JSON.parse(xhr.responseText);
-                        onChange(response.url);
+                    },
+                    onSuccess: () => {
+                        lastFileHashRef.current = fileHash;
+                        onChange(`cf-stream://${uid}`);
                         setUploadProgress(100);
-                        toast.success('Video uploaded to R2 successfully');
-                    } else {
-                        toast.error('Upload failed');
-                    }
-                    setIsUploading(false);
-                };
+                        toast.success('Video uploaded successfully');
+                        if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                        }
+                    },
+                });
 
-                xhr.onerror = () => {
-                    toast.error('Upload failed');
-                    setIsUploading(false);
-                };
-
-                xhr.send(formData);
+                tusUpload.start();
+            } else {
+                throw new Error('Resumable upload not available. Please try again.');
             }
         } catch (error: any) {
-            console.error('Upload error:', error);
+            if (error.name === 'AbortError') {
+                toast.info('Upload cancelled');
+            } else {
+                toast.error(error.message || 'An error occurred during upload');
+            }
+        } finally {
             setIsUploading(false);
-            toast.error(error.message || 'An error occurred during upload');
+            abortControllerRef.current = null;
         }
     };
 
@@ -226,14 +288,10 @@ export function VideoUpload({
                             {!compact && (
                                 <>
                                     <p className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        {isSuperAdmin 
-                                            ? useCloudflareStream ? 'Upload to Stream' : 'Browse R2 Library' 
-                                            : 'Admin Restricted'}
+                                        {isSuperAdmin ? 'Upload to Stream' : 'Admin Restricted'}
                                     </p>
                                     <p className={`text-[10px] mt-1 font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                        {isSuperAdmin 
-                                            ? useCloudflareStream ? 'High-Performance Video' : 'MP4, WebM up to 50MB' 
-                                            : 'Managed by Super Admin'}
+                                        {isSuperAdmin ? 'High-Performance Video' : 'Managed by Super Admin'}
                                     </p>
                                 </>
                             )}
@@ -252,22 +310,22 @@ export function VideoUpload({
                             {isUploading ? (
                                 <><Loader2 size={14} className="animate-spin" /> {uploadProgress}%</>
                             ) : (
-                                <><UploadCloud size={14} /> {useCloudflareStream ? 'Stream Upload' : 'Upload Video'}</>
+                                <><UploadCloud size={14} /> Upload Video</>
                             )}
-                            <input type="file" className="hidden" accept="video/*" onChange={handleFileUpload} disabled={isUploading} />
+                            <input ref={fileInputRef} type="file" className="hidden" accept="video/*" onChange={handleFileUpload} disabled={isUploading} />
                         </label>
-                        
+
                         {!value && (
                             <button
                                 onClick={handlePickerClick}
                                 className={`flex-1 h-11 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border-2
-                                    ${isDark 
-                                        ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20' 
+                                    ${isDark
+                                        ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20'
                                         : 'bg-indigo-50 border-indigo-100 text-indigo-600 hover:bg-indigo-100'
                                     }
                                 `}
                             >
-                                Browse {useCloudflareStream ? 'Stream' : 'R2'} Library
+                                Browse Stream Library
                             </button>
                         )}
                     </div>
