@@ -30,6 +30,8 @@ export function VideoUpload({
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [isNormalizing, setIsNormalizing] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
     const tusUploadRef = React.useRef<tus.Upload | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -106,9 +108,8 @@ export function VideoUpload({
                 uid = data.uid;
                 const uploadURL = data.uploadURL;
 
-                // Step 2: Upload using TUS
                 const upload = new tus.Upload(file, {
-                    endpoint: uploadURL,
+                    uploadUrl: uploadURL,
                     retryDelays: [0, 3000, 5000, 10000],
                     chunkSize: 5 * 1024 * 1024,
                     removeFingerprintOnSuccess: true,
@@ -188,6 +189,33 @@ export function VideoUpload({
                     return executeUpload(true);
                 }
 
+                // Gap #5: Normalization Escalation (Guaranteed Fix)
+                if (isRetry) {
+                    setIsNormalizing(true);
+                    toast.info("Initial processing failed. Normalizing on server...");
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        
+                        const normRes = await fetch('/api/media/normalize', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (!normRes.ok) throw new Error('Normalization pipeline failed');
+                        
+                        const normData = await normRes.json();
+                        onChange(`cf-stream://${normData.uid}`);
+                        toast.success('Video repaired and processed');
+                        setIsNormalizing(false);
+                        setIsUploading(false);
+                        return;
+                    } catch (normErr) {
+                        console.error('[Escalation Error]:', normErr);
+                        setIsNormalizing(false);
+                    }
+                }
+
                 // Final Failure Cleanup
                 if (uid) {
                     try { await fetch(`/api/media/stream-status/${uid}`, { method: 'DELETE' }); } catch (e) {}
@@ -195,7 +223,7 @@ export function VideoUpload({
                 
                 const finalMsg = error.message.includes('re-encode') 
                     ? error.message 
-                    : `Upload failed. Try re-encoding with FFmpeg: "ffmpeg -i input.mp4 -c:v libx264 -c:a aac fixed.mp4"`;
+                    : `Upload failed. Processing error or malformed file.`;
                 
                 toast.error(finalMsg);
                 setIsUploading(false);
@@ -241,6 +269,17 @@ export function VideoUpload({
                         </>
                     ) : (
                         <div onClick={handlePickerClick} className="flex flex-col items-center">
+                            {(isUploading || isNormalizing) && (
+                                <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+                                    <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
+                                    <p className="text-white font-bold text-lg mb-1">
+                                        {isNormalizing ? 'Repairing & Processing' : 'Processing Video'}
+                                    </p>
+                                    <p className="text-slate-400 text-sm">
+                                        {isNormalizing ? 'This may take a few minutes for large files...' : 'Standardizing for all devices...'}
+                                    </p>
+                                </div>
+                            )}
                             <div className={`${compact ? 'w-8 h-8 rounded-xl' : 'w-12 h-12 rounded-2xl'} flex items-center justify-center ${compact ? '' : 'mb-3'} ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
                                 <Video size={compact ? 16 : 24} />
                             </div>

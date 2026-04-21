@@ -38,9 +38,8 @@ export async function POST(req: NextRequest) {
         if (fileName) meta.name = fileName;
         if (session.userId) meta.uploadedBy = session.userId;
 
-        // Direct Creator Upload: client POSTs directly to Cloudflare via TUS
-        // Our server acts as the signed URL generator
-        const result = await createDirectUpload(36000, Object.keys(meta).length > 0 ? meta : undefined);
+        // Use createTusUpload for resumable uploads
+        const result = await createTusUpload(body.fileSize || 0, Object.keys(meta).length > 0 ? meta : undefined);
 
         console.log(`[Stream Upload] UID: ${result.uid}, TUS upload URL ready`);
 

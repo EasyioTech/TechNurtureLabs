@@ -54,6 +54,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     postgresql-client \
     redis-tools \
+    ffmpeg \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 

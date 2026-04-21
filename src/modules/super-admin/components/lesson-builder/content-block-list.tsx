@@ -12,6 +12,7 @@ interface ContentBlockListProps {
     isDark: boolean;
     isUploading: boolean;
     isStreamUploading: boolean;
+    isNormalizing?: boolean;
     activeUploadItemId: string | null;
     progress: number;
     streamProgress: number;
@@ -31,7 +32,7 @@ interface ContentBlockListProps {
 }
 
 export function ContentBlockList({
-    contentItems, isDark, isUploading, isStreamUploading, activeUploadItemId,
+    contentItems, isDark, isUploading, isStreamUploading, isNormalizing, activeUploadItemId,
     progress, streamProgress, uploadFile, uploadError,
     showBlockPicker, setShowBlockPicker,
     onAddBlock, onRemoveBlock, onUpdateBlock, onImageSync, onFileUpload, onLibraryRequest,
@@ -67,9 +68,9 @@ export function ContentBlockList({
                         idx={idx}
                         isDark={isDark}
                         isUploading={isUploading}
-                        isStreamUploading={isStreamUploading}
-                        activeUploadItemId={activeUploadItemId}
-                        progress={progress}
+                        isStreamUploading={isStreamUploading && activeUploadItemId === item.id}
+                        isNormalizing={isNormalizing && activeUploadItemId === item.id}
+                        progress={activeUploadItemId === item.id ? (isStreamUploading ? streamProgress : progress) : 0}
                         streamProgress={streamProgress}
                         uploadFile={uploadFile}
                         uploadError={uploadError}

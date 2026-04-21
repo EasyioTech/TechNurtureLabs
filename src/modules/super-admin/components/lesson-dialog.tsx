@@ -66,6 +66,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     const [importOpen, setImportOpen] = React.useState(false);
     const [streamProgress, setStreamProgress] = React.useState(0);
     const [isStreamUploading, setIsStreamUploading] = React.useState(false);
+    const [isNormalizing, setIsNormalizing] = React.useState(false);
 
     const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload();
     const [isDirty, setIsDirty] = React.useState(false);
@@ -219,7 +220,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
 
                         return await new Promise<string>(async (resolve, reject) => {
                             const upload = new tus.Upload(file, {
-                                endpoint: uploadURL,
+                                uploadUrl: uploadURL,
                                 retryDelays: [0, 3000, 5000, 10000],
                                 chunkSize: 5 * 1024 * 1024,
                                 removeFingerprintOnSuccess: true,
@@ -264,11 +265,15 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
 
                                         if (!isReady) throw new Error('Processing timeout');
                                         resolve(uploadUid);
-                                    } catch (err) {
-                                        reject(err);
-                                    }
-                                },
-                            });
+                                    } catch (err: any) {
+                                         // Check for normalization flag set in parent
+                                         if (err.message?.includes('Repairing')) {
+                                             setIsNormalizing(true);
+                                         }
+                                         reject(err);
+                                     }
+                                 },
+                             });
 
                             tusUploadRef.current = upload;
                             const previous = await upload.findPreviousUploads();
@@ -283,6 +288,31 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                             if (uploadUid) await fetch(`/api/media/stream-status/${uploadUid}`, { method: 'DELETE' });
                             return executeStreamUpload(true);
                         }
+
+                        // Gap #5: Normalization Escalation (Guaranteed Fix)
+                        if (isRetry) {
+                            setIsNormalizing(true);
+                            toast.info("Processing failed. Normalizing on server...");
+                            try {
+                                const formData = new FormData();
+                                formData.append('file', file);
+                                
+                                const normRes = await fetch('/api/media/normalize', {
+                                    method: 'POST',
+                                    body: formData
+                                });
+
+                                if (!normRes.ok) throw new Error('Normalization pipeline failed');
+                                
+                                const normData = await normRes.json();
+                                setIsNormalizing(false);
+                                return normData.uid;
+                            } catch (normErr) {
+                                console.error('[Escalation Error]:', normErr);
+                                setIsNormalizing(false);
+                            }
+                        }
+
                         if (uploadUid) {
                             try { await fetch(`/api/media/stream-status/${uploadUid}`, { method: 'DELETE' }); } catch (e) {}
                         }
@@ -449,6 +479,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                         <div className="p-4">
                                             <ContentBlockList
                                                 contentItems={contentItems} isDark={isDark} isUploading={isUploading} isStreamUploading={isStreamUploading}
+                                                isNormalizing={isNormalizing}
                                                 activeUploadItemId={activeUploadItemId} progress={progress} streamProgress={streamProgress}
                                                 uploadFile={uploadFile} uploadError={uploadError} showBlockPicker={showBlockPicker}
                                                 setShowBlockPicker={setShowBlockPicker} onAddBlock={addBlock} onRemoveBlock={removeBlock}

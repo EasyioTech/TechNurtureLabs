@@ -14,6 +14,7 @@ interface ContentBlockItemProps {
     isDark: boolean;
     isUploading: boolean;
     isStreamUploading: boolean;
+    isNormalizing?: boolean;
     activeUploadItemId: string | null;
     progress: number;
     streamProgress: number;
@@ -30,14 +31,15 @@ interface ContentBlockItemProps {
 }
 
 export function ContentBlockItem({
-    item, idx, isDark, isUploading, isStreamUploading, activeUploadItemId,
+    item, idx, isDark, isUploading, isStreamUploading, isNormalizing, activeUploadItemId,
     progress, streamProgress, uploadFile, uploadError,
     onRemove, onUpdate, onImageSync, onFileUpload, onLibraryRequest,
     abort, resetUpload, upload
 }: ContentBlockItemProps) {
     const bt = BLOCK_TYPES.find(b => b.id === item.type) || BLOCK_TYPES[0];
     const isStreamUploadingThis = isStreamUploading && activeUploadItemId === item.id;
-    const isUploadingThis = (isUploading || isStreamUploading) && activeUploadItemId === item.id;
+    const isNormalizingThis = isNormalizing && activeUploadItemId === item.id;
+    const isUploadingThis = (isUploading || isStreamUploading || isNormalizing) && activeUploadItemId === item.id;
     const isUploaded = item.url.startsWith('/api/') || item.url.includes('r2.cloudflare') || item.url.startsWith('cf-stream://');
     
     const displayUrl = isUploaded
@@ -138,7 +140,9 @@ export function ContentBlockItem({
                                     }}
                                 />
                                 {isUploadingThis
-                                    ? <><Loader2 size={11} className="animate-spin" /> {isStreamUploadingThis ? streamProgress : progress}%</>
+                                    ? isNormalizingThis
+                                        ? <><Loader2 size={11} className="animate-spin" /> Repairing...</>
+                                        : <><Loader2 size={11} className="animate-spin" /> {isStreamUploadingThis ? streamProgress : progress}%</>
                                     : <><Upload size={11} /> Upload</>
                                 }
                             </label>
