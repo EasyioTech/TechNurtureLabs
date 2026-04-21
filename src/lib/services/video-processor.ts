@@ -82,8 +82,9 @@ export async function normalizeVideo(inputPath: string): Promise<string> {
     // Issue #5 & #6: Improved command with VSync VFR and Bitrate capping
     // -maxrate 5M prevents file size explosion on high-bitrate sources
     const command = `ffmpeg -i "${inputPath}" \
-        -c:v libx264 -preset veryfast -crf 23 \
+        -c:v libx264 -preset veryfast -threads 2 -crf 23 \
         -pix_fmt yuv420p \
+        -r 30 \
         -vsync vfr \
         -maxrate 5M -bufsize 10M \
         -c:a aac \

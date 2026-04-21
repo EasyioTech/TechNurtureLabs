@@ -202,10 +202,37 @@ export function VideoUpload({
                             body: formData
                         });
 
-                        if (!normRes.ok) throw new Error('Normalization pipeline failed');
+                        if (!normRes.ok) {
+                            const error = await normRes.json();
+                            throw new Error(error.error || 'Normalization pipeline failed');
+                        }
                         
-                        const normData = await normRes.json();
-                        onChange(`cf-stream://${normData.uid}`);
+                        const { jobId } = await normRes.json();
+                        toast.info("Normalization queued. This may take 1-2 minutes...");
+
+                        // Poll for Job Completion
+                        let attempts = 0;
+                        let finalUid = null;
+
+                        while (attempts < 40) { // 40 * 3s = 2 minutes
+                            const jobRes = await fetch(`/api/media/jobs/${jobId}`);
+                            if (jobRes.ok) {
+                                const jobData = await jobRes.json();
+                                if (jobData.state === 'completed' && jobData.result?.uid) {
+                                    finalUid = jobData.result.uid;
+                                    break;
+                                }
+                                if (jobData.state === 'failed') {
+                                    throw new Error(`Normalization failed: ${jobData.failedReason || 'Unknown error'}`);
+                                }
+                            }
+                            await new Promise(r => setTimeout(r, 3000));
+                            attempts++;
+                        }
+
+                        if (!finalUid) throw new Error('Normalization timed out');
+
+                        onChange(`cf-stream://${finalUid}`);
                         toast.success('Video repaired and processed');
                         setIsNormalizing(false);
                         setIsUploading(false);

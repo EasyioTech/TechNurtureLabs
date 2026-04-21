@@ -70,6 +70,7 @@ export function ContentBlockList({
                         isUploading={isUploading}
                         isStreamUploading={isStreamUploading && activeUploadItemId === item.id}
                         isNormalizing={isNormalizing && activeUploadItemId === item.id}
+                        activeUploadItemId={activeUploadItemId}
                         progress={activeUploadItemId === item.id ? (isStreamUploading ? streamProgress : progress) : 0}
                         streamProgress={streamProgress}
                         uploadFile={uploadFile}
