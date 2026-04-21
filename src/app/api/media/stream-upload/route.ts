@@ -43,16 +43,15 @@ export async function POST(req: NextRequest) {
         if (fileName) meta.name = fileName;
         if (session.userId) meta.uploadedBy = session.userId;
 
-        // Direct Creator Upload: client POSTs directly to Cloudflare
-        // No proxy relay, no TUS complexity — simple and performant
+        // Direct Creator Upload: client POSTs directly to Cloudflare via TUS
+        // Our server acts as the signed URL generator
         const result = await createDirectUpload(36000, Object.keys(meta).length > 0 ? meta : undefined);
 
-        console.log(`[Stream Upload] UID: ${result.uid}, Direct upload URL ready`);
+        console.log(`[Stream Upload] UID: ${result.uid}, TUS upload URL ready`);
 
         return NextResponse.json({
-            uploadUrl: result.uploadUrl,
+            uploadURL: result.uploadUrl,
             uid: result.uid,
-            isResumable: false,
         });
     } catch (err: any) {
         console.error('[Stream Upload Error]:', err);

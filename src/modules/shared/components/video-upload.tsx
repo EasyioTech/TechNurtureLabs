@@ -1,5 +1,6 @@
 'use client';
 
+import * as tus from 'tus-js-client';
 import React, { useState } from 'react';
 import { Video, UploadCloud, Loader2 } from 'lucide-react';
 import { MediaLibraryPicker } from '@/modules/super-admin/components/media-library-picker';
@@ -29,11 +30,20 @@ export function VideoUpload({
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
-    const abortControllerRef = React.useRef<AbortController | null>(null);
+    const tusUploadRef = React.useRef<tus.Upload | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     // Only super-admins can use the media library through this component
     const isSuperAdmin = profile?.role === 'super_admin';
+
+    // Cleanup: abort upload on unmount
+    React.useEffect(() => {
+        return () => {
+            if (tusUploadRef.current) {
+                tusUploadRef.current.abort();
+            }
+        };
+    }, []);
 
     const handlePickerClick = () => {
         if (!isSuperAdmin) return;
@@ -56,11 +66,9 @@ export function VideoUpload({
             return;
         }
 
-        abortControllerRef.current = new AbortController();
-
         try {
             setIsUploading(true);
-            setUploadProgress(5);
+            setUploadProgress(0);
 
             const getCsrfToken = () => {
                 const cookieStr = document.cookie;
@@ -77,9 +85,9 @@ export function VideoUpload({
                     ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
                 },
                 body: JSON.stringify({
-                    fileName: file.name
-                }),
-                signal: abortControllerRef.current.signal,
+                    fileName: file.name,
+                    fileSize: file.size
+                })
             });
 
             if (!initRes.ok) {
@@ -87,64 +95,72 @@ export function VideoUpload({
                 throw new Error(error.error || 'Failed to initialize upload');
             }
 
-            const { uploadUrl, uid } = await initRes.json();
-            if (!uploadUrl || !uid) {
-                throw new Error('Server returned invalid upload data');
-            }
+            const { uploadURL, uid } = await initRes.json();
 
-            setUploadProgress(10);
+            let uploadSucceeded = false;
+            let uploadTimeoutId: NodeJS.Timeout | null = null;
 
-            // Step 2: Upload video directly to Cloudflare Stream
-            // Using Direct Creator Upload (Cloudflare Stream best practice)
-            await new Promise<void>((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', uploadUrl);
+            // Step 3: Upload using TUS with comprehensive error handling
+            const upload = new tus.Upload(file, {
+                endpoint: uploadURL,
+                // Aggressive retry strategy for network resilience
+                retryDelays: [0, 3000, 5000, 10000, 20000, 30000, 60000],
+                chunkSize: 50 * 1024 * 1024, // 50MB chunks for better reliability on large files
+                removeFingerprintOnSuccess: true, // Clean up resume fingerprint after success
+                metadata: {
+                    filename: file.name,
+                    filetype: file.type,
+                },
+                onError: (error) => {
+                    if (uploadTimeoutId) clearTimeout(uploadTimeoutId);
 
-                xhr.upload.onprogress = (e) => {
-                    if (e.lengthComputable) {
-                        const percent = Math.round((e.loaded / e.total) * 100);
-                        setUploadProgress(Math.min(10 + percent, 99));
+                    // Don't show error if already succeeded
+                    if (!uploadSucceeded) {
+                        console.error('[Video Upload] TUS Error:', error);
+                        toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
+                        setIsUploading(false);
+                        setUploadProgress(0);
                     }
-                };
+                },
+                onProgress: (bytesUploaded, bytesTotal) => {
+                    const percentage = (bytesUploaded / bytesTotal) * 100;
+                    setUploadProgress(Math.round(percentage));
+                },
+                onSuccess: () => {
+                    uploadSucceeded = true;
+                    if (uploadTimeoutId) clearTimeout(uploadTimeoutId);
 
-                xhr.onload = () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve();
-                    } else {
-                        reject(new Error(`Upload failed (${xhr.status})`));
-                    }
-                };
-
-                xhr.onerror = () => reject(new Error('Network error during upload'));
-                xhr.onabort = () => reject(new Error('Upload cancelled'));
-
-                // Signal setup for cancellation
-                if (abortControllerRef.current) {
-                    abortControllerRef.current.signal.addEventListener('abort', () => xhr.abort());
-                }
-
-                xhr.send(file);
+                    console.log('[Video Upload] Upload successful, UID:', uid);
+                    setUploadProgress(100);
+                    onChange(`cf-stream://${uid}`);
+                    toast.success('Video uploaded successfully');
+                    setIsUploading(false);
+                    tusUploadRef.current = null;
+                },
             });
 
-            // Success! Store the Stream video reference
-            setUploadProgress(100);
-            onChange(`cf-stream://${uid}`);
-            toast.success('Video uploaded to Cloudflare Stream');
+            tusUploadRef.current = upload;
 
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
+            // Safety timeout: if TUS hangs for >5 minutes, force cleanup
+            // This prevents infinite processing loops when TUS stalls
+            uploadTimeoutId = setTimeout(() => {
+                if (!uploadSucceeded && tusUploadRef.current) {
+                    console.error('[Video Upload] Timeout: upload did not complete in 5 minutes');
+                    toast.error('Upload took too long. Please try again or use a smaller file.');
+                    tusUploadRef.current.abort(true); // true = don't retry
+                    setIsUploading(false);
+                    setUploadProgress(0);
+                    tusUploadRef.current = null;
+                }
+            }, 5 * 60 * 1000);
+
+            upload.start();
+
         } catch (error: any) {
-            if (error.name === 'AbortError' || error.message === 'Upload cancelled') {
-                toast.info('Upload cancelled');
-            } else {
-                toast.error(error.message || 'Failed to upload video');
-                console.error('[Video Upload Error]:', error);
-            }
-        } finally {
+            toast.error(error.message || 'Failed to upload video');
+            console.error('[Video Upload Error]:', error);
             setIsUploading(false);
             setUploadProgress(0);
-            abortControllerRef.current = null;
         }
     };
 
@@ -203,8 +219,8 @@ export function VideoUpload({
                 {isSuperAdmin && (
                     <div className="flex gap-2">
                         <label className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-bold text-xs uppercase tracking-wider cursor-pointer transition-all border-2
-                            ${isDark 
-                                ? 'bg-white/[0.03] border-white/5 text-slate-300 hover:bg-white/[0.08] hover:border-white/10' 
+                            ${isDark
+                                ? 'bg-white/[0.03] border-white/5 text-slate-300 hover:bg-white/[0.08] hover:border-white/10'
                                 : 'bg-white border-slate-100 text-slate-600 hover:border-slate-200 hover:shadow-sm'
                             }
                         `}>
@@ -216,7 +232,29 @@ export function VideoUpload({
                             <input ref={fileInputRef} type="file" className="hidden" accept="video/*" onChange={handleFileUpload} disabled={isUploading} />
                         </label>
 
-                        {!value && (
+                        {isUploading && (
+                            <button
+                                onClick={() => {
+                                    if (tusUploadRef.current) {
+                                        tusUploadRef.current.abort(true);
+                                        tusUploadRef.current = null;
+                                    }
+                                    setIsUploading(false);
+                                    setUploadProgress(0);
+                                    toast.info('Upload cancelled');
+                                }}
+                                className={`flex-1 h-11 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border-2
+                                    ${isDark
+                                        ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'
+                                        : 'bg-red-50 border-red-100 text-red-600 hover:bg-red-100'
+                                    }
+                                `}
+                            >
+                                Cancel Upload
+                            </button>
+                        )}
+
+                        {!value && !isUploading && (
                             <button
                                 onClick={handlePickerClick}
                                 className={`flex-1 h-11 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border-2
