@@ -100,10 +100,13 @@ export function VideoUpload({
             let uploadSucceeded = false;
             let uploadTimeoutId: NodeJS.Timeout | null = null;
 
-            // Upload using TUS protocol
+            // Step 3: Upload using TUS with comprehensive error handling
             const upload = new tus.Upload(file, {
                 endpoint: uploadURL,
-                retryDelays: [0, 3000, 5000, 10000],
+                // Aggressive retry strategy for network resilience
+                retryDelays: [0, 3000, 5000, 10000, 20000, 30000, 60000],
+                chunkSize: 50 * 1024 * 1024, // 50MB chunks for better reliability on large files
+                removeFingerprintOnSuccess: true, // Clean up resume fingerprint after success
                 metadata: {
                     filename: file.name,
                     filetype: file.type,
@@ -113,8 +116,8 @@ export function VideoUpload({
 
                     // Don't show error if already succeeded
                     if (!uploadSucceeded) {
-                        console.error('[Video Upload] Error:', error);
-                        toast.error('Upload failed. Please try again.');
+                        console.error('[Video Upload] TUS Error:', error);
+                        toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
                         setIsUploading(false);
                         setUploadProgress(0);
                     }
@@ -127,7 +130,7 @@ export function VideoUpload({
                     uploadSucceeded = true;
                     if (uploadTimeoutId) clearTimeout(uploadTimeoutId);
 
-                    console.log('[Video Upload] Success, UID:', uid);
+                    console.log('[Video Upload] Upload successful, UID:', uid);
                     setUploadProgress(100);
                     onChange(`cf-stream://${uid}`);
                     toast.success('Video uploaded successfully');
