@@ -96,35 +96,35 @@ export function VideoUpload({
 
             // Step 2: Upload video directly to Cloudflare Stream
             // Using Direct Creator Upload (Cloudflare Stream best practice)
-            const uploadRes = await fetch(uploadUrl, {
-                method: 'POST',
-                body: file,
-                signal: abortControllerRef.current.signal,
-                headers: {
-                    'Content-Type': file.type || 'video/mp4',
-                }
-            });
+            await new Promise<void>((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', uploadUrl);
 
-            // Track progress during upload
-            if (uploadRes.body) {
-                const reader = uploadRes.body.getReader();
-                const contentLength = uploadRes.headers.get('content-length');
-                let receivedLength = 0;
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    receivedLength += value.length;
-                    if (contentLength) {
-                        const percent = Math.round((receivedLength / parseInt(contentLength)) * 100);
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
                         setUploadProgress(Math.min(10 + percent, 99));
                     }
-                }
-            }
+                };
 
-            if (!uploadRes.ok) {
-                throw new Error(`Upload failed: ${uploadRes.statusText}`);
-            }
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve();
+                    } else {
+                        reject(new Error(`Upload failed (${xhr.status})`));
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error('Network error during upload'));
+                xhr.onabort = () => reject(new Error('Upload cancelled'));
+
+                // Signal setup for cancellation
+                if (abortControllerRef.current) {
+                    abortControllerRef.current.signal.addEventListener('abort', () => xhr.abort());
+                }
+
+                xhr.send(file);
+            });
 
             // Success! Store the Stream video reference
             setUploadProgress(100);
@@ -135,7 +135,7 @@ export function VideoUpload({
                 fileInputRef.current.value = '';
             }
         } catch (error: any) {
-            if (error.name === 'AbortError') {
+            if (error.name === 'AbortError' || error.message === 'Upload cancelled') {
                 toast.info('Upload cancelled');
             } else {
                 toast.error(error.message || 'Failed to upload video');

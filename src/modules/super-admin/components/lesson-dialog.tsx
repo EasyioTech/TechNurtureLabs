@@ -22,7 +22,7 @@ import { cloneQuizAction } from '@/modules/super-admin/actions';
 import { useUpload } from '@/hooks/use-upload';
 import { uploadStore } from '@/lib/upload-store';
 import { cn } from '@/lib/utils';
-import * as tus from 'tus-js-client';
+
 
 // ── BUILDER COMPONENTS ──────────────────────────────────────────
 import {
@@ -71,7 +71,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     const initialDataRef = React.useRef<string>('');
 
     const [showValidation, setShowValidation] = React.useState(false);
-    const tusUploadRef = React.useRef<tus.Upload | null>(null);
+    const tusUploadRef = React.useRef<{ abort: () => void } | null>(null);
 
     const abortStreamUpload = React.useCallback(() => {
         if (tusUploadRef.current) {
@@ -191,42 +191,44 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                         fileSize: file.size 
                     }),
                 });
-                if (!initRes.ok) throw new Error('Failed to initialise stream upload');
+                
+                if (!initRes.ok) {
+                    const error = await initRes.json().catch(() => ({ error: 'Failed to initialize upload' }));
+                    throw new Error(error.error || 'Failed to initialize upload');
+                }
                 
                 const { uploadUrl, uid } = await initRes.json();
                 setIsStreamUploading(true);
                 setStreamProgress(0);
 
                 await new Promise<void>((resolve, reject) => {
-                    const uploadInstance = new tus.Upload(file, {
-                        uploadUrl: uploadUrl, // Already proxied by /api/media/stream-upload
-                        chunkSize: 5 * 1024 * 1024,
-                        retryDelays: [0, 3000, 5000, 10000, 20000],
-                        parallelUploads: 1,
-                        storeFingerprintForResuming: false,
-                        // CRITICAL: Disable fingerprinting to prevent CORS-blocking resume attempts
-                        fingerprint: (file: File, options: any) => Promise.resolve(null as any),
-                        onProgress: (bytesUploaded, bytesTotal) => {
-                            const pct = bytesTotal > 0 ? Math.round((bytesUploaded / bytesTotal) * 100) : 0;
-                            setStreamProgress(pct);
-                        },
-                        onSuccess: () => {
-                            tusUploadRef.current = null;
-                            resolve();
-                        },
-                        onError: (error) => {
-                            tusUploadRef.current = null;
-                            setIsStreamUploading(false);
-                            reject(error);
-                        }
-                    });
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', uploadUrl);
 
-                    tusUploadRef.current = uploadInstance;
-                    uploadInstance.start();
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const percent = Math.round((e.loaded / e.total) * 100);
+                            setStreamProgress(percent);
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve();
+                        } else {
+                            reject(new Error(`Upload failed (${xhr.status})`));
+                        }
+                    };
+
+                    xhr.onerror = () => reject(new Error('Network error during upload'));
+                    xhr.onabort = () => reject(new Error('Upload cancelled'));
+                    
+                    tusUploadRef.current = { abort: () => xhr.abort() };
+                    xhr.send(file);
                 });
 
                 applyBlockUpdate(itemId, 'url', `cf-stream://${uid}`);
-                toast.success('Video uploaded successfully!');
+                toast.success('Video uploaded to Stream');
                 return;
             }
             const result = await upload(file, { purpose: 'library', storagePreference: 'r2', folder }) as { url: string } | undefined;
