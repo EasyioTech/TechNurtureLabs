@@ -199,9 +199,13 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
 
                 await new Promise<void>((resolve, reject) => {
                     const uploadInstance = new tus.Upload(file, {
-                        uploadUrl,
-                        chunkSize: 5 * 1024 * 1024, // 5MB chunks for better reliability on flaky networks
-                        retryDelays: [0, 1000, 3000, 5000, 10000, 20000], // Auto-retry up to 40 seconds total delay
+                        uploadUrl: uploadUrl, // Already proxied by /api/media/stream-upload
+                        chunkSize: 5 * 1024 * 1024,
+                        retryDelays: [0, 3000, 5000, 10000, 20000],
+                        parallelUploads: 1,
+                        storeFingerprintForResuming: false,
+                        // CRITICAL: Disable fingerprinting to prevent CORS-blocking resume attempts
+                        fingerprint: (file: File, options: any) => Promise.resolve(null as any),
                         onProgress: (bytesUploaded, bytesTotal) => {
                             const pct = bytesTotal > 0 ? Math.round((bytesUploaded / bytesTotal) * 100) : 0;
                             setStreamProgress(pct);
@@ -212,7 +216,6 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                         },
                         onError: (error) => {
                             tusUploadRef.current = null;
-                            // Clean up on fatal error
                             setIsStreamUploading(false);
                             reject(error);
                         }

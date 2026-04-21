@@ -49,8 +49,12 @@ export async function POST(req: NextRequest) {
         // Initialize TUS resumable upload (browser will use server proxy)
         const result = await createTusUpload(fileSize || 1024, meta);
 
+        // Wrap the Cloudflare URL with our proxy automatically at the API level
+        // This ensures the client never even sees the direct Cloudflare URL
+        const proxiedUploadUrl = `/api/media/tus-proxy?url=${encodeURIComponent(result.uploadUrl)}`;
+
         return NextResponse.json({
-            uploadUrl: result.uploadUrl,
+            uploadUrl: proxiedUploadUrl,
             uid: result.uid,
             isResumable: true,
             tusEndpoint: '/api/media/tus-proxy',

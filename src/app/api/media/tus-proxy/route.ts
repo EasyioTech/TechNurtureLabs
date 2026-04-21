@@ -8,59 +8,59 @@ import { NextRequest, NextResponse } from 'next/server';
 
 async function handleProxy(req: NextRequest) {
     const { searchParams } = new URL(req.url);
-    const targetUrl = searchParams.get('url');
+    let targetUrl = searchParams.get('url');
 
     if (!targetUrl) {
         return new NextResponse('Missing target URL', { status: 400 });
     }
 
-    // Prepare headers for Cloudflare
-    const forwardHeaders = new Headers();
-    const headersToForward = [
-        'tus-resumable',
-        'upload-offset',
-        'upload-length',
-        'upload-metadata',
-        'content-type',
-        'authorization'
-    ];
+    // Ensure targetUrl is absolute (important for TUS redirects)
+    if (!targetUrl.startsWith('http')) {
+        targetUrl = `https://api.cloudflare.com${targetUrl.startsWith('/') ? '' : '/'}${targetUrl}`;
+    }
 
-    headersToForward.forEach(header => {
-        const val = req.headers.get(header);
-        if (val) forwardHeaders.set(header, val);
+    // Forward ALL relevant TUS/Cloudflare headers
+    const forwardHeaders = new Headers();
+    req.headers.forEach((val, key) => {
+        const k = key.toLowerCase();
+        if (k.startsWith('tus-') || k.startsWith('upload-') || k === 'authorization' || k === 'content-type') {
+            forwardHeaders.set(key, val);
+        }
     });
 
     try {
+        console.log(`[TUS Proxy] [${req.method}] -> ${targetUrl}`);
+        
         const fetchOptions: RequestInit = {
             method: req.method,
             headers: forwardHeaders,
-            // @ts-ignore - duplex is required for streaming bodies in some node versions
+            // @ts-ignore
             duplex: 'half'
         };
 
-        // Forward body for PATCH requests
-        if (req.method === 'PATCH') {
-            fetchOptions.body = await req.arrayBuffer();
+        if (['PATCH', 'POST', 'PUT'].includes(req.method)) {
+            const body = await req.arrayBuffer();
+            if (body.byteLength > 0) fetchOptions.body = body;
         }
 
         const cfRes = await fetch(targetUrl, fetchOptions);
+        console.log(`[TUS Proxy] [${req.method}] <- Cloudflare Status: ${cfRes.status}`);
 
-        // Prepare response headers for the browser
         const responseHeaders = new Headers();
+        const origin = new URL(req.url).origin;
         
-        // Forward ALL headers from Cloudflare, but intercept 'location'
         cfRes.headers.forEach((val, key) => {
             const k = key.toLowerCase();
             if (k === 'location') {
-                // REWRITE: Ensure the browser continues to use the proxy for redirected URLs
-                const proxiedLocation = `/api/media/tus-proxy?url=${encodeURIComponent(val)}`;
+                // IMPORTANT: Use absolute URL for Location rewrite to prevent browser path-joining confusion
+                const proxiedLocation = `${origin}/api/media/tus-proxy?url=${encodeURIComponent(val)}`;
                 responseHeaders.set('location', proxiedLocation);
             } else if (!['content-encoding', 'content-length'].includes(k)) {
                 responseHeaders.set(key, val);
             }
         });
 
-        // Ensure CORS headers are present to satisfy the browser
+        // Forced CORS headers for browser compatibility
         responseHeaders.set('Access-Control-Allow-Origin', '*');
         responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS, HEAD');
         responseHeaders.set('Access-Control-Allow-Headers', '*');
@@ -88,7 +88,9 @@ export async function OPTIONS() {
     });
 }
 
-export async function HEAD(req: NextRequest) { return handleProxy(req); }
-export async function PATCH(req: Request) { return handleProxy(req as NextRequest); }
-export async function GET(req: NextRequest) { return handleProxy(req); }
 export async function POST(req: NextRequest) { return handleProxy(req); }
+export async function PATCH(req: NextRequest) { return handleProxy(req); }
+export async function PUT(req: NextRequest) { return handleProxy(req); }
+export async function DELETE(req: NextRequest) { return handleProxy(req); }
+export async function HEAD(req: NextRequest) { return handleProxy(req); }
+export async function GET(req: NextRequest) { return handleProxy(req); }

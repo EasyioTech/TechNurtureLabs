@@ -195,17 +195,18 @@ export function VideoUpload({
                 throw new Error('Missing upload URL or video ID');
             }
 
-            // TUS Resumable Upload via server proxy (no CORS issues)
-            // Server proxy relays all TUS requests to Cloudflare
-            const proxiedUrl = `/api/media/tus-proxy?url=${encodeURIComponent(uploadUrl)}`;
-            console.log('[Upload System] Initializing proxied TUS upload:', uid);
+            // The uploadUrl is already proxied by the /api/media/stream-upload endpoint
+            console.log('[Upload System] Initializing TUS upload:', uid);
 
             const tusUpload = new tus.Upload(file, {
-                uploadUrl: proxiedUrl,
+                uploadUrl: uploadUrl, // This is now /api/media/tus-proxy?url=...
                 chunkSize: 5 * 1024 * 1024,
                 retryDelays: [0, 3000, 5000, 10000, 20000],
                 parallelUploads: 1,
-                storeFingerprintForResuming: false, // CRITICAL: Force use of proxy URL, don't resume direct CF URLs
+                storeFingerprintForResuming: false,
+                // CRITICAL: Return null to force tus-js-client to ignore any previous 
+                // localStorage entries that might point to direct Cloudflare URLs
+                fingerprint: (file: File, options: any) => Promise.resolve(null as any),
                 removeFingerprintOnSuccess: true,
                 headers: {
                     'Tus-Resumable': '1.0.0',
