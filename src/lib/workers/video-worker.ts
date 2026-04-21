@@ -58,6 +58,7 @@ export const videoWorker = new Worker(
         const stream = createReadStream(finalFilePath);
         const upload = new tus.Upload(stream as any, {
           uploadUrl,
+          uploadDataDuringCreation: true,
           chunkSize: 10 * 1024 * 1024,
           retryDelays: [0, 3000, 5000, 10000, 20000],
           metadata: {
