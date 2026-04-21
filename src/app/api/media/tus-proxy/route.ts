@@ -44,7 +44,13 @@ async function handleProxy(req: NextRequest) {
         }
 
         const cfRes = await fetch(targetUrl, fetchOptions);
-        console.log(`[TUS Proxy] [${req.method}] <- Cloudflare Status: ${cfRes.status}`);
+        
+        if (!cfRes.ok) {
+            const errorBody = await cfRes.text();
+            console.error(`[TUS Proxy] [${req.method}] <- Cloudflare Error (${cfRes.status}): ${errorBody}`);
+        } else {
+            console.log(`[TUS Proxy] [${req.method}] <- Cloudflare Status: ${cfRes.status}`);
+        }
 
         const responseHeaders = new Headers();
         const origin = new URL(req.url).origin;
