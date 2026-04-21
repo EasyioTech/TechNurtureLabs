@@ -310,8 +310,9 @@ export function MediaLibraryPicker({
         const isImage = filterType === 'image';
 
         if (isVideo) {
-            const valid = ['video/mp4', 'video/webm', 'video/ogg'].includes(file.type);
-            if (!valid) return toast.error('Upload MP4 or WebM only for videos');
+            toast.error('Videos must be uploaded through the dedicated Video Upload component to Cloudflare Stream');
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
         } else if (isImage) {
             const valid = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp', 'image/gif'].includes(file.type);
             if (!valid) return toast.error('Upload valid image formats');
@@ -322,12 +323,12 @@ export function MediaLibraryPicker({
 
         setUploadFile(file);
         const additionalData = {
-            purpose: filterType === 'video' ? 'system_video' : 'library',
+            purpose: 'library',
             storagePreference: 'r2',
             folder: 'library',
         };
-        try { await upload(file, additionalData); } 
-        catch (err) { console.error('[Upload]', err); } 
+        try { await upload(file, additionalData); }
+        catch (err) { console.error('[Upload]', err); }
         finally { if (fileInputRef.current) fileInputRef.current.value = ''; }
     }
 

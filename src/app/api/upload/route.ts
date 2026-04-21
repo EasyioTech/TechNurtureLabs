@@ -101,6 +101,19 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // ─── STEP 5a: ENFORCE CLOUDFLARE STREAM ONLY FOR VIDEOS ──────────────────
+        // Videos MUST NOT be uploaded to R2 — they must be uploaded to Cloudflare Stream
+        const isVideo = file.type.startsWith('video/');
+        if (isVideo) {
+            return NextResponse.json(
+                {
+                    error: 'Videos must be uploaded to Cloudflare Stream only, not R2. Use the dedicated VideoUpload component or /api/media/stream-upload endpoint.',
+                    code: 'VIDEO_STORAGE_MISMATCH'
+                },
+                { status: 400 }
+            );
+        }
+
         const contextType = formData.get('contextType') as 'course' | 'lesson' | null;
         const contextId = formData.get('contextId') as string | null;
         const storagePreference = formData.get('storagePreference') as 'r2' | null;
