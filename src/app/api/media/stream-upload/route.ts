@@ -53,6 +53,8 @@ export async function POST(req: NextRequest) {
         // This ensures the client never even sees the direct Cloudflare URL
         const proxiedUploadUrl = `/api/media/tus-proxy?url=${encodeURIComponent(result.uploadUrl)}`;
 
+        console.log(`[Stream Upload Success] UID: ${result.uid}, Proxied URL generated.`);
+
         return NextResponse.json({
             uploadUrl: proxiedUploadUrl,
             uid: result.uid,
