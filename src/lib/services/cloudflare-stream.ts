@@ -131,24 +131,13 @@ export async function createTusUpload(
         throw new Error('Cloudflare Stream is not configured.');
     }
 
-    // Prepare metadata for TUS (keys/values must be base64 encoded)
-    const metadataString = Object.entries(meta || {})
-        .map(([k, v]) => `${k} ${Buffer.from(v).toString('base64')}`)
-        .join(',');
-
-    const headers: Record<string, string> = {
-        'Authorization': `Bearer ${serverEnv.CLOUDFLARE_STREAM_API_TOKEN}`,
-        'Tus-Resumable': '1.0.0',
-        'Upload-Length': fileSize.toString(),
-    };
-
-    if (metadataString) {
-        headers['Upload-Metadata'] = metadataString;
-    }
-
-    const res = await fetchWithTimeout(getAccountUrl(), {
+    const res = await fetchWithTimeout(`${getAccountUrl()}/direct_upload`, {
         method: 'POST',
-        headers,
+        headers: getHeaders(),
+        body: JSON.stringify({
+            maxDurationSeconds: 36000,
+            meta: meta || {},
+        }),
     });
 
     if (!res.ok) {
@@ -156,21 +145,17 @@ export async function createTusUpload(
         throw new Error(`Cloudflare Stream TUS init failed (${res.status}): ${text}`);
     }
 
-    const uploadUrl = res.headers.get('Location');
-    const uid = res.headers.get('stream-media-id');
+    const data = await res.json();
+    
+    console.log("[CF Stream] Generated Upload URL:", data.result.uploadURL);
 
-    if (!uploadUrl || !uid) {
-        throw new Error('Cloudflare Stream failed to return TUS Location or Media ID');
+    if (!data.success) {
+        throw new Error("Failed to create upload URL");
     }
 
-    // Ensure absolute URL (Cloudflare might return relative /accounts/...)
-    const absoluteUploadUrl = uploadUrl.startsWith('http')
-        ? uploadUrl
-        : `${CF_API_BASE}${uploadUrl.startsWith('/') ? '' : '/'}${uploadUrl}`;
-
     return {
-        uploadUrl: absoluteUploadUrl,
-        uid,
+        uploadUrl: data.result.uploadURL,
+        uid: data.result.uid,
     };
 }
 

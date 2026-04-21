@@ -30,17 +30,12 @@ export const videoWorker = new Worker(
       // 1. Analyze
       // 1. Analyze for risks (VFR, Codec)
       const analysis = await analyzeVideo(tempInputPath);
-      console.log(`[Worker] Analysis for ${originalName}:`, analysis);
-
-      // Detection logic: VFR or non-H264 are high risk for Cloudflare
-      const isVFR = analysis.details.r_frame_rate !== analysis.details.avg_frame_rate;
-      const isNotH264 = !analysis.details.codec_name?.includes('h264');
-      const needsNormalization = isVFR || isNotH264;
+      console.log(`[Worker] Analysis for ${originalName}:`, analysis.reason || 'Clean');
 
       // 2. Normalize if risky (Guaranteed Fix)
       let finalFilePath = tempInputPath;
-      if (needsNormalization) {
-        console.log(`[Worker] Normalizing ${originalName} (VFR: ${isVFR}, Codec: ${analysis.details.codec_name})...`);
+      if (analysis.isRisky) {
+        console.log(`[Worker] Normalizing ${originalName}: ${analysis.reason}...`);
         tempOutputPath = await normalizeVideo(tempInputPath);
         finalFilePath = tempOutputPath;
       } else {
