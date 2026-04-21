@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
-import { createDirectUpload, createTusUpload, isStreamConfigured } from '@/lib/services/cloudflare-stream';
+import { createDirectUpload, isStreamConfigured } from '@/lib/services/cloudflare-stream';
 
 /**
  * POST /api/media/stream-upload
  *
- * Generates a Cloudflare Stream Upload URL.
- * Supports both TUS (resumable) and Direct Creator Upload.
+ * Generates a Cloudflare Stream Direct Creator Upload URL.
+ * Follows CF Stream best practices:
+ * - Direct upload from browser to Cloudflare (no proxy relay)
+ * - Minimal metadata
+ * - Fast one-time URL generation
  *
  * Request body:
- *   { fileName: string, fileSize?: number, maxDurationSeconds?: number }
+ *   { fileName: string, fileSize?: number }
  */
 export async function POST(req: NextRequest) {
     try {
@@ -32,34 +35,24 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { fileName, fileSize, durationHint, maxDurationSeconds = 36000 } = body;
+        const { fileName } = body;
 
-        // Use durationHint as a guide if available (fixes "infinite loop" for videos with moov at end)
-        // We add a 20s buffer to ensure we don't cut off genuine content
-        const finalMaxDuration = durationHint && durationHint > 0 
-            ? Math.ceil(durationHint) + 20 
-            : maxDurationSeconds;
-
-        const meta: Record<string, string> = {
-            maxDurationSeconds: finalMaxDuration.toString(),
-        };
+        // Minimal metadata for Cloudflare Stream
+        // Cloudflare handles transcoding/processing automatically
+        const meta: Record<string, string> = {};
         if (fileName) meta.name = fileName;
         if (session.userId) meta.uploadedBy = session.userId;
 
-        // Initialize TUS resumable upload (browser will use server proxy)
-        const result = await createTusUpload(fileSize || 1024, meta);
+        // Direct Creator Upload: client POSTs directly to Cloudflare
+        // No proxy relay, no TUS complexity — simple and performant
+        const result = await createDirectUpload(36000, Object.keys(meta).length > 0 ? meta : undefined);
 
-        // Wrap the Cloudflare URL with our proxy automatically at the API level
-        // This ensures the client never even sees the direct Cloudflare URL
-        const proxiedUploadUrl = `/api/media/tus-proxy?url=${encodeURIComponent(result.uploadUrl)}`;
-
-        console.log(`[Stream Upload Success] UID: ${result.uid}, Proxied URL generated.`);
+        console.log(`[Stream Upload] UID: ${result.uid}, Direct upload URL ready`);
 
         return NextResponse.json({
-            uploadUrl: proxiedUploadUrl,
+            uploadUrl: result.uploadUrl,
             uid: result.uid,
-            isResumable: true,
-            tusEndpoint: '/api/media/tus-proxy',
+            isResumable: false,
         });
     } catch (err: any) {
         console.error('[Stream Upload Error]:', err);
