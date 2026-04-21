@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import {
+import * as tus from 'tus-js-client';
+import { 
     Dialog, DialogContent, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -71,7 +72,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     const initialDataRef = React.useRef<string>('');
 
     const [showValidation, setShowValidation] = React.useState(false);
-    const tusUploadRef = React.useRef<{ abort: () => void } | null>(null);
+    const tusUploadRef = React.useRef<tus.Upload | null>(null);
 
     const abortStreamUpload = React.useCallback(() => {
         if (tusUploadRef.current) {
@@ -197,34 +198,34 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                     throw new Error(error.error || 'Failed to initialize upload');
                 }
                 
-                const { uploadUrl, uid } = await initRes.json();
+                const { uploadURL, uid } = await initRes.json();
                 setIsStreamUploading(true);
                 setStreamProgress(0);
 
                 await new Promise<void>((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('POST', uploadUrl);
-
-                    xhr.upload.onprogress = (e) => {
-                        if (e.lengthComputable) {
-                            const percent = Math.round((e.loaded / e.total) * 100);
-                            setStreamProgress(percent);
-                        }
-                    };
-
-                    xhr.onload = () => {
-                        if (xhr.status >= 200 && xhr.status < 300) {
+                    const upload = new tus.Upload(file, {
+                        endpoint: uploadURL,
+                        retryDelays: [0, 3000, 5000, 10000, 20000, 30000, 60000],
+                        chunkSize: 50 * 1024 * 1024,
+                        metadata: {
+                            filename: file.name,
+                            filetype: file.type,
+                        },
+                        onError: (error) => {
+                            console.error('[Stream Upload] TUS Error:', error);
+                            reject(error);
+                        },
+                        onProgress: (bytesUploaded, bytesTotal) => {
+                            const percentage = Math.round((bytesUploaded / bytesTotal) * 100);
+                            setStreamProgress(percentage);
+                        },
+                        onSuccess: () => {
                             resolve();
-                        } else {
-                            reject(new Error(`Upload failed (${xhr.status})`));
-                        }
-                    };
+                        },
+                    });
 
-                    xhr.onerror = () => reject(new Error('Network error during upload'));
-                    xhr.onabort = () => reject(new Error('Upload cancelled'));
-                    
-                    tusUploadRef.current = { abort: () => xhr.abort() };
-                    xhr.send(file);
+                    tusUploadRef.current = upload;
+                    upload.start();
                 });
 
                 applyBlockUpdate(itemId, 'url', `cf-stream://${uid}`);

@@ -33,9 +33,6 @@ export function VideoUpload({
     const tusUploadRef = React.useRef<tus.Upload | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-    // Only super-admins can use the media library through this component
-    const isSuperAdmin = profile?.role === 'super_admin';
-
     // Cleanup: abort upload on unmount
     React.useEffect(() => {
         return () => {
@@ -46,13 +43,12 @@ export function VideoUpload({
     }, []);
 
     const handlePickerClick = () => {
-        if (!isSuperAdmin) return;
         setIsPickerOpen(true);
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !isSuperAdmin) return;
+        if (!file) return;
 
         // Validate video file type
         if (!file.type.startsWith('video/')) {
@@ -175,7 +171,7 @@ export function VideoUpload({
             <div className="flex flex-col gap-3">
                 <div
                     className={`relative aspect-video rounded-3xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden
-                        ${isSuperAdmin ? 'cursor-pointer' : 'cursor-default opacity-90'}
+                        cursor-pointer
                         ${value
                             ? 'border-transparent bg-slate-900'
                             : isDark
@@ -205,10 +201,10 @@ export function VideoUpload({
                             {!compact && (
                                 <>
                                     <p className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        {isSuperAdmin ? 'Upload to Stream' : 'Admin Restricted'}
+                                        Upload to Stream
                                     </p>
                                     <p className={`text-[10px] mt-1 font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                        {isSuperAdmin ? 'High-Performance Video' : 'Managed by Super Admin'}
+                                        High-Performance Video
                                     </p>
                                 </>
                             )}
@@ -216,8 +212,7 @@ export function VideoUpload({
                     )}
                 </div>
 
-                {isSuperAdmin && (
-                    <div className="flex gap-2">
+                <div className="flex gap-2">
                         <label className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-bold text-xs uppercase tracking-wider cursor-pointer transition-all border-2
                             ${isDark
                                 ? 'bg-white/[0.03] border-white/5 text-slate-300 hover:bg-white/[0.08] hover:border-white/10'
@@ -267,8 +262,7 @@ export function VideoUpload({
                                 Browse Stream Library
                             </button>
                         )}
-                    </div>
-                )}
+                </div>
             </div>
 
             {description && (
