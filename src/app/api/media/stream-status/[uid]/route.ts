@@ -23,18 +23,42 @@ export async function GET(
         const status = await getVideoStatus(uid);
 
         return NextResponse.json({
-            uid: status.uid,
-            readyToStream: status.readyToStream,
-            state: status.status.state,
-            pctComplete: status.status.pctComplete,
-            duration: status.duration,
-            thumbnail: status.thumbnail,
-            playback: status.playback,
+            ...status
         });
     } catch (err: any) {
         console.error('[Stream Status Error]:', err);
         return NextResponse.json(
             { error: err?.message || 'Failed to get stream status' },
+            { status: 500 }
+        );
+    }
+}
+
+/**
+ * DELETE /api/media/stream-status/[uid]
+ *
+ * Deletes a video from Cloudflare Stream.
+ */
+export async function DELETE(
+    _req: NextRequest,
+    { params }: { params: Promise<{ uid: string }> }
+) {
+    try {
+        const session = await verifySession();
+        if (!session) {
+            return new NextResponse('Unauthorized', { status: 401 });
+        }
+
+        const { uid } = await params;
+        const { deleteStreamVideo } = await import('@/lib/services/cloudflare-stream');
+        
+        await deleteStreamVideo(uid);
+
+        return NextResponse.json({ success: true });
+    } catch (err: any) {
+        console.error('[Stream Delete Error]:', err);
+        return NextResponse.json(
+            { error: err?.message || 'Failed to delete stream video' },
             { status: 500 }
         );
     }

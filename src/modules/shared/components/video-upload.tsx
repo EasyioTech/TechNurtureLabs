@@ -50,114 +50,160 @@ export function VideoUpload({
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Gap #3: Proactive Filter for Risky Formats
+        const riskyExtensions = ['.mov', '.mkv', '.avi', '.wmv'];
+        const fileName = file.name.toLowerCase();
+        const isRisky = riskyExtensions.some(ext => fileName.endsWith(ext));
+        
+        if (isRisky) {
+            toast.warning(`"${file.name.split('.').pop()?.toUpperCase()}" files often fail processing. If it gets stuck, re-encode to MP4.`);
+        }
+
         // Validate video file type
         if (!file.type.startsWith('video/')) {
             toast.error('Please upload a valid video file');
             return;
         }
 
-        // Max 5GB per Cloudflare Stream limits
-        if (file.size > 5 * 1024 * 1024 * 1024) {
-            toast.error('Video must be smaller than 5GB');
+        // Safeguard: File integrity check
+        if (file.size < 100000) {
+            toast.error("File seems corrupted or too small (min 100KB)");
             return;
         }
 
-        try {
-            setIsUploading(true);
-            setUploadProgress(0);
+        const executeUpload = async (isRetry = false) => {
+            let uid = '';
+            try {
+                setIsUploading(true);
+                setUploadProgress(0);
 
-            const getCsrfToken = () => {
-                const cookieStr = document.cookie;
-                const match = cookieStr.match(/csrf_token=([^;]+)/);
-                return match?.[1] || '';
-            };
+                const getCsrfToken = () => {
+                    const cookieStr = document.cookie;
+                    const match = cookieStr.match(/csrf_token=([^;]+)/);
+                    return match?.[1] || '';
+                };
 
-            // Step 1: Get upload URL from our API
-            const csrfToken = getCsrfToken();
-            const initRes = await fetch('/api/media/stream-upload', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
-                },
-                body: JSON.stringify({
-                    fileName: file.name,
-                    fileSize: file.size
-                })
-            });
+                // Step 1: Get upload URL from our API
+                const csrfToken = getCsrfToken();
+                const initRes = await fetch('/api/media/stream-upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+                    },
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        fileSize: file.size
+                    })
+                });
 
-            if (!initRes.ok) {
-                const error = await initRes.json().catch(() => ({ error: 'Failed to get upload URL' }));
-                throw new Error(error.error || 'Failed to initialize upload');
-            }
-
-            const { uploadURL, uid } = await initRes.json();
-
-            let uploadSucceeded = false;
-            let uploadTimeoutId: NodeJS.Timeout | null = null;
-
-            // Step 3: Upload using TUS with comprehensive error handling
-            const upload = new tus.Upload(file, {
-                endpoint: uploadURL,
-                // Aggressive retry strategy for network resilience
-                retryDelays: [0, 3000, 5000, 10000, 20000, 30000, 60000],
-                chunkSize: 50 * 1024 * 1024, // 50MB chunks for better reliability on large files
-                removeFingerprintOnSuccess: true, // Clean up resume fingerprint after success
-                metadata: {
-                    filename: file.name,
-                    filetype: file.type,
-                },
-                onError: (error) => {
-                    if (uploadTimeoutId) clearTimeout(uploadTimeoutId);
-
-                    // Don't show error if already succeeded
-                    if (!uploadSucceeded) {
-                        console.error('[Video Upload] TUS Error:', error);
-                        toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
-                        setIsUploading(false);
-                        setUploadProgress(0);
-                    }
-                },
-                onProgress: (bytesUploaded, bytesTotal) => {
-                    const percentage = (bytesUploaded / bytesTotal) * 100;
-                    setUploadProgress(Math.round(percentage));
-                },
-                onSuccess: () => {
-                    uploadSucceeded = true;
-                    if (uploadTimeoutId) clearTimeout(uploadTimeoutId);
-
-                    console.log('[Video Upload] Upload successful, UID:', uid);
-                    setUploadProgress(100);
-                    onChange(`cf-stream://${uid}`);
-                    toast.success('Video uploaded successfully');
-                    setIsUploading(false);
-                    tusUploadRef.current = null;
-                },
-            });
-
-            tusUploadRef.current = upload;
-
-            // Safety timeout: if TUS hangs for >5 minutes, force cleanup
-            // This prevents infinite processing loops when TUS stalls
-            uploadTimeoutId = setTimeout(() => {
-                if (!uploadSucceeded && tusUploadRef.current) {
-                    console.error('[Video Upload] Timeout: upload did not complete in 5 minutes');
-                    toast.error('Upload took too long. Please try again or use a smaller file.');
-                    tusUploadRef.current.abort(true); // true = don't retry
-                    setIsUploading(false);
-                    setUploadProgress(0);
-                    tusUploadRef.current = null;
+                if (!initRes.ok) {
+                    const error = await initRes.json().catch(() => ({ error: 'Failed to get upload URL' }));
+                    throw new Error(error.error || 'Failed to initialize upload');
                 }
-            }, 5 * 60 * 1000);
 
-            upload.start();
+                const data = await initRes.json();
+                uid = data.uid;
+                const uploadURL = data.uploadURL;
 
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to upload video');
-            console.error('[Video Upload Error]:', error);
-            setIsUploading(false);
-            setUploadProgress(0);
-        }
+                // Step 2: Upload using TUS
+                const upload = new tus.Upload(file, {
+                    endpoint: uploadURL,
+                    retryDelays: [0, 3000, 5000, 10000],
+                    chunkSize: 5 * 1024 * 1024,
+                    removeFingerprintOnSuccess: true,
+                    metadata: { filename: file.name, filetype: file.type },
+                    onError: (error) => {
+                        console.error("TUS FULL ERROR:", error);
+                        throw error;
+                    },
+                    onProgress: (bytesUploaded, bytesTotal) => {
+                        const percentage = Math.round((bytesUploaded / bytesTotal) * 100);
+                        setUploadProgress(percentage);
+                    },
+                    onSuccess: async () => {
+                        console.log("Upload finished, verifying state...");
+                        setUploadProgress(100);
+                        
+                        try {
+                            // Gap #2: Stagnant Processing Detection
+                            let isReady = false;
+                            let lastPct = -1;
+                            let stagnantCount = 0;
+
+                            for (let i = 0; i < 60; i++) { // Max 3 mins
+                                const statusRes = await fetch(`/api/media/stream-status/${uid}`);
+                                if (statusRes.ok) {
+                                    const data = await statusRes.json();
+                                    
+                                    // Gap #1: Fix API Shape Alignment
+                                    const state = data.status?.state || data.state;
+                                    const ready = data.readyToStream;
+                                    const pct = parseFloat(data.status?.pctComplete || '0');
+
+                                    if (ready) {
+                                        isReady = true;
+                                        break;
+                                    }
+
+                                    // Root Cause Detection: Explicit Cloudflare Error
+                                    if (state === 'error') {
+                                        throw new Error('Cloudflare encoding failed. Incompatible format or VFR.');
+                                    }
+
+                                    // Stagnant check
+                                    if (pct === lastPct && pct < 100) {
+                                        stagnantCount++;
+                                    } else {
+                                        stagnantCount = 0;
+                                        lastPct = pct;
+                                    }
+
+                                    if (stagnantCount > 12) { // Stalled for ~36s
+                                        throw new Error('Processing stalled. File likely requires re-encoding.');
+                                    }
+                                }
+                                await new Promise(r => setTimeout(r, 3000));
+                            }
+
+                            if (!isReady) throw new Error('Processing timeout');
+
+                            onChange(`cf-stream://${uid}`);
+                            toast.success('Video ready and processed');
+                        } catch (err: any) {
+                            throw err; // Caught by outer block
+                        }
+                    },
+                });
+
+                tusUploadRef.current = upload;
+                upload.start();
+
+            } catch (error: any) {
+                // Gap #4: Retry Strategy
+                if (!isRetry && !error.message.includes('re-encode')) {
+                    console.log('Ingest failed, attempting one-time auto-retry...');
+                    toast.info("Retrying processing...");
+                    if (uid) await fetch(`/api/media/stream-status/${uid}`, { method: 'DELETE' });
+                    return executeUpload(true);
+                }
+
+                // Final Failure Cleanup
+                if (uid) {
+                    try { await fetch(`/api/media/stream-status/${uid}`, { method: 'DELETE' }); } catch (e) {}
+                }
+                
+                const finalMsg = error.message.includes('re-encode') 
+                    ? error.message 
+                    : `Upload failed. Try re-encoding with FFmpeg: "ffmpeg -i input.mp4 -c:v libx264 -c:a aac fixed.mp4"`;
+                
+                toast.error(finalMsg);
+                setIsUploading(false);
+                setUploadProgress(0);
+            }
+        };
+
+        executeUpload();
     };
 
     return (
