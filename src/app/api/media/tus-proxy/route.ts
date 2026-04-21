@@ -48,21 +48,19 @@ async function handleProxy(req: NextRequest) {
         // Prepare response headers for the browser
         const responseHeaders = new Headers();
         
-        // Forward critical TUS response headers
-        const headersToReturn = [
-            'tus-resumable',
-            'upload-offset',
-            'upload-expires',
-            'stream-media-id',
-            'location'
-        ];
-
-        headersToReturn.forEach(header => {
-            const val = cfRes.headers.get(header);
-            if (val) responseHeaders.set(header, val);
+        // Forward ALL headers from Cloudflare, but intercept 'location'
+        cfRes.headers.forEach((val, key) => {
+            const k = key.toLowerCase();
+            if (k === 'location') {
+                // REWRITE: Ensure the browser continues to use the proxy for redirected URLs
+                const proxiedLocation = `/api/media/tus-proxy?url=${encodeURIComponent(val)}`;
+                responseHeaders.set('location', proxiedLocation);
+            } else if (!['content-encoding', 'content-length'].includes(k)) {
+                responseHeaders.set(key, val);
+            }
         });
 
-        // Add permissive CORS headers to satisfy the browser
+        // Ensure CORS headers are present to satisfy the browser
         responseHeaders.set('Access-Control-Allow-Origin', '*');
         responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS, HEAD');
         responseHeaders.set('Access-Control-Allow-Headers', '*');

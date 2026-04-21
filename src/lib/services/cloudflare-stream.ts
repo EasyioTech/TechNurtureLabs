@@ -163,25 +163,10 @@ export async function createTusUpload(
         throw new Error('Cloudflare Stream failed to return TUS Location or Media ID');
     }
 
-    // Ensure absolute URL
-    let absoluteUploadUrl = uploadUrl.startsWith('http')
+    // Ensure absolute URL (Cloudflare might return relative /accounts/...)
+    const absoluteUploadUrl = uploadUrl.startsWith('http')
         ? uploadUrl
         : `${CF_API_BASE}${uploadUrl.startsWith('/') ? '' : '/'}${uploadUrl}`;
-
-    // IMPORTANT: Force the use of upload.videodelivery.net for browser-based TUS uploads.
-    // The standard api.cloudflare.com domain often fails preflight (OPTIONS) in browsers.
-    // Videodelivery.net is the dedicated edge endpoint for Stream uploads.
-    if (absoluteUploadUrl.includes('api.cloudflare.com/client/v4/accounts')) {
-        absoluteUploadUrl = absoluteUploadUrl.replace(
-            'api.cloudflare.com/client/v4/accounts',
-            'upload.videodelivery.net/client/v4/accounts'
-        );
-    } else if (absoluteUploadUrl.includes('gateway.api.cloudflare.com/client/v4/accounts')) {
-         absoluteUploadUrl = absoluteUploadUrl.replace(
-            'gateway.api.cloudflare.com/client/v4/accounts',
-            'upload.videodelivery.net/client/v4/accounts'
-        );
-    }
 
     return {
         uploadUrl: absoluteUploadUrl,

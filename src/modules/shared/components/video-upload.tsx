@@ -198,15 +198,16 @@ export function VideoUpload({
             // TUS Resumable Upload via server proxy (no CORS issues)
             // Server proxy relays all TUS requests to Cloudflare
             const proxiedUrl = `/api/media/tus-proxy?url=${encodeURIComponent(uploadUrl)}`;
+            console.log('[Upload System] Initializing proxied TUS upload:', uid);
 
             const tusUpload = new tus.Upload(file, {
                 uploadUrl: proxiedUrl,
                 chunkSize: 5 * 1024 * 1024,
                 retryDelays: [0, 3000, 5000, 10000, 20000],
                 parallelUploads: 1,
+                storeFingerprintForResuming: false, // CRITICAL: Force use of proxy URL, don't resume direct CF URLs
                 removeFingerprintOnSuccess: true,
                 headers: {
-                    // Moving this here ensures it is included in Preflight 'Access-Control-Request-Headers'
                     'Tus-Resumable': '1.0.0',
                 },
                 metadata: {
