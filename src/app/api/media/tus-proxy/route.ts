@@ -1,161 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySession } from '@/lib/auth';
 
 /**
- * TUS Proxy Endpoint
- *
- * Relays all TUS protocol requests from browser to Cloudflare's TUS API.
- * This bypasses CORS restrictions by keeping all browser requests to same-origin server.
- *
- * Browser flow:
- * 1. POST /api/media/tus-proxy (upload initialization, gets sessionUrl)
- * 2. Browser uses sessionUrl for TUS chunk uploads
- * 3. All requests (POST, PATCH, HEAD) proxied through this endpoint
- *
- * Query params:
- *   ?method=patch|post|head - HTTP method to use
- *   ?url=<encoded-url> - Cloudflare TUS endpoint URL
- *   ?offset=N - For resumable offset tracking
+ * TUS Proxy Route
+ * Resolves CORS issues by relaying TUS protocol requests from the browser 
+ * to Cloudflare Stream via the server.
  */
 
-export async function POST(req: NextRequest) {
+async function handleProxy(req: NextRequest) {
+    const { searchParams } = new URL(req.url);
+    const targetUrl = searchParams.get('url');
+
+    if (!targetUrl) {
+        return new NextResponse('Missing target URL', { status: 400 });
+    }
+
+    // Prepare headers for Cloudflare
+    const forwardHeaders = new Headers();
+    const headersToForward = [
+        'tus-resumable',
+        'upload-offset',
+        'upload-length',
+        'upload-metadata',
+        'content-type',
+        'authorization'
+    ];
+
+    headersToForward.forEach(header => {
+        const val = req.headers.get(header);
+        if (val) forwardHeaders.set(header, val);
+    });
+
     try {
-        const session = await verifySession();
-        if (!session || (session.role !== 'super_admin' && session.userType !== 'super_admin')) {
-            return new NextResponse('Unauthorized', { status: 401 });
+        const fetchOptions: RequestInit = {
+            method: req.method,
+            headers: forwardHeaders,
+            // @ts-ignore - duplex is required for streaming bodies in some node versions
+            duplex: 'half'
+        };
+
+        // Forward body for PATCH requests
+        if (req.method === 'PATCH') {
+            fetchOptions.body = await req.arrayBuffer();
         }
 
-        const body = await req.text();
-        const tusUrl = req.nextUrl.searchParams.get('url');
+        const cfRes = await fetch(targetUrl, fetchOptions);
 
-        if (!tusUrl) {
-            return NextResponse.json({ error: 'Missing TUS URL' }, { status: 400 });
-        }
+        // Prepare response headers for the browser
+        const responseHeaders = new Headers();
+        
+        // Forward critical TUS response headers
+        const headersToReturn = [
+            'tus-resumable',
+            'upload-offset',
+            'upload-expires',
+            'stream-media-id',
+            'location'
+        ];
 
-        const decodedUrl = decodeURIComponent(tusUrl);
-
-        // Forward POST request to Cloudflare TUS
-        const response = await fetch(decodedUrl, {
-            method: 'POST',
-            headers: {
-                'Tus-Resumable': '1.0.0',
-                'Upload-Length': req.headers.get('upload-length') || '0',
-                'Upload-Metadata': req.headers.get('upload-metadata') || '',
-                'Content-Type': req.headers.get('content-type') || 'application/offset+octet-stream',
-            },
+        headersToReturn.forEach(header => {
+            const val = cfRes.headers.get(header);
+            if (val) responseHeaders.set(header, val);
         });
 
-        const location = response.headers.get('Location');
-        const tusServerUrl = response.headers.get('Tus-Version');
+        // Add permissive CORS headers to satisfy the browser
+        responseHeaders.set('Access-Control-Allow-Origin', '*');
+        responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS, HEAD');
+        responseHeaders.set('Access-Control-Allow-Headers', '*');
+        responseHeaders.set('Access-Control-Expose-Headers', '*');
 
-        return new NextResponse(null, {
-            status: response.status,
-            headers: {
-                'Location': location ? location : '',
-                'Tus-Resumable': '1.0.0',
-                'Tus-Version': '1.0.0',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Upload-Length, Upload-Offset, Tus-Resumable, Tus-Version, Tus-Extension, Upload-Metadata',
-            },
+        return new NextResponse(cfRes.body, {
+            status: cfRes.status,
+            headers: responseHeaders
         });
-    } catch (err: any) {
-        return NextResponse.json({ error: err?.message || 'Proxy error' }, { status: 500 });
+    } catch (error) {
+        console.error('[TUS Proxy Error]:', error);
+        return new NextResponse('Proxy failed to communicate with Cloudflare', { status: 502 });
     }
 }
 
-export async function PATCH(req: NextRequest) {
-    try {
-        const session = await verifySession();
-        if (!session || (session.role !== 'super_admin' && session.userType !== 'super_admin')) {
-            return new NextResponse('Unauthorized', { status: 401 });
-        }
-
-        const body = await req.arrayBuffer();
-        const tusUrl = req.nextUrl.searchParams.get('url');
-
-        if (!tusUrl) {
-            return NextResponse.json({ error: 'Missing TUS URL' }, { status: 400 });
-        }
-
-        const decodedUrl = decodeURIComponent(tusUrl);
-
-        // Forward PATCH (chunk upload) to Cloudflare
-        const response = await fetch(decodedUrl, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/offset+octet-stream',
-                'Upload-Offset': req.headers.get('upload-offset') || '0',
-                'Tus-Resumable': '1.0.0',
-            },
-            body: body,
-        });
-
-        const responseBody = await response.arrayBuffer();
-        const uploadOffset = response.headers.get('Upload-Offset');
-
-        return new NextResponse(responseBody, {
-            status: response.status,
-            headers: {
-                'Upload-Offset': uploadOffset || '',
-                'Tus-Resumable': '1.0.0',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS',
-            },
-        });
-    } catch (err: any) {
-        return NextResponse.json({ error: err?.message || 'Proxy error' }, { status: 500 });
-    }
-}
-
-export async function HEAD(req: NextRequest) {
-    try {
-        const session = await verifySession();
-        if (!session || (session.role !== 'super_admin' && session.userType !== 'super_admin')) {
-            return new NextResponse('Unauthorized', { status: 401 });
-        }
-
-        const tusUrl = req.nextUrl.searchParams.get('url');
-
-        if (!tusUrl) {
-            return NextResponse.json({ error: 'Missing TUS URL' }, { status: 400 });
-        }
-
-        const decodedUrl = decodeURIComponent(tusUrl);
-
-        // Check upload status
-        const response = await fetch(decodedUrl, {
-            method: 'HEAD',
-            headers: {
-                'Tus-Resumable': '1.0.0',
-            },
-        });
-
-        const uploadOffset = response.headers.get('Upload-Offset');
-        const uploadLength = response.headers.get('Upload-Length');
-
-        return new NextResponse(null, {
-            status: response.status,
-            headers: {
-                'Upload-Offset': uploadOffset || '0',
-                'Upload-Length': uploadLength || '0',
-                'Tus-Resumable': '1.0.0',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS',
-            },
-        });
-    } catch (err: any) {
-        return NextResponse.json({ error: err?.message || 'Proxy error' }, { status: 500 });
-    }
-}
-
-export async function OPTIONS(req: NextRequest) {
+export async function OPTIONS() {
     return new NextResponse(null, {
         status: 204,
         headers: {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Upload-Length, Upload-Offset, Tus-Resumable, Tus-Version, Tus-Extension, Upload-Metadata',
-        },
+            'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS, HEAD',
+            'Access-Control-Allow-Headers': '*',
+            'Access-Control-Expose-Headers': '*',
+        }
     });
 }
+
+export async function HEAD(req: NextRequest) { return handleProxy(req); }
+export async function PATCH(req: Request) { return handleProxy(req as NextRequest); }
+export async function GET(req: NextRequest) { return handleProxy(req); }
+export async function POST(req: NextRequest) { return handleProxy(req); }

@@ -205,19 +205,25 @@ export function VideoUpload({
                 retryDelays: [0, 3000, 5000, 10000, 20000],
                 parallelUploads: 1,
                 removeFingerprintOnSuccess: true,
+                headers: {
+                    // Moving this here ensures it is included in Preflight 'Access-Control-Request-Headers'
+                    'Tus-Resumable': '1.0.0',
+                },
                 metadata: {
                     filename: file.name,
                     filetype: file.type,
                 },
-                onBeforeRequest: (req) => {
-                    req.setHeader('Tus-Resumable', '1.0.0');
-                },
                 onError: (error) => {
-                    setIsUploading(false);
-                    const msg = error.message?.includes('400')
-                        ? 'Upload expired: Please try again'
-                        : `Upload failed: ${error.message || 'Unknown error'}`;
-                    toast.error(msg);
+                    console.error('[TUS Error Detail]:', error);
+                    // Handle specific CORS/Network failures
+                    if (error.message?.includes('Access-Control-Allow-Origin') || error.message?.includes('CORS')) {
+                        toast.error('CORS Blocked: Please ensure this domain is added to "Allowed Origins" in your Cloudflare Stream settings.', { duration: 8000 });
+                    } else {
+                        const msg = error.message?.includes('400')
+                            ? 'Upload error: Metadata mismatch or expired URL'
+                            : `Upload failed: ${error.message || 'Unknown error'}`;
+                        toast.error(msg);
+                    }
                 },
                 onProgress: (bytesUploaded, bytesTotal) => {
                     const percent = Math.round((bytesUploaded / bytesTotal) * 100);
