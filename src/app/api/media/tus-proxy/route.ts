@@ -19,11 +19,11 @@ async function handleProxy(req: NextRequest) {
         targetUrl = `https://api.cloudflare.com${targetUrl.startsWith('/') ? '' : '/'}${targetUrl}`;
     }
 
-    // Forward ALL relevant TUS/Cloudflare headers
+    // Forward ALL relevant headers except Host/Origin to maintain protocol integrity
     const forwardHeaders = new Headers();
+    const headersToSkip = ['host', 'origin', 'referer', 'sec-fetch-dest', 'sec-fetch-mode', 'sec-fetch-site'];
     req.headers.forEach((val, key) => {
-        const k = key.toLowerCase();
-        if (k.startsWith('tus-') || k.startsWith('upload-') || k === 'authorization' || k === 'content-type') {
+        if (!headersToSkip.includes(key.toLowerCase())) {
             forwardHeaders.set(key, val);
         }
     });
@@ -35,12 +35,16 @@ async function handleProxy(req: NextRequest) {
             method: req.method,
             headers: forwardHeaders,
             // @ts-ignore
-            duplex: 'half'
+            duplex: req.method !== 'GET' && req.method !== 'HEAD' ? 'half' : undefined
         };
 
         if (['PATCH', 'POST', 'PUT'].includes(req.method)) {
             const body = await req.arrayBuffer();
-            if (body.byteLength > 0) fetchOptions.body = body;
+            if (body.byteLength > 0) {
+                fetchOptions.body = body;
+                // Ensure content-length is set if we have a body
+                forwardHeaders.set('content-length', body.byteLength.toString());
+            }
         }
 
         const cfRes = await fetch(targetUrl, fetchOptions);
