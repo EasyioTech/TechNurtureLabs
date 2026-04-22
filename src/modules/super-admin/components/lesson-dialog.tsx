@@ -220,13 +220,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                         return await new Promise<string>(async (resolve, reject) => {
                             const xhr = new XMLHttpRequest();
                             xhrRef.current = xhr;
-                            xhr.open('PATCH', uploadURL, true);
-
-                            // Essential TUS-compatible headers for Cloudflare
-                            xhr.setRequestHeader('Tus-Resumable', '1.0.0');
-                            xhr.setRequestHeader('Upload-Offset', '0');
-                            xhr.setRequestHeader('Upload-Length', file.size.toString());
-                            xhr.setRequestHeader('Content-Type', 'application/offset+octet-stream');
+                            xhr.open('POST', uploadURL, true);
 
                             xhr.upload.onprogress = (e) => {
                                 if (e.lengthComputable) {
@@ -296,7 +290,9 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                 reject(new Error(errorMsg));
                             };
 
-                            xhr.send(file);
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            xhr.send(formData);
                         });
                     } catch (error: any) {
                         // Gap #4: Retry Strategy

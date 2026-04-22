@@ -136,6 +136,7 @@ export async function createTusUpload(
         headers: {
             ...getHeaders(),
             'Tus-Resumable': '1.0.0',
+            'Upload-Length': fileSize.toString(),
         },
         body: JSON.stringify({
             maxDurationSeconds: 7200,
