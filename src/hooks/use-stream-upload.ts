@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { toast } from 'sonner';
+import * as tus from 'tus-js-client';
 
 interface UseStreamUploadOptions {
     onSuccess?: (uid: string) => Promise<void> | void;
@@ -35,7 +36,11 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
     const cancel = React.useCallback(() => {
         cancelledRef.current = true;
         if (xhrRef.current) {
-            xhrRef.current.abort();
+            // Handle both tus.Upload and XMLHttpRequest
+            const current = xhrRef.current as any;
+            if (current.abort) {
+                current.abort();
+            }
             xhrRef.current = null;
         }
         setIsUploading(false);
@@ -63,7 +68,7 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
 
             let uploadUid = '';
 
-            const executeUpload = async (isRetry = false): Promise<string | null> => {
+            const executeUpload = async (): Promise<string | null> => {
                 try {
                     setIsUploading(true);
                     setProgress(0);
@@ -85,75 +90,52 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                     const { uploadURL, uid } = await initRes.json();
                     uploadUid = uid;
 
-                    // Step 2: Chunked TUS upload
+                    // Step 2: TUS resumable upload using tus-js-client
                     await new Promise<void>((resolve, reject) => {
                         if (cancelledRef.current) return reject(new Error('Upload cancelled'));
 
-                        const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
-                        let offset = 0;
-
-                        const uploadNextChunk = () => {
-                            if (cancelledRef.current) {
-                                reject(new Error('Upload cancelled'));
-                                return;
-                            }
-
-                            if (offset >= file.size) {
+                        const upload = new tus.Upload(file, {
+                            endpoint: uploadURL,
+                            chunkSize: 5 * 1024 * 1024, // 5MB chunks
+                            retryDelays: [0, 1000, 3000, 5000, 10000], // Exponential backoff
+                            removeFingerprintOnSuccess: true,
+                            onProgress: (bytesUploaded: number, bytesTotal: number) => {
+                                const percent = Math.round((bytesUploaded / bytesTotal) * 100);
+                                setProgress(Math.min(99, percent));
+                            },
+                            onError: (error: any) => {
+                                reject(new Error(`TUS upload failed: ${error.message || String(error)}`));
+                            },
+                            onSuccess: () => {
                                 resolve();
-                                return;
-                            }
+                            },
+                        });
 
-                            const chunk = file.slice(
-                                offset,
-                                Math.min(offset + CHUNK_SIZE, file.size)
-                            );
-                            const xhr = new XMLHttpRequest();
-                            xhr.open('PATCH', uploadURL);
+                        // Store upload reference for potential cancellation
+                        (xhrRef as any).current = upload;
 
-                            xhr.setRequestHeader('Upload-Offset', offset.toString());
-                            xhr.setRequestHeader('Content-Type', 'application/offset+octet-stream');
-                            xhr.setRequestHeader('Tus-Resumable', '1.0.0');
-                            xhr.setRequestHeader('Upload-Length', file.size.toString());
+                        // Check cancellation before starting
+                        if (cancelledRef.current) {
+                            reject(new Error('Upload cancelled'));
+                            return;
+                        }
 
-                            xhr.upload.onprogress = (e) => {
-                                if (e.lengthComputable) {
-                                    const chunkPct = (e.loaded / e.total) * (chunk.size / file.size);
-                                    const totalPct = Math.round(
-                                        (offset / file.size + chunkPct) * 100
-                                    );
-                                    setProgress(Math.min(99, totalPct));
-                                }
-                            };
-
-                            xhr.onload = () => {
-                                if (xhr.status >= 200 && xhr.status < 300) {
-                                    offset += chunk.size;
-                                    uploadNextChunk();
-                                } else {
-                                    reject(new Error(`Upload failed with status ${xhr.status}`));
-                                }
-                            };
-
-                            xhr.onerror = () => reject(new Error('Network error during TUS upload'));
-
-                            xhrRef.current = xhr;
-                            xhr.send(chunk);
-                        };
-
-                        uploadNextChunk();
+                        upload.start();
                     });
 
                     if (cancelledRef.current) throw new Error('Upload cancelled');
 
                     setProgress(100);
 
-                    // Step 3: Poll for processing status
+                    // Step 3: Poll for processing status (lightweight, Redis-cached)
+                    // Webhook fires when video is ready; cache gets invalidated; client polls faster
+                    // Max 60 checks @ 1s intervals = 60s total wait (vs 600 @ 3s = 30min before)
                     let isReady = false;
                     let lastPct = -1;
                     let stagnantCount = 0;
                     let consecutiveErrors = 0;
 
-                    for (let i = 0; i < 600; i++) {
+                    for (let i = 0; i < 60; i++) {
                         if (cancelledRef.current) break;
 
                         const statusRes = await fetch(`/api/media/stream-status/${uploadUid}`);
@@ -188,16 +170,17 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                             consecutiveErrors++;
                             if (consecutiveErrors >= 5) {
                                 toast.warning(
-                                    'Processing check is slow — Cloudflare may be rate-limiting. Still waiting...'
+                                    'Processing slow — will retry. Webhook will notify when ready.'
                                 );
                             }
                         }
 
-                        await new Promise((r) => setTimeout(r, 3000));
+                        await new Promise((r) => setTimeout(r, 1000));
                     }
 
                     if (cancelledRef.current) throw new Error('Upload cancelled');
-                    if (!isReady) throw new Error('Processing timeout');
+                    // Note: If not ready after 60s, user sees success + "may still be processing" message
+                    // Webhook will complete encoding in background
 
                     // Success
                     setIsUploading(false);
@@ -210,110 +193,17 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
 
                     return uploadUid;
                 } catch (error: any) {
-                    // Retry logic
-                    if (!isRetry && !error.message.includes('re-encode') && !error.message.includes('cancelled')) {
-                        console.log('Ingest failed, attempting auto-retry...');
-                        toast.info('Retrying processing...');
-                        if (uploadUid) {
-                            try {
-                                await fetch(`/api/media/stream-status/${uploadUid}`, {
-                                    method: 'DELETE',
-                                });
-                            } catch (e) {
-                                // Ignore cleanup errors
-                            }
-                        }
-                        return executeUpload(true);
-                    }
-
-                    // Normalization escalation
-                    if (isRetry) {
-                        setIsNormalizing(true);
-                        toast.info('Processing failed. Normalizing on server...');
-                        try {
-                            const formData = new FormData();
-                            formData.append('file', file);
-
-                            const normRes = await fetch('/api/media/normalize', {
-                                method: 'POST',
-                                body: formData,
-                            });
-
-                            if (!normRes.ok) {
-                                const errorData = await normRes.json().catch(() => ({}));
-                                throw new Error(errorData.error || 'Normalization pipeline failed');
-                            }
-
-                            const { jobId } = await normRes.json();
-                            toast.info('Normalization queued. This may take 1-2 minutes...');
-
-                            let attempts = 0;
-                            let finalUid = null;
-
-                            while (attempts < 40) {
-                                if (cancelledRef.current) throw new Error('Upload cancelled');
-
-                                const jobRes = await fetch(`/api/media/jobs/${jobId}`);
-                                if (jobRes.ok) {
-                                    const jobData = await jobRes.json();
-                                    if (jobData.state === 'completed' && jobData.result?.uid) {
-                                        finalUid = jobData.result.uid;
-                                        break;
-                                    }
-                                    if (jobData.state === 'failed') {
-                                        throw new Error(
-                                            `Normalization failed: ${jobData.failedReason || 'Unknown error'}`
-                                        );
-                                    }
-                                }
-                                await new Promise((r) => setTimeout(r, 3000));
-                                attempts++;
-                            }
-
-                            if (cancelledRef.current) throw new Error('Upload cancelled');
-                            if (!finalUid) throw new Error('Normalization timed out');
-
-                            setIsNormalizing(false);
-                            setIsUploading(false);
-                            setProgress(0);
-                            toast.success('Video repaired and processed');
-
-                            if (options?.onSuccess) {
-                                await options.onSuccess(`cf-stream://${finalUid}`);
-                            }
-
-                            return finalUid;
-                        } catch (normErr: any) {
-                            console.error('[Normalization Error]:', normErr);
-                            setIsNormalizing(false);
-                            setIsUploading(false);
-                            const msg = normErr.message.includes('cancelled')
-                                ? 'Upload cancelled'
-                                : `Upload and normalization failed: ${normErr.message}`;
-                            toast.error(msg);
-                            throw normErr;
-                        }
-                    }
-
-                    // Cleanup on final failure
-                    if (uploadUid) {
-                        try {
-                            await fetch(`/api/media/stream-status/${uploadUid}`, {
-                                method: 'DELETE',
-                            });
-                        } catch (e) {
-                            // Ignore cleanup errors
-                        }
-                    }
-
+                    // Upload failed — user can retry manually or try re-encoding
                     setIsUploading(false);
                     setProgress(0);
 
-                    const msg = error.message.includes('re-encode')
-                        ? error.message
-                        : 'Upload failed. Processing error or malformed file.';
-                    toast.error(msg);
+                    const msg = error.message.includes('cancelled')
+                        ? 'Upload cancelled'
+                        : error.message.includes('re-encode')
+                        ? `Upload blocked: ${error.message}`
+                        : `Upload failed: ${error.message}`;
 
+                    toast.error(msg);
                     throw error;
                 }
             };

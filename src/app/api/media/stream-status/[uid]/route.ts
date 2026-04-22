@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
 import { getVideoStatus } from '@/lib/services/cloudflare-stream';
+import Redis from 'ioredis';
 
 /**
  * GET /api/media/stream-status/[uid]
  *
  * Returns the processing status of a Cloudflare Stream video.
- * Used by the client to poll until the video is ready to stream.
+ * Uses Redis cache (5 min TTL) to avoid hammering Cloudflare API.
+ * Webhook updates cache on video ready.
  */
 export async function GET(
     _req: NextRequest,
@@ -19,12 +21,25 @@ export async function GET(
         }
 
         const { uid } = await params;
+        const cacheKey = `cf-stream:${uid}`;
 
+        // Try Redis cache first (5 min TTL)
+        const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+        let cachedStatus = await redis.get(cacheKey);
+
+        if (cachedStatus) {
+            await redis.quit();
+            return NextResponse.json(JSON.parse(cachedStatus));
+        }
+
+        // Cache miss: fetch from Cloudflare
         const status = await getVideoStatus(uid);
 
-        return NextResponse.json({
-            ...status
-        });
+        // Cache for 5 minutes
+        await redis.setex(cacheKey, 300, JSON.stringify(status));
+        await redis.quit();
+
+        return NextResponse.json(status);
     } catch (err: any) {
         console.error('[Stream Status Error]:', err);
         return NextResponse.json(

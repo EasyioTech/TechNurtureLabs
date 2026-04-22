@@ -35,6 +35,12 @@ import { purgeDeletedRecords } from '../../actions';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { BackupPreviewModal } from '../backup-preview-modal';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 
 
 interface CourseBuilderTabProps {
@@ -222,123 +228,147 @@ export function CourseBuilderTab({
 
                 <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
                     {/* Primary Action: Restore (Most Important) */}
-                    <Dialog open={showBackupsDialog} onOpenChange={setShowBackupsDialog}>
-                        <DialogTrigger asChild>
-                            <Button
-                                size="sm"
-                                onClick={() => {
-                                    fetchBackups();
-                                    setShowBackupsDialog(true);
-                                }}
-                                title="Manage backups and restore points"
-                                className={`h-10 px-3 sm:px-5 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] shadow-lg transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
-                                    ${isDark ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-500 hover:bg-emerald-600'} text-white hover:shadow-xl`}
-                            >
-                                <RefreshCw size={14} />
-                                <span className="whitespace-nowrap">Restore</span>
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className={`max-w-2xl border-0 p-0 overflow-hidden rounded-3xl ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}>
-                             <div className="p-8">
-                                <DialogHeader className="mb-6">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4 text-left">
-                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
-                                                <Database size={28} className={isDark ? accent.text : 'text-slate-900'} />
-                                            </div>
-                                            <div>
-                                                <DialogTitle className={`text-2xl font-[1000] tracking-tight ${t.textPrimary(isDark)}`}>
-                                                    Restore Center
-                                                </DialogTitle>
-                                                <p className={`text-xs font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>
-                                                    Deploy previous system snapshots
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    {/* Backup tabs removed - all backups are now course-level */}
-                                </DialogHeader>
-
-                                <div className="space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar pr-1">
-                                    {backups.length === 0 ? (
-                                        <div className={`py-16 sm:py-20 rounded-2xl sm:rounded-3xl border-2 border-dashed flex flex-col items-center gap-3 sm:gap-4 ${isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50'}`}>
-                                            <Database size={32} className="text-slate-700 opacity-20" />
-                                            <p className={`text-xs sm:text-sm font-bold ${t.textMuted(isDark)}`}>No backups found in R2</p>
-                                        </div>
-                                    ) : (
-                                        backups.map((b) => (
-                                            <div key={b.key} className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all group cursor-pointer hover:scale-[1.02] ${isDark ? 'bg-white/[0.02] border-white/5 hover:border-white/15 hover:bg-white/[0.04]' : 'bg-slate-50 border-slate-100 hover:border-slate-300 hover:bg-white shadow-sm'}`}
-                                                onClick={() => {
-                                                    setSelectedBackupPreview(b);
-                                                    setShowBackupPreview(true);
-                                                }}
-                                            >
-                                                <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
-                                                    <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 transition-transform ${isDark ? 'bg-white/5 group-hover:bg-white/10' : 'bg-slate-100 group-hover:bg-slate-200'}`}>
-                                                        <Layers size={18} className="text-sky-400" />
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Dialog open={showBackupsDialog} onOpenChange={setShowBackupsDialog}>
+                                <DialogTrigger asChild>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => {
+                                            fetchBackups();
+                                            setShowBackupsDialog(true);
+                                        }}
+                                        className={`h-10 px-3 sm:px-5 rounded-xl font-black uppercase tracking-wider text-[10px] shadow-lg transition-all hover:scale-[1.05] active:scale-95 flex items-center gap-2 flex-shrink-0
+                                            ${t.btnPrimary(isDark, accent)} shadow-${accent.name}-500/20`}
+                                        style={isDark ? t.glowStyle(isDark, accent) : {}}
+                                    >
+                                        <RefreshCw size={14} strokeWidth={3} />
+                                        <span className="whitespace-nowrap">Restore Center</span>
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className={`max-w-2xl border-0 p-0 overflow-hidden rounded-3xl ${isDark ? 'bg-[#0a0d13]' : 'bg-white'}`}>
+                                     <div className="p-8">
+                                        <DialogHeader className="mb-6">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-4 text-left">
+                                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                                                        <Database size={28} className={isDark ? accent.text : 'text-slate-900'} />
                                                     </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className={`text-xs sm:text-sm font-bold tracking-tight truncate ${t.textPrimary(isDark)}`}>{b.key.split('/').pop()}</p>
-                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
-                                                            <span className={`text-[9px] sm:text-[10px] font-medium ${t.textMuted(isDark)}`}>
-                                                                {new Date(b.lastModified).toLocaleDateString()}
-                                                            </span>
-                                                            <Badge className={`w-fit text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 ${isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
-                                                                {(b.size / 1024).toFixed(1)} KB
-                                                            </Badge>
-                                                        </div>
+                                                    <div>
+                                                        <DialogTitle className={`text-2xl font-[1000] tracking-tight ${t.textPrimary(isDark)}`}>
+                                                            Restore Center
+                                                        </DialogTitle>
+                                                        <p className={`text-xs font-bold uppercase tracking-widest ${t.textMuted(isDark)}`}>
+                                                            Deploy previous system snapshots
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))
-                                    )}
-                                </div>
-                             </div>
-                        </DialogContent>
-                    </Dialog>
+                                        </DialogHeader>
+
+                                        <div className="space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar pr-1">
+                                            {backups.length === 0 ? (
+                                                <div className={`py-16 sm:py-20 rounded-2xl sm:rounded-3xl border-2 border-dashed flex flex-col items-center gap-3 sm:gap-4 ${isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50'}`}>
+                                                    <Database size={32} className="text-slate-700 opacity-20" />
+                                                    <p className={`text-xs sm:text-sm font-bold ${t.textMuted(isDark)}`}>No backups found in R2</p>
+                                                </div>
+                                            ) : (
+                                                backups.map((b) => (
+                                                    <div key={b.key} className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all group cursor-pointer hover:scale-[1.02] ${isDark ? 'bg-white/[0.02] border-white/5 hover:border-white/15 hover:bg-white/[0.04]' : 'bg-slate-50 border-slate-100 hover:border-slate-300 hover:bg-white shadow-sm'}`}
+                                                        onClick={() => {
+                                                            setSelectedBackupPreview(b);
+                                                            setShowBackupPreview(true);
+                                                        }}
+                                                    >
+                                                        <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
+                                                            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 transition-transform ${isDark ? 'bg-white/5 group-hover:bg-white/10' : 'bg-slate-100 group-hover:bg-slate-200'}`}>
+                                                                <Layers size={18} className={isDark ? accent.text : 'text-slate-600'} />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className={`text-xs sm:text-sm font-bold tracking-tight truncate ${t.textPrimary(isDark)}`}>{b.key.split('/').pop()}</p>
+                                                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
+                                                                    <span className={`text-[9px] sm:text-[10px] font-medium ${t.textMuted(isDark)}`}>
+                                                                        {new Date(b.lastModified).toLocaleDateString()}
+                                                                    </span>
+                                                                    <Badge className={`w-fit text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 ${t.accentBadge(isDark, accent)}`}>
+                                                                        {(b.size / 1024).toFixed(1)} KB
+                                                                    </Badge>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                     </div>
+                                </DialogContent>
+                            </Dialog>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="font-bold">
+                            Manage backups and restore points
+                        </TooltipContent>
+                    </Tooltip>
 
                     {/* Secondary Action: Backup */}
-                    <Button
-                        size="sm"
-                        disabled={isBackingUp}
-                        onClick={handleTriggerBackup}
-                        title="Create manual backup of all courses"
-                        className={`h-10 px-3 sm:px-5 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
-                            ${isDark ? 'bg-sky-600 hover:bg-sky-700' : 'bg-sky-500 hover:bg-sky-600'} text-white hover:shadow-lg shadow-md`}
-                    >
-                        {isBackingUp ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                        <span className="whitespace-nowrap">Backup</span>
-                    </Button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                size="sm"
+                                disabled={isBackingUp}
+                                onClick={handleTriggerBackup}
+                                className={`h-10 px-3 sm:px-5 rounded-xl font-black uppercase tracking-wider text-[10px] transition-all hover:scale-[1.05] active:scale-95 flex items-center gap-2 flex-shrink-0
+                                    ${t.btnOutline(isDark)} ${isDark ? `hover:${accent.text}` : `hover:text-${accent.name}-600`}`}
+                            >
+                                {isBackingUp ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                                <span className="whitespace-nowrap">Create Backup</span>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="font-bold">
+                            Create manual backup of all courses
+                        </TooltipContent>
+                    </Tooltip>
 
                     {/* Stream Dashboard Link */}
                     {cloudflareStreamDashboardUrl && (
-                         <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => window.open(cloudflareStreamDashboardUrl, '_blank')}
-                            title="Open Cloudflare Stream Dashboard"
-                            className={`h-10 px-3 sm:px-5 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0 border-dashed
-                                ${isDark ? 'bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20' : 'bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100'}`}
-                        >
-                            <Video size={14} />
-                            <span className="whitespace-nowrap">Stream Manager</span>
-                        </Button>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => window.open(cloudflareStreamDashboardUrl, '_blank')}
+                                    className={`h-10 px-3 sm:px-5 rounded-xl font-black uppercase tracking-wider text-[10px] transition-all hover:scale-[1.05] active:scale-95 flex items-center gap-2 flex-shrink-0
+                                        ${t.btnOutline(isDark)} hover:border-orange-500/50 hover:text-orange-500`}
+                                >
+                                    <Video size={14} />
+                                    <span className="whitespace-nowrap">Stream Manager</span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="font-bold">
+                                Open Cloudflare Stream Dashboard
+                            </TooltipContent>
+                        </Tooltip>
                     )}
 
                     {/* Purge Button (Advanced) */}
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={isPurging}
-                        onClick={handlePurge}
-                        title="Permanently remove all soft-deleted records"
-                        className={`h-10 px-3 sm:px-5 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
-                            ${isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-50'}`}
-                    >
-                        {isPurging ? <RefreshCw size={14} className="animate-spin" /> : <ShieldAlert size={14} />}
-                        <span className="whitespace-nowrap">Purge Deleted</span>
-                    </Button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={isPurging}
+                                onClick={handlePurge}
+                                className={`h-10 px-3 sm:px-5 rounded-xl font-black uppercase tracking-wider text-[10px] transition-all hover:scale-[1.05] active:scale-95 flex items-center gap-2 flex-shrink-0
+                                    ${isDark ? 'text-rose-400/50 hover:text-rose-400 hover:bg-rose-500/10' : 'text-rose-400 hover:text-rose-600 hover:bg-rose-50'}`}
+                            >
+                                {isPurging ? <RefreshCw size={14} className="animate-spin" /> : <ShieldAlert size={14} />}
+                                <span className="whitespace-nowrap">Purge Deleted</span>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="font-bold border-rose-500/20 text-rose-500">
+                            Permanently remove all soft-deleted records
+                        </TooltipContent>
+                    </Tooltip>
+
 
 
                     {/* Backup Preview Modal */}

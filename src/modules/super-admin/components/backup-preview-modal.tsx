@@ -6,9 +6,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-    Clock, HardDrive, AlertCircle, CheckCircle2, Layers, BookOpen, X
-} from 'lucide-react';
+import { Clock, HardDrive, AlertCircle, CheckCircle2, Layers, BookOpen, X, RefreshCw } from 'lucide-react';
+
 import { useAdminTheme, t } from '../theme-context';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -155,61 +154,64 @@ export function BackupPreviewModal({
                 </div>
 
                 {/* Actions */}
-                <div className={`px-4 sm:px-6 py-3 sm:py-4 border-t flex gap-2 sm:gap-3 ${
+                <div className={`px-4 sm:px-6 py-4 border-t flex gap-2 sm:gap-3 ${
                     isDark ? 'border-white/5 bg-white/[0.01]' : 'border-slate-100 bg-slate-50'
                 }`}>
-                    <button
+                    <Button
+                        variant="ghost"
                         onClick={onClose}
                         disabled={isRestoring}
-                        className={`flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm transition-colors ${
-                            isDark
-                                ? 'bg-white/5 text-white hover:bg-white/10 disabled:opacity-50'
-                                : 'bg-slate-200 text-slate-900 hover:bg-slate-300 disabled:opacity-50'
+                        className={`flex-1 h-11 rounded-xl font-bold text-xs sm:text-sm ${
+                            isDark ? 'hover:bg-white/5' : 'bg-slate-100 hover:bg-slate-200'
                         }`}
                     >
                         Cancel
-                    </button>
-                    <button
-                        onClick={() => setConfirmRestore(!confirmRestore)}
-                        disabled={isRestoring || confirmRestore}
-                        className={`flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 ${
-                            isDark
-                                ? `${accent.bg} text-white hover:opacity-90 disabled:opacity-50`
-                                : `${accent.bg} text-white hover:opacity-90 disabled:opacity-50`
-                        }`}
-                    >
-                        {confirmRestore ? (
-                            <>
-                                <CheckCircle2 size={14} />
-                                <span className="hidden sm:inline">Confirmed</span>
-                                <span className="sm:hidden">OK</span>
-                            </>
-                        ) : (
-                            'Confirm Restore'
-                        )}
-                    </button>
-                    {confirmRestore && (
-                        <button
-                            onClick={() => {
-                                onRestore();
-                                setConfirmRestore(false);
-                            }}
+                    </Button>
+                    
+                    {!confirmRestore ? (
+                        <Button
+                            onClick={() => setConfirmRestore(true)}
                             disabled={isRestoring}
-                            className={`flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 ${
-                                isRestoring
-                                    ? 'bg-emerald-500/50 text-white'
-                                    : 'bg-emerald-500 text-white hover:bg-emerald-600'
-                            }`}
+                            className={`flex-1 h-11 rounded-xl font-black text-xs sm:text-sm transition-all shadow-lg
+                                ${t.btnPrimary(isDark, accent)}`}
+                            style={isDark ? t.glowStyle(isDark, accent) : {}}
                         >
-                            {isRestoring ? (
-                                <>
-                                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    <span className="hidden sm:inline">Restoring...</span>
-                                </>
-                            ) : (
-                                'Complete Restore'
-                            )}
-                        </button>
+                            Confirm Restore
+                        </Button>
+                    ) : (
+                        <div className="flex-[2] flex gap-2">
+                             <Button
+                                onClick={() => setConfirmRestore(false)}
+                                variant="outline"
+                                disabled={isRestoring}
+                                className="h-11 px-3 rounded-xl"
+                            >
+                                <X size={16} />
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    onRestore();
+                                    setConfirmRestore(false);
+                                }}
+                                disabled={isRestoring}
+                                className={`flex-1 h-11 rounded-xl font-black text-xs sm:text-sm transition-all shadow-xl
+                                    ${isRestoring 
+                                        ? 'bg-emerald-500/50 text-white cursor-not-allowed' 
+                                        : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20'}`}
+                            >
+                                {isRestoring ? (
+                                    <>
+                                        <RefreshCw size={14} className="animate-spin mr-2" />
+                                        <span>Restoring...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 size={14} className="mr-2" />
+                                        <span>Complete Restore</span>
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     )}
                 </div>
             </DialogContent>

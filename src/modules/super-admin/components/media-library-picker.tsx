@@ -8,10 +8,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUpload } from '@/hooks/use-upload';
+import { useStreamUpload } from '@/hooks/use-stream-upload';
 import { UploadProgress } from '@/components/shared/upload-progress';
 import { uploadStore } from '@/lib/upload-store';
 import { useAuth } from '@/components/providers/auth-provider';
-import * as tus from 'tus-js-client';
 import { Button } from '@/components/ui/button';
 
 // Modular Components
@@ -59,11 +59,21 @@ export function MediaLibraryPicker({
     const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
     const [isMultiSelect, setIsMultiSelect] = React.useState(false);
 
-    // Stream video upload state
-    const [isStreamUploading, setIsStreamUploading] = React.useState(false);
-    const [streamProgress, setStreamProgress] = React.useState(0);
-    const [isNormalizing, setIsNormalizing] = React.useState(false);
-    const xhrRef = React.useRef<XMLHttpRequest | null>(null);
+    // Stream video upload hook
+    const {
+        uploadVideo,
+        isUploading: isStreamUploading,
+        progress: streamProgress,
+        isNormalizing,
+        cancel: cancelStreamUpload
+    } = useStreamUpload({
+        onSuccess: async () => {
+            toast.success('Video uploaded and processed');
+            setUploadFile(null);
+            setPage(1);
+            await loadStreamVideos(1, debouncedSearchRef.current, false);
+        }
+    });
 
     // Strictly fresh refs for use inside callbacks
     const activeTabRef        = React.useRef(activeTab);
@@ -103,15 +113,7 @@ export function MediaLibraryPicker({
         return () => { if (uploadId) uploadStore.updateTask(uploadId, { isLocalVisible: false }); };
     }, [uploadId, isUploading]);
 
-    // Cleanup stream upload on unmount
-    React.useEffect(() => {
-        return () => {
-            if (xhrRef.current) {
-                xhrRef.current.abort();
-                xhrRef.current = null;
-            }
-        };
-    }, []);
+    // Cleanup on unmount is handled by useStreamUpload hook
 
     React.useEffect(() => {
         if (!open) return;
@@ -338,7 +340,7 @@ export function MediaLibraryPicker({
 
         try {
             if (isVideo) {
-                await executeStreamUpload(file);
+                await uploadVideo(file);
             } else {
                 const additionalData = {
                     purpose: 'library',
@@ -351,191 +353,6 @@ export function MediaLibraryPicker({
             console.error('[Upload]', err);
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = '';
-        }
-    }
-
-    async function executeStreamUpload(file: File, isRetry = false): Promise<void> {
-        let uploadUid = '';
-        try {
-            // Warn for risky formats
-            const riskyExtensions = ['.mov', '.mkv', '.avi', '.wmv'];
-            const isRisky = riskyExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-            if (isRisky) {
-                toast.warning(`"${file.name.split('.').pop()?.toUpperCase()}" files often fail processing. If it gets stuck, re-encode to MP4.`);
-            }
-
-            const initRes = await fetch('/api/media/stream-upload', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fileName: file.name, fileSize: file.size }),
-            });
-
-            if (!initRes.ok) throw new Error('Failed to initialize upload');
-            const { uploadURL, uid } = await initRes.json();
-            uploadUid = uid;
-
-            setIsStreamUploading(true);
-            setStreamProgress(0);
-
-            return await new Promise<void>(async (resolve, reject) => {
-                // 1. Manual TUS Chunked Upload Loop
-                await new Promise<void>((resolve, reject) => {
-                    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
-                    let offset = 0;
-
-                    const uploadNextChunk = () => {
-                        if (offset >= file.size) {
-                            resolve();
-                            return;
-                        }
-
-                        const chunk = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size));
-                        const xhr = new XMLHttpRequest();
-                        xhr.open('PATCH', uploadURL);
-                        
-                        xhr.setRequestHeader('Upload-Offset', offset.toString());
-                        xhr.setRequestHeader('Content-Type', 'application/offset+octet-stream');
-
-                        xhr.upload.onprogress = (e) => {
-                            if (e.lengthComputable) {
-                                const chunkPct = (e.loaded / e.total) * (chunk.size / file.size);
-                                const totalPct = Math.round(((offset / file.size) + chunkPct) * 100);
-                                setStreamProgress(Math.min(99, totalPct));
-                            }
-                        };
-
-                        xhr.onload = () => {
-                            if (xhr.status >= 200 && xhr.status < 300) {
-                                offset += chunk.size;
-                                uploadNextChunk();
-                            } else {
-                                reject(new Error(`Upload failed with status ${xhr.status}`));
-                            }
-                        };
-
-                        xhr.onerror = () => reject(new Error('Network error during TUS upload'));
-                        xhrRef.current = xhr;
-                        xhr.send(chunk);
-                    };
-
-                    uploadNextChunk();
-                });
-
-                // 2. Poll for Status
-                let isReady = false;
-                let lastPct = -1;
-                let stagnantCount = 0;
-
-                for (let i = 0; i < 600; i++) {
-                    const statusRes = await fetch(`/api/media/stream-status/${uploadUid}`);
-                    if (statusRes.ok) {
-                        const data = await statusRes.json();
-                        const state = data.status?.state || data.state;
-                        const ready = data.readyToStream;
-                        const pct = parseFloat(data.status?.pctComplete || '0');
-
-                        if (ready) {
-                            isReady = true;
-                            break;
-                        }
-
-                        if (state === 'error') {
-                            throw new Error('Cloudflare encoding failed. Incompatible format or VFR.');
-                        }
-
-                        if (pct === lastPct && pct < 100) stagnantCount++;
-                        else { stagnantCount = 0; lastPct = pct; }
-
-                        if (stagnantCount > 12) {
-                            throw new Error('Processing stalled. File likely requires re-encoding.');
-                        }
-                    }
-                    await new Promise(r => setTimeout(r, 3000));
-                }
-
-                if (!isReady) throw new Error('Processing timeout');
-
-                // Finalize UI
-                setIsStreamUploading(false);
-                setStreamProgress(0);
-                toast.success('Video uploaded and processed');
-                setUploadFile(null);
-                setPage(1);
-                loadStreamVideos(1, debouncedSearchRef.current, false);
-                resolve();
-            });
-        } catch (error: any) {
-            // Retry strategy
-            if (!isRetry && !error.message.includes('re-encode')) {
-                console.log('Ingest failed, attempting auto-retry...');
-                toast.info('Retrying processing...');
-                if (uploadUid) await fetch(`/api/media/stream-status/${uploadUid}`, { method: 'DELETE' });
-                return executeStreamUpload(file, true);
-            }
-
-            // Normalization escalation
-            if (isRetry) {
-                setIsNormalizing(true);
-                toast.info('Processing failed. Normalizing on server...');
-                try {
-                    const formData = new FormData();
-                    formData.append('file', file);
-
-                    const normRes = await fetch('/api/media/normalize', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (!normRes.ok) {
-                        const error = await normRes.json();
-                        throw new Error(error.error || 'Normalization pipeline failed');
-                    }
-
-                    const { jobId } = await normRes.json();
-                    toast.info('Normalization queued. This may take 1-2 minutes...');
-
-                    let attempts = 0;
-                    let finalUid = null;
-
-                    while (attempts < 40) {
-                        const jobRes = await fetch(`/api/media/jobs/${jobId}`);
-                        if (jobRes.ok) {
-                            const jobData = await jobRes.json();
-                            if (jobData.state === 'completed' && jobData.result?.uid) {
-                                finalUid = jobData.result.uid;
-                                break;
-                            }
-                            if (jobData.state === 'failed') {
-                                throw new Error(`Normalization failed: ${jobData.failedReason || 'Unknown error'}`);
-                            }
-                        }
-                        await new Promise(r => setTimeout(r, 3000));
-                        attempts++;
-                    }
-
-                    if (!finalUid) throw new Error('Normalization timed out');
-
-                    setIsNormalizing(false);
-                    setIsStreamUploading(false);
-                    setStreamProgress(0);
-                    toast.success('Video uploaded and processed');
-                    setUploadFile(null);
-                    setPage(1);
-                    loadStreamVideos(1, debouncedSearchRef.current, false);
-                } catch (normErr) {
-                    console.error('[Escalation Error]:', normErr);
-                    setIsNormalizing(false);
-                    setIsStreamUploading(false);
-                    throw normErr;
-                }
-            }
-
-            if (uploadUid) {
-                try { await fetch(`/api/media/stream-status/${uploadUid}`, { method: 'DELETE' }); } catch (e) {}
-            }
-            setIsStreamUploading(false);
-            setStreamProgress(0);
-            throw error;
         }
     }
 
@@ -604,11 +421,8 @@ export function MediaLibraryPicker({
                             isUploading={isStreamUploading || isUploading}
                             error={uploadError}
                             onCancel={() => {
-                                if (isStreamUploading && xhrRef.current) {
-                                    xhrRef.current.abort();
-                                    xhrRef.current = null;
-                                    setIsStreamUploading(false);
-                                    setStreamProgress(0);
+                                if (isStreamUploading) {
+                                    cancelStreamUpload();
                                     setUploadFile(null);
                                 } else {
                                     abort();
@@ -616,8 +430,6 @@ export function MediaLibraryPicker({
                             }}
                             onReset={() => {
                                 resetUpload();
-                                setStreamProgress(0);
-                                setIsStreamUploading(false);
                                 setUploadFile(null);
                             }}
                             isDark={isDark}
