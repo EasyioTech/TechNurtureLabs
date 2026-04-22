@@ -55,6 +55,10 @@ function getAccountUrl() {
     return `${CF_API_BASE}/accounts/${serverEnv.CLOUDFLARE_ACCOUNT_ID}/stream`;
 }
 
+async function getResponseErrorText(res: Response): Promise<string> {
+    return await res.text().catch(() => '');
+}
+
 // ─────────────────────────────────────────────────────────────
 // TUS Resumable Upload
 // ─────────────────────────────────────────────────────────────
@@ -73,11 +77,9 @@ export interface TusUploadResult {
  * The client will POST multipart/form-data directly to this URL.
  * No TUS protocol needed - simple, fast, reliable.
  *
- * @param fileSize - Size of the file in bytes (informational only)
  * @param meta - Optional metadata (name, etc.)
  */
 export async function createTusUpload(
-    fileSize: number,
     meta?: Record<string, string>
 ): Promise<TusUploadResult> {
     if (!isStreamConfigured()) {
@@ -91,22 +93,18 @@ export async function createTusUpload(
     };
 
     console.log('[CF Stream] Initializing direct upload:', {
-        fileSize,
         maxDurationSeconds: requestBody.maxDurationSeconds,
         hasMeta: !!meta,
     });
 
     const res = await fetchWithTimeout(`${getAccountUrl()}/direct_upload`, {
         method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${serverEnv.CLOUDFLARE_STREAM_API_TOKEN}`,
-            'Content-Type': 'application/json',
-        },
+        headers: getHeaders(),
         body: JSON.stringify(requestBody),
     });
 
     if (!res.ok) {
-        const text = await res.text().catch(() => '');
+        const text = await getResponseErrorText(res);
         const errorDetail = text ? `\nResponse: ${text.substring(0, 500)}` : '';
         throw new Error(`Cloudflare Stream direct upload init failed (${res.status}): ${errorDetail}`);
     }
@@ -115,8 +113,8 @@ export async function createTusUpload(
 
     // Validate response structure
     if (!data.success || !data.result) {
-        const errors = data.errors || [{ message: 'Unknown error' }];
-        const errorMsg = errors.map((e: any) => e.message).join('; ');
+        const errors = (data.errors as Array<{ message: string }>) || [{ message: 'Unknown error' }];
+        const errorMsg = errors.map((e) => e.message).join('; ');
         throw new Error(`Cloudflare Stream rejected direct upload init: ${errorMsg}`);
     }
 
@@ -162,7 +160,7 @@ export async function getVideoStatus(uid: string): Promise<StreamVideoStatus> {
     });
 
     if (!res.ok) {
-        const text = await res.text().catch(() => '');
+        const text = await getResponseErrorText(res);
         throw new Error(`Cloudflare Stream get video failed (${res.status}): ${text}`);
     }
 
@@ -199,7 +197,7 @@ export async function deleteStreamVideo(uid: string): Promise<void> {
 
     // Throw on non-404 errors to catch cleanup failures
     if (!res.ok && res.status !== 404) {
-        const text = await res.text().catch(() => '');
+        const text = await getResponseErrorText(res);
         throw new Error(`Cloudflare Stream delete failed (${res.status}): ${text}`);
     }
 }
@@ -224,7 +222,7 @@ export async function listStreamVideos(limit: number = 20, search?: string) {
     });
 
     if (!res.ok) {
-        const text = await res.text().catch(() => '');
+        const text = await getResponseErrorText(res);
         throw new Error(`Cloudflare Stream list failed (${res.status}): ${text}`);
     }
 
