@@ -220,7 +220,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
 
                         return await new Promise<string>(async (resolve, reject) => {
                             const upload = new tus.Upload(file, {
-                                endpoint: uploadURL,
+                                uploadUrl: uploadURL,
                                 uploadDataDuringCreation: true,
                                 retryDelays: [0, 3000, 5000, 10000],
                                 chunkSize: 5 * 1024 * 1024,
@@ -235,7 +235,8 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                         let lastPct = -1;
                                         let stagnantCount = 0;
 
-                                        for (let i = 0; i < 60; i++) {
+                                        // Increase to 10 minutes (600 seconds)
+                                        for (let i = 0; i < 600; i++) {
                                             const statusRes = await fetch(`/api/media/stream-status/${uploadUid}`);
                                             if (statusRes.ok) {
                                                 const data = await statusRes.json();

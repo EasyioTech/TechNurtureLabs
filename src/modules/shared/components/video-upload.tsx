@@ -109,7 +109,7 @@ export function VideoUpload({
                 const uploadURL = data.uploadURL;
 
                 const upload = new tus.Upload(file, {
-                    endpoint: uploadURL,
+                    uploadUrl: uploadURL,
                     uploadDataDuringCreation: true,
                     retryDelays: [0, 3000, 5000, 10000],
                     chunkSize: 5 * 1024 * 1024,
