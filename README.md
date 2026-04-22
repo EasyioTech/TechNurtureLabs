@@ -2,14 +2,6 @@
 
 **TechNurture LMS** is a state-of-the-art, multi-tenant Learning Management System (LMS) designed for schools and educational institutions. It delivers a gamified learning experience for students, powerful management tools for school administrators, and a centralized oversight portal for platform operators (Super Admins).
 
----
-
-## 🛡️ STRICT DEPLOYMENT PROTOCOL
-> [!IMPORTANT]
-> **RULE #1: NEVER deploy directly to Production.**
-> All changes **MUST** be deployed and verified on the **Staging Server** (`187.124.98.192`) before being pushed to **Production** (`187.127.132.137`).
-
----
 
 ## 🎯 Platform Features
 
@@ -77,10 +69,6 @@
 ### 🌍 Deployment & Operations
 The project includes an **Operations (ops)** suite of automated scripts for seamless VPS deployment and maintenance.
 
-- **Initial Setup**: `bash ops/setup.sh` (installs Docker, configures firewall/Caddy)
-- **Deployment**: `bash ops/deploy.sh` (automates builds, migrations, and service restarts)
-- **Maintenance**: `bash ops/doctor.sh` (system-wide health check and diagnostics)
-
 For more detailed instructions, refer to the **[Centralized Documentation](docs/README.md)**.
 
 ---
@@ -99,24 +87,4 @@ For more detailed instructions, refer to the **[Centralized Documentation](docs/
 └── public/            # Static assets and global resources
 ```
 
----
 
-## 🔐 Support & Handover
-
-### Standard Credentials (Initial)
-| Role | Email | Default Password |
-|------|-------|------------------|
-| Super Admin | `admin@technurture.com` | `AdminPassword123!` |
-
-*(Note: Change these immediately after your first successful deployment.)*
-
-### Key Points for Handover
-- **Production URL Configuration**: Ensure `NEXT_PUBLIC_APP_URL` and `CADDY_DOMAIN` are set correctly in `.env.production`.
-- **Media Storage**: The system is pre-configured for Cloudflare R2, but can be toggled to `local` storage via environmental settings.
-- **Automated Seeding**: Use `bash ops/deploy.sh --clean` for a fresh installation with pre-configured classes and payment tiers.
-
----
-
-**Version**: 1.0.1  
-**Release Date**: April 2026  
-**License**: Proprietary - TechNurture LMS
