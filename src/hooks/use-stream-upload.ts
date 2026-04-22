@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { toast } from 'sonner';
-import * as tus from 'tus-js-client';
 
 interface UseStreamUploadOptions {
     onSuccess?: (uid: string) => Promise<void> | void;
@@ -90,29 +89,37 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                     const { uploadURL, uid } = await initRes.json();
                     uploadUid = uid;
 
-                    // Step 2: TUS resumable upload using tus-js-client
+                    // Step 2: Direct POST upload to Cloudflare (Cloudflare TUS endpoint only accepts POST)
                     await new Promise<void>((resolve, reject) => {
                         if (cancelledRef.current) return reject(new Error('Upload cancelled'));
 
-                        const upload = new tus.Upload(file, {
-                            endpoint: uploadURL,
-                            chunkSize: 5 * 1024 * 1024, // 5MB chunks
-                            retryDelays: [0, 1000, 3000, 5000, 10000], // Exponential backoff
-                            removeFingerprintOnSuccess: true,
-                            onProgress: (bytesUploaded: number, bytesTotal: number) => {
-                                const percent = Math.round((bytesUploaded / bytesTotal) * 100);
+                        const xhr = new XMLHttpRequest();
+
+                        // Track upload progress
+                        xhr.upload.addEventListener('progress', (e) => {
+                            if (e.lengthComputable) {
+                                const percent = Math.round((e.loaded / e.total) * 100);
                                 setProgress(Math.min(99, percent));
-                            },
-                            onError: (error: any) => {
-                                reject(new Error(`TUS upload failed: ${error.message || String(error)}`));
-                            },
-                            onSuccess: () => {
-                                resolve();
-                            },
+                            }
                         });
 
-                        // Store upload reference for potential cancellation
-                        (xhrRef as any).current = upload;
+                        xhr.addEventListener('load', () => {
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                resolve();
+                            } else {
+                                reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText}`));
+                            }
+                        });
+
+                        xhr.addEventListener('error', () => {
+                            reject(new Error('Network error during upload'));
+                        });
+
+                        xhr.addEventListener('abort', () => {
+                            reject(new Error('Upload cancelled'));
+                        });
+
+                        xhrRef.current = xhr;
 
                         // Check cancellation before starting
                         if (cancelledRef.current) {
@@ -120,7 +127,9 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                             return;
                         }
 
-                        upload.start();
+                        xhr.open('POST', uploadURL);
+                        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+                        xhr.send(file);
                     });
 
                     if (cancelledRef.current) throw new Error('Upload cancelled');
