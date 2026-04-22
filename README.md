@@ -2,14 +2,6 @@
 
 **TechNurture LMS** is a state-of-the-art, multi-tenant Learning Management System (LMS) designed for schools and educational institutions. It delivers a gamified learning experience for students, powerful management tools for school administrators, and a centralized oversight portal for platform operators (Super Admins).
 
----
-
-## 🛡️ STRICT DEPLOYMENT PROTOCOL
-> [!IMPORTANT]
-> **RULE #1: NEVER deploy directly to Production.**
-> All changes **MUST** be deployed and verified on the **Staging Server** (`187.124.98.192`) before being pushed to **Production** (`187.127.132.137`).
-
----
 
 ## 🎯 Platform Features
 
