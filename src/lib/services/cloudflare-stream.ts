@@ -118,10 +118,13 @@ export async function createDirectUpload(
 
 /**
  * Initialize a TUS (resumable) upload with Cloudflare Stream.
- * Returns a unique upload URL that the client can use with a TUS client.
- * 
+ * Uses the TUS Direct Creator Upload API which returns a client-uploadable TUS endpoint.
+ *
+ * Per Cloudflare TUS spec, DO NOT send Content-Type: application/json or a JSON body.
+ * Instead, send TUS protocol headers with Upload-Metadata (base64-encoded values).
+ *
  * @param fileSize - Size of the file in bytes
- * @param meta - Optional metadata
+ * @param meta - Optional metadata (name, etc.)
  */
 export async function createTusUpload(
     fileSize: number,
@@ -131,17 +134,27 @@ export async function createTusUpload(
         throw new Error('Cloudflare Stream is not configured.');
     }
 
+    // Build Upload-Metadata header with base64-encoded values per TUS spec
+    const maxDuration = 7200; // 2 hours
+    const metadataParts = [
+        `maxdurationseconds ${Buffer.from(maxDuration.toString()).toString('base64')}`,
+    ];
+    if (meta?.name) {
+        metadataParts.push(`name ${Buffer.from(meta.name).toString('base64')}`);
+    }
+
+    // TUS Direct Creator Upload: send ONLY the Authorization header + TUS headers.
+    // Do NOT send Content-Type: application/json or a JSON body — that triggers
+    // non-TUS REST mode and returns a basic upload URL instead of a TUS endpoint.
     const res = await fetchWithTimeout(`${getAccountUrl()}/direct_upload`, {
         method: 'POST',
         headers: {
-            ...getHeaders(),
+            'Authorization': `Bearer ${serverEnv.CLOUDFLARE_STREAM_API_TOKEN}`,
             'Tus-Resumable': '1.0.0',
             'Upload-Length': fileSize.toString(),
+            'Upload-Metadata': metadataParts.join(','),
         },
-        body: JSON.stringify({
-            maxDurationSeconds: 7200,
-            tusv2: true,
-        }),
+        // No body — TUS creation requests have no body
     });
 
     if (!res.ok) {
@@ -150,12 +163,13 @@ export async function createTusUpload(
     }
 
     const data = await res.json();
-    
-    console.log("[CF Stream] Generated Upload URL:", data.result.uploadURL);
 
+    // Check success BEFORE returning
     if (!data.success) {
-        throw new Error("Failed to create upload URL");
+        throw new Error(`Cloudflare Stream TUS init rejected: ${JSON.stringify(data.errors || 'Unknown error')}`);
     }
+
+    console.log("[CF Stream] Generated TUS Upload URL:", data.result.uploadURL);
 
     return {
         uploadUrl: data.result.uploadURL,
@@ -224,6 +238,12 @@ export async function deleteStreamVideo(uid: string): Promise<void> {
         method: 'DELETE',
         headers: getHeaders(),
     });
+
+    // Throw on non-404 errors to catch cleanup failures
+    if (!res.ok && res.status !== 404) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Cloudflare Stream delete failed (${res.status}): ${text}`);
+    }
 }
 
 /**
