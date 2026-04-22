@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { 
     lessons, courses
 } from '@/db/schema';
-import { eq, asc, desc, sql, count, ilike, and } from 'drizzle-orm';
+import { eq, asc, desc, sql, count, ilike, and, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireSuperAdmin } from '@/lib/admin-guard';
 import { createAuditLog } from '@/lib/audit';
@@ -136,34 +136,71 @@ export async function deleteLessonAdmin(id: string) {
     }
 }
 
-export async function saveLessonOrderAdmin(updates: any[]) {
-    const session = await requireSuperAdmin();
-    if (updates.length === 0) return;
+const lessonOrderUpdateSchema = z.array(z.object({
+    id: z.string().uuid(),
+    sequence_order: z.number().int().min(0).optional(),
+    sequence_index: z.number().int().min(0).optional(),
+}));
 
-    // Validate all IDs are proper UUIDs before using in raw SQL
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    for (const u of updates) {
-        if (!UUID_REGEX.test(u.id)) throw new Error('Invalid lesson ID');
-        const order = u.sequence_index ?? u.sequence_order;
-        if (!Number.isInteger(order) || order < 0) throw new Error('Invalid sequence order');
+/**
+ * Persists lesson sequence updates.
+ * CRITICAL FIX: Uses a temporary offset strategy to prevent UniqueIndex violations
+ * (uq_lesson_sequence_per_course) during bulk updates.
+ */
+export async function saveLessonOrderAdmin(rawUpdates: any[]) {
+    const session = await requireSuperAdmin();
+
+    let updates;
+    try {
+        updates = lessonOrderUpdateSchema.parse(rawUpdates);
+    } catch (err) {
+        throw new Error('Invalid lesson order data format');
     }
 
-    // Single transaction for all updates to ensure atomicity
-    await db.transaction(async (tx) => {
-        for (const u of updates) {
-            await tx.update(lessons)
-                .set({ 
-                    sequence_order: u.sequence_index ?? u.sequence_order,
-                    updated_at: new Date()
-                })
-                .where(eq(lessons.id, u.id));
-        }
-    });
+    if (updates.length === 0) return;
 
-    const first = await db.query.lessons.findFirst({ where: eq(lessons.id, updates[0].id) });
-    if (first) {
-        await updateCourseTotals(first.course_id);
-        await invalidateCourseCaches(first.course_id);
+    // 1. Get course context from the first lesson
+    const firstLesson = await db.query.lessons.findFirst({
+        where: eq(lessons.id, updates[0].id)
+    });
+    
+    if (!firstLesson) throw new Error('Lesson context not found');
+    const courseId = firstLesson.course_id;
+
+    try {
+        await db.transaction(async (tx) => {
+            // 2. PHASE 1: Move target lessons to a temporary out-of-range sequence
+            // This prevents unique constraint collisions (uq_lesson_sequence_per_course)
+            // when swapping positions (e.g. swapping 1 and 2 would normally fail at 1->2).
+            const targetIds = updates.map(u => u.id);
+            await tx.update(lessons)
+                .set({ sequence_order: sql`${lessons.sequence_order} + 10000` })
+                .where(and(
+                    eq(lessons.course_id, courseId),
+                    inArray(lessons.id, targetIds)
+                ));
+
+            // 3. PHASE 2: Apply the final desired sequence indices
+            for (const u of updates) {
+                const finalOrder = u.sequence_index ?? u.sequence_order;
+                if (finalOrder === undefined) continue;
+
+                await tx.update(lessons)
+                    .set({
+                        sequence_order: finalOrder,
+                        updated_at: new Date()
+                    })
+                    .where(eq(lessons.id, u.id));
+            }
+        });
+
+        // 4. Cleanup & Invalidation
+        await updateCourseTotals(courseId);
+        await invalidateCourseCaches(courseId);
+
+    } catch (err: any) {
+        console.error("[saveLessonOrderAdmin] Transaction failed:", err);
+        throw new Error('Failed to update lesson order: ' + (err.message || 'Database error'));
     }
 }
 
