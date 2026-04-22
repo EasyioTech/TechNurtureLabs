@@ -75,11 +75,13 @@ export interface TusUploadResult {
  * Returns a one-time signed URL for browser-to-Cloudflare POST.
  *
  * The client will POST multipart/form-data directly to this URL.
- * No TUS protocol needed - simple, fast, reliable.
+ * Works for files < 200MB. For larger files, use createTusUploadUrl() instead.
  *
+ * @param fileSize - Size of file in bytes (used for validation, not sent to API)
  * @param meta - Optional metadata (name, etc.)
  */
-export async function createTusUpload(
+export async function createDirectUpload(
+    fileSize: number,
     meta?: Record<string, string>
 ): Promise<TusUploadResult> {
     if (!isStreamConfigured()) {
@@ -126,6 +128,74 @@ export async function createTusUpload(
     }
 
     console.log('[CF Stream] ✓ Direct upload initialized:', {
+        uid,
+        uploadUrl: uploadUrl.substring(0, 50) + '...',
+    });
+
+    return { uploadUrl, uid };
+}
+
+/**
+ * Initialize a TUS protocol upload with Cloudflare Stream.
+ * Required for files >= 200MB. Supports resumable/chunked uploads.
+ *
+ * @param fileSize - Size of file in bytes (required for TUS protocol)
+ * @param meta - Optional metadata (name, etc.)
+ */
+export async function createTusUploadUrl(
+    fileSize: number,
+    meta?: Record<string, string>
+): Promise<TusUploadResult> {
+    if (!isStreamConfigured()) {
+        throw new Error('Cloudflare Stream is not configured.');
+    }
+
+    if (fileSize < 1) {
+        throw new Error('File size must be at least 1 byte');
+    }
+
+    // Build request body with TUS support
+    const requestBody = {
+        maxDurationSeconds: 7200, // 2 hours
+        tusv2: true, // Enable TUS v1.0.0 protocol support (required for >200MB)
+        ...(meta && { meta }),
+    };
+
+    console.log('[CF Stream] Initializing TUS upload:', {
+        fileSize,
+        maxDurationSeconds: requestBody.maxDurationSeconds,
+        hasMeta: !!meta,
+    });
+
+    const res = await fetchWithTimeout(`${getAccountUrl()}/direct_upload`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(requestBody),
+    });
+
+    if (!res.ok) {
+        const text = await getResponseErrorText(res);
+        const errorDetail = text ? `\nResponse: ${text.substring(0, 500)}` : '';
+        throw new Error(`Cloudflare Stream TUS init failed (${res.status}): ${errorDetail}`);
+    }
+
+    const data = await res.json();
+
+    // Validate response structure
+    if (!data.success || !data.result) {
+        const errors = (data.errors as Array<{ message: string }>) || [{ message: 'Unknown error' }];
+        const errorMsg = errors.map((e) => e.message).join('; ');
+        throw new Error(`Cloudflare Stream rejected TUS init: ${errorMsg}`);
+    }
+
+    const uploadUrl = data.result.uploadURL;
+    const uid = data.result.uid;
+
+    if (!uploadUrl || !uid) {
+        throw new Error(`Cloudflare returned incomplete response: missing uploadURL or uid`);
+    }
+
+    console.log('[CF Stream] ✓ TUS upload initialized:', {
         uid,
         uploadUrl: uploadUrl.substring(0, 50) + '...',
     });

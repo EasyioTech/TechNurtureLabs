@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
-import { createTusUpload, isStreamConfigured } from '@/lib/services/cloudflare-stream';
+import { createDirectUpload, createTusUploadUrl, isStreamConfigured } from '@/lib/services/cloudflare-stream';
 
 /**
  * POST /api/media/stream-upload
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { fileName } = body;
+        const { fileName, fileSize } = body;
 
         // Minimal metadata for Cloudflare Stream
         // Cloudflare handles transcoding/processing automatically
@@ -38,8 +38,13 @@ export async function POST(req: NextRequest) {
         if (fileName) meta.name = fileName;
         if (session.userId) meta.uploadedBy = session.userId;
 
-        // Initialize direct creator upload URL
-        const result = await createTusUpload(meta);
+        // Choose upload method based on file size
+        // < 200MB: basic POST (simple, fast)
+        // >= 200MB: TUS protocol (resumable, chunked)
+        const fileSizeBytes = fileSize || 0;
+        const result = fileSizeBytes < 200 * 1024 * 1024
+            ? await createDirectUpload(fileSizeBytes, meta)
+            : await createTusUploadUrl(fileSizeBytes, meta);
 
         console.log(`[Stream Upload] UID: ${result.uid}, TUS upload URL ready`);
 

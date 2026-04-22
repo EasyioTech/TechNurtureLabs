@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { toast } from 'sonner';
+import * as tus from 'tus-js-client';
 
 interface UseStreamUploadOptions {
     onSuccess?: (uid: string) => Promise<void> | void;
@@ -17,9 +18,16 @@ export interface UseStreamUploadReturn {
 /**
  * Universal Cloudflare Stream Video Uploader
  *
- * Uses CF Stream Direct Creator Upload API:
- * 1. POST to /api/media/stream-upload → get signed uploadURL + uid
- * 2. POST file as multipart/form-data to uploadURL
+ * Supports TWO upload methods based on file size:
+ *
+ * **Small files (< 200MB):**
+ * 1. POST to /api/media/stream-upload → get direct upload URL
+ * 2. POST file as multipart/form-data to uploadURL (simple, fast)
+ *
+ * **Large files (>= 200MB):**
+ * 1. POST to /api/media/stream-upload → get TUS upload URL
+ * 2. Use tus-js-client for resumable/chunked upload (supports large files)
+ *
  * 3. CF processes asynchronously, returns 200 immediately
  * 4. Webhook notifies when processing complete
  *
@@ -63,7 +71,7 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                 setIsUploading(true);
 
                 // Step 1: Initialize upload with CF Stream API
-                // Returns a signed uploadURL valid for one upload
+                // Returns a signed uploadURL (basic POST for <200MB, TUS for >=200MB)
                 const initRes = await fetch('/api/media/stream-upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -79,53 +87,16 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
 
                 const { uploadURL, uid } = await initRes.json();
 
-                // Step 2: Upload video file to signed URL using multipart/form-data
-                // CF Stream API expects: POST with 'file' field in multipart form
-                // NOT octet-stream, NOT chunked, NOT PATCH
-                // Reference: https://developers.cloudflare.com/stream/uploading-videos/direct-creator-uploads/
-                await new Promise<void>((resolve, reject) => {
-                    if (cancelledRef.current) return reject(new Error('Upload cancelled'));
+                // Step 2: Upload based on file size
+                const MAX_DIRECT_UPLOAD_SIZE = 200 * 1024 * 1024; // 200MB
 
-                    const xhr = new XMLHttpRequest();
-                    const formData = new FormData();
-                    formData.append('file', file);
-
-                    // Track upload progress
-                    xhr.upload.addEventListener('progress', (e) => {
-                        if (e.lengthComputable) {
-                            const percent = Math.round((e.loaded / e.total) * 100);
-                            setProgress(Math.min(99, percent));
-                        }
-                    });
-
-                    xhr.addEventListener('load', () => {
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            resolve();
-                        } else {
-                            reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText}`));
-                        }
-                    });
-
-                    xhr.addEventListener('error', () => {
-                        reject(new Error('Network error during upload'));
-                    });
-
-                    xhr.addEventListener('abort', () => {
-                        reject(new Error('Upload cancelled'));
-                    });
-
-                    xhrRef.current = xhr;
-
-                    if (cancelledRef.current) {
-                        reject(new Error('Upload cancelled'));
-                        return;
-                    }
-
-                    // POST multipart form to signed upload URL
-                    // Do NOT set Content-Type header — browser sets it automatically with boundary
-                    xhr.open('POST', uploadURL);
-                    xhr.send(formData);
-                });
+                if (file.size < MAX_DIRECT_UPLOAD_SIZE) {
+                    // Small files: use basic POST (multipart/form-data)
+                    await uploadViaBasicPost(uploadURL, file);
+                } else {
+                    // Large files: use TUS protocol (resumable, chunked)
+                    await uploadViaTus(uploadURL, file);
+                }
 
                 if (cancelledRef.current) throw new Error('Upload cancelled');
 
@@ -148,6 +119,100 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
             }
         },
         [options]
+    );
+
+    // Helper: Upload via basic POST (for files < 200MB)
+    const uploadViaBasicPost = React.useCallback(
+        async (uploadURL: string, file: File): Promise<void> => {
+            return new Promise<void>((resolve, reject) => {
+                if (cancelledRef.current) return reject(new Error('Upload cancelled'));
+
+                const xhr = new XMLHttpRequest();
+                const formData = new FormData();
+                formData.append('file', file);
+
+                // Track upload progress
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        setProgress(Math.min(99, percent));
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve();
+                    } else {
+                        reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText}`));
+                    }
+                });
+
+                xhr.addEventListener('error', () => {
+                    reject(new Error('Network error during upload'));
+                });
+
+                xhr.addEventListener('abort', () => {
+                    reject(new Error('Upload cancelled'));
+                });
+
+                xhrRef.current = xhr;
+
+                if (cancelledRef.current) {
+                    reject(new Error('Upload cancelled'));
+                    return;
+                }
+
+                // POST multipart form to signed upload URL
+                // Do NOT set Content-Type header — browser sets it automatically with boundary
+                xhr.open('POST', uploadURL);
+                xhr.send(formData);
+            });
+        },
+        []
+    );
+
+    // Helper: Upload via TUS protocol (for files >= 200MB)
+    const uploadViaTus = React.useCallback(
+        async (uploadURL: string, file: File): Promise<void> => {
+            return new Promise<void>((resolve, reject) => {
+                if (cancelledRef.current) return reject(new Error('Upload cancelled'));
+
+                const upload = new tus.Upload(file, {
+                    endpoint: uploadURL,
+                    retryDelays: [0, 3000, 5000, 10000, 20000],
+                    chunkSize: 150 * 1024 * 1024, // 150MB chunks
+                    metadata: {
+                        filename: file.name,
+                        filetype: file.type,
+                    },
+                    onError: (error) => {
+                        if (cancelledRef.current) return;
+                        reject(new Error(`TUS upload failed: ${error.message}`));
+                    },
+                    onProgress: (bytesSent, bytesTotal) => {
+                        if (!cancelledRef.current) {
+                            const percent = Math.round((bytesSent / bytesTotal) * 100);
+                            setProgress(Math.min(99, percent));
+                        }
+                    },
+                    onSuccess: () => {
+                        if (!cancelledRef.current) {
+                            resolve();
+                        }
+                    },
+                });
+
+                xhrRef.current = upload as any;
+
+                if (cancelledRef.current) {
+                    reject(new Error('Upload cancelled'));
+                    return;
+                }
+
+                upload.start();
+            });
+        },
+        []
     );
 
     return {
