@@ -14,6 +14,20 @@ export interface UseStreamUploadReturn {
     cancel: () => void;
 }
 
+/**
+ * Universal Cloudflare Stream Video Uploader
+ *
+ * Uses CF Stream Direct Creator Upload API:
+ * 1. POST to /api/media/stream-upload → get signed uploadURL + uid
+ * 2. POST file as multipart/form-data to uploadURL
+ * 3. CF processes asynchronously, returns 200 immediately
+ * 4. Webhook notifies when processing complete
+ *
+ * This hook is used by:
+ * - lesson-dialog.tsx (lesson video blocks)
+ * - media-library-picker.tsx (library uploads)
+ * - video-upload.tsx (generic video component)
+ */
 export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUploadReturn {
     const [isUploading, setIsUploading] = React.useState(false);
     const [progress, setProgress] = React.useState(0);
@@ -48,24 +62,35 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
             try {
                 setIsUploading(true);
 
-                // Step 1: Get signed upload URL from Cloudflare Stream via our server
+                // Step 1: Initialize upload with CF Stream API
+                // Returns a signed uploadURL valid for one upload
                 const initRes = await fetch('/api/media/stream-upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fileName: file.name, fileSize: file.size }),
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        fileSize: file.size
+                    }),
                 });
 
-                if (!initRes.ok) throw new Error('Failed to initialize upload');
+                if (!initRes.ok) {
+                    throw new Error('Failed to initialize upload with Cloudflare Stream');
+                }
+
                 const { uploadURL, uid } = await initRes.json();
 
-                // Step 2: Upload entire file directly to Cloudflare Stream (POST only, no PATCH)
-                // CF's direct_upload endpoint rejects PATCH requests.
-                // Uses simple XHR POST for maximum compatibility.
+                // Step 2: Upload video file to signed URL using multipart/form-data
+                // CF Stream API expects: POST with 'file' field in multipart form
+                // NOT octet-stream, NOT chunked, NOT PATCH
+                // Reference: https://developers.cloudflare.com/stream/uploading-videos/direct-creator-uploads/
                 await new Promise<void>((resolve, reject) => {
                     if (cancelledRef.current) return reject(new Error('Upload cancelled'));
 
                     const xhr = new XMLHttpRequest();
+                    const formData = new FormData();
+                    formData.append('file', file);
 
+                    // Track upload progress
                     xhr.upload.addEventListener('progress', (e) => {
                         if (e.lengthComputable) {
                             const percent = Math.round((e.loaded / e.total) * 100);
@@ -77,7 +102,7 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                         if (xhr.status >= 200 && xhr.status < 300) {
                             resolve();
                         } else {
-                            reject(new Error(`Upload failed: ${xhr.status}`));
+                            reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText}`));
                         }
                     });
 
@@ -96,9 +121,10 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                         return;
                     }
 
+                    // POST multipart form to signed upload URL
+                    // Do NOT set Content-Type header — browser sets it automatically with boundary
                     xhr.open('POST', uploadURL);
-                    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-                    xhr.send(file);
+                    xhr.send(formData);
                 });
 
                 if (cancelledRef.current) throw new Error('Upload cancelled');
@@ -106,13 +132,17 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                 setIsUploading(false);
                 setProgress(100);
 
-                // Step 3: Call onSuccess immediately — CF's iframe embed handles "processing" state natively
-                // Webhook will invalidate cache when encoding completes
+                // Step 3: Return URL immediately
+                // CF processes asynchronously in background
+                // Embed player shows "processing" state until ready
+                // Webhook invalidates cache when encoding completes
                 options?.onSuccess?.(`cf-stream://${uid}`);
                 return uid;
             } catch (error: any) {
                 setIsUploading(false);
-                const msg = error.message.includes('cancelled') ? 'Upload cancelled' : `Upload failed: ${error.message}`;
+                const msg = error.message.includes('cancelled')
+                    ? 'Upload cancelled'
+                    : `Upload failed: ${error.message}`;
                 toast.error(msg);
                 return null;
             }
