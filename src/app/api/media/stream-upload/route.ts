@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
         if (fileName) meta.name = fileName;
         if (session.userId) meta.uploadedBy = session.userId;
 
-        // Use createDirectUpload for stable one-shot uploads
-        const result = await createDirectUpload(7200, Object.keys(meta).length > 0 ? meta : undefined);
+        // Use createTusUpload for resumable uploads (supports >200MB)
+        const result = await createTusUpload(body.fileSize || 0, Object.keys(meta).length > 0 ? meta : undefined);
 
         console.log(`[Stream Upload] UID: ${result.uid}, TUS upload URL ready`);
 

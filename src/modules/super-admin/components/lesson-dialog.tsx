@@ -217,83 +217,85 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                         setIsStreamUploading(true);
                         setStreamProgress(0);
 
-                        return await new Promise<string>(async (resolve, reject) => {
-                            const xhr = new XMLHttpRequest();
-                            xhrRef.current = xhr;
-                            xhr.open('POST', uploadURL, true);
-
-                            xhr.upload.onprogress = (e) => {
-                                if (e.lengthComputable) {
-                                    setStreamProgress(Math.round((e.loaded / e.total) * 100));
+                        const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB Chunks
+                        
+                        // 1. Perform Chunked Upload
+                        await new Promise<void>((resolve, reject) => {
+                            const uploadChunk = (offset: number) => {
+                                if (offset >= file.size) {
+                                    resolve();
+                                    return;
                                 }
+
+                                const chunk = file.slice(offset, offset + CHUNK_SIZE);
+                                const xhr = new XMLHttpRequest();
+                                xhrRef.current = xhr;
+                                
+                                xhr.open('PATCH', uploadURL, true);
+                                xhr.setRequestHeader('Tus-Resumable', '1.0.0');
+                                xhr.setRequestHeader('Upload-Offset', offset.toString());
+                                xhr.setRequestHeader('Content-Type', 'application/offset+octet-stream');
+
+                                xhr.upload.onprogress = (e) => {
+                                    if (e.lengthComputable) {
+                                        const totalUploaded = offset + e.loaded;
+                                        setStreamProgress(Math.min(99, Math.round((totalUploaded / file.size) * 100)));
+                                    }
+                                };
+
+                                xhr.onload = () => {
+                                    xhrRef.current = null;
+                                    if (xhr.status >= 200 && xhr.status < 300) {
+                                        uploadChunk(offset + chunk.size);
+                                    } else {
+                                        reject(new Error(`Chunk upload failed: ${xhr.status}`));
+                                    }
+                                };
+
+                                xhr.onerror = () => {
+                                    xhrRef.current = null;
+                                    reject(new Error('Network error during chunk upload'));
+                                };
+
+                                xhr.send(chunk);
                             };
-
-                            xhr.onload = async () => {
-                                xhrRef.current = null;
-                                if (xhr.status >= 200 && xhr.status < 300) {
-                                    try {
-                                        // Gap #2: Stagnant Processing Detection
-                                        let isReady = false;
-                                        let lastPct = -1;
-                                        let stagnantCount = 0;
-
-                                        // Increase to 10 minutes (600 seconds)
-                                        for (let i = 0; i < 600; i++) {
-                                            const statusRes = await fetch(`/api/media/stream-status/${uploadUid}`);
-                                            if (statusRes.ok) {
-                                                const data = await statusRes.json();
-                                                
-                                                // Gap #1: Fix API Shape Alignment
-                                                const state = data.status?.state || data.state;
-                                                const ready = data.readyToStream;
-                                                const pct = parseFloat(data.status?.pctComplete || '0');
-
-                                                if (ready) {
-                                                    isReady = true;
-                                                    break;
-                                                }
-
-                                                if (state === 'error') {
-                                                    throw new Error('Cloudflare encoding failed. Incompatible format or VFR.');
-                                                }
-
-                                                if (pct === lastPct && pct < 100) stagnantCount++;
-                                                else { stagnantCount = 0; lastPct = pct; }
-
-                                                if (stagnantCount > 12) {
-                                                    throw new Error('Processing stalled. File likely requires re-encoding.');
-                                                }
-                                            }
-                                            await new Promise(r => setTimeout(r, 3000));
-                                        }
-
-                                        if (!isReady) throw new Error('Processing timeout');
-                                        resolve(uploadUid);
-                                    } catch (err: any) {
-                                         // Check for normalization flag set in parent
-                                         if (err.message?.includes('Repairing')) {
-                                             setIsNormalizing(true);
-                                         }
-                                         reject(err);
-                                     }
-                                } else {
-                                    const errorMsg = `Upload failed with status ${xhr.status}`;
-                                    console.error(errorMsg);
-                                    reject(new Error(errorMsg));
-                                }
-                            };
-
-                            xhr.onerror = () => {
-                                xhrRef.current = null;
-                                const errorMsg = 'Network error during upload';
-                                console.error(errorMsg);
-                                reject(new Error(errorMsg));
-                            };
-
-                            const formData = new FormData();
-                            formData.append('file', file);
-                            xhr.send(formData);
+                            uploadChunk(0);
                         });
+
+                        // 2. Poll for Status (Encoding)
+                        let isReady = false;
+                        let lastPct = -1;
+                        let stagnantCount = 0;
+
+                        for (let i = 0; i < 600; i++) {
+                            const statusRes = await fetch(`/api/media/stream-status/${uploadUid}`);
+                            if (statusRes.ok) {
+                                const data = await statusRes.json();
+                                const state = data.status?.state || data.state;
+                                const ready = data.readyToStream;
+                                const pct = parseFloat(data.status?.pctComplete || '0');
+
+                                if (ready) {
+                                    isReady = true;
+                                    break;
+                                }
+
+                                if (state === 'error') {
+                                    throw new Error('Cloudflare encoding failed. Incompatible format or VFR.');
+                                }
+
+                                if (pct === lastPct && pct < 100) stagnantCount++;
+                                else { stagnantCount = 0; lastPct = pct; }
+
+                                if (stagnantCount > 12) {
+                                    throw new Error('Processing stalled. File likely requires re-encoding.');
+                                }
+                            }
+                            await new Promise(r => setTimeout(r, 3000));
+                        }
+
+                        if (!isReady) throw new Error('Processing timeout');
+                        return uploadUid;
                     } catch (error: any) {
                         // Gap #4: Retry Strategy
                         if (!isRetry && !error.message.includes('re-encode')) {

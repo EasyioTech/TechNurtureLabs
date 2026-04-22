@@ -377,84 +377,93 @@ export function MediaLibraryPicker({
             setStreamProgress(0);
 
             return await new Promise<void>(async (resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhrRef.current = xhr;
-                xhr.open('POST', uploadURL, true);
-
-                xhr.upload.onprogress = (e) => {
-                    if (e.lengthComputable) {
-                        setStreamProgress(Math.round((e.loaded / e.total) * 100));
-                    }
-                };
-
-                xhr.onload = async () => {
-                    xhrRef.current = null;
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        try {
-                            let isReady = false;
-                            let lastPct = -1;
-                            let stagnantCount = 0;
-
-                            for (let i = 0; i < 600; i++) {
-                                const statusRes = await fetch(`/api/media/stream-status/${uploadUid}`);
-                                if (statusRes.ok) {
-                                    const data = await statusRes.json();
-                                    const state = data.status?.state || data.state;
-                                    const ready = data.readyToStream;
-                                    const pct = parseFloat(data.status?.pctComplete || '0');
-
-                                    if (ready) {
-                                        isReady = true;
-                                        break;
-                                    }
-
-                                    if (state === 'error') {
-                                        throw new Error('Cloudflare encoding failed. Incompatible format or VFR.');
-                                    }
-
-                                    if (pct === lastPct && pct < 100) stagnantCount++;
-                                    else { stagnantCount = 0; lastPct = pct; }
-
-                                    if (stagnantCount > 12) {
-                                        throw new Error('Processing stalled. File likely requires re-encoding.');
-                                    }
-                                }
-                                await new Promise(r => setTimeout(r, 3000));
-                            }
-
-                            if (!isReady) throw new Error('Processing timeout');
-
-                            // Reload stream videos
-                            setIsStreamUploading(false);
-                            setStreamProgress(0);
-                            toast.success('Video uploaded and processed');
-                            setUploadFile(null);
-                            setPage(1);
-                            loadStreamVideos(1, debouncedSearchRef.current, false);
+                const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB Chunks
+                
+                // 1. Chunked Upload
+                await new Promise<void>((resolve, reject) => {
+                    const uploadChunk = (offset: number) => {
+                        if (offset >= file.size) {
                             resolve();
-                        } catch (err: any) {
-                            if (err.message?.includes('Repairing')) {
-                                setIsNormalizing(true);
-                            }
-                            reject(err);
+                            return;
                         }
-                    } else {
-                        const errorMsg = `Upload failed with status ${xhr.status}`;
-                        console.error(errorMsg);
-                        reject(new Error(errorMsg));
+
+                        const chunk = file.slice(offset, offset + CHUNK_SIZE);
+                        const xhr = new XMLHttpRequest();
+                        xhrRef.current = xhr;
+                        
+                        xhr.open('PATCH', uploadURL, true);
+                        xhr.setRequestHeader('Tus-Resumable', '1.0.0');
+                        xhr.setRequestHeader('Upload-Offset', offset.toString());
+                        xhr.setRequestHeader('Content-Type', 'application/offset+octet-stream');
+
+                        xhr.upload.onprogress = (e) => {
+                            if (e.lengthComputable) {
+                                const totalUploaded = offset + e.loaded;
+                                setStreamProgress(Math.min(99, Math.round((totalUploaded / file.size) * 100)));
+                            }
+                        };
+
+                        xhr.onload = () => {
+                            xhrRef.current = null;
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                uploadChunk(offset + chunk.size);
+                            } else {
+                                reject(new Error(`Chunk upload failed: ${xhr.status}`));
+                            }
+                        };
+
+                        xhr.onerror = () => {
+                            xhrRef.current = null;
+                            reject(new Error('Network error during chunk upload'));
+                        };
+
+                        xhr.send(chunk);
+                    };
+                    uploadChunk(0);
+                });
+
+                // 2. Poll for Status
+                let isReady = false;
+                let lastPct = -1;
+                let stagnantCount = 0;
+
+                for (let i = 0; i < 600; i++) {
+                    const statusRes = await fetch(`/api/media/stream-status/${uploadUid}`);
+                    if (statusRes.ok) {
+                        const data = await statusRes.json();
+                        const state = data.status?.state || data.state;
+                        const ready = data.readyToStream;
+                        const pct = parseFloat(data.status?.pctComplete || '0');
+
+                        if (ready) {
+                            isReady = true;
+                            break;
+                        }
+
+                        if (state === 'error') {
+                            throw new Error('Cloudflare encoding failed. Incompatible format or VFR.');
+                        }
+
+                        if (pct === lastPct && pct < 100) stagnantCount++;
+                        else { stagnantCount = 0; lastPct = pct; }
+
+                        if (stagnantCount > 12) {
+                            throw new Error('Processing stalled. File likely requires re-encoding.');
+                        }
                     }
-                };
+                    await new Promise(r => setTimeout(r, 3000));
+                }
 
-                xhr.onerror = () => {
-                    xhrRef.current = null;
-                    const errorMsg = 'Network error during upload';
-                    console.error(errorMsg);
-                    reject(new Error(errorMsg));
-                };
+                if (!isReady) throw new Error('Processing timeout');
 
-                const formData = new FormData();
-                formData.append('file', file);
-                xhr.send(formData);
+                // Finalize UI
+                setIsStreamUploading(false);
+                setStreamProgress(0);
+                toast.success('Video uploaded and processed');
+                setUploadFile(null);
+                setPage(1);
+                loadStreamVideos(1, debouncedSearchRef.current, false);
+                resolve();
             });
         } catch (error: any) {
             // Retry strategy
