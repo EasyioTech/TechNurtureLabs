@@ -220,7 +220,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
 
                         return await new Promise<string>(async (resolve, reject) => {
                             const upload = new tus.Upload(file, {
-                                uploadUrl: uploadURL,
+                                endpoint: uploadURL,
                                 uploadDataDuringCreation: true,
                                 retryDelays: [0, 3000, 5000, 10000],
                                 chunkSize: 5 * 1024 * 1024,

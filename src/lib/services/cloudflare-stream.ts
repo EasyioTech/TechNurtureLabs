@@ -133,7 +133,10 @@ export async function createTusUpload(
 
     const res = await fetchWithTimeout(`${getAccountUrl()}/direct_upload`, {
         method: 'POST',
-        headers: getHeaders(),
+        headers: {
+            ...getHeaders(),
+            'Tus-Resumable': '1.0.0',
+        },
         body: JSON.stringify({
             maxDurationSeconds: 36000,
             meta: meta || {},
