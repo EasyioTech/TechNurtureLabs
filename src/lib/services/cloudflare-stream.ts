@@ -93,10 +93,12 @@ export async function createDirectUpload(
     // Build request body for direct creator upload (NOT TUS)
     const requestBody = {
         maxDurationSeconds,
+        uploadLength: fileSize, // Inform CF about expected file size
         ...(meta && { meta }), // Include metadata if provided
     };
 
     console.log('[CF Stream] Initializing direct upload:', {
+        fileSize,
         maxDurationSeconds: requestBody.maxDurationSeconds,
         hasMeta: !!meta,
     });
@@ -161,6 +163,7 @@ export async function createTusUploadUrl(
     // Build request body with TUS support
     const requestBody = {
         maxDurationSeconds,
+        uploadLength: fileSize, // Required/Recommended for TUS protocol
         tusv2: true, // Enable TUS v1.0.0 protocol support (required for >200MB)
         ...(meta && { meta }),
     };

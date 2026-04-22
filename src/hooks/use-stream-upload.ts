@@ -194,8 +194,6 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                 if (cancelledRef.current) return reject(new Error('Upload cancelled'));
 
                 const xhr = new XMLHttpRequest();
-                const formData = new FormData();
-                formData.append('file', file);
 
                 // Track upload progress
                 xhr.upload.addEventListener('progress', (e) => {
@@ -228,10 +226,11 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                     return;
                 }
 
-                // POST multipart form to signed upload URL
-                // Do NOT set Content-Type header — browser sets it automatically with boundary
+                // CRITICAL FIX: Cloudflare basic upload (non-TUS) requires binary body, NOT multipart/form-data
+                // Use application/octet-stream and send the file (Blob) directly.
                 xhr.open('POST', uploadURL);
-                xhr.send(formData);
+                xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+                xhr.send(file);
             });
         },
         []

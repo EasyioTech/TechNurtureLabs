@@ -105,23 +105,47 @@ export async function POST(
             );
         }
 
-        // CRITICAL FIX: POST should NOT forward to Cloudflare
-        // TUS session was already created server-side by createTusUploadUrl()
-        // tus-js-client expects POST to return 201 Created with Location header
-        // Location header MUST point to our proxy (not Cloudflare), so PATCH goes through proxy
-        console.log(`[TUS Proxy] POST for ${uid}: session already exists, returning 201`);
+        // CRITICAL FIX: Forward POST to Cloudflare to initialize the TUS session
+        // This ensures Cloudflare receives the Upload-Length and Upload-Metadata headers
+        // which are required for protocol compliance.
+        const headers = buildProxyHeaders(req);
+        
+        console.log(`[TUS Proxy] Forwarding POST for ${uid} to Cloudflare`);
+        
+        const cfResponse = await proxyToCloudflare(
+            'POST',
+            tusUploadUrl,
+            headers,
+            null // TUS POST usually has no body
+        );
 
-        // Construct Location as absolute URL to our proxy endpoint
+        if (!cfResponse.ok) {
+            const errorText = await cfResponse.text().catch(() => 'Unknown error');
+            console.error(`[TUS Proxy] Cloudflare POST failed (${cfResponse.status}): ${errorText}`);
+            return new NextResponse(errorText, { status: cfResponse.status });
+        }
+
+        // Cloudflare returns 201 Created with a Location header for the session
+        // We must return OUR proxy URL as the Location so tus-js-client continues through us
         const baseUrl = new URL(req.url).origin;
-        const locationUrl = `${baseUrl}/api/media/stream-upload/${uid}/chunk`;
+        const proxyLocationUrl = `${baseUrl}/api/media/stream-upload/${uid}/chunk`;
+
+        // Forward important TUS headers from Cloudflare
+        const responseHeaders: Record<string, string> = {
+            'Location': proxyLocationUrl,
+            'Tus-Resumable': '1.0.0',
+            'Tus-Version': '1.0.0',
+        };
+
+        cfResponse.headers.forEach((value, key) => {
+            if (['tus-resumable', 'tus-version', 'tus-extension', 'tus-max-chunk-size'].includes(key.toLowerCase())) {
+                responseHeaders[key] = value;
+            }
+        });
 
         return new NextResponse(null, {
             status: 201,
-            headers: {
-                'Location': locationUrl,
-                'Tus-Resumable': '1.0.0',
-                'Tus-Version': '1.0.0',
-            },
+            headers: responseHeaders,
         });
     } catch (error: any) {
         console.error('[TUS Proxy POST Error]:', error);
