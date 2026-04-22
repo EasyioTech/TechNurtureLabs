@@ -3,7 +3,6 @@ import Redis from 'ioredis';
 import { serverEnv } from '@/lib/env.server';
 import { analyzeVideo, normalizeVideo } from '../services/video-processor';
 import { createTusUpload } from '../services/cloudflare-stream';
-import * as tus from 'tus-js-client';
 import { createReadStream } from 'fs';
 import fs from 'fs/promises';
 import { NormalizationJob } from '../queue/video-queue';
@@ -14,11 +13,15 @@ import { NormalizationJob } from '../queue/video-queue';
  * Handles the heavy lifting of FFmpeg re-encoding and Cloudflare ingestion.
  */
 
-const connection = new Redis(serverEnv.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: null,
-});
+const isRedisDisabled = process.env.DISABLE_REDIS === 'true' || process.env.npm_lifecycle_event === 'build';
 
-export const videoWorker = new Worker(
+const connection = !isRedisDisabled 
+  ? new Redis(serverEnv.REDIS_URL || 'redis://localhost:6379', {
+      maxRetriesPerRequest: null,
+    })
+  : undefined;
+
+export const videoWorker = connection ? new Worker(
   'video_normalization',
   async (job: Job<NormalizationJob>) => {
     const { tempInputPath, originalName, fileSize, metadata } = job.data;
@@ -54,25 +57,26 @@ export const videoWorker = new Worker(
 
       console.log(`[VideoWorker] S2S Push for ${job.id} -> CF UID: ${uid}`);
 
-      await new Promise<void>((resolve, reject) => {
-        const stream = createReadStream(finalFilePath);
-        const upload = new tus.Upload(stream as any, {
-          uploadUrl,
-          uploadDataDuringCreation: true,
-          overridePatchMethod: true, // 🔥 CRITICAL FIX
-          fingerprint: async () => '', // 🔥 disable resume system safely
-          chunkSize: 10 * 1024 * 1024,
-          retryDelays: [0, 3000, 5000],
-          removeFingerprintOnSuccess: true,
-          metadata: {
-            filename: originalName,
-            filetype: 'video/mp4',
-          },
-          onError: reject,
-          onSuccess: () => resolve(),
-        });
-        upload.start();
+      // 3. Direct PATCH upload to Cloudflare (Native Node logic)
+      // We bypass tus-js-client because it performs a HEAD check that Cloudflare rejects in this mode.
+      const fileStream = createReadStream(finalFilePath);
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PATCH',
+        headers: {
+          'Tus-Resumable': '1.0.0',
+          'Upload-Offset': '0',
+          'Upload-Length': fileStats.size.toString(),
+          'Content-Type': 'application/offset+octet-stream',
+        },
+        body: fileStream as any,
+        // @ts-ignore - duplex is required for streaming bodies in fetch
+        duplex: 'half'
       });
+
+      if (!uploadRes.ok) {
+        const errorText = await uploadRes.text().catch(() => '');
+        throw new Error(`Cloudflare upload failed (${uploadRes.status}): ${errorText}`);
+      }
 
       console.log(`[VideoWorker] Successfully ingested ${uid} for job ${job.id}`);
 
@@ -97,12 +101,14 @@ export const videoWorker = new Worker(
       duration: 1000,
     },
   }
-);
+) : null;
 
-videoWorker.on('completed', (job) => {
-  console.log(`[VideoWorker] Job ${job.id} completed successfully`);
-});
+if (videoWorker) {
+  videoWorker.on('completed', (job) => {
+    console.log(`[VideoWorker] Job ${job.id} completed successfully`);
+  });
 
-videoWorker.on('failed', (job, err) => {
-  console.error(`[VideoWorker] Job ${job?.id} failed:`, err);
-});
+  videoWorker.on('failed', (job, err) => {
+    console.error(`[VideoWorker] Job ${job?.id} failed:`, err);
+  });
+}

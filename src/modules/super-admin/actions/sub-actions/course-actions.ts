@@ -198,22 +198,28 @@ export async function saveCourseAdmin(courseData: unknown) {
 
 export async function deleteCourseAdmin(id: string) {
     const session = await requireSuperAdmin();
-    const course = await db.query.courses.findFirst({ where: eq(courses.id, id) });
-    if (!course) return;
+    
+    return await db.transaction(async (tx) => {
+        const course = await tx.query.courses.findFirst({ where: eq(courses.id, id) });
+        if (!course) return;
 
-    await db.update(courses).set({ deleted_at: new Date(), updated_at: new Date() }).where(eq(courses.id, id));
+        // Hard delete as requested to ensure complete removal from DB and backups
+        await tx.delete(courses).where(eq(courses.id, id));
 
-    if (session && course) {
-        analyticsService.decrementMetric('total_courses').catch(() => {});
-        await createAuditLog({
-            userId: session.userId,
-            userType: session.userType,
-            action: 'delete',
-            entityType: 'course',
-            entityId: id,
-            oldValues: course,
-            metadata: {}
-        });
-        await redis.del(CACHE_KEY);
-    }
+        if (session && course) {
+            analyticsService.decrementMetric('total_courses').catch(() => {});
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                action: 'delete',
+                entityType: 'course',
+                entityId: id,
+                oldValues: course,
+                metadata: { hard_delete: true },
+                tx
+            });
+            await redis.del(CACHE_KEY);
+            await redis.del('cache:admin:meta');
+        }
+    });
 }

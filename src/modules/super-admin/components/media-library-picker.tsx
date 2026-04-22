@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import * as tus from 'tus-js-client';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useAdminTheme, t } from '../theme-context';
 import {
@@ -63,7 +62,7 @@ export function MediaLibraryPicker({
     const [isStreamUploading, setIsStreamUploading] = React.useState(false);
     const [streamProgress, setStreamProgress] = React.useState(0);
     const [isNormalizing, setIsNormalizing] = React.useState(false);
-    const tusUploadRef = React.useRef<tus.Upload | null>(null);
+    const xhrRef = React.useRef<XMLHttpRequest | null>(null);
 
     // Strictly fresh refs for use inside callbacks
     const activeTabRef        = React.useRef(activeTab);
@@ -106,9 +105,9 @@ export function MediaLibraryPicker({
     // Cleanup stream upload on unmount
     React.useEffect(() => {
         return () => {
-            if (tusUploadRef.current) {
-                tusUploadRef.current.abort();
-                tusUploadRef.current = null;
+            if (xhrRef.current) {
+                xhrRef.current.abort();
+                xhrRef.current = null;
             }
         };
     }, []);
@@ -378,18 +377,25 @@ export function MediaLibraryPicker({
             setStreamProgress(0);
 
             return await new Promise<void>(async (resolve, reject) => {
-                const upload = new tus.Upload(file, {
-                    uploadUrl: uploadURL,
-                    uploadDataDuringCreation: true,
-                    overridePatchMethod: true,
-                    fingerprint: async () => '',
-                    retryDelays: [0, 3000, 5000],
-                    chunkSize: 5 * 1024 * 1024,
-                    removeFingerprintOnSuccess: true,
-                    metadata: { filename: file.name, filetype: file.type },
-                    onError: (error) => reject(error),
-                    onProgress: (up, tot) => setStreamProgress(Math.round((up / tot) * 100)),
-                    onSuccess: async () => {
+                const xhr = new XMLHttpRequest();
+                xhrRef.current = xhr;
+                xhr.open('PATCH', uploadURL, true);
+
+                // Essential TUS-compatible headers for Cloudflare
+                xhr.setRequestHeader('Tus-Resumable', '1.0.0');
+                xhr.setRequestHeader('Upload-Offset', '0');
+                xhr.setRequestHeader('Upload-Length', file.size.toString());
+                xhr.setRequestHeader('Content-Type', 'application/offset+octet-stream');
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        setStreamProgress(Math.round((e.loaded / e.total) * 100));
+                    }
+                };
+
+                xhr.onload = async () => {
+                    xhrRef.current = null;
+                    if (xhr.status >= 200 && xhr.status < 300) {
                         try {
                             let isReady = false;
                             let lastPct = -1;
@@ -438,11 +444,21 @@ export function MediaLibraryPicker({
                             }
                             reject(err);
                         }
-                    },
-                });
+                    } else {
+                        const errorMsg = `Upload failed with status ${xhr.status}`;
+                        console.error(errorMsg);
+                        reject(new Error(errorMsg));
+                    }
+                };
 
-                tusUploadRef.current = upload;
-                upload.start();
+                xhr.onerror = () => {
+                    xhrRef.current = null;
+                    const errorMsg = 'Network error during upload';
+                    console.error(errorMsg);
+                    reject(new Error(errorMsg));
+                };
+
+                xhr.send(file);
             });
         } catch (error: any) {
             // Retry strategy
@@ -584,9 +600,9 @@ export function MediaLibraryPicker({
                             isUploading={isStreamUploading || isUploading}
                             error={uploadError}
                             onCancel={() => {
-                                if (isStreamUploading && tusUploadRef.current) {
-                                    tusUploadRef.current.abort();
-                                    tusUploadRef.current = null;
+                                if (isStreamUploading && xhrRef.current) {
+                                    xhrRef.current.abort();
+                                    xhrRef.current = null;
                                     setIsStreamUploading(false);
                                     setStreamProgress(0);
                                     setUploadFile(null);

@@ -13,11 +13,15 @@ import { serverEnv } from '@/lib/env.server';
 
 const QUEUE_NAME = 'video_normalization';
 
-const connection = new Redis(serverEnv.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: null,
-});
+const isRedisDisabled = process.env.DISABLE_REDIS === 'true' || process.env.npm_lifecycle_event === 'build';
 
-export const videoQueue = new Queue(QUEUE_NAME, {
+const connection = !isRedisDisabled 
+  ? new Redis(serverEnv.REDIS_URL || 'redis://localhost:6379', {
+      maxRetriesPerRequest: null,
+    })
+  : undefined;
+
+export const videoQueue = connection ? new Queue(QUEUE_NAME, {
   connection,
   defaultJobOptions: {
     attempts: 3,
@@ -28,7 +32,7 @@ export const videoQueue = new Queue(QUEUE_NAME, {
     removeOnComplete: true,
     removeOnFail: false,
   },
-});
+}) : { add: () => Promise.resolve() } as any;
 
 export interface NormalizationJob {
   tempInputPath: string;

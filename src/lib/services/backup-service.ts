@@ -93,13 +93,17 @@ export async function getLastBackupHash(courseId?: string): Promise<{ hash: stri
 }
 
 export async function exportAllCourses(): Promise<CourseBackupData> {
-    // 1. Fetch all classes
-    const classes = await db.query.classes.findMany();
+    // 1. Fetch all classes (excluding deleted ones)
+    const classes = await db.query.classes.findMany({
+        where: (classes, { isNull }) => isNull(classes.deleted_at)
+    });
 
-    // 2. Fetch all courses with full depth
+    // 2. Fetch all courses with full depth (excluding deleted ones)
     const allCourses = await db.query.courses.findMany({
+        where: (courses, { isNull }) => isNull(courses.deleted_at),
         with: {
             lessons: {
+                where: (lessons, { isNull }) => isNull(lessons.deleted_at),
                 with: {
                     quiz: {
                         with: {
@@ -113,7 +117,10 @@ export async function exportAllCourses(): Promise<CourseBackupData> {
                 }
             },
             quizzes: {
-                where: (quizzes, { isNull }) => isNull(quizzes.lesson_id),
+                where: (quizzes, { and, isNull }) => and(
+                    isNull(quizzes.lesson_id),
+                    isNull(quizzes.deleted_at)
+                ),
                 with: {
                     questions: {
                         with: {
@@ -122,7 +129,9 @@ export async function exportAllCourses(): Promise<CourseBackupData> {
                     }
                 }
             },
-            classMapping: true
+            classMapping: {
+                where: (mapping, { isNull }) => isNull(mapping.deleted_at)
+            }
         }
     });
 
@@ -151,7 +160,10 @@ export async function exportAllCourses(): Promise<CourseBackupData> {
 
 export async function exportLesson(lessonId: string): Promise<LessonBackupData> {
     const lesson = await db.query.lessons.findFirst({
-        where: eq(schema.lessons.id, lessonId),
+        where: (lessons, { and, eq, isNull }) => and(
+            eq(lessons.id, lessonId),
+            isNull(lessons.deleted_at)
+        ),
         with: {
             quiz: {
                 with: {
@@ -181,9 +193,13 @@ export async function exportLesson(lessonId: string): Promise<LessonBackupData> 
 
 export async function exportCourse(courseId: string): Promise<CourseBackupData> {
     const course = await db.query.courses.findFirst({
-        where: eq(schema.courses.id, courseId),
+        where: (courses, { and, eq, isNull }) => and(
+            eq(courses.id, courseId),
+            isNull(courses.deleted_at)
+        ),
         with: {
             lessons: {
+                where: (lessons, { isNull }) => isNull(lessons.deleted_at),
                 with: {
                     quiz: {
                         with: {
@@ -197,7 +213,10 @@ export async function exportCourse(courseId: string): Promise<CourseBackupData> 
                 }
             },
             quizzes: {
-                where: (quizzes, { isNull }) => isNull(quizzes.lesson_id),
+                where: (quizzes, { and, isNull }) => and(
+                    isNull(quizzes.lesson_id),
+                    isNull(quizzes.deleted_at)
+                ),
                 with: {
                     questions: {
                         with: {
@@ -206,7 +225,9 @@ export async function exportCourse(courseId: string): Promise<CourseBackupData> 
                     }
                 }
             },
-            classMapping: true
+            classMapping: {
+                where: (mapping, { isNull }) => isNull(mapping.deleted_at)
+            }
         }
     });
 
@@ -309,9 +330,14 @@ export async function restoreBackup(backupData: CourseBackupData, superAdminId: 
 
     return await db.transaction(async (tx) => {
         // PERFORMANCE: Batch fetch all existing records to avoid N+1 queries
-        const existingClasses = await tx.query.classes.findMany();
+        // CRITICAL: Only fetch non-deleted courses to prevent resurrecting soft-deleted data
+        const existingClasses = await tx.query.classes.findMany({
+            where: (classes, { isNull }) => isNull(classes.deleted_at)
+        });
         const existingAssets = await tx.query.mediaAssets.findMany();
-        const existingCourses = await tx.query.courses.findMany();
+        const existingCourses = await tx.query.courses.findMany({
+            where: (courses, { isNull }) => isNull(courses.deleted_at)
+        });
 
         // Build lookup maps
         const classByLevel = new Map(existingClasses.map(c => [c.level, c]));

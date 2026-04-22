@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { handleThumbnailError } from '@/lib/media-client';
-import { Plus, Save, Edit, Trash2, BookOpen, Layers, AlertOctagon, Database, RefreshCw } from 'lucide-react';
+import { Plus, Save, Edit, Trash2, BookOpen, Layers, AlertOctagon, Database, RefreshCw, Video, ShieldAlert } from 'lucide-react';
 import { SortableLessonItem } from '../lesson-item-sortable';
 import { CourseDialog } from '../course-dialog';
 import { LessonDialog } from '../lesson-dialog';
@@ -31,6 +31,7 @@ import {
     listBackupsAction,
     restoreFromBackupAction,
 } from '../../actions/backup-actions';
+import { purgeDeletedRecords } from '../../actions';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { BackupPreviewModal } from '../backup-preview-modal';
@@ -57,6 +58,7 @@ interface CourseBuilderTabProps {
     setEditingLesson: React.Dispatch<React.SetStateAction<Partial<Lesson> | null>>;
     classes: SchoolClass[];
     courseClassMappings: CourseClassMapping[];
+    cloudflareStreamDashboardUrl?: string | null;
 }
 
 
@@ -67,6 +69,7 @@ export function CourseBuilderTab({
     showCourseDialog, setShowCourseDialog, editingCourse, setEditingCourse,
     showLessonDialog, setShowLessonDialog, editingLesson, setEditingLesson,
     classes, courseClassMappings,
+    cloudflareStreamDashboardUrl,
 }: CourseBuilderTabProps) {
     const { isDark, accent } = useAdminTheme();
     const [itemToDelete, setItemToDelete] = useState<{ type: 'course' | 'lesson', id: string, name: string } | null>(null);
@@ -79,6 +82,7 @@ export function CourseBuilderTab({
     const [showBackupsDialog, setShowBackupsDialog] = useState(false);
     const [selectedBackupPreview, setSelectedBackupPreview] = useState<any>(null);
     const [showBackupPreview, setShowBackupPreview] = useState(false);
+    const [isPurging, setIsPurging] = useState(false);
 
     // Lesson preview state
     const [previewLesson, setPreviewLesson] = useState<Lesson | null>(null);
@@ -142,6 +146,26 @@ export function CourseBuilderTab({
             toast.error(err.message || "Restore failed");
         } finally {
             setIsRestoring(null);
+        }
+    };
+
+    const handlePurge = async () => {
+        if (!confirm("CRITICAL ACTION: This will PERMANENTLY delete all soft-deleted courses and lessons from the database. This cannot be undone. Proceed?")) return;
+        
+        setIsPurging(true);
+        try {
+            const res = await purgeDeletedRecords();
+            if (res.success && 'purged' in res) {
+                const p = res.purged;
+                toast.success(`System Purged: ${p.courses} courses, ${p.lessons} lessons permanently removed.`);
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                toast.error((res as any).error || "Purge failed");
+            }
+        } catch (err: any) {
+            toast.error(err.message || "Purge failed");
+        } finally {
+            setIsPurging(false);
         }
     };
 
@@ -285,6 +309,35 @@ export function CourseBuilderTab({
                     >
                         {isBackingUp ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
                         <span className="whitespace-nowrap">Backup</span>
+                    </Button>
+
+                    {/* Stream Dashboard Link */}
+                    {cloudflareStreamDashboardUrl && (
+                         <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(cloudflareStreamDashboardUrl, '_blank')}
+                            title="Open Cloudflare Stream Dashboard"
+                            className={`h-10 px-3 sm:px-5 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0 border-dashed
+                                ${isDark ? 'bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20' : 'bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100'}`}
+                        >
+                            <Video size={14} />
+                            <span className="whitespace-nowrap">Stream Manager</span>
+                        </Button>
+                    )}
+
+                    {/* Purge Button (Advanced) */}
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={isPurging}
+                        onClick={handlePurge}
+                        title="Permanently remove all soft-deleted records"
+                        className={`h-10 px-3 sm:px-5 rounded-xl font-bold uppercase tracking-wider text-[9px] sm:text-[10px] transition-all hover:scale-[1.08] active:scale-95 flex items-center gap-2 flex-shrink-0
+                            ${isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-50'}`}
+                    >
+                        {isPurging ? <RefreshCw size={14} className="animate-spin" /> : <ShieldAlert size={14} />}
+                        <span className="whitespace-nowrap">Purge Deleted</span>
                     </Button>
 
 

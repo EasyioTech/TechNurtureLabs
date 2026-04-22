@@ -4,9 +4,11 @@ import { db } from '@/lib/db';
 import { 
     paymentPlans, promoCodes, classes, 
     platformSettings, platformMetricsDaily, 
-    schoolSubscriptions, students, enrollments, schools, paymentTransactions, lessonProgress
+    schoolSubscriptions, students, schoolAdmins, enrollments, schools, paymentTransactions, lessonProgress,
+    courses, lessons, quizzes, courseClassMapping
 } from '@/db/schema';
-import { eq, asc, desc, count, sql, and, lte, inArray, not, isNull } from 'drizzle-orm';
+import * as schema from '@/db/schema';
+import { eq, asc, desc, count, sql, and, lte, inArray, not, isNull, isNotNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireSuperAdmin } from '@/lib/admin-guard';
 import { redis } from '@/lib/redis';
@@ -708,5 +710,101 @@ export async function runDatabaseDiagnostics(): Promise<DiagnosticsResult> {
     } catch (error: any) {
         console.error('[Database Diagnostics] Error:', error);
         throw new Error(`Diagnostics failed: ${error.message}`);
+    }
+}
+
+export async function purgeDeletedRecords() {
+    'use server';
+    const session = await requireSuperAdmin();
+
+    try {
+        return await db.transaction(async (tx) => {
+            // 1. Purge Courses (this will cascade to lessons, quizzes, progress, etc.)
+            const deletedCourses = await tx.delete(courses)
+                .where(isNotNull(courses.deleted_at))
+                .returning({ id: courses.id });
+
+            // 2. Purge Lessons that were soft-deleted independently
+            const deletedLessons = await tx.delete(lessons)
+                .where(isNotNull(lessons.deleted_at))
+                .returning({ id: lessons.id });
+
+            // 3. Purge Quizzes that were soft-deleted independently
+            const deletedQuizzes = await tx.delete(quizzes)
+                .where(isNotNull(quizzes.deleted_at))
+                .returning({ id: quizzes.id });
+
+            // 4. Purge Tenant Infrastructure
+            const deletedSchools = await tx.delete(schools)
+                .where(isNotNull(schools.deleted_at))
+                .returning({ id: schools.id });
+
+            const deletedStudents = await tx.delete(students)
+                .where(isNotNull(students.deleted_at))
+                .returning({ id: students.id });
+
+            const deletedAdmins = await tx.delete(schoolAdmins)
+                .where(isNotNull(schoolAdmins.deleted_at))
+                .returning({ id: schoolAdmins.id });
+
+            // 5. Purge Platform Entities
+            const deletedPlans = await tx.delete(paymentPlans)
+                .where(isNotNull(paymentPlans.deleted_at))
+                .returning({ id: paymentPlans.id });
+
+            const deletedClasses = await tx.delete(classes)
+                .where(isNotNull(classes.deleted_at))
+                .returning({ id: classes.id });
+
+            const deletedPromoCodes = await tx.delete(promoCodes)
+                .where(isNotNull(promoCodes.deleted_at))
+                .returning({ id: promoCodes.id });
+
+            // 6. Purge Class Mappings
+            await tx.delete(courseClassMapping).where(isNotNull(courseClassMapping.deleted_at));
+            await tx.delete(schema.schoolClassMapping).where(isNotNull(schema.schoolClassMapping.deleted_at));
+
+            await createAuditLog({
+                userId: session.userId,
+                userType: session.userType,
+                action: 'delete',
+                entityType: 'system',
+                entityId: 'purge',
+                metadata: {
+                    courses: deletedCourses.length,
+                    lessons: deletedLessons.length,
+                    quizzes: deletedQuizzes.length,
+                    schools: deletedSchools.length,
+                    students: deletedStudents.length,
+                    admins: deletedAdmins.length,
+                    plans: deletedPlans.length,
+                    classes: deletedClasses.length,
+                    promoCodes: deletedPromoCodes.length,
+                },
+                tx
+            });
+
+            await redis.del(CACHE_KEY);
+            await redis.del('cache:admin:courses');
+            await redis.del('cache:admin:schools');
+
+            return {
+                success: true,
+                purged: {
+                    courses: deletedCourses.length,
+                    lessons: deletedLessons.length,
+                    quizzes: deletedQuizzes.length,
+                    schools: deletedSchools.length,
+                    students: deletedStudents.length,
+                    admins: deletedAdmins.length,
+                    plans: deletedPlans.length,
+                    classes: deletedClasses.length,
+                    promoCodes: deletedPromoCodes.length,
+                }
+            };
+        });
+    } catch (error: any) {
+        console.error('[Purge Deleted Records] Error:', error);
+        return { success: false, error: error.message };
     }
 }

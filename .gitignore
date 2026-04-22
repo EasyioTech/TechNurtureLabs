@@ -61,3 +61,7 @@ seed_*.sh
 
 .aidesigner/*
 !.aidesigner/.gitkeep
+
+# backups and temporary files
+*.bak
+*.tmp

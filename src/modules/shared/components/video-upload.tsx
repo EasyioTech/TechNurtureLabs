@@ -1,6 +1,5 @@
 'use client';
 
-import * as tus from 'tus-js-client';
 import React, { useState } from 'react';
 import { Video, UploadCloud, Loader2 } from 'lucide-react';
 import { MediaLibraryPicker } from '@/modules/super-admin/components/media-library-picker';
@@ -32,14 +31,14 @@ export function VideoUpload({
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isNormalizing, setIsNormalizing] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
-    const tusUploadRef = React.useRef<tus.Upload | null>(null);
+    const xhrRef = React.useRef<XMLHttpRequest | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     // Cleanup: abort upload on unmount
     React.useEffect(() => {
         return () => {
-            if (tusUploadRef.current) {
-                tusUploadRef.current.abort();
+            if (xhrRef.current) {
+                xhrRef.current.abort();
             }
         };
     }, []);
@@ -108,80 +107,98 @@ export function VideoUpload({
                 uid = data.uid;
                 const uploadURL = data.uploadURL;
 
-                const upload = new tus.Upload(file, {
-                    uploadUrl: uploadURL,
-                    uploadDataDuringCreation: true,
-                    overridePatchMethod: true, // 🔥 CRITICAL FIX
-                    fingerprint: async () => '', // 🔥 disable resume system safely
-                    retryDelays: [0, 3000, 5000],
-                    chunkSize: 5 * 1024 * 1024,
-                    removeFingerprintOnSuccess: true,
-                    metadata: { filename: file.name, filetype: file.type },
-                    onError: (error) => {
-                        console.error("TUS FULL ERROR:", error);
-                        throw error;
-                    },
-                    onProgress: (bytesUploaded, bytesTotal) => {
-                        const percentage = Math.round((bytesUploaded / bytesTotal) * 100);
-                        setUploadProgress(percentage);
-                    },
-                    onSuccess: async () => {
-                        console.log("Upload finished, verifying state...");
-                        setUploadProgress(100);
-                        
-                        try {
-                            // Gap #2: Stagnant Processing Detection
-                            let isReady = false;
-                            let lastPct = -1;
-                            let stagnantCount = 0;
+                // Step 2: Direct PATCH upload to Cloudflare (Native logic)
+                // We bypass tus-js-client because it insists on a HEAD flow that Cloudflare's direct_upload mode rejects.
+                await new Promise<void>((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhrRef.current = xhr;
+                    xhr.open('PATCH', uploadURL, true);
 
-                            for (let i = 0; i < 60; i++) { // Max 3 mins
-                                const statusRes = await fetch(`/api/media/stream-status/${uid}`);
-                                if (statusRes.ok) {
-                                    const data = await statusRes.json();
-                                    
-                                    // Gap #1: Fix API Shape Alignment
-                                    const state = data.status?.state || data.state;
-                                    const ready = data.readyToStream;
-                                    const pct = parseFloat(data.status?.pctComplete || '0');
+                    // Essential TUS-compatible headers for Cloudflare
+                    xhr.setRequestHeader('Tus-Resumable', '1.0.0');
+                    xhr.setRequestHeader('Upload-Offset', '0');
+                    xhr.setRequestHeader('Upload-Length', file.size.toString());
+                    xhr.setRequestHeader('Content-Type', 'application/offset+octet-stream');
 
-                                    if (ready) {
-                                        isReady = true;
-                                        break;
-                                    }
-
-                                    // Root Cause Detection: Explicit Cloudflare Error
-                                    if (state === 'error') {
-                                        throw new Error('Cloudflare encoding failed. Incompatible format or VFR.');
-                                    }
-
-                                    // Stagnant check
-                                    if (pct === lastPct && pct < 100) {
-                                        stagnantCount++;
-                                    } else {
-                                        stagnantCount = 0;
-                                        lastPct = pct;
-                                    }
-
-                                    if (stagnantCount > 12) { // Stalled for ~36s
-                                        throw new Error('Processing stalled. File likely requires re-encoding.');
-                                    }
-                                }
-                                await new Promise(r => setTimeout(r, 3000));
-                            }
-
-                            if (!isReady) throw new Error('Processing timeout');
-
-                            onChange(`cf-stream://${uid}`);
-                            toast.success('Video ready and processed');
-                        } catch (err: any) {
-                            throw err; // Caught by outer block
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const percent = Math.round((e.loaded / e.total) * 100);
+                            setUploadProgress(percent);
                         }
-                    },
+                    };
+
+                    xhr.onload = () => {
+                        xhrRef.current = null;
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve();
+                        } else {
+                            const errorMsg = `Upload failed with status ${xhr.status}`;
+                            console.error(errorMsg);
+                            reject(new Error(errorMsg));
+                        }
+                    };
+
+                    xhr.onerror = () => {
+                        xhrRef.current = null;
+                        const errorMsg = 'Network error during upload';
+                        console.error(errorMsg);
+                        reject(new Error(errorMsg));
+                    };
+
+                    xhr.send(file);
                 });
 
-                tusUploadRef.current = upload;
-                upload.start();
+                console.log("Upload finished, verifying state...");
+                setUploadProgress(100);
+                
+                try {
+                    // Gap #2: Stagnant Processing Detection
+                    let isReady = false;
+                    let lastPct = -1;
+                    let stagnantCount = 0;
+
+                    for (let i = 0; i < 60; i++) { // Max 3 mins
+                        const statusRes = await fetch(`/api/media/stream-status/${uid}`);
+                        if (statusRes.ok) {
+                            const data = await statusRes.json();
+                            
+                            // Gap #1: Fix API Shape Alignment
+                            const state = data.status?.state || data.state;
+                            const ready = data.readyToStream;
+                            const pct = parseFloat(data.status?.pctComplete || '0');
+
+                            if (ready) {
+                                isReady = true;
+                                break;
+                            }
+
+                            // Root Cause Detection: Explicit Cloudflare Error
+                            if (state === 'error') {
+                                throw new Error('Cloudflare encoding failed. Incompatible format or VFR.');
+                            }
+
+                            // Stagnant check
+                            if (pct === lastPct && pct < 100) {
+                                stagnantCount++;
+                            } else {
+                                stagnantCount = 0;
+                                lastPct = pct;
+                            }
+
+                            if (stagnantCount > 12) { // Stalled for ~36s
+                                throw new Error('Processing stalled. File likely requires re-encoding.');
+                            }
+                        }
+                        await new Promise(r => setTimeout(r, 3000));
+                    }
+
+                    if (!isReady) throw new Error('Processing timeout');
+
+                    onChange(`cf-stream://${uid}`);
+                    toast.success('Video ready and processed');
+                } catch (err: any) {
+                    throw err; // Caught by outer block
+                }
 
             } catch (error: any) {
                 // Gap #4: Retry Strategy
@@ -345,9 +362,9 @@ export function VideoUpload({
                         {isUploading && (
                             <button
                                 onClick={() => {
-                                    if (tusUploadRef.current) {
-                                        tusUploadRef.current.abort(true);
-                                        tusUploadRef.current = null;
+                                    if (xhrRef.current) {
+                                        xhrRef.current.abort();
+                                        xhrRef.current = null;
                                     }
                                     setIsUploading(false);
                                     setUploadProgress(0);

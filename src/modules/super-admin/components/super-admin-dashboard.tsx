@@ -468,6 +468,7 @@ function DashboardContent() {
                                 editingLesson={data.editingLesson} setEditingLesson={data.setEditingLesson}
                                 classes={data.classes}
                                 courseClassMappings={data.courseClassMappings}
+                                cloudflareStreamDashboardUrl={data.cloudflareStreamDashboardUrl}
                             />
                         )}
                         {activePage === 'certifications' && (

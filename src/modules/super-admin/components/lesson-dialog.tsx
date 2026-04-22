@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import * as tus from 'tus-js-client';
 import { 
     Dialog, DialogContent, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -73,12 +72,12 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     const initialDataRef = React.useRef<string>('');
 
     const [showValidation, setShowValidation] = React.useState(false);
-    const tusUploadRef = React.useRef<tus.Upload | null>(null);
+    const xhrRef = React.useRef<XMLHttpRequest | null>(null);
 
     const abortStreamUpload = React.useCallback(() => {
-        if (tusUploadRef.current) {
-            tusUploadRef.current.abort();
-            tusUploadRef.current = null;
+        if (xhrRef.current) {
+            xhrRef.current.abort();
+            xhrRef.current = null;
         }
     }, []);
 
@@ -110,9 +109,9 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     // Cleanup: abort stream upload on unmount or dialog close
     React.useEffect(() => {
         return () => {
-            if (tusUploadRef.current) {
-                tusUploadRef.current.abort();
-                tusUploadRef.current = null;
+            if (xhrRef.current) {
+                xhrRef.current.abort();
+                xhrRef.current = null;
             }
         };
     }, []);
@@ -219,18 +218,25 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                         setStreamProgress(0);
 
                         return await new Promise<string>(async (resolve, reject) => {
-                            const upload = new tus.Upload(file, {
-                                uploadUrl: uploadURL,
-                                uploadDataDuringCreation: true,
-                                overridePatchMethod: true, // 🔥 CRITICAL FIX
-                                fingerprint: async () => '', // 🔥 disable resume system safely
-                                retryDelays: [0, 3000, 5000],
-                                chunkSize: 5 * 1024 * 1024,
-                                removeFingerprintOnSuccess: true,
-                                metadata: { filename: file.name, filetype: file.type },
-                                onError: (error) => reject(error),
-                                onProgress: (up, tot) => setStreamProgress(Math.round((up / tot) * 100)),
-                                onSuccess: async () => {
+                            const xhr = new XMLHttpRequest();
+                            xhrRef.current = xhr;
+                            xhr.open('PATCH', uploadURL, true);
+
+                            // Essential TUS-compatible headers for Cloudflare
+                            xhr.setRequestHeader('Tus-Resumable', '1.0.0');
+                            xhr.setRequestHeader('Upload-Offset', '0');
+                            xhr.setRequestHeader('Upload-Length', file.size.toString());
+                            xhr.setRequestHeader('Content-Type', 'application/offset+octet-stream');
+
+                            xhr.upload.onprogress = (e) => {
+                                if (e.lengthComputable) {
+                                    setStreamProgress(Math.round((e.loaded / e.total) * 100));
+                                }
+                            };
+
+                            xhr.onload = async () => {
+                                xhrRef.current = null;
+                                if (xhr.status >= 200 && xhr.status < 300) {
                                     try {
                                         // Gap #2: Stagnant Processing Detection
                                         let isReady = false;
@@ -276,11 +282,21 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                          }
                                          reject(err);
                                      }
-                                 },
-                             });
+                                } else {
+                                    const errorMsg = `Upload failed with status ${xhr.status}`;
+                                    console.error(errorMsg);
+                                    reject(new Error(errorMsg));
+                                }
+                            };
 
-                            tusUploadRef.current = upload;
-                            upload.start();
+                            xhr.onerror = () => {
+                                xhrRef.current = null;
+                                const errorMsg = 'Network error during upload';
+                                console.error(errorMsg);
+                                reject(new Error(errorMsg));
+                            };
+
+                            xhr.send(file);
                         });
                     } catch (error: any) {
                         // Gap #4: Retry Strategy

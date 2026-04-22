@@ -25,6 +25,12 @@ let worker: Worker | null = null;
 export function startEventWorker() {
     if (worker) return; // Already running
 
+    const isRedisDisabled = process.env.DISABLE_REDIS === 'true' || process.env.npm_lifecycle_event === 'build';
+    if (isRedisDisabled) {
+        console.log('[EventWorker] Skipping worker start (Redis disabled or Build mode)');
+        return;
+    }
+
     console.log('--- [Consolidated] Platform Event Worker Starting ---');
 
     // Dedicated BullMQ connection
