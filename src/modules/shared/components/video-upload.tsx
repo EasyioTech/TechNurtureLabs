@@ -111,7 +111,10 @@ export function VideoUpload({
                 const upload = new tus.Upload(file, {
                     uploadUrl: uploadURL,
                     uploadDataDuringCreation: true,
-                    retryDelays: [0, 3000, 5000, 10000],
+                    overridePatchMethod: true, // 🔥 CRITICAL FIX
+                    // @ts-ignore - Disable resume system
+                    fingerprint: () => null, 
+                    retryDelays: [0, 3000, 5000],
                     chunkSize: 5 * 1024 * 1024,
                     removeFingerprintOnSuccess: true,
                     metadata: { filename: file.name, filetype: file.type },
