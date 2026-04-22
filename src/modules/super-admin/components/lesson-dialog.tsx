@@ -171,7 +171,6 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                 toast.error(err?.message || 'Handshake failed');
             }
         } finally {
-            setIsStreamUploading(false);
             setActiveUploadItemId(null);
             setUploadFile(null);
         }
@@ -334,8 +333,6 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                                 }}
                                                 resetUpload={() => {
                                                     resetUpload();
-                                                    setStreamProgress(0);
-                                                    setIsStreamUploading(false);
                                                 }}
                                                 upload={upload}
                                             />
