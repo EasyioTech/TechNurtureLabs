@@ -105,24 +105,19 @@ export async function POST(
             );
         }
 
-        const headers = buildProxyHeaders(req);
+        // CRITICAL FIX: POST should NOT forward to Cloudflare
+        // TUS session was already created server-side by createTusUploadUrl()
+        // tus-js-client expects POST to return 201 Created with Location header
+        // Returning 201 tells client the session exists and ready for PATCH uploads
+        console.log(`[TUS Proxy] POST for ${uid}: session already exists, returning 201`);
 
-        const cfResponse = await proxyToCloudflare(
-            'POST',
-            tusUploadUrl,
-            headers,
-            req.body
-        );
-
-        // Forward response headers
-        const responseHeaders: Record<string, string> = {};
-        cfResponse.headers.forEach((value, key) => {
-            responseHeaders[key] = value;
-        });
-
-        return new NextResponse(cfResponse.body, {
-            status: cfResponse.status,
-            headers: responseHeaders,
+        return new NextResponse(null, {
+            status: 201,
+            headers: {
+                'Location': tusUploadUrl,
+                'Tus-Resumable': '1.0.0',
+                'Tus-Version': '1.0.0',
+            },
         });
     } catch (error: any) {
         console.error('[TUS Proxy POST Error]:', error);
