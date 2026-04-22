@@ -199,10 +199,12 @@ export async function createTusUploadUrl(
 
     // 2. Create TUS Session
     // We send maxDurationSeconds as a specific header as required by CF Stream TUS
+    // IMPORTANT: We do NOT use getHeaders() here because it includes 'Content-Type: application/json'
+    // which can confuse Cloudflare into thinking this is a basic upload instead of TUS.
     const res = await fetchWithTimeout(getAccountUrl(), {
         method: 'POST',
         headers: {
-            ...getHeaders(),
+            'Authorization': `Bearer ${serverEnv.CLOUDFLARE_STREAM_API_TOKEN}`,
             'Tus-Resumable': '1.0.0',
             'Upload-Length': fileSize.toString(),
             ...(uploadMetadata && { 'Upload-Metadata': uploadMetadata }),
@@ -221,18 +223,27 @@ export async function createTusUploadUrl(
         throw new Error('Cloudflare Stream TUS creation succeeded but missing Location header');
     }
 
-    // Normalize relative URLs to absolute
-    if (sessionUrl.startsWith('/')) {
+    // Normalize relative URLs (path or partial) to absolute
+    if (!sessionUrl.startsWith('http')) {
         const accountUrl = getAccountUrl();
         const origin = new URL(accountUrl).origin;
-        sessionUrl = `${origin}${sessionUrl}`;
+        if (sessionUrl.startsWith('/')) {
+            sessionUrl = `${origin}${sessionUrl}`;
+        } else {
+            // It's relative to the creation endpoint
+            const base = accountUrl.endsWith('/') ? accountUrl : `${accountUrl}/`;
+            sessionUrl = `${base}${sessionUrl}`;
+        }
     }
 
-    const uidPart = sessionUrl.split('/').pop();
-    if (!uidPart) {
+    // Extract UID reliably from the session URL
+    const urlObj = new URL(sessionUrl);
+    const pathParts = urlObj.pathname.split('/').filter(Boolean);
+    const uid = pathParts[pathParts.length - 1];
+
+    if (!uid) {
         throw new Error(`Could not extract UID from TUS session URL: ${sessionUrl}`);
     }
-    const uid = uidPart.split('?')[0];
 
     return { uploadUrl: sessionUrl, uid };
 }

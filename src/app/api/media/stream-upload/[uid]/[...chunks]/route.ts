@@ -45,9 +45,22 @@ async function proxyToCloudflare(
 function buildProxyHeaders(req: NextRequest): Record<string, string> {
     const headers: Record<string, string> = {};
 
-    // Forward all headers except hop-by-hop ones
+    // Forward all headers except client-specific or hop-by-hop ones
     req.headers.forEach((value, key) => {
-        if (!['host', 'connection', 'transfer-encoding', 'authorization'].includes(key.toLowerCase())) {
+        const k = key.toLowerCase();
+        if (![
+            'host', 
+            'connection', 
+            'transfer-encoding', 
+            'authorization',
+            'cookie', // CRITICAL: Do not forward our site's cookies to Cloudflare
+            'referer',
+            'origin',
+            'sec-fetch-dest',
+            'sec-fetch-mode',
+            'sec-fetch-site',
+            'priority'
+        ].includes(k)) {
             headers[key] = value;
         }
     });
