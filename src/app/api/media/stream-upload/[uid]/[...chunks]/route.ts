@@ -110,10 +110,11 @@ export async function POST(
         // TUS session was already created server-side by createTusUploadUrl()
         // tus-js-client expects POST to return 201 Created with Location header
         // Location header MUST point to our proxy (not Cloudflare), so PATCH goes through proxy
-        console.log(`[TUS Proxy] POST for ${uid}: returning 201 with proxy location`);
+        // We use a relative path to ensure the browser resolves it against the public origin
+        // instead of internal Docker/0.0.0.0 addresses.
+        const proxyLocationUrl = `/api/media/stream-upload/${uid}/chunk`;
 
-        const baseUrl = new URL(req.url).origin;
-        const proxyLocationUrl = `${baseUrl}/api/media/stream-upload/${uid}/chunk`;
+        console.log(`[TUS Proxy] POST for ${uid}: returning 201 with relative location: ${proxyLocationUrl}`);
 
         return new NextResponse(null, {
             status: 201,
