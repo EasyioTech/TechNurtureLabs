@@ -60,8 +60,7 @@ export const videoWorker = new Worker(
           uploadUrl,
           uploadDataDuringCreation: true,
           overridePatchMethod: true, // 🔥 CRITICAL FIX
-          // @ts-ignore - Disable resume system as per Cloudflare Stream requirements
-          fingerprint: () => null, 
+          fingerprint: async () => '', // 🔥 disable resume system safely
           chunkSize: 10 * 1024 * 1024,
           retryDelays: [0, 3000, 5000],
           removeFingerprintOnSuccess: true,

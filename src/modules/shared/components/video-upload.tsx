@@ -112,8 +112,7 @@ export function VideoUpload({
                     uploadUrl: uploadURL,
                     uploadDataDuringCreation: true,
                     overridePatchMethod: true, // 🔥 CRITICAL FIX
-                    // @ts-ignore - Disable resume system
-                    fingerprint: () => null, 
+                    fingerprint: async () => '', // 🔥 disable resume system safely
                     retryDelays: [0, 3000, 5000],
                     chunkSize: 5 * 1024 * 1024,
                     removeFingerprintOnSuccess: true,
