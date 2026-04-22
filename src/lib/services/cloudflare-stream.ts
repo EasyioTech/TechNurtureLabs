@@ -78,10 +78,12 @@ export interface TusUploadResult {
  * Works for files < 200MB. For larger files, use createTusUploadUrl() instead.
  *
  * @param fileSize - Size of file in bytes (used for validation, not sent to API)
+ * @param maxDurationSeconds - Duration quota to reserve (calculated by caller)
  * @param meta - Optional metadata (name, etc.)
  */
 export async function createDirectUpload(
     fileSize: number,
+    maxDurationSeconds: number,
     meta?: Record<string, string>
 ): Promise<TusUploadResult> {
     if (!isStreamConfigured()) {
@@ -90,7 +92,7 @@ export async function createDirectUpload(
 
     // Build request body for direct creator upload (NOT TUS)
     const requestBody = {
-        maxDurationSeconds: 7200, // 2 hours
+        maxDurationSeconds,
         ...(meta && { meta }), // Include metadata if provided
     };
 
@@ -140,10 +142,12 @@ export async function createDirectUpload(
  * Required for files >= 200MB. Supports resumable/chunked uploads.
  *
  * @param fileSize - Size of file in bytes (required for TUS protocol)
+ * @param maxDurationSeconds - Duration quota to reserve (calculated by caller)
  * @param meta - Optional metadata (name, etc.)
  */
 export async function createTusUploadUrl(
     fileSize: number,
+    maxDurationSeconds: number,
     meta?: Record<string, string>
 ): Promise<TusUploadResult> {
     if (!isStreamConfigured()) {
@@ -156,7 +160,7 @@ export async function createTusUploadUrl(
 
     // Build request body with TUS support
     const requestBody = {
-        maxDurationSeconds: 7200, // 2 hours
+        maxDurationSeconds,
         tusv2: true, // Enable TUS v1.0.0 protocol support (required for >200MB)
         ...(meta && { meta }),
     };

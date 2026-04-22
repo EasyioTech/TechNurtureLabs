@@ -36,17 +36,56 @@ export interface UseStreamUploadReturn {
  * - media-library-picker.tsx (library uploads)
  * - video-upload.tsx (generic video component)
  */
+/**
+ * Maps upload errors to user-friendly messages based on HTTP status or error type
+ */
+function getUploadErrorMessage(error: any): string {
+    const msg = (error?.message ?? '').toLowerCase();
+
+    // Status code checks (error message or underlying cause)
+    if (msg.includes('401') || msg.includes('unauthorized')) {
+        return 'Upload authentication failed. Please refresh and try again.';
+    }
+    if (msg.includes('402') || msg.includes('payment')) {
+        return 'Account storage quota exceeded. Contact your administrator.';
+    }
+    if (msg.includes('413') || msg.includes('too large') || msg.includes('payload')) {
+        return 'Upload chunk too large. Please try again.';
+    }
+    if (msg.includes('422') || msg.includes('unprocessable')) {
+        return 'Video codec not supported. Use H.264/AAC MP4.';
+    }
+    if (msg.includes('429') || msg.includes('too many')) {
+        return 'Too many uploads in progress. Please wait and retry.';
+    }
+    if (msg.includes('cancelled')) {
+        return 'Upload cancelled.';
+    }
+    if (msg.includes('network')) {
+        return 'Network error. Please check your connection and retry.';
+    }
+    if (msg.includes('timeout')) {
+        return 'Upload timed out. Please retry.';
+    }
+
+    return `Upload failed: ${error?.message || 'Unknown error'}`;
+}
+
 export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUploadReturn {
     const [isUploading, setIsUploading] = React.useState(false);
     const [progress, setProgress] = React.useState(0);
 
     const xhrRef = React.useRef<XMLHttpRequest | null>(null);
+    const tusRef = React.useRef<tus.Upload | null>(null);
     const cancelledRef = React.useRef(false);
 
     React.useEffect(() => {
         return () => {
             if (xhrRef.current) {
                 xhrRef.current.abort();
+            }
+            if (tusRef.current) {
+                tusRef.current.abort();
             }
         };
     }, []);
@@ -56,6 +95,10 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
         if (xhrRef.current) {
             xhrRef.current.abort();
             xhrRef.current = null;
+        }
+        if (tusRef.current) {
+            tusRef.current.abort();
+            tusRef.current = null;
         }
         setIsUploading(false);
         setProgress(0);
@@ -70,6 +113,29 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
             try {
                 setIsUploading(true);
 
+                // GUARD 1: File size must not exceed 30GB (Cloudflare hard limit)
+                const MAX_FILE_SIZE = 30 * 1024 * 1024 * 1024; // 30GB
+                if (file.size > MAX_FILE_SIZE) {
+                    const sizeGB = (file.size / 1024 / 1024 / 1024).toFixed(2);
+                    const errorMsg = `Video exceeds 30GB maximum (file is ${sizeGB}GB)`;
+                    toast.error(errorMsg);
+                    return null;
+                }
+
+                // GUARD 2: Validate file type is a video
+                const ALLOWED_MIME_TYPES = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/x-matroska', 'application/octet-stream'];
+                const ALLOWED_EXTENSIONS = ['mp4', 'mov', 'mkv', 'webm', 'avi', 'flv', 'wmv', 'm4v', 'mts', 'ts', 'mpg', 'mpeg'];
+
+                const fileExt = file.name.split('.').pop()?.toLowerCase();
+                const isValidMime = file.type === '' || ALLOWED_MIME_TYPES.includes(file.type) || file.type.startsWith('video/');
+                const isValidExt = fileExt && ALLOWED_EXTENSIONS.includes(fileExt);
+
+                if (!isValidExt || (file.type && !isValidMime)) {
+                    const errorMsg = `Only video files are supported (MP4, MOV, MKV, WebM, AVI, FLV, WMV). Got: ${file.type || fileExt || 'unknown type'}`;
+                    toast.error(errorMsg);
+                    return null;
+                }
+
                 // Step 1: Initialize upload with CF Stream API
                 // Returns uploadURL based on file size:
                 // - <200MB: direct Cloudflare URL (basic POST)
@@ -79,12 +145,14 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         fileName: file.name,
-                        fileSize: file.size
+                        fileSize: file.size,
+                        mimeType: file.type,
                     }),
                 });
 
                 if (!initRes.ok) {
-                    throw new Error('Failed to initialize upload with Cloudflare Stream');
+                    const errorData = await initRes.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(errorData.error || 'Failed to initialize upload with Cloudflare Stream');
                 }
 
                 const { uploadURL, uid, isTus } = await initRes.json();
@@ -111,9 +179,7 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                 return uid;
             } catch (error: any) {
                 setIsUploading(false);
-                const msg = error.message.includes('cancelled')
-                    ? 'Upload cancelled'
-                    : `Upload failed: ${error.message}`;
+                const msg = getUploadErrorMessage(error);
                 toast.error(msg);
                 return null;
             }
@@ -203,7 +269,8 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                     },
                 });
 
-                xhrRef.current = upload as any;
+                // Store TUS upload reference for proper cancellation
+                tusRef.current = upload;
 
                 if (cancelledRef.current) {
                     reject(new Error('Upload cancelled'));

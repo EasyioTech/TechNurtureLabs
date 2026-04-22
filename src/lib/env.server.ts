@@ -17,6 +17,7 @@ const serverSchema = z.object({
     CLOUDFLARE_BUCKET_NAME: z.string().optional().default(''),
     CLOUDFLARE_PUBLIC_DOMAIN: z.string().optional().default(''),
     CLOUDFLARE_STREAM_API_TOKEN: z.string().optional().default(''),
+    CLOUDFLARE_WEBHOOK_SECRET: z.string().optional().default(''),
     RAZORPAY_KEY_ID: z.string().optional().default(''),
     RAZORPAY_KEY_SECRET: z.string().optional().default(''),
     NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().optional().default(''),
