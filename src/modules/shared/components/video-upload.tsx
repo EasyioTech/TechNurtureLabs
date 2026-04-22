@@ -31,7 +31,7 @@ export function VideoUpload({
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     // Use shared upload hook
-    const { uploadVideo, isUploading, progress, isNormalizing, cancel } = useStreamUpload({
+    const { uploadVideo, isUploading, progress, cancel } = useStreamUpload({
         onSuccess: async (url: string) => {
             onChange(url);
             if (fileInputRef.current) {
@@ -48,15 +48,9 @@ export function VideoUpload({
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate video file type
-        if (!file.type.startsWith('video/')) {
-            toast.error('Please upload a valid video file');
-            return;
-        }
-
-        // Safeguard: File integrity check
-        if (file.size < 100000) {
-            toast.error("File seems corrupted or too small (min 100KB)");
+        const maxSize = 2 * 1024 * 1024 * 1024;
+        if (file.size > maxSize) {
+            toast.error('File size limit is 2GB');
             return;
         }
 
@@ -98,18 +92,12 @@ export function VideoUpload({
                         </>
                     ) : (
                         <div onClick={handlePickerClick} className="flex flex-col items-center">
-                            {(isUploading || isNormalizing) && (
+                            {isUploading && (
                                 <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
                                     <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
-                                    <p className="text-white font-bold text-lg mb-1">
-                                        {isNormalizing ? 'Repairing & Processing' : 'Processing Video'}
-                                    </p>
-                                    <p className="text-slate-400 text-sm">
-                                        {isNormalizing ? 'This may take a few minutes for large files...' : 'Standardizing for all devices...'}
-                                    </p>
-                                    {isUploading && !isNormalizing && (
-                                        <p className="text-slate-400 text-xs mt-2">{progress}%</p>
-                                    )}
+                                    <p className="text-white font-bold text-lg mb-1">Processing Video</p>
+                                    <p className="text-slate-400 text-sm">Uploading to Stream...</p>
+                                    <p className="text-slate-400 text-xs mt-2">{progress}%</p>
                                 </div>
                             )}
                             <div className={`${compact ? 'w-8 h-8 rounded-xl' : 'w-12 h-12 rounded-2xl'} flex items-center justify-center ${compact ? '' : 'mb-3'} ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
@@ -136,12 +124,12 @@ export function VideoUpload({
                                 : 'bg-white border-slate-100 text-slate-600 hover:border-slate-200 hover:shadow-sm'
                             }
                         `}>
-                            {isUploading && !isNormalizing ? (
+                            {isUploading ? (
                                 <><Loader2 size={14} className="animate-spin" /> {progress}%</>
                             ) : (
                                 <><UploadCloud size={14} /> Upload Video</>
                             )}
-                            <input ref={fileInputRef} type="file" className="hidden" accept="video/*" onChange={handleFileUpload} disabled={isUploading} />
+                            <input ref={fileInputRef} type="file" className="hidden" accept="*/*" onChange={handleFileUpload} disabled={isUploading} />
                         </label>
 
                         {isUploading && (
