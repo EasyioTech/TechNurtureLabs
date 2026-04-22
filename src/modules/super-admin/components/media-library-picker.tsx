@@ -382,7 +382,7 @@ export function MediaLibraryPicker({
                 await new Promise<void>((resolve, reject) => {
                     const upload = new tus.Upload(file, {
                         endpoint: uploadURL,
-                        uploadUrl: uploadURL,
+                        // REMOVED uploadUrl: uploadURL - Cloudflare's direct_upload URL is a creation endpoint, not the session URL itself.
                         retryDelays: [0, 3000, 5000, 10000, 20000],
                         chunkSize: 5 * 1024 * 1024,
                         headers: {
