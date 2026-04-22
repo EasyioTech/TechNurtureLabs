@@ -82,7 +82,7 @@ export interface TusUploadResult {
  * @param meta - Optional metadata to attach to the video
  */
 export async function createDirectUpload(
-    maxDurationSeconds: number = 36000,
+    maxDurationSeconds: number = 3600,
     meta?: Record<string, string>
 ): Promise<DirectUploadResult> {
     if (!isStreamConfigured()) {
