@@ -2,7 +2,7 @@ import { Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
 import { serverEnv } from '@/lib/env.server';
 import { analyzeVideo, normalizeVideo } from '../services/video-processor';
-import { createTusUpload } from '../services/cloudflare-stream';
+import { createDirectUpload } from '../services/cloudflare-stream';
 import { createReadStream } from 'fs';
 import fs from 'fs/promises';
 import { constants as fsConstants } from 'fs';
@@ -135,26 +135,23 @@ export const videoWorker = connection
 
                   const fileStats = await validateFileSafely(finalFilePath, 'FINAL_FILE');
 
-                  console.log(`  Creating TUS upload URL for ${fileStats.size} bytes...`);
-                  const { uploadUrl, uid } = await createTusUpload(fileStats.size, {
+                  console.log(`  Creating upload URL for ${fileStats.size} bytes...`);
+                  const { uploadUrl, uid } = await createDirectUpload(7200, {
                       ...metadata,
                       name: originalName,
                       normalized: tempOutputPath ? 'true' : 'false',
                       jobId: job.id,
                   });
 
-                  console.log(`[VideoWorker:${job.id}] ✓ Got TUS endpoint. Stream UID: ${uid}`);
+                  console.log(`[VideoWorker:${job.id}] ✓ Got upload endpoint. Stream UID: ${uid}`);
                   console.log(`  Uploading to: ${uploadUrl}`);
 
-                  // Direct PATCH upload to Cloudflare
+                  // POST entire file to Cloudflare (direct upload, not TUS)
                   const fileStream = createReadStream(finalFilePath);
                   const uploadRes = await fetch(uploadUrl, {
-                      method: 'PATCH',
+                      method: 'POST',
                       headers: {
-                          'Tus-Resumable': '1.0.0',
-                          'Upload-Offset': '0',
-                          'Upload-Length': fileStats.size.toString(),
-                          'Content-Type': 'application/offset+octet-stream',
+                          'Content-Type': 'application/octet-stream',
                       },
                       body: fileStream as any,
                       // @ts-ignore - duplex required for streaming
