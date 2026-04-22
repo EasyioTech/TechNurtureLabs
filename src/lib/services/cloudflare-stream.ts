@@ -228,10 +228,11 @@ export async function createTusUploadUrl(
         sessionUrl = `${origin}${sessionUrl}`;
     }
 
-    const uid = sessionUrl.split('/').pop();
-    if (!uid) {
+    const uidPart = sessionUrl.split('/').pop();
+    if (!uidPart) {
         throw new Error(`Could not extract UID from TUS session URL: ${sessionUrl}`);
     }
+    const uid = uidPart.split('?')[0];
 
     return { uploadUrl: sessionUrl, uid };
 }
