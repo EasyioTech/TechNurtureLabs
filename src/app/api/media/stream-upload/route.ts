@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
 import { createDirectUpload, createTusUploadUrl, isStreamConfigured } from '@/lib/services/cloudflare-stream';
+import { redis } from '@/lib/redis';
 
 /**
  * POST /api/media/stream-upload
  *
- * Generates a Cloudflare Stream Direct Creator Upload URL.
- * Follows CF Stream best practices:
- * - Direct upload from browser to Cloudflare (no proxy relay)
- * - Minimal metadata
- * - Fast one-time URL generation
+ * Initiates video upload to Cloudflare Stream.
+ *
+ * For files < 200MB: Returns direct upload URL (basic POST)
+ * For files >= 200MB: Returns proxy endpoint URL (TUS protocol via server)
  *
  * Request body:
  *   { fileName: string, fileSize?: number }
+ *
+ * Response:
+ *   { uploadURL: string, uid: string, isTus?: boolean }
  */
 export async function POST(req: NextRequest) {
     try {
@@ -33,24 +36,52 @@ export async function POST(req: NextRequest) {
         const { fileName, fileSize } = body;
 
         // Minimal metadata for Cloudflare Stream
-        // Cloudflare handles transcoding/processing automatically
         const meta: Record<string, string> = {};
         if (fileName) meta.name = fileName;
         if (session.userId) meta.uploadedBy = session.userId;
 
-        // Choose upload method based on file size
-        // < 200MB: basic POST (simple, fast)
-        // >= 200MB: TUS protocol (resumable, chunked)
         const fileSizeBytes = fileSize || 0;
-        const result = fileSizeBytes < 200 * 1024 * 1024
-            ? await createDirectUpload(fileSizeBytes, meta)
-            : await createTusUploadUrl(fileSizeBytes, meta);
+        const isTusUpload = fileSizeBytes >= 200 * 1024 * 1024;
 
-        console.log(`[Stream Upload] UID: ${result.uid}, TUS upload URL ready`);
+        if (!isTusUpload) {
+            // Small files: direct POST to Cloudflare
+            const result = await createDirectUpload(fileSizeBytes, meta);
+            console.log(`[Stream Upload] UID: ${result.uid}, direct upload`);
+
+            return NextResponse.json({
+                uploadURL: result.uploadUrl,
+                uid: result.uid,
+                isTus: false,
+            });
+        }
+
+        // Large files: TUS protocol via server proxy
+        const result = await createTusUploadUrl(fileSizeBytes, meta);
+
+        try {
+            // Store TUS endpoint in Redis with 1 hour expiry
+            await redis.setex(
+                `tusUpload:${result.uid}`,
+                3600,
+                JSON.stringify({
+                    tusEndpoint: result.uploadUrl,
+                    fileName,
+                    fileSize: fileSizeBytes,
+                    createdAt: new Date().toISOString(),
+                })
+            );
+        } catch (err) {
+            console.warn('[Stream Upload] Redis unavailable, proxy will not work', err);
+        }
+
+        // Return our proxy URL instead of Cloudflare's endpoint
+        const proxyUrl = `/api/media/stream-upload/${result.uid}/chunk`;
+        console.log(`[Stream Upload] UID: ${result.uid}, TUS via proxy`);
 
         return NextResponse.json({
-            uploadURL: result.uploadUrl,
+            uploadURL: proxyUrl,
             uid: result.uid,
+            isTus: true,
         });
     } catch (err: any) {
         console.error('[Stream Upload Error]:', err);

@@ -71,7 +71,9 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                 setIsUploading(true);
 
                 // Step 1: Initialize upload with CF Stream API
-                // Returns a signed uploadURL (basic POST for <200MB, TUS for >=200MB)
+                // Returns uploadURL based on file size:
+                // - <200MB: direct Cloudflare URL (basic POST)
+                // - >=200MB: our proxy URL (TUS via server)
                 const initRes = await fetch('/api/media/stream-upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -85,16 +87,14 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                     throw new Error('Failed to initialize upload with Cloudflare Stream');
                 }
 
-                const { uploadURL, uid } = await initRes.json();
+                const { uploadURL, uid, isTus } = await initRes.json();
 
                 // Step 2: Upload based on file size
-                const MAX_DIRECT_UPLOAD_SIZE = 200 * 1024 * 1024; // 200MB
-
-                if (file.size < MAX_DIRECT_UPLOAD_SIZE) {
-                    // Small files: use basic POST (multipart/form-data)
+                if (!isTus) {
+                    // Small files (<200MB): use basic POST (multipart/form-data)
                     await uploadViaBasicPost(uploadURL, file);
                 } else {
-                    // Large files: use TUS protocol (resumable, chunked)
+                    // Large files (>=200MB): use TUS protocol via server proxy
                     await uploadViaTus(uploadURL, file);
                 }
 
