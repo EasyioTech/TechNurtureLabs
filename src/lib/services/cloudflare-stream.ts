@@ -3,11 +3,11 @@
  *
  * Handles all interactions with the Cloudflare Stream API:
  *  - Direct Creator Uploads (generates a one-time upload URL)
+ *  - TUS Resumable Uploads (for large files)
  *  - Video status polling
  *  - Video deletion
  *
- * Videos are uploaded directly from the client browser to Cloudflare,
- * bypassing our Node.js server entirely and saving bandwidth.
+ * Videos are uploaded via a proxy or directly, depending on size.
  */
 
 import { serverEnv } from '../env.server';
@@ -16,7 +16,17 @@ const CF_API_BASE = 'https://api.cloudflare.com/client/v4';
 const DEFAULT_TIMEOUT_MS = 30000;
 
 /**
- * Wraps fetch with timeout abort controller
+ * Custom error for request timeouts
+ */
+export class RequestTimeoutError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'RequestTimeoutError';
+    }
+}
+
+/**
+ * Wraps fetch with timeout abort controller and error differentiation
  */
 async function fetchWithTimeout(
     url: string,
@@ -24,13 +34,30 @@ async function fetchWithTimeout(
     timeoutMs: number = DEFAULT_TIMEOUT_MS
 ): Promise<Response> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const { signal } = controller;
+    
+    // Support external signals if provided
+    if (options?.signal) {
+        options.signal.addEventListener('abort', () => controller.abort(options.signal?.reason));
+    }
+
+    const timeoutId = setTimeout(() => controller.abort('timeout'), timeoutMs);
 
     try {
-        return await fetch(url, {
+        const response = await fetch(url, {
             ...options,
-            signal: controller.signal,
+            signal,
         });
+        return response;
+    } catch (err: any) {
+        if (err.name === 'AbortError') {
+            // Check if it was our timeout or an external abort
+            // fetch's AbortSignal.reason is supported in modern Node/Browsers
+            if (signal.reason === 'timeout') {
+                throw new RequestTimeoutError(`Request timed out after ${timeoutMs}ms`);
+            }
+        }
+        throw err;
     } finally {
         clearTimeout(timeoutId);
     }
@@ -60,46 +87,55 @@ async function getResponseErrorText(res: Response): Promise<string> {
 }
 
 // ─────────────────────────────────────────────────────────────
-// TUS Resumable Upload
+// TUS & Direct Upload Types
 // ─────────────────────────────────────────────────────────────
 
-export interface TusUploadResult {
-    /** The TUS upload endpoint for resumable chunked upload */
+export interface StreamUploadResult {
+    /** The upload endpoint (CF direct URL or our Proxy URL) */
     uploadUrl: string;
     /** The UID assigned to this video upload */
     uid: string;
 }
 
+// ─────────────────────────────────────────────────────────────
+// Direct Creator Upload (Simple POST, < 200MB)
+// ─────────────────────────────────────────────────────────────
+
 /**
  * Initialize a direct creator upload with Cloudflare Stream.
  * Returns a one-time signed URL for browser-to-Cloudflare POST.
  *
- * The client will POST multipart/form-data directly to this URL.
- * Works for files < 200MB. For larger files, use createTusUploadUrl() instead.
+ * This uses the simple POST protocol. Works for files < 200MB.
  *
- * @param fileSize - Size of file in bytes (used for validation, not sent to API)
- * @param maxDurationSeconds - Duration quota to reserve (calculated by caller)
+ * @param fileSize - Size of file in bytes (used for server-side validation only)
+ * @param maxDurationSeconds - Duration quota to reserve
  * @param meta - Optional metadata (name, etc.)
  */
 export async function createDirectUpload(
     fileSize: number,
     maxDurationSeconds: number,
     meta?: Record<string, string>
-): Promise<TusUploadResult> {
+): Promise<StreamUploadResult> {
     if (!isStreamConfigured()) {
         throw new Error('Cloudflare Stream is not configured.');
     }
 
-    // Build request body for direct creator upload (NOT TUS)
+    // 1. Validate file size locally before hitting CF
+    if (fileSize > 200 * 1024 * 1024) {
+        throw new Error('File too large for direct upload. Use TUS protocol.');
+    }
+
+    // 2. Build request body
+    // Note: uploadLength is NOT supported in the direct_upload JSON body
     const requestBody = {
         maxDurationSeconds,
-        uploadLength: fileSize, // Inform CF about expected file size
-        ...(meta && { meta }), // Include metadata if provided
+        requireSignedURLs: false, // Default
+        ...(meta && { meta }),
     };
 
     console.log('[CF Stream] Initializing direct upload:', {
         fileSize,
-        maxDurationSeconds: requestBody.maxDurationSeconds,
+        maxDurationSeconds,
         hasMeta: !!meta,
     });
 
@@ -111,47 +147,39 @@ export async function createDirectUpload(
 
     if (!res.ok) {
         const text = await getResponseErrorText(res);
-        const errorDetail = text ? `\nResponse: ${text.substring(0, 500)}` : '';
-        throw new Error(`Cloudflare Stream direct upload init failed (${res.status}): ${errorDetail}`);
+        throw new Error(`Cloudflare Stream direct upload init failed (${res.status}): ${text}`);
     }
 
     const data = await res.json();
 
-    // Validate response structure
     if (!data.success || !data.result) {
         const errors = (data.errors as Array<{ message: string }>) || [{ message: 'Unknown error' }];
-        const errorMsg = errors.map((e) => e.message).join('; ');
-        throw new Error(`Cloudflare Stream rejected direct upload init: ${errorMsg}`);
+        throw new Error(`Cloudflare Stream rejected direct upload init: ${errors.map(e => e.message).join('; ')}`);
     }
 
     const uploadUrl = data.result.uploadURL;
     const uid = data.result.uid;
 
     if (!uploadUrl || !uid) {
-        throw new Error(`Cloudflare returned incomplete response: missing uploadURL or uid`);
+        throw new Error('Cloudflare returned incomplete response: missing uploadURL or uid');
     }
-
-    console.log('[CF Stream] ✓ Direct upload initialized:', {
-        uid,
-        uploadUrl: uploadUrl.substring(0, 50) + '...',
-    });
 
     return { uploadUrl, uid };
 }
 
+// ─────────────────────────────────────────────────────────────
+// TUS Resumable Upload (PATCH, >= 200MB)
+// ─────────────────────────────────────────────────────────────
+
 /**
  * Initialize a TUS protocol upload with Cloudflare Stream.
  * Required for files >= 200MB. Supports resumable/chunked uploads.
- *
- * @param fileSize - Size of file in bytes (required for TUS protocol)
- * @param maxDurationSeconds - Duration quota to reserve (calculated by caller)
- * @param meta - Optional metadata (name, etc.)
  */
 export async function createTusUploadUrl(
     fileSize: number,
     maxDurationSeconds: number,
     meta?: Record<string, string>
-): Promise<TusUploadResult> {
+): Promise<StreamUploadResult> {
     if (!isStreamConfigured()) {
         throw new Error('Cloudflare Stream is not configured.');
     }
@@ -160,93 +188,67 @@ export async function createTusUploadUrl(
         throw new Error('File size must be at least 1 byte');
     }
 
-    // Build request body with TUS support
-    const requestBody = {
-        maxDurationSeconds,
-        uploadLength: fileSize, // Required/Recommended for TUS protocol
-        tusv2: true, // Enable TUS v1.0.0 protocol support (required for >200MB)
-        ...(meta && { meta }),
-    };
+    // 1. Prepare TUS Metadata (Base64 encoded)
+    const uploadMetadata = meta 
+        ? Object.entries(meta)
+            .map(([key, value]) => `${key} ${Buffer.from(value).toString('base64')}`)
+            .join(',')
+        : '';
 
-    console.log('[CF Stream] Initializing TUS upload:', {
-        fileSize,
-        maxDurationSeconds: requestBody.maxDurationSeconds,
-        hasMeta: !!meta,
-    });
+    console.log('[CF Stream] Creating TUS session:', { fileSize, maxDurationSeconds });
 
-    const res = await fetchWithTimeout(`${getAccountUrl()}/direct_upload`, {
+    // 2. Create TUS Session
+    // We send maxDurationSeconds as a specific header as required by CF Stream TUS
+    const res = await fetchWithTimeout(getAccountUrl(), {
         method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(requestBody),
+        headers: {
+            ...getHeaders(),
+            'Tus-Resumable': '1.0.0',
+            'Upload-Length': fileSize.toString(),
+            ...(uploadMetadata && { 'Upload-Metadata': uploadMetadata }),
+            'Upload-Max-Duration-Seconds': maxDurationSeconds.toString(),
+        },
     });
 
     if (!res.ok) {
         const text = await getResponseErrorText(res);
-        const errorDetail = text ? `\nResponse: ${text.substring(0, 500)}` : '';
-        throw new Error(`Cloudflare Stream TUS init failed (${res.status}): ${errorDetail}`);
+        throw new Error(`Cloudflare Stream TUS creation failed (${res.status}): ${text}`);
     }
 
-    const data = await res.json();
-
-    // Validate response structure
-    if (!data.success || !data.result) {
-        const errors = (data.errors as Array<{ message: string }>) || [{ message: 'Unknown error' }];
-        const errorMsg = errors.map((e) => e.message).join('; ');
-        throw new Error(`Cloudflare Stream rejected TUS init: ${errorMsg}`);
-    }
-
-    const signedUrl = data.result.uploadURL;
-    const uid = data.result.uid;
-
-    if (!signedUrl || !uid) {
-        throw new Error(`Cloudflare returned incomplete response: missing uploadURL or uid`);
-    }
-
-    // CRITICAL: The signedUrl from /direct_upload is the CREATION endpoint.
-    // To get the actual TUS session URL for PATCH requests, we must perform a handshake.
-    console.log(`[CF Stream] Performing TUS handshake for ${uid}...`);
-    
-    const handshakeRes = await fetch(signedUrl, {
-        method: 'POST',
-        headers: {
-            'Tus-Resumable': '1.0.0',
-            'Upload-Length': fileSize.toString(),
-            // Metadata is already handled by the /direct_upload call if tusv2: true is set,
-            // but we can provide it again or just let Cloudflare use the preset one.
-        }
-    });
-
-    if (!handshakeRes.ok && handshakeRes.status !== 201) {
-        const text = await getResponseErrorText(handshakeRes);
-        console.error(`[CF Stream] TUS handshake failed (${handshakeRes.status}):`, text);
-        // Fallback to signedUrl if handshake fails, though PATCH might fail later
-        return { uploadUrl: signedUrl, uid };
-    }
-
-    // The REAL session URL is in the Location header
-    const sessionUrl = handshakeRes.headers.get('Location');
-    
+    // 3. Extract and normalize Session URL
+    let sessionUrl = res.headers.get('Location');
     if (!sessionUrl) {
-        console.warn(`[CF Stream] Handshake succeeded but no Location header for ${uid}. Using signed URL.`);
-        return { uploadUrl: signedUrl, uid };
+        throw new Error('Cloudflare Stream TUS creation succeeded but missing Location header');
     }
 
-    console.log('[CF Stream] ✓ TUS session created:', {
-        uid,
-        sessionUrl: sessionUrl.substring(0, 50) + '...',
-    });
+    // Normalize relative URLs to absolute
+    if (sessionUrl.startsWith('/')) {
+        const accountUrl = getAccountUrl();
+        const origin = new URL(accountUrl).origin;
+        sessionUrl = `${origin}${sessionUrl}`;
+    }
+
+    const uid = sessionUrl.split('/').pop();
+    if (!uid) {
+        throw new Error(`Could not extract UID from TUS session URL: ${sessionUrl}`);
+    }
 
     return { uploadUrl: sessionUrl, uid };
 }
 
 // ─────────────────────────────────────────────────────────────
-// Video Status
+// Video Status & Management
 // ─────────────────────────────────────────────────────────────
 
 export interface StreamVideoStatus {
     uid: string;
     readyToStream: boolean;
-    status: { state: string; pctComplete?: string; errorReasonCode?: string; errorReasonText?: string };
+    status: { 
+        state: string; 
+        pctComplete?: string; 
+        errorReasonCode?: string; 
+        errorReasonText?: string 
+    };
     duration: number;
     thumbnail: string;
     playback: { hls: string; dash: string };
@@ -271,22 +273,24 @@ export async function getVideoStatus(uid: string): Promise<StreamVideoStatus> {
     }
 
     const data = await res.json();
+    
+    // Robust validation of result object
+    if (!data.success || !data.result) {
+        throw new Error(`Cloudflare Stream API returned success:false or missing result for UID: ${uid}`);
+    }
+
     const r = data.result;
 
     return {
         uid: r.uid,
         readyToStream: r.readyToStream,
         status: r.status,
-        duration: r.duration,
+        duration: r.duration || 0,
         thumbnail: r.thumbnail,
         playback: r.playback,
         meta: r.meta,
     };
 }
-
-// ─────────────────────────────────────────────────────────────
-// Delete Video
-// ─────────────────────────────────────────────────────────────
 
 /**
  * Delete a video from Cloudflare Stream.
@@ -301,7 +305,6 @@ export async function deleteStreamVideo(uid: string): Promise<void> {
         headers: getHeaders(),
     });
 
-    // Throw on non-404 errors to catch cleanup failures
     if (!res.ok && res.status !== 404) {
         const text = await getResponseErrorText(res);
         throw new Error(`Cloudflare Stream delete failed (${res.status}): ${text}`);
@@ -333,11 +336,15 @@ export async function listStreamVideos(limit: number = 20, search?: string) {
     }
 
     const data = await res.json();
+    if (!data.success || !Array.isArray(data.result)) {
+        return [];
+    }
+
     return data.result.map((r: any) => ({
         uid: r.uid,
         name: r.meta?.name || 'Untitled Video',
-        duration: r.duration,
-        size: r.size || 0,
+        duration: r.duration || 0,
+        size: typeof r.size === 'number' ? r.size : 0, // Robust size handling
         thumbnail: r.thumbnail,
         readyToStream: r.readyToStream,
         created: r.created,
@@ -346,19 +353,13 @@ export async function listStreamVideos(limit: number = 20, search?: string) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Helpers
+// Playback Helpers
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Build the iframe embed URL for a Cloudflare Stream video.
- */
 export function getStreamEmbedUrl(uid: string): string {
     return `https://iframe.videodelivery.net/${uid}`;
 }
 
-/**
- * Build the HLS playback URL for a Cloudflare Stream video.
- */
 export function getStreamHlsUrl(uid: string): string {
     return `https://videodelivery.net/${uid}/manifest/video.m3u8`;
 }

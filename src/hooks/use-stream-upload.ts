@@ -90,6 +90,9 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
         };
     }, []);
 
+    const optionsRef = React.useRef(options);
+    optionsRef.current = options;
+
     const cancel = React.useCallback(() => {
         cancelledRef.current = true;
         if (xhrRef.current) {
@@ -111,8 +114,6 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
             setProgress(0);
 
             try {
-                setIsUploading(true);
-
                 // GUARD 1: File size must not exceed 30GB (Cloudflare hard limit)
                 const MAX_FILE_SIZE = 30 * 1024 * 1024 * 1024; // 30GB
                 if (file.size > MAX_FILE_SIZE) {
@@ -127,14 +128,17 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                 const ALLOWED_EXTENSIONS = ['mp4', 'mov', 'mkv', 'webm', 'avi', 'flv', 'wmv', 'm4v', 'mts', 'ts', 'mpg', 'mpeg'];
 
                 const fileExt = file.name.split('.').pop()?.toLowerCase();
-                const isValidMime = file.type === '' || ALLOWED_MIME_TYPES.includes(file.type) || file.type.startsWith('video/');
-                const isValidExt = fileExt && ALLOWED_EXTENSIONS.includes(fileExt);
+                const isMimeAllowed = ALLOWED_MIME_TYPES.includes(file.type) || file.type.startsWith('video/');
+                const isExtAllowed = fileExt && ALLOWED_EXTENSIONS.includes(fileExt);
 
-                if (!isValidExt || (file.type && !isValidMime)) {
-                    const errorMsg = `Only video files are supported (MP4, MOV, MKV, WebM, AVI, FLV, WMV). Got: ${file.type || fileExt || 'unknown type'}`;
+                // Tightened validation: Extension MUST be allowed. If MIME is detectable, it MUST be video-related.
+                if (!isExtAllowed || (file.type && file.type !== '' && !isMimeAllowed)) {
+                    const errorMsg = `Unsupported file type. Please use MP4, MOV, MKV, or WebM. Got: ${fileExt || 'unknown'}`;
                     toast.error(errorMsg);
                     return null;
                 }
+
+                setIsUploading(true);
 
                 // Step 1: Initialize upload with CF Stream API
                 // Returns uploadURL based on file size:
@@ -171,11 +175,7 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                 setIsUploading(false);
                 setProgress(100);
 
-                // Step 3: Return URL immediately
-                // CF processes asynchronously in background
-                // Embed player shows "processing" state until ready
-                // Webhook invalidates cache when encoding completes
-                options?.onSuccess?.(`cf-stream://${uid}`);
+                optionsRef.current?.onSuccess?.(`cf-stream://${uid}`);
                 return uid;
             } catch (error: any) {
                 setIsUploading(false);
@@ -184,7 +184,7 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                 return null;
             }
         },
-        [options]
+        []
     );
 
     // Helper: Upload via basic POST (for files < 200MB)
@@ -221,16 +221,18 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
 
                 xhrRef.current = xhr;
 
+                // Open and send in immediate sequence after one final cancel check
                 if (cancelledRef.current) {
                     reject(new Error('Upload cancelled'));
                     return;
                 }
 
-                // CRITICAL FIX: Cloudflare basic upload (non-TUS) requires binary body, NOT multipart/form-data
-                // Use application/octet-stream and send the file (Blob) directly.
+                // Cloudflare Direct Creator Upload (Simple POST) uses multipart/form-data
+                const formData = new FormData();
+                formData.append('file', file);
+
                 xhr.open('POST', uploadURL);
-                xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-                xhr.send(file);
+                xhr.send(formData);
             });
         },
         []
@@ -262,9 +264,9 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                         }
                     },
                     onSuccess: () => {
-                        if (!cancelledRef.current) {
-                            resolve();
-                        }
+                        // Always resolve so the promise settles. 
+                        // The outer uploadVideo checks cancelledRef.current.
+                        resolve();
                     },
                 });
 

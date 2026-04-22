@@ -11,16 +11,9 @@ import { serverEnv } from '@/lib/env.server';
  * - PATCH: Upload chunk
  * - HEAD: Get upload offset (for resumability)
  * - OPTIONS: TUS capability discovery
- *
- * Proxies requests to Cloudflare's TUS endpoint while injecting authentication
- * and maintaining session data server-side.
- *
- * CRITICAL FIXES:
- * 1. Injects Authorization: Bearer token (was missing, causing 401)
- * 2. Stores/retrieves actual TUS URL from Cloudflare (not list endpoint)
- * 3. Adds HEAD handler for resumable uploads
- * 4. Adds OPTIONS handler for TUS discovery
  */
+
+const PROXY_TIMEOUT_MS = 300000; // 5 minutes for chunk proxying (accommodates slow uploads)
 
 async function proxyToCloudflare(
     method: string,
@@ -28,42 +21,54 @@ async function proxyToCloudflare(
     headers: Record<string, string>,
     body: ReadableStream<Uint8Array> | null
 ): Promise<Response> {
-    const fetchOptions: RequestInit & { duplex?: string } = {
-        method,
-        headers,
-    };
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
 
-    if (body && (method === 'PATCH' || method === 'POST')) {
-        fetchOptions.body = body;
-        // Required for streaming body in fetch
-        fetchOptions.duplex = 'half';
+    try {
+        const fetchOptions: RequestInit & { duplex?: string } = {
+            method,
+            headers,
+            signal: controller.signal,
+        };
+
+        if (body && (method === 'PATCH' || method === 'POST')) {
+            fetchOptions.body = body;
+            fetchOptions.duplex = 'half';
+        }
+
+        return await fetch(tusUploadUrl, fetchOptions);
+    } finally {
+        clearTimeout(timeoutId);
     }
-
-    return fetch(tusUploadUrl, fetchOptions);
 }
 
 function buildProxyHeaders(req: NextRequest): Record<string, string> {
     const headers: Record<string, string> = {};
 
-    // Forward all headers except hop-by-hop ones and authorization
+    // Forward all headers except hop-by-hop ones
     req.headers.forEach((value, key) => {
         if (!['host', 'connection', 'transfer-encoding', 'authorization'].includes(key.toLowerCase())) {
             headers[key] = value;
         }
     });
 
-    // NOTE: We do NOT inject Authorization: Bearer here because the tusUploadUrl 
-    // from Cloudflare Stream direct_upload is already a SIGNED URL.
-    // Adding an Authorization header can cause conflicts or "Decoding Errors".
-
-    // TUS protocol requirements
+    // Inject Cloudflare Authentication
+    headers['Authorization'] = `Bearer ${serverEnv.CLOUDFLARE_STREAM_API_TOKEN}`;
     headers['Tus-Resumable'] = '1.0.0';
 
     return headers;
 }
 
-export async function OPTIONS(): Promise<NextResponse> {
-    // TUS capability discovery
+/**
+ * OPTIONS /api/media/stream-upload/[uid]/chunk
+ * TUS protocol capability discovery
+ */
+export async function OPTIONS() {
+    const session = await verifySession();
+    if (!session) {
+        return new NextResponse(null, { status: 401 });
+    }
+
     return new NextResponse(null, {
         status: 204,
         headers: {
@@ -75,9 +80,13 @@ export async function OPTIONS(): Promise<NextResponse> {
     });
 }
 
+/**
+ * POST /api/media/stream-upload/[uid]/chunk
+ * TUS protocol creation (simulated as session is already created server-side)
+ */
 export async function POST(
     req: NextRequest,
-    { params }: { params: Promise<{ uid: string; chunks: string[] }> }
+    { params }: { params: Promise<{ uid: string }> }
 ) {
     const { uid } = await params;
 
@@ -87,34 +96,25 @@ export async function POST(
             return new NextResponse('Unauthorized', { status: 401 });
         }
 
-        // Get the TUS upload URL stored from initial upload request
         const tusData = await redis.get(`tusUpload:${uid}`);
         if (!tusData) {
-            return NextResponse.json(
-                { error: 'Upload session not found' },
-                { status: 404 }
-            );
+            return new NextResponse(null, { status: 404 });
         }
 
-        // CRITICAL FIX: Use actual TUS upload URL (not list endpoint)
-        const { tusUploadUrl } = JSON.parse(tusData);
+        let tusUploadUrl: string;
+        try {
+            const parsed = JSON.parse(tusData);
+            tusUploadUrl = parsed.tusUploadUrl;
+        } catch (e) {
+            console.error(`[TUS Proxy] Corrupted Redis data for ${uid}`);
+            return new NextResponse('Internal Server Error: Session Data Corrupted', { status: 500 });
+        }
+
         if (!tusUploadUrl) {
-            console.error('[TUS Proxy] Missing tusUploadUrl in Redis data');
-            return NextResponse.json(
-                { error: 'Upload configuration corrupted' },
-                { status: 500 }
-            );
+            return new NextResponse('Internal Server Error: Missing Upload URL', { status: 500 });
         }
 
-        // CRITICAL REVERSION: POST should NOT forward to Cloudflare
-        // TUS session was already created server-side by createTusUploadUrl()
-        // tus-js-client expects POST to return 201 Created with Location header
-        // Location header MUST point to our proxy (not Cloudflare), so PATCH goes through proxy
-        // We use a relative path to ensure the browser resolves it against the public origin
-        // instead of internal Docker/0.0.0.0 addresses.
         const proxyLocationUrl = `/api/media/stream-upload/${uid}/chunk`;
-
-        console.log(`[TUS Proxy] POST for ${uid}: returning 201 with relative location: ${proxyLocationUrl}`);
 
         return new NextResponse(null, {
             status: 201,
@@ -126,16 +126,17 @@ export async function POST(
         });
     } catch (error: any) {
         console.error('[TUS Proxy POST Error]:', error);
-        return NextResponse.json(
-            { error: error?.message || 'Proxy request failed' },
-            { status: 500 }
-        );
+        return new NextResponse('Proxy request failed', { status: 500 });
     }
 }
 
+/**
+ * PATCH /api/media/stream-upload/[uid]/chunk
+ * Proxy chunk data to Cloudflare
+ */
 export async function PATCH(
     req: NextRequest,
-    { params }: { params: Promise<{ uid: string; chunks: string[] }> }
+    { params }: { params: Promise<{ uid: string }> }
 ) {
     const { uid } = await params;
 
@@ -147,35 +148,28 @@ export async function PATCH(
 
         const tusData = await redis.get(`tusUpload:${uid}`);
         if (!tusData) {
-            return NextResponse.json(
-                { error: 'Upload session not found' },
-                { status: 404 }
-            );
+            return new NextResponse(null, { status: 404 });
         }
 
-        // CRITICAL FIX: Use actual TUS upload URL (not list endpoint)
-        const { tusUploadUrl } = JSON.parse(tusData);
+        let tusUploadUrl: string;
+        try {
+            const parsed = JSON.parse(tusData);
+            tusUploadUrl = parsed.tusUploadUrl;
+        } catch (e) {
+            return new NextResponse('Session data corrupted', { status: 500 });
+        }
+
         if (!tusUploadUrl) {
-            console.error('[TUS Proxy] Missing tusUploadUrl in Redis data');
-            return NextResponse.json(
-                { error: 'Upload configuration corrupted' },
-                { status: 500 }
-            );
+            return new NextResponse('Missing upload session URL', { status: 500 });
         }
 
         const headers = buildProxyHeaders(req);
+        const cfResponse = await proxyToCloudflare('PATCH', tusUploadUrl, headers, req.body);
 
-        const cfResponse = await proxyToCloudflare(
-            'PATCH',
-            tusUploadUrl,
-            headers,
-            req.body
-        );
-
-        // Forward response headers
         const responseHeaders: Record<string, string> = {
             'Access-Control-Expose-Headers': 'Upload-Offset, Upload-Length, Tus-Resumable, Location',
         };
+        
         cfResponse.headers.forEach((value, key) => {
             if (!['content-encoding', 'content-length', 'transfer-encoding', 'connection'].includes(key.toLowerCase())) {
                 responseHeaders[key] = value;
@@ -188,16 +182,17 @@ export async function PATCH(
         });
     } catch (error: any) {
         console.error('[TUS Proxy PATCH Error]:', error);
-        return NextResponse.json(
-            { error: error?.message || 'Proxy request failed' },
-            { status: 500 }
-        );
+        return new NextResponse('Proxy request failed', { status: 500 });
     }
 }
 
+/**
+ * HEAD /api/media/stream-upload/[uid]/chunk
+ * Check upload offset for resumability
+ */
 export async function HEAD(
     req: NextRequest,
-    { params }: { params: Promise<{ uid: string; chunks: string[] }> }
+    { params }: { params: Promise<{ uid: string }> }
 ) {
     const { uid } = await params;
 
@@ -209,35 +204,27 @@ export async function HEAD(
 
         const tusData = await redis.get(`tusUpload:${uid}`);
         if (!tusData) {
-            return NextResponse.json(
-                { error: 'Upload session not found' },
-                { status: 404 }
-            );
+            return new NextResponse(null, { status: 404 });
         }
 
-        // CRITICAL FIX: Use actual TUS upload URL (not list endpoint)
-        const { tusUploadUrl } = JSON.parse(tusData);
+        let tusUploadUrl: string;
+        try {
+            const parsed = JSON.parse(tusData);
+            tusUploadUrl = parsed.tusUploadUrl;
+        } catch (e) {
+            return new NextResponse('Session data corrupted', { status: 500 });
+        }
+
         if (!tusUploadUrl) {
-            console.error('[TUS Proxy] Missing tusUploadUrl in Redis data');
-            return NextResponse.json(
-                { error: 'Upload configuration corrupted' },
-                { status: 500 }
-            );
+            return new NextResponse('Missing upload session URL', { status: 500 });
         }
-
         const headers = buildProxyHeaders(req);
+        const cfResponse = await proxyToCloudflare('HEAD', tusUploadUrl, headers, null);
 
-        const cfResponse = await proxyToCloudflare(
-            'HEAD',
-            tusUploadUrl,
-            headers,
-            null
-        );
-
-        // Forward response headers (especially Upload-Offset for resumability)
         const responseHeaders: Record<string, string> = {
             'Access-Control-Expose-Headers': 'Upload-Offset, Upload-Length, Tus-Resumable, Location',
         };
+        
         cfResponse.headers.forEach((value, key) => {
             if (!['content-encoding', 'content-length', 'transfer-encoding', 'connection'].includes(key.toLowerCase())) {
                 responseHeaders[key] = value;
