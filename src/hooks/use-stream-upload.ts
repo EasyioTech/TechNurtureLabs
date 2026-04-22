@@ -74,6 +74,7 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                         headers: {
                             'Upload-Offset': offset.toString(),
                             'Content-Type': 'application/offset+octet-stream',
+                            'Tus-Resumable': '1.0.0',
                         },
                         body: chunk,
                     });
