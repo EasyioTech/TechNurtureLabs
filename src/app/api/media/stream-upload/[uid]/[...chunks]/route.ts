@@ -17,13 +17,15 @@ async function proxyToCloudflare(
     headers: Record<string, string>,
     body: ReadableStream<Uint8Array> | null
 ): Promise<Response> {
-    const fetchOptions: RequestInit = {
+    const fetchOptions: RequestInit & { duplex?: string } = {
         method,
         headers,
     };
 
     if (body && (method === 'PATCH' || method === 'POST')) {
         fetchOptions.body = body;
+        // Required for streaming body in fetch
+        fetchOptions.duplex = 'half';
     }
 
     return fetch(tusEndpoint, fetchOptions);
