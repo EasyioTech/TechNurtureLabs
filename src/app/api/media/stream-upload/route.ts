@@ -59,12 +59,16 @@ export async function POST(req: NextRequest) {
         const result = await createTusUploadUrl(fileSizeBytes, meta);
 
         try {
-            // Store TUS endpoint in Redis with 1 hour expiry
+            // For TUS, use base API endpoint (not the signed URL which is for direct uploads)
+            // tus-js-client will send to our proxy, which adds auth and forwards to Cloudflare's API
+            const tusEndpoint = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/stream`;
+
+            // Store TUS config in Redis with 1 hour expiry
             await redis.setex(
                 `tusUpload:${result.uid}`,
                 3600,
                 JSON.stringify({
-                    tusEndpoint: result.uploadUrl,
+                    tusEndpoint,
                     fileName,
                     fileSize: fileSizeBytes,
                     createdAt: new Date().toISOString(),
