@@ -11,6 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useAdminTheme, t } from '../../theme-context';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { 
     performSystemWideBackupAdmin,
     performSchoolBackupAdmin,
@@ -185,24 +192,44 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                 </div>
 
                 <div className="flex items-center justify-center sm:justify-end gap-2 sm:gap-3">
-                    <Button
-                        onClick={handleSync}
-                        disabled={isSyncing || !activeSchoolId}
-                        variant="ghost"
-                        className={`h-11 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-100'}`}
-                    >
-                        <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
-                        <span className="hidden sm:inline">Sync Nodes</span>
-                        <span className="sm:hidden">Sync</span>
-                    </Button>
-                    <Button
-                        onClick={handleInitiateBackup}
-                        disabled={isBackingUp}
-                        className={`h-11 sm:h-12 px-6 sm:px-8 flex-1 sm:flex-none rounded-xl sm:rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 ${t.btnPrimary(isDark, accent)}`}
-                    >
-                        <CloudUpload size={18} className={isBackingUp ? 'animate-bounce' : ''} />
-                        <span>Vault Now</span>
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    onClick={handleSync}
+                                    disabled={isSyncing || !activeSchoolId}
+                                    variant="ghost"
+                                    className={cn(
+                                        "h-11 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest transition-all",
+                                        isDark ? "hover:bg-white/5 text-slate-400 hover:text-white" : "hover:bg-neutral-100 text-slate-600 hover:text-black"
+                                    )}
+                                >
+                                    <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+                                    <span className="hidden sm:inline">Sync Nodes</span>
+                                    <span className="sm:hidden">Sync</span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p className="text-[10px] font-bold">Synchronize database with R2 storage</p></TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    onClick={handleInitiateBackup}
+                                    disabled={isBackingUp}
+                                    className={cn(
+                                        "h-11 sm:h-12 px-6 sm:px-8 flex-1 sm:flex-none rounded-xl sm:rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95",
+                                        t.btnPrimary(isDark, accent)
+                                    )}
+                                    style={isDark ? t.glowStyle(isDark, accent) : {}}
+                                >
+                                    <CloudUpload size={18} className={isBackingUp ? 'animate-bounce' : ''} />
+                                    <span>Vault Now</span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p className="text-[10px] font-bold">Create new encrypted archive vault</p></TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
             </div>
 

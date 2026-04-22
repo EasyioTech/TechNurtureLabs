@@ -64,7 +64,6 @@ export function MediaLibraryPicker({
         uploadVideo,
         isUploading: isStreamUploading,
         progress: streamProgress,
-        isNormalizing,
         cancel: cancelStreamUpload
     } = useStreamUpload({
         onSuccess: async () => {
@@ -325,13 +324,6 @@ export function MediaLibraryPicker({
     async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (!file) return;
-        const isVideo = filterType === 'video';
-        const isImage = filterType === 'image';
-
-        if (isImage) {
-            const valid = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp', 'image/gif'].includes(file.type);
-            if (!valid) return toast.error('Upload valid image formats');
-        }
 
         const maxSize = 2 * 1024 * 1024 * 1024;
         if (file.size > maxSize) return toast.error('File size limit is 2GB');
@@ -339,7 +331,7 @@ export function MediaLibraryPicker({
         setUploadFile(file);
 
         try {
-            if (isVideo) {
+            if (filterType === 'video') {
                 await uploadVideo(file);
             } else {
                 const additionalData = {

@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import * as tus from 'tus-js-client';
 import { 
     Dialog, DialogContent, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -66,21 +65,13 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     const [importOpen, setImportOpen] = React.useState(false);
     const [streamProgress, setStreamProgress] = React.useState(0);
     const [isStreamUploading, setIsStreamUploading] = React.useState(false);
-    const [isNormalizing, setIsNormalizing] = React.useState(false);
+    const abortController = React.useRef<AbortController | null>(null);
 
     const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload();
     const [isDirty, setIsDirty] = React.useState(false);
     const initialDataRef = React.useRef<string>('');
 
     const [showValidation, setShowValidation] = React.useState(false);
-    const xhrRef = React.useRef<XMLHttpRequest | null>(null);
-
-    const abortStreamUpload = React.useCallback(() => {
-        if (xhrRef.current) {
-            xhrRef.current.abort();
-            xhrRef.current = null;
-        }
-    }, []);
 
     React.useEffect(() => {
         if (open && editingLesson) {
@@ -107,15 +98,6 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         }
     }, [editingLesson, open]);
 
-    // Cleanup: abort stream upload on unmount or dialog close
-    React.useEffect(() => {
-        return () => {
-            if (xhrRef.current) {
-                xhrRef.current.abort();
-                xhrRef.current = null;
-            }
-        };
-    }, []);
 
     const handleClose = React.useCallback((force: boolean = false) => {
         if (!force && isDirty) toast.info('Draft changes discarded');
@@ -159,220 +141,63 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     };
 
     const handleFileUpload = async (file: File, itemId: string, folder: string) => {
-        if (!file) return;
-        if (file.size > 2048 * 1024 * 1024) { toast.error('Max 2 GB'); return; }
-
-        // Get the block being uploaded to for type validation
-        const block = contentItems.find(i => i.id === itemId);
-        if (!block) return;
-
-        // Validate file type matches block type
-        const isVideoFile = file.type.startsWith('video/');
-        const isImageFile = file.type.startsWith('image/');
-        const isDocumentFile = /pdf|word|document/.test(file.type) || ['.pdf', '.doc', '.docx'].some(ext => file.name.toLowerCase().endsWith(ext));
-
-        if (block.type === 'video' && !isVideoFile) {
-            toast.error('Video block only accepts video files');
-            return;
-        }
-        if (block.type === 'image' && !isImageFile) {
-            toast.error('Image block only accepts image files');
-            return;
-        }
-        if ((block.type === 'pdf' || block.type === 'ppt') && !isDocumentFile && !isVideoFile) {
-            toast.error(`${block.type === 'pdf' ? 'Document' : 'Slides'} block only accepts document files`);
-            return;
-        }
-
         setActiveUploadItemId(itemId);
         setUploadFile(file);
 
-        // Pre-upload validation for 100% reliability
-        if (!file || file.size < 100000) {
-            toast.error('File is too small or invalid (min 100KB)');
-            return;
-        }
-
         try {
-            if (isVideoFile) {
-                // Gap #3: Proactive Filter for Risky Formats
-                const riskyExtensions = ['.mov', '.mkv', '.avi', '.wmv'];
-                const isRisky = riskyExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-                if (isRisky) {
-                    toast.warning(`"${file.name.split('.').pop()?.toUpperCase()}" files often fail processing. If it gets stuck, re-encode to MP4.`);
+            const block = contentItems.find(i => i.id === itemId);
+            if (block?.type === 'video') {
+                setIsStreamUploading(true);
+                setStreamProgress(0);
+                abortController.current = new AbortController();
+
+                // 1. Get Direct Creator Upload URL
+                const initRes = await fetch('/api/media/stream-upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fileName: file.name, fileSize: file.size }),
+                    signal: abortController.current.signal,
+                });
+
+                if (!initRes.ok) throw new Error('Cloudflare handshake failed');
+                const { uploadURL, uid } = await initRes.json();
+
+                // 2. Perform Native TUS Chunked Upload
+                const CHUNK_SIZE = 5 * 1024 * 1024;
+                let offset = 0;
+
+                while (offset < file.size) {
+                    const chunk = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size));
+                    const res = await fetch(uploadURL, {
+                        method: 'PATCH',
+                        headers: {
+                            'Upload-Offset': offset.toString(),
+                            'Content-Type': 'application/offset+octet-stream',
+                            'Tus-Resumable': '1.0.0',
+                        },
+                        body: chunk,
+                        signal: abortController.current.signal,
+                    });
+
+                    if (!res.ok) throw new Error('Stream ingestion interrupted');
+                    offset += chunk.size;
+                    setStreamProgress(Math.min(100, Math.round((offset / file.size) * 100)));
                 }
 
-                const executeStreamUpload = async (isRetry = false): Promise<string> => {
-                    let uploadUid = '';
-                    try {
-                        const initRes = await fetch('/api/media/stream-upload', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ fileName: file.name, fileSize: file.size }),
-                        });
-                        
-                        if (!initRes.ok) throw new Error('Failed to initialize upload');
-                        const { uploadURL, uid } = await initRes.json();
-                        uploadUid = uid;
-
-                        setIsStreamUploading(true);
-                        setStreamProgress(0);
-
-                        // 1. Manual TUS Chunked Upload Loop
-                        await new Promise<void>((resolve, reject) => {
-                            const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
-                            let offset = 0;
-
-                            const uploadNextChunk = () => {
-                                if (offset >= file.size) {
-                                    resolve();
-                                    return;
-                                }
-
-                                const chunk = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size));
-                                const xhr = new XMLHttpRequest();
-                                xhr.open('PATCH', uploadURL);
-                                
-                                xhr.setRequestHeader('Upload-Offset', offset.toString());
-                                xhr.setRequestHeader('Content-Type', 'application/offset+octet-stream');
-
-                                xhr.upload.onprogress = (e) => {
-                                    if (e.lengthComputable) {
-                                        const chunkPct = (e.loaded / e.total) * (chunk.size / file.size);
-                                        const totalPct = Math.round(((offset / file.size) + chunkPct) * 100);
-                                        setStreamProgress(Math.min(99, totalPct));
-                                    }
-                                };
-
-                                xhr.onload = () => {
-                                    if (xhr.status >= 200 && xhr.status < 300) {
-                                        offset += chunk.size;
-                                        uploadNextChunk();
-                                    } else {
-                                        reject(new Error(`Upload failed with status ${xhr.status}`));
-                                    }
-                                };
-
-                                xhr.onerror = () => reject(new Error('Network error during TUS upload'));
-                                xhrRef.current = xhr;
-                                xhr.send(chunk);
-                            };
-
-                            uploadNextChunk();
-                        });
-
-                        // 2. Poll for Status (Encoding)
-                        let isReady = false;
-                        let lastPct = -1;
-                        let stagnantCount = 0;
-
-                        for (let i = 0; i < 600; i++) {
-                            const statusRes = await fetch(`/api/media/stream-status/${uploadUid}`);
-                            if (statusRes.ok) {
-                                const data = await statusRes.json();
-                                const state = data.status?.state || data.state;
-                                const ready = data.readyToStream;
-                                const pct = parseFloat(data.status?.pctComplete || '0');
-
-                                if (ready) {
-                                    isReady = true;
-                                    break;
-                                }
-
-                                if (state === 'error') {
-                                    throw new Error('Cloudflare encoding failed. Incompatible format or VFR.');
-                                }
-
-                                if (pct === lastPct && pct < 100) stagnantCount++;
-                                else { stagnantCount = 0; lastPct = pct; }
-
-                                if (stagnantCount > 12) {
-                                    throw new Error('Processing stalled. File likely requires re-encoding.');
-                                }
-                            }
-                            await new Promise(r => setTimeout(r, 3000));
-                        }
-
-                        if (!isReady) throw new Error('Processing timeout');
-                        return uploadUid;
-                    } catch (error: any) {
-                        // Gap #4: Retry Strategy
-                        if (!isRetry && !error.message.includes('re-encode')) {
-                            console.log('Ingest failed, attempting auto-retry...');
-                            toast.info("Retrying processing...");
-                            if (uploadUid) await fetch(`/api/media/stream-status/${uploadUid}`, { method: 'DELETE' });
-                            return executeStreamUpload(true);
-                        }
-
-                        // Gap #5: Normalization Escalation (Guaranteed Fix)
-                        if (isRetry) {
-                            setIsNormalizing(true);
-                            toast.info("Processing failed. Normalizing on server...");
-                            try {
-                                const formData = new FormData();
-                                formData.append('file', file);
-                                
-                                const normRes = await fetch('/api/media/normalize', {
-                                    method: 'POST',
-                                    body: formData
-                                });
-
-                                if (!normRes.ok) {
-                                    const error = await normRes.json();
-                                    throw new Error(error.error || 'Normalization pipeline failed');
-                                }
-                                
-                                const { jobId } = await normRes.json();
-                                toast.info("Normalization queued. This may take 1-2 minutes...");
-
-                                // Poll for Job Completion
-                                let attempts = 0;
-                                let finalUid = null;
-
-                                while (attempts < 40) { // 40 * 3s = 2 minutes
-                                    const jobRes = await fetch(`/api/media/jobs/${jobId}`);
-                                    if (jobRes.ok) {
-                                        const jobData = await jobRes.json();
-                                        if (jobData.state === 'completed' && jobData.result?.uid) {
-                                            finalUid = jobData.result.uid;
-                                            break;
-                                        }
-                                        if (jobData.state === 'failed') {
-                                            throw new Error(`Normalization failed: ${jobData.failedReason || 'Unknown error'}`);
-                                        }
-                                    }
-                                    await new Promise(r => setTimeout(r, 3000));
-                                    attempts++;
-                                }
-
-                                if (!finalUid) throw new Error('Normalization timed out');
-
-                                setIsNormalizing(false);
-                                return finalUid;
-                            } catch (normErr) {
-                                console.error('[Escalation Error]:', normErr);
-                                setIsNormalizing(false);
-                            }
-                        }
-
-                        if (uploadUid) {
-                            try { await fetch(`/api/media/stream-status/${uploadUid}`, { method: 'DELETE' }); } catch (e) {}
-                        }
-                        throw error;
-                    }
-                };
-
-                const finalUid = await executeStreamUpload();
-                applyBlockUpdate(itemId, 'url', `cf-stream://${finalUid}`);
-                toast.success('Video uploaded and processed');
+                // Video is accepted by Cloudflare, it will process in background
+                applyBlockUpdate(itemId, 'url', `cf-stream://${uid}`);
+                toast.success('Video queued for streaming');
                 return;
             }
+
+            // Standard R2 upload for other media types
             const result = await upload(file, { purpose: 'library', storagePreference: 'r2', folder }) as { url: string } | undefined;
             if (result?.url) applyBlockUpdate(itemId, 'url', result.url);
-
-            toast.success('File uploaded');
+            toast.success('Resource saved to vault');
         } catch (err: any) {
-            toast.error(err?.message || 'Upload failed');
+            if (err.name !== 'AbortError') {
+                toast.error(err?.message || 'Handshake failed');
+            }
         } finally {
             setIsStreamUploading(false);
             setActiveUploadItemId(null);
@@ -521,7 +346,6 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                         <div className="p-4">
                                             <ContentBlockList
                                                 contentItems={contentItems} isDark={isDark} isUploading={isUploading} isStreamUploading={isStreamUploading}
-                                                isNormalizing={isNormalizing}
                                                 activeUploadItemId={activeUploadItemId} progress={progress} streamProgress={streamProgress}
                                                 uploadFile={uploadFile} uploadError={uploadError} showBlockPicker={showBlockPicker}
                                                 setShowBlockPicker={setShowBlockPicker} onAddBlock={addBlock} onRemoveBlock={removeBlock}
@@ -529,7 +353,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                                 onLibraryRequest={(id) => { setLibraryTargetId(id); setLibraryOpen(true); }}
                                                 abort={() => {
                                                     if (isStreamUploading && activeUploadItemId) {
-                                                        abortStreamUpload();
+                                                        abortController.current?.abort();
                                                         setIsStreamUploading(false);
                                                         setActiveUploadItemId(null);
                                                         setUploadFile(null);

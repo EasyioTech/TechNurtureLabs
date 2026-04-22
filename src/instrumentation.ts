@@ -15,17 +15,11 @@ export async function register() {
             // Using relative paths instead of @/ alias to avoid resolution issues in standalone register()
             const { startEventWorker } = await import('./lib/workers/event-worker');
             const { startStatsWorker } = await import('./lib/workers/stats-worker');
-            const { videoWorker } = await import('./lib/workers/video-worker');
 
             console.log('🚀 [Instrumentation] Initializing workers...');
 
             startEventWorker();
             startStatsWorker();
-
-            // Register video normalization worker for Cloudflare Stream processing
-            if (videoWorker) {
-                console.log('✅ [Instrumentation] Video normalization worker registered.');
-            }
 
             console.log('✅ [Instrumentation] Workers started successfully.');
         } catch (error: any) {

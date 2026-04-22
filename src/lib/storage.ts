@@ -214,7 +214,7 @@ const MAX_FILE_SIZE = 2048 * 1024 * 1024; // 2 GB max
 /**
  * Validates file buffer against common extension magic bytes.
  * Logs warnings for suspicious files but allows upload (graceful degradation).
- * Files are converted to proper format by Sharp/FFmpeg post-upload if needed.
+ * Files are converted to proper format by Sharp post-upload if needed.
  */
 function isValidSignature(buffer: Buffer, mimeType: string, originalFilename: string = ''): boolean {
     if (buffer.length < 4) {
