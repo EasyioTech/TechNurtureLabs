@@ -174,26 +174,10 @@ export const videoWorker = connection
                   // STEP 5: Cleanup
                   console.log(`[VideoWorker:${job.id}] Step 5/5: Cleaning up temporary files...`);
 
+                  // IMPORTANT: Only delete output file (if normalized)
+                  // Keep input file for potential future retries or auditing
                   const cleanupPromises = [];
 
-                  // Clean input file
-                  if (tempInputPath && tempInputPath !== finalFilePath) {
-                      cleanupPromises.push(
-                          fs.unlink(tempInputPath)
-                              .then(() =>
-                                  console.log(
-                                      `[VideoWorker:${job.id}] ✓ Cleaned up input temp file: ${tempInputPath}`
-                                  )
-                              )
-                              .catch((e) =>
-                                  console.warn(
-                                      `[VideoWorker:${job.id}] ⚠ Failed to delete input: ${e.message}`
-                                  )
-                              )
-                      );
-                  }
-
-                  // Clean output file (if we created a normalized version)
                   if (tempOutputPath) {
                       cleanupPromises.push(
                           fs.unlink(tempOutputPath)
@@ -204,11 +188,17 @@ export const videoWorker = connection
                               )
                               .catch((e) =>
                                   console.warn(
-                                      `[VideoWorker:${job.id}] ⚠ Failed to delete output: ${e.message}`
+                                      `[VideoWorker:${job.id}] ⚠ Failed to delete normalized output: ${e.message}`
                                   )
                               )
                       );
                   }
+
+                  // NOTE: We deliberately keep tempInputPath around for:
+                  // 1. BullMQ automatic retries (if job fails and is retried)
+                  // 2. Manual debugging if upload fails
+                  // 3. Audit trail of which files were processed
+                  // Files will be cleaned up after retention period or manually
 
                   await Promise.all(cleanupPromises);
 
@@ -230,27 +220,22 @@ export const videoWorker = connection
                   console.error(`  Normalized file: ${tempOutputPath || 'none'}`);
                   console.error(`${'='.repeat(60)}\n`);
 
-                  // Atomic cleanup on failure
-                  console.log(`[VideoWorker:${job.id}] Performing cleanup after failure...`);
-                  const cleanupPromises = [];
-
-                  if (tempInputPath) {
-                      cleanupPromises.push(
-                          fs.unlink(tempInputPath)
-                              .catch(() => {}) // Silently ignore cleanup errors
-                      );
-                  }
-
+                  // CRITICAL: Do NOT delete input file on error!
+                  // This allows BullMQ retries to access the original file.
+                  // Only clean up normalized output if it exists.
                   if (tempOutputPath) {
-                      cleanupPromises.push(
-                          fs.unlink(tempOutputPath)
-                              .catch(() => {}) // Silently ignore cleanup errors
-                      );
+                      try {
+                          await fs.unlink(tempOutputPath);
+                          console.log(`[VideoWorker:${job.id}] Cleaned up partial normalized output: ${tempOutputPath}`);
+                      } catch (cleanupErr) {
+                          console.warn(`[VideoWorker:${job.id}] Failed to clean up normalized output: ${cleanupErr}`);
+                      }
                   }
 
-                  await Promise.all(cleanupPromises);
+                  // Input file is kept for retries and debugging
+                  console.log(`[VideoWorker:${job.id}] Input file retained for retry: ${tempInputPath}`);
 
-                  // Re-throw with context
+                  // Re-throw with context for BullMQ to handle
                   throw new Error(
                       `Video processing failed for "${originalName}": ${errorMsg}`
                   );

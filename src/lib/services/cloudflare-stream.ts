@@ -118,10 +118,10 @@ export async function createDirectUpload(
 
 /**
  * Initialize a TUS (resumable) upload with Cloudflare Stream.
- * Uses the TUS Direct Creator Upload API which returns a client-uploadable TUS endpoint.
+ * Uses the Direct Creator Upload API which supports TUS protocol.
  *
- * Per Cloudflare TUS spec, DO NOT send Content-Type: application/json or a JSON body.
- * Instead, send TUS protocol headers with Upload-Metadata (base64-encoded values).
+ * Cloudflare's direct_upload endpoint accepts JSON body with tusv2=true
+ * to enable TUS-compatible chunked uploads.
  *
  * @param fileSize - Size of the file in bytes
  * @param meta - Optional metadata (name, etc.)
@@ -134,47 +134,56 @@ export async function createTusUpload(
         throw new Error('Cloudflare Stream is not configured.');
     }
 
-    // Build Upload-Metadata header with base64-encoded values per TUS spec
-    const maxDuration = 7200; // 2 hours
-    const metadataParts = [
-        `maxdurationseconds ${Buffer.from(maxDuration.toString()).toString('base64')}`,
-    ];
-    if (meta?.name) {
-        metadataParts.push(`name ${Buffer.from(meta.name).toString('base64')}`);
-    }
+    // Build request body with TUS support
+    const requestBody = {
+        maxDurationSeconds: 7200, // 2 hours
+        tusv2: true, // Enable TUS v1.0.0 protocol support
+        ...(meta && { meta }), // Include metadata if provided
+    };
 
-    // TUS Direct Creator Upload: send ONLY the Authorization header + TUS headers.
-    // Do NOT send Content-Type: application/json or a JSON body — that triggers
-    // non-TUS REST mode and returns a basic upload URL instead of a TUS endpoint.
+    console.log('[CF Stream] Initializing TUS upload:', {
+        fileSize,
+        maxDurationSeconds: requestBody.maxDurationSeconds,
+        hasMeta: !!meta,
+    });
+
     const res = await fetchWithTimeout(`${getAccountUrl()}/direct_upload`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${serverEnv.CLOUDFLARE_STREAM_API_TOKEN}`,
-            'Tus-Resumable': '1.0.0',
-            'Upload-Length': fileSize.toString(),
-            'Upload-Metadata': metadataParts.join(','),
+            'Content-Type': 'application/json',
         },
-        // No body — TUS creation requests have no body
+        body: JSON.stringify(requestBody),
     });
 
     if (!res.ok) {
         const text = await res.text().catch(() => '');
-        throw new Error(`Cloudflare Stream TUS init failed (${res.status}): ${text}`);
+        const errorDetail = text ? `\nResponse: ${text.substring(0, 500)}` : '';
+        throw new Error(`Cloudflare Stream TUS init failed (${res.status}): ${errorDetail}`);
     }
 
     const data = await res.json();
 
-    // Check success BEFORE returning
-    if (!data.success) {
-        throw new Error(`Cloudflare Stream TUS init rejected: ${JSON.stringify(data.errors || 'Unknown error')}`);
+    // Validate response structure
+    if (!data.success || !data.result) {
+        const errors = data.errors || [{ message: 'Unknown error' }];
+        const errorMsg = errors.map((e: any) => e.message).join('; ');
+        throw new Error(`Cloudflare Stream rejected TUS init: ${errorMsg}`);
     }
 
-    console.log("[CF Stream] Generated TUS Upload URL:", data.result.uploadURL);
+    const uploadUrl = data.result.uploadURL;
+    const uid = data.result.uid;
 
-    return {
-        uploadUrl: data.result.uploadURL,
-        uid: data.result.uid,
-    };
+    if (!uploadUrl || !uid) {
+        throw new Error(`Cloudflare returned incomplete response: missing uploadURL or uid`);
+    }
+
+    console.log('[CF Stream] ✓ TUS upload initialized:', {
+        uid,
+        uploadUrl: uploadUrl.substring(0, 50) + '...',
+    });
+
+    return { uploadUrl, uid };
 }
 
 // ─────────────────────────────────────────────────────────────
