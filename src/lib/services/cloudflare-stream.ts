@@ -67,13 +67,13 @@ export interface TusUploadResult {
 }
 
 /**
- * Initialize a TUS (resumable) upload with Cloudflare Stream.
- * Uses the Direct Creator Upload API which supports TUS protocol.
+ * Initialize a direct creator upload with Cloudflare Stream.
+ * Returns a one-time signed URL for browser-to-Cloudflare POST.
  *
- * Cloudflare's direct_upload endpoint accepts JSON body with tusv2=true
- * to enable TUS-compatible chunked uploads.
+ * The client will POST multipart/form-data directly to this URL.
+ * No TUS protocol needed - simple, fast, reliable.
  *
- * @param fileSize - Size of the file in bytes
+ * @param fileSize - Size of the file in bytes (informational only)
  * @param meta - Optional metadata (name, etc.)
  */
 export async function createTusUpload(
@@ -84,14 +84,13 @@ export async function createTusUpload(
         throw new Error('Cloudflare Stream is not configured.');
     }
 
-    // Build request body with TUS support
+    // Build request body for direct creator upload (NOT TUS)
     const requestBody = {
         maxDurationSeconds: 7200, // 2 hours
-        tusv2: true, // Enable TUS v1.0.0 protocol support
         ...(meta && { meta }), // Include metadata if provided
     };
 
-    console.log('[CF Stream] Initializing TUS upload:', {
+    console.log('[CF Stream] Initializing direct upload:', {
         fileSize,
         maxDurationSeconds: requestBody.maxDurationSeconds,
         hasMeta: !!meta,
@@ -109,7 +108,7 @@ export async function createTusUpload(
     if (!res.ok) {
         const text = await res.text().catch(() => '');
         const errorDetail = text ? `\nResponse: ${text.substring(0, 500)}` : '';
-        throw new Error(`Cloudflare Stream TUS init failed (${res.status}): ${errorDetail}`);
+        throw new Error(`Cloudflare Stream direct upload init failed (${res.status}): ${errorDetail}`);
     }
 
     const data = await res.json();
@@ -118,7 +117,7 @@ export async function createTusUpload(
     if (!data.success || !data.result) {
         const errors = data.errors || [{ message: 'Unknown error' }];
         const errorMsg = errors.map((e: any) => e.message).join('; ');
-        throw new Error(`Cloudflare Stream rejected TUS init: ${errorMsg}`);
+        throw new Error(`Cloudflare Stream rejected direct upload init: ${errorMsg}`);
     }
 
     const uploadUrl = data.result.uploadURL;
@@ -128,7 +127,7 @@ export async function createTusUpload(
         throw new Error(`Cloudflare returned incomplete response: missing uploadURL or uid`);
     }
 
-    console.log('[CF Stream] ✓ TUS upload initialized:', {
+    console.log('[CF Stream] ✓ Direct upload initialized:', {
         uid,
         uploadUrl: uploadUrl.substring(0, 50) + '...',
     });
