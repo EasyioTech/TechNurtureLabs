@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
     LayoutGrid, BookOpen, CreditCard, Users, BarChart3,
     Building2, Bell, Search, Sun, Moon, Filter, LogOut, Plus, Palette, Check, Settings,
-    Menu, X, Save, Library, Activity, Zap, GraduationCap, ChevronDown, Database
+    Menu, X, Save, Library, Activity, Zap, GraduationCap, ChevronDown, Database, Video
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -423,6 +423,15 @@ function DashboardContent() {
                                     data.setShowPromoCodeDialog(true);
                                 }}>
                                 <Plus size={20} strokeWidth={3} />ADD CODE
+                            </Button>
+                        )}
+                        {activePage === 'courses' && data.cloudflareStreamDashboardUrl && (
+                            <Button size="sm"
+                                variant="outline"
+                                className={`rounded-full gap-2 sm:gap-2.5 h-10 sm:h-12 px-4 sm:px-7 text-[10px] sm:text-sm font-black shadow-xl transition-all border-dashed
+                                    ${isDark ? 'bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20' : 'bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100'}`}
+                                onClick={() => window.open(data.cloudflareStreamDashboardUrl!, '_blank')}>
+                                <Video size={18} strokeWidth={3} />STREAM DASHBOARD
                             </Button>
                         )}
                         {activePage === 'settings' && (

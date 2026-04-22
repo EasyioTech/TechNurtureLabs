@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
+import * as tus from 'tus-js-client';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useAdminTheme, t } from '../theme-context';
-import { 
-    Cloud, ImageIcon, AlertCircle, Loader2 
+import {
+    Cloud, ImageIcon, AlertCircle, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUpload } from '@/hooks/use-upload';
@@ -58,6 +59,12 @@ export function MediaLibraryPicker({
     const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
     const [isMultiSelect, setIsMultiSelect] = React.useState(false);
 
+    // Stream video upload state
+    const [isStreamUploading, setIsStreamUploading] = React.useState(false);
+    const [streamProgress, setStreamProgress] = React.useState(0);
+    const [isNormalizing, setIsNormalizing] = React.useState(false);
+    const tusUploadRef = React.useRef<tus.Upload | null>(null);
+
     // Strictly fresh refs for use inside callbacks
     const activeTabRef        = React.useRef(activeTab);
     const debouncedSearchRef  = React.useRef(debouncedSearch);
@@ -95,6 +102,16 @@ export function MediaLibraryPicker({
         if (isUploading) uploadStore.updateTask(uploadId, { isLocalVisible: true });
         return () => { if (uploadId) uploadStore.updateTask(uploadId, { isLocalVisible: false }); };
     }, [uploadId, isUploading]);
+
+    // Cleanup stream upload on unmount
+    React.useEffect(() => {
+        return () => {
+            if (tusUploadRef.current) {
+                tusUploadRef.current.abort();
+                tusUploadRef.current = null;
+            }
+        };
+    }, []);
 
     React.useEffect(() => {
         if (!open) return;
@@ -309,11 +326,7 @@ export function MediaLibraryPicker({
         const isVideo = filterType === 'video';
         const isImage = filterType === 'image';
 
-        if (isVideo) {
-            toast.error('Videos must be uploaded through the dedicated Video Upload component to Cloudflare Stream');
-            if (fileInputRef.current) fileInputRef.current.value = '';
-            return;
-        } else if (isImage) {
+        if (isImage) {
             const valid = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp', 'image/gif'].includes(file.type);
             if (!valid) return toast.error('Upload valid image formats');
         }
@@ -322,14 +335,188 @@ export function MediaLibraryPicker({
         if (file.size > maxSize) return toast.error('File size limit is 2GB');
 
         setUploadFile(file);
-        const additionalData = {
-            purpose: 'library',
-            storagePreference: 'r2',
-            folder: 'library',
-        };
-        try { await upload(file, additionalData); }
-        catch (err) { console.error('[Upload]', err); }
-        finally { if (fileInputRef.current) fileInputRef.current.value = ''; }
+
+        try {
+            if (isVideo) {
+                await executeStreamUpload(file);
+            } else {
+                const additionalData = {
+                    purpose: 'library',
+                    storagePreference: 'r2',
+                    folder: 'library',
+                };
+                await upload(file, additionalData);
+            }
+        } catch (err) {
+            console.error('[Upload]', err);
+        } finally {
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    }
+
+    async function executeStreamUpload(file: File, isRetry = false): Promise<void> {
+        let uploadUid = '';
+        try {
+            // Warn for risky formats
+            const riskyExtensions = ['.mov', '.mkv', '.avi', '.wmv'];
+            const isRisky = riskyExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+            if (isRisky) {
+                toast.warning(`"${file.name.split('.').pop()?.toUpperCase()}" files often fail processing. If it gets stuck, re-encode to MP4.`);
+            }
+
+            const initRes = await fetch('/api/media/stream-upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileName: file.name, fileSize: file.size }),
+            });
+
+            if (!initRes.ok) throw new Error('Failed to initialize upload');
+            const { uploadURL, uid } = await initRes.json();
+            uploadUid = uid;
+
+            setIsStreamUploading(true);
+            setStreamProgress(0);
+
+            return await new Promise<void>(async (resolve, reject) => {
+                const upload = new tus.Upload(file, {
+                    uploadUrl: uploadURL,
+                    uploadDataDuringCreation: true,
+                    overridePatchMethod: true,
+                    fingerprint: async () => '',
+                    retryDelays: [0, 3000, 5000],
+                    chunkSize: 5 * 1024 * 1024,
+                    removeFingerprintOnSuccess: true,
+                    metadata: { filename: file.name, filetype: file.type },
+                    onError: (error) => reject(error),
+                    onProgress: (up, tot) => setStreamProgress(Math.round((up / tot) * 100)),
+                    onSuccess: async () => {
+                        try {
+                            let isReady = false;
+                            let lastPct = -1;
+                            let stagnantCount = 0;
+
+                            for (let i = 0; i < 600; i++) {
+                                const statusRes = await fetch(`/api/media/stream-status/${uploadUid}`);
+                                if (statusRes.ok) {
+                                    const data = await statusRes.json();
+                                    const state = data.status?.state || data.state;
+                                    const ready = data.readyToStream;
+                                    const pct = parseFloat(data.status?.pctComplete || '0');
+
+                                    if (ready) {
+                                        isReady = true;
+                                        break;
+                                    }
+
+                                    if (state === 'error') {
+                                        throw new Error('Cloudflare encoding failed. Incompatible format or VFR.');
+                                    }
+
+                                    if (pct === lastPct && pct < 100) stagnantCount++;
+                                    else { stagnantCount = 0; lastPct = pct; }
+
+                                    if (stagnantCount > 12) {
+                                        throw new Error('Processing stalled. File likely requires re-encoding.');
+                                    }
+                                }
+                                await new Promise(r => setTimeout(r, 3000));
+                            }
+
+                            if (!isReady) throw new Error('Processing timeout');
+
+                            // Reload stream videos
+                            setIsStreamUploading(false);
+                            setStreamProgress(0);
+                            toast.success('Video uploaded and processed');
+                            setUploadFile(null);
+                            setPage(1);
+                            loadStreamVideos(1, debouncedSearchRef.current, false);
+                            resolve();
+                        } catch (err: any) {
+                            if (err.message?.includes('Repairing')) {
+                                setIsNormalizing(true);
+                            }
+                            reject(err);
+                        }
+                    },
+                });
+
+                tusUploadRef.current = upload;
+                upload.start();
+            });
+        } catch (error: any) {
+            // Retry strategy
+            if (!isRetry && !error.message.includes('re-encode')) {
+                console.log('Ingest failed, attempting auto-retry...');
+                toast.info('Retrying processing...');
+                if (uploadUid) await fetch(`/api/media/stream-status/${uploadUid}`, { method: 'DELETE' });
+                return executeStreamUpload(file, true);
+            }
+
+            // Normalization escalation
+            if (isRetry) {
+                setIsNormalizing(true);
+                toast.info('Processing failed. Normalizing on server...');
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const normRes = await fetch('/api/media/normalize', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!normRes.ok) {
+                        const error = await normRes.json();
+                        throw new Error(error.error || 'Normalization pipeline failed');
+                    }
+
+                    const { jobId } = await normRes.json();
+                    toast.info('Normalization queued. This may take 1-2 minutes...');
+
+                    let attempts = 0;
+                    let finalUid = null;
+
+                    while (attempts < 40) {
+                        const jobRes = await fetch(`/api/media/jobs/${jobId}`);
+                        if (jobRes.ok) {
+                            const jobData = await jobRes.json();
+                            if (jobData.state === 'completed' && jobData.result?.uid) {
+                                finalUid = jobData.result.uid;
+                                break;
+                            }
+                            if (jobData.state === 'failed') {
+                                throw new Error(`Normalization failed: ${jobData.failedReason || 'Unknown error'}`);
+                            }
+                        }
+                        await new Promise(r => setTimeout(r, 3000));
+                        attempts++;
+                    }
+
+                    if (!finalUid) throw new Error('Normalization timed out');
+
+                    setIsNormalizing(false);
+                    setIsStreamUploading(false);
+                    setStreamProgress(0);
+                    toast.success('Video uploaded and processed');
+                    setUploadFile(null);
+                    setPage(1);
+                    loadStreamVideos(1, debouncedSearchRef.current, false);
+                } catch (normErr) {
+                    console.error('[Escalation Error]:', normErr);
+                    setIsNormalizing(false);
+                    setIsStreamUploading(false);
+                    throw normErr;
+                }
+            }
+
+            if (uploadUid) {
+                try { await fetch(`/api/media/stream-status/${uploadUid}`, { method: 'DELETE' }); } catch (e) {}
+            }
+            setIsStreamUploading(false);
+            setStreamProgress(0);
+            throw error;
+        }
     }
 
     const [isSyncing, setIsSyncing] = React.useState(false);
@@ -392,12 +579,27 @@ export function MediaLibraryPicker({
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {uploadFile && (
                         <UploadProgress
-                            progress={progress}
+                            progress={isStreamUploading ? streamProgress : progress}
                             fileName={uploadFile.name}
-                            isUploading={isUploading}
+                            isUploading={isStreamUploading || isUploading}
                             error={uploadError}
-                            onCancel={abort}
-                            onReset={resetUpload}
+                            onCancel={() => {
+                                if (isStreamUploading && tusUploadRef.current) {
+                                    tusUploadRef.current.abort();
+                                    tusUploadRef.current = null;
+                                    setIsStreamUploading(false);
+                                    setStreamProgress(0);
+                                    setUploadFile(null);
+                                } else {
+                                    abort();
+                                }
+                            }}
+                            onReset={() => {
+                                resetUpload();
+                                setStreamProgress(0);
+                                setIsStreamUploading(false);
+                                setUploadFile(null);
+                            }}
                             isDark={isDark}
                         />
                     )}

@@ -36,6 +36,7 @@ export function useAdminData() {
         platformSettings: meta.platformSettings,
         platformMetrics:  meta.platformMetrics,
         loginHeatmap:     meta.loginHeatmap,
+        cloudflareStreamDashboardUrl: meta.cloudflareStreamDashboardUrl,
         fetchInitialData: meta.fetchInitialData,
         fetchAllData:     meta.fetchInitialData, // backward-compat alias
 

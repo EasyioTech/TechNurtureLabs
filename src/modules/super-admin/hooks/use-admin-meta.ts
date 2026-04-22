@@ -35,6 +35,7 @@ export function useAdminMeta() {
     const [loginHeatmap, setLoginHeatmap] = useState<number[][]>(
         Array.from({ length: 7 }, () => Array(24).fill(0))
     );
+    const [cloudflareStreamDashboardUrl, setCloudflareStreamDashboardUrl] = useState<string | null>(null);
 
     // Dialog state for plans + promos
     const [showPlanDialog, setShowPlanDialog] = useState(false);
@@ -59,6 +60,7 @@ export function useAdminMeta() {
             setClasses(metaData.classes);
             setPlatformSettings(metaData.platformSettings);
             setPlatformMetrics(metaData.platformMetrics);
+            setCloudflareStreamDashboardUrl(metaData.cloudflareStreamDashboardUrl);
             setLoginHeatmap(extras.loginHeatmap);
         } catch (err: any) {
             // No forced redirect - AuthProvider or Middleware handles auth state
@@ -170,6 +172,7 @@ export function useAdminMeta() {
         stats,
         paymentPlans, promoCodes,
         classes, platformSettings, platformMetrics, loginHeatmap,
+        cloudflareStreamDashboardUrl,
         fetchInitialData,
         showPlanDialog, setShowPlanDialog, editingPlan, setEditingPlan,
         showPromoCodeDialog, setShowPromoCodeDialog, editingPromoCode, setEditingPromoCode,

@@ -12,6 +12,7 @@ import { requireSuperAdmin } from '@/lib/admin-guard';
 import { redis } from '@/lib/redis';
 import { createAuditLog } from '@/lib/audit';
 import { format, subDays, endOfDay } from 'date-fns';
+import { serverEnv } from '@/lib/env.server';
 
 const CACHE_KEY = 'cache:admin:meta';
 
@@ -67,6 +68,9 @@ export async function fetchAdminMetadata() {
         promoCodes: promoCodesData,
         platformSettings: settingsData || null,
         platformMetrics: metricsData.reverse(),
+        cloudflareStreamDashboardUrl: serverEnv.CLOUDFLARE_ACCOUNT_ID 
+            ? `https://dash.cloudflare.com/${serverEnv.CLOUDFLARE_ACCOUNT_ID}/stream/videos`
+            : null,
     };
 
     // 3. Store in cache for 10 mins

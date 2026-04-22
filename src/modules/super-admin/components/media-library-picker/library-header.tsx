@@ -79,10 +79,9 @@ export function LibraryHeader({
 
                     <Button
                         size="sm"
-                        disabled={isUploading || isSyncing || filterType === 'video'}
+                        disabled={isUploading || isSyncing}
                         onClick={onUploadClick}
-                        title={filterType === 'video' ? 'Use the dedicated Video Upload component for Stream videos' : undefined}
-                        className={`rounded-lg h-9 px-5 text-xs font-black uppercase tracking-wider ${accent.bg} text-slate-900 hover:shadow-lg transition-all ${filterType === 'video' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`rounded-lg h-9 px-5 text-xs font-black uppercase tracking-wider ${accent.bg} text-slate-900 hover:shadow-lg transition-all`}
                     >
                         {isUploading ? <Loader2 size={14} className="animate-spin mr-1.5" strokeWidth={2} /> : <Upload size={14} className="mr-1.5" strokeWidth={2} />}
                         Upload
