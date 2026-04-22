@@ -23,6 +23,9 @@ www.{$CADDY_DOMAIN:technurturelms.in} {
 
 # Catch-all for all subdomains (admin.*, school.*, etc.)
 *.{$CADDY_DOMAIN:technurturelms.in} {
+    tls {
+        dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+    }
     reverse_proxy app:3000
 }
 
