@@ -108,13 +108,17 @@ export async function POST(
         // CRITICAL FIX: POST should NOT forward to Cloudflare
         // TUS session was already created server-side by createTusUploadUrl()
         // tus-js-client expects POST to return 201 Created with Location header
-        // Returning 201 tells client the session exists and ready for PATCH uploads
+        // Location header MUST point to our proxy (not Cloudflare), so PATCH goes through proxy
         console.log(`[TUS Proxy] POST for ${uid}: session already exists, returning 201`);
+
+        // Construct Location as absolute URL to our proxy endpoint
+        const baseUrl = new URL(req.url).origin;
+        const locationUrl = `${baseUrl}/api/media/stream-upload/${uid}/chunk`;
 
         return new NextResponse(null, {
             status: 201,
             headers: {
-                'Location': tusUploadUrl,
+                'Location': locationUrl,
                 'Tus-Resumable': '1.0.0',
                 'Tus-Version': '1.0.0',
             },
