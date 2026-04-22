@@ -138,7 +138,7 @@ export async function createTusUpload(
             'Tus-Resumable': '1.0.0',
         },
         body: JSON.stringify({
-            maxDurationSeconds: 36000,
+            maxDurationSeconds: 3600,
             meta: meta || {},
         }),
     });
