@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
 import { getVideoStatus } from '@/lib/services/cloudflare-stream';
-import Redis from 'ioredis';
+import { redis } from '@/lib/redis';
 
 /**
  * GET /api/media/stream-status/[uid]
@@ -24,11 +24,9 @@ export async function GET(
         const cacheKey = `cf-stream:${uid}`;
 
         // Try Redis cache first (5 min TTL)
-        const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
         let cachedStatus = await redis.get(cacheKey);
 
         if (cachedStatus) {
-            await redis.quit();
             return NextResponse.json(JSON.parse(cachedStatus));
         }
 
@@ -37,7 +35,6 @@ export async function GET(
 
         // Cache for 5 minutes
         await redis.setex(cacheKey, 300, JSON.stringify(status));
-        await redis.quit();
 
         return NextResponse.json(status);
     } catch (err: any) {

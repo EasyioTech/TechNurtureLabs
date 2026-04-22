@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import * as tus from 'tus-js-client';
 import { toast } from 'sonner';
 
 interface UseStreamUploadOptions {
@@ -17,28 +18,21 @@ export interface UseStreamUploadReturn {
 export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUploadReturn {
     const [isUploading, setIsUploading] = React.useState(false);
     const [progress, setProgress] = React.useState(0);
+    const uploadRef = React.useRef<tus.Upload | null>(null);
 
-    const xhrRef = React.useRef<XMLHttpRequest | null>(null);
-    const cancelledRef = React.useRef(false);
-
-    // Cleanup on unmount
     React.useEffect(() => {
         return () => {
-            if (xhrRef.current) {
-                xhrRef.current.abort();
+            if (uploadRef.current) {
+                uploadRef.current.abort();
             }
         };
     }, []);
 
     const cancel = React.useCallback(() => {
-        cancelledRef.current = true;
-        if (xhrRef.current) {
-            const current = xhrRef.current as any;
-            if (current.abort) {
-                current.abort();
-            }
-            xhrRef.current = null;
+        if (uploadRef.current) {
+            uploadRef.current.abort();
         }
+        uploadRef.current = null;
         setIsUploading(false);
         setProgress(0);
         toast.info('Upload cancelled');
@@ -46,72 +40,59 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
 
     const uploadVideo = React.useCallback(
         async (file: File): Promise<string | null> => {
-            cancelledRef.current = false;
+            setIsUploading(true);
             setProgress(0);
 
             try {
-                setIsUploading(true);
-
-                // Initialize TUS upload
+                // Step 1: Get signed TUS upload URL from Cloudflare Stream via our server
                 const initRes = await fetch('/api/media/stream-upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ fileName: file.name, fileSize: file.size }),
                 });
 
-                if (!initRes.ok) throw new Error('Failed to start upload');
+                if (!initRes.ok) {
+                    throw new Error('Failed to initialize upload with Cloudflare Stream');
+                }
+
                 const { uploadURL, uid } = await initRes.json();
 
-                // TUS chunked upload
-                const CHUNK_SIZE = 5 * 1024 * 1024;
-                let offset = 0;
-
-                while (offset < file.size && !cancelledRef.current) {
-                    const chunk = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size));
-
-                    const res = await fetch(uploadURL, {
-                        method: 'PATCH',
-                        headers: {
-                            'Upload-Offset': offset.toString(),
-                            'Content-Type': 'application/offset+octet-stream',
-                            'Tus-Resumable': '1.0.0',
+                // Step 2: Upload directly to CF using tus-js-client
+                // tus-js-client handles: chunking, progress, resumption, retries, protocol
+                return new Promise<string | null>((resolve) => {
+                    const upload = new tus.Upload(file, {
+                        uploadUrl: uploadURL, // CF-signed TUS endpoint (direct, no proxy)
+                        chunkSize: 50 * 1024 * 1024, // 50 MB — CF Stream recommended
+                        retryDelays: [0, 3000, 5000, 10000, 20000], // Auto-retry 5× on network drop, resuming from last offset
+                        metadata: {
+                            filename: file.name,
+                            filetype: file.type,
                         },
-                        body: chunk,
+                        onProgress(uploaded, total) {
+                            setProgress(Math.round((uploaded / total) * 100));
+                        },
+                        onSuccess() {
+                            setIsUploading(false);
+                            setProgress(100);
+
+                            // Save URL immediately — CF's embed player shows "processing" natively until encoding completes
+                            options?.onSuccess?.(`cf-stream://${uid}`);
+                            resolve(uid);
+                        },
+                        onError(error) {
+                            setIsUploading(false);
+                            const msg = error instanceof Error ? error.message : 'Upload failed';
+                            toast.error(msg);
+                            resolve(null);
+                        },
                     });
 
-                    if (!res.ok) throw new Error('Upload failed');
-                    offset += chunk.size;
-                    setProgress(Math.min(99, Math.round((offset / file.size) * 100)));
-                }
-
-                if (cancelledRef.current) throw new Error('Upload cancelled');
-                setProgress(100);
-
-                // Poll for encoding ready
-                let isReady = false;
-                for (let i = 0; i < 60; i++) {
-                    if (cancelledRef.current) break;
-
-                    const statusRes = await fetch(`/api/media/stream-status/${uid}`);
-                    if (statusRes.ok) {
-                        const data = await statusRes.json();
-                        if (data.readyToStream) {
-                            isReady = true;
-                            break;
-                        }
-                        if (data.status?.state === 'error') throw new Error('Encoding failed');
-                    }
-                    await new Promise(r => setTimeout(r, 1000));
-                }
-
-                setIsUploading(false);
-                if (options?.onSuccess) {
-                    await options.onSuccess(`cf-stream://${uid}`);
-                }
-                return uid;
+                    uploadRef.current = upload;
+                    upload.start();
+                });
             } catch (error: any) {
                 setIsUploading(false);
-                const msg = error.message.includes('cancelled') ? 'Upload cancelled' : `Upload failed: ${error.message}`;
+                const msg = error?.message || 'Upload initialization failed';
                 toast.error(msg);
                 return null;
             }

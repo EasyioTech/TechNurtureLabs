@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
-import { createDirectUpload, createTusUpload, isStreamConfigured } from '@/lib/services/cloudflare-stream';
+import { createTusUpload, isStreamConfigured } from '@/lib/services/cloudflare-stream';
 
 /**
  * POST /api/media/stream-upload

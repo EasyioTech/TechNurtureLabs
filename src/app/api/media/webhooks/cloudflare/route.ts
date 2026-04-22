@@ -1,23 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverEnv } from '@/lib/env.server';
-import Redis from 'ioredis';
+import { redis } from '@/lib/redis';
 
 /**
  * CLOUDFLARE STREAM WEBHOOK HANDLER
- * 
+ *
  * DESIGN PRINCIPLES:
- * 1. Event-Driven: Replaces expensive polling with immediate completion notification.
- * 2. Status Synchronization: Ensures the backend knows exactly when a video is ready.
+ * 1. Webhook-Driven: Real-time notification when video encoding completes.
+ * 2. Cache Invalidation: Bust Redis cache to ensure next status check fetches fresh data.
+ * 3. Secure: Validates webhook signature via CF_WEBHOOK_SECRET env var.
  */
 
 export async function POST(req: NextRequest) {
   try {
+    // Validate webhook signature if secret is configured
+    const secret = process.env.CLOUDFLARE_WEBHOOK_SECRET;
+    if (secret) {
+      const sig = req.headers.get('webhook-signature') ?? '';
+      if (sig !== secret) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
     const body = await req.json();
     const { status, uid, metadata } = body;
 
     console.log(`[CF Webhook] Event received for ${uid}:`, status.state);
 
-    const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
     const cacheKey = `cf-stream:${uid}`;
 
     if (status.state === 'ready') {
@@ -38,7 +47,6 @@ export async function POST(req: NextRequest) {
         await redis.del(cacheKey);
     }
 
-    await redis.quit();
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('[CF Webhook Error]:', error);

@@ -56,64 +56,14 @@ function getAccountUrl() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Direct Creator Upload
+// TUS Resumable Upload
 // ─────────────────────────────────────────────────────────────
 
-export interface DirectUploadResult {
-    /** One-time upload URL — client POSTs the video file here */
-    uploadUrl: string;
-    /** Cloudflare Stream video UID (optional for TUS since it's in the URL) */
-    uid: string;
-}
-
-/** Result for a TUS resumable upload */
 export interface TusUploadResult {
-    /** The resumable TUS endpoint for the client to use */
+    /** The TUS upload endpoint for resumable chunked upload */
     uploadUrl: string;
     /** The UID assigned to this video upload */
     uid: string;
-}
-
-/**
- * Request a Direct Creator Upload URL from Cloudflare Stream.
- * The client will upload the video file directly to this URL.
- *
- * @param maxDurationSeconds - Maximum allowed video duration (default 10 hours)
- * @param meta - Optional metadata to attach to the video
- */
-export async function createDirectUpload(
-    maxDurationSeconds: number = 3600,
-    meta?: Record<string, string>
-): Promise<DirectUploadResult> {
-    if (!isStreamConfigured()) {
-        throw new Error('Cloudflare Stream is not configured. Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_STREAM_API_TOKEN.');
-    }
-
-    const body: Record<string, any> = {
-        maxDurationSeconds,
-    };
-
-    if (meta) {
-        body.meta = meta;
-    }
-
-    const res = await fetchWithTimeout(`${getAccountUrl()}/direct_upload`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(`Cloudflare Stream direct_upload failed (${res.status}): ${text}`);
-    }
-
-    const data = await res.json();
-
-    return {
-        uploadUrl: data.result.uploadURL,
-        uid: data.result.uid,
-    };
 }
 
 /**

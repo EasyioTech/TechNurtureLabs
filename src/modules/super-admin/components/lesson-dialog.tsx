@@ -20,6 +20,7 @@ import { MediaLibraryPicker } from './media-library-picker';
 import { EntityLibraryPicker } from './entity-library-picker';
 import { cloneQuizAction } from '@/modules/super-admin/actions';
 import { useUpload } from '@/hooks/use-upload';
+import { useStreamUpload } from '@/hooks/use-stream-upload';
 import { uploadStore } from '@/lib/upload-store';
 import { cn } from '@/lib/utils';
 
@@ -63,9 +64,16 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
     const [libraryOpen, setLibraryOpen] = React.useState(false);
     const [libraryTargetId, setLibraryTargetId] = React.useState<string | null>(null);
     const [importOpen, setImportOpen] = React.useState(false);
-    const [streamProgress, setStreamProgress] = React.useState(0);
-    const [isStreamUploading, setIsStreamUploading] = React.useState(false);
-    const abortController = React.useRef<AbortController | null>(null);
+
+    const activeUploadItemIdRef = React.useRef<string | null>(null);
+    const { uploadVideo: streamUpload, isUploading: isStreamUploading, progress: streamProgress, cancel: cancelStream } = useStreamUpload({
+        onSuccess: async (url: string) => {
+            if (activeUploadItemIdRef.current) {
+                applyBlockUpdate(activeUploadItemIdRef.current, 'url', url);
+                toast.success('Video queued for streaming');
+            }
+        }
+    });
 
     const { upload, progress, isUploading, error: uploadError, reset: resetUpload, abort, uploadId } = useUpload();
     const [isDirty, setIsDirty] = React.useState(false);
@@ -147,46 +155,10 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
         try {
             const block = contentItems.find(i => i.id === itemId);
             if (block?.type === 'video') {
-                setIsStreamUploading(true);
-                setStreamProgress(0);
-                abortController.current = new AbortController();
-
-                // 1. Get Direct Creator Upload URL
-                const initRes = await fetch('/api/media/stream-upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fileName: file.name, fileSize: file.size }),
-                    signal: abortController.current.signal,
-                });
-
-                if (!initRes.ok) throw new Error('Cloudflare handshake failed');
-                const { uploadURL, uid } = await initRes.json();
-
-                // 2. Perform Native TUS Chunked Upload
-                const CHUNK_SIZE = 5 * 1024 * 1024;
-                let offset = 0;
-
-                while (offset < file.size) {
-                    const chunk = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size));
-                    const res = await fetch(uploadURL, {
-                        method: 'PATCH',
-                        headers: {
-                            'Upload-Offset': offset.toString(),
-                            'Content-Type': 'application/offset+octet-stream',
-                            'Tus-Resumable': '1.0.0',
-                        },
-                        body: chunk,
-                        signal: abortController.current.signal,
-                    });
-
-                    if (!res.ok) throw new Error('Stream ingestion interrupted');
-                    offset += chunk.size;
-                    setStreamProgress(Math.min(100, Math.round((offset / file.size) * 100)));
-                }
-
-                // Video is accepted by Cloudflare, it will process in background
-                applyBlockUpdate(itemId, 'url', `cf-stream://${uid}`);
-                toast.success('Video queued for streaming');
+                activeUploadItemIdRef.current = itemId;
+                setActiveUploadItemId(itemId);
+                await streamUpload(file);
+                setActiveUploadItemId(null);
                 return;
             }
 
@@ -353,8 +325,7 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                                                 onLibraryRequest={(id) => { setLibraryTargetId(id); setLibraryOpen(true); }}
                                                 abort={() => {
                                                     if (isStreamUploading && activeUploadItemId) {
-                                                        abortController.current?.abort();
-                                                        setIsStreamUploading(false);
+                                                        cancelStream();
                                                         setActiveUploadItemId(null);
                                                         setUploadFile(null);
                                                     } else {
