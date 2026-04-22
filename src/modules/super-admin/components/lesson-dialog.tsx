@@ -222,11 +222,9 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                         await new Promise<void>((resolve, reject) => {
                             const upload = new tus.Upload(file, {
                                 endpoint: uploadURL,
-                                retryDelays: [0, 3000, 5000, 10000, 20000],
-                                chunkSize: 5 * 1024 * 1024,
-                                headers: {
-                                    'Tus-Resumable': '1.0.0'
-                                },
+                                uploadUrl: uploadURL,
+                                chunkSize: Infinity,
+                                retryDelays: [0, 3000, 5000],
                                 onProgress: (bytesUploaded, bytesTotal) => {
                                     const pct = Math.round((bytesUploaded / bytesTotal) * 100);
                                     setStreamProgress(Math.min(99, pct));

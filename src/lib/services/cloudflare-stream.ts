@@ -140,7 +140,6 @@ export async function createTusUpload(
         },
         body: JSON.stringify({
             maxDurationSeconds: 7200,
-            meta: meta || {},
             tusv2: true,
         }),
     });
