@@ -11,6 +11,7 @@ import { useUpload } from '@/hooks/use-upload';
 import { UploadProgress } from '@/components/shared/upload-progress';
 import { uploadStore } from '@/lib/upload-store';
 import { useAuth } from '@/components/providers/auth-provider';
+import * as tus from 'tus-js-client';
 import { Button } from '@/components/ui/button';
 
 // Modular Components
@@ -377,49 +378,31 @@ export function MediaLibraryPicker({
             setStreamProgress(0);
 
             return await new Promise<void>(async (resolve, reject) => {
-                const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB Chunks
-                
-                // 1. Chunked Upload
+                // 1. TUS Upload using official client
                 await new Promise<void>((resolve, reject) => {
-                    const uploadChunk = (offset: number) => {
-                        if (offset >= file.size) {
+                    const upload = new tus.Upload(file, {
+                        endpoint: uploadURL,
+                        uploadUrl: uploadURL,
+                        retryDelays: [0, 3000, 5000, 10000, 20000],
+                        chunkSize: 5 * 1024 * 1024,
+                        headers: {
+                            'Tus-Resumable': '1.0.0'
+                        },
+                        onProgress: (bytesUploaded, bytesTotal) => {
+                            const pct = Math.round((bytesUploaded / bytesTotal) * 100);
+                            setStreamProgress(Math.min(99, pct));
+                        },
+                        onSuccess: () => {
                             resolve();
-                            return;
+                        },
+                        onError: (error) => {
+                            console.error('[TUS Error]:', error);
+                            reject(error);
                         }
+                    });
 
-                        const chunk = file.slice(offset, offset + CHUNK_SIZE);
-                        const xhr = new XMLHttpRequest();
-                        xhrRef.current = xhr;
-                        
-                        xhr.open('PATCH', uploadURL, true);
-                        xhr.setRequestHeader('Tus-Resumable', '1.0.0');
-                        xhr.setRequestHeader('Upload-Offset', offset.toString());
-                        xhr.setRequestHeader('Content-Type', 'application/offset+octet-stream');
-
-                        xhr.upload.onprogress = (e) => {
-                            if (e.lengthComputable) {
-                                const totalUploaded = offset + e.loaded;
-                                setStreamProgress(Math.min(99, Math.round((totalUploaded / file.size) * 100)));
-                            }
-                        };
-
-                        xhr.onload = () => {
-                            xhrRef.current = null;
-                            if (xhr.status >= 200 && xhr.status < 300) {
-                                uploadChunk(offset + chunk.size);
-                            } else {
-                                reject(new Error(`Chunk upload failed: ${xhr.status}`));
-                            }
-                        };
-
-                        xhr.onerror = () => {
-                            xhrRef.current = null;
-                            reject(new Error('Network error during chunk upload'));
-                        };
-
-                        xhr.send(chunk);
-                    };
-                    uploadChunk(0);
+                    xhrRef.current = { abort: () => upload.abort() } as any;
+                    upload.start();
                 });
 
                 // 2. Poll for Status

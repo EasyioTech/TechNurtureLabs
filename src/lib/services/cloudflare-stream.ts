@@ -131,7 +131,7 @@ export async function createTusUpload(
         throw new Error('Cloudflare Stream is not configured.');
     }
 
-    const res = await fetchWithTimeout(`${getAccountUrl()}/direct_upload?tusv2=true`, {
+    const res = await fetchWithTimeout(`${getAccountUrl()}/direct_upload`, {
         method: 'POST',
         headers: {
             ...getHeaders(),
@@ -141,6 +141,7 @@ export async function createTusUpload(
         body: JSON.stringify({
             maxDurationSeconds: 7200,
             meta: meta || {},
+            tusv2: true,
         }),
     });
 
