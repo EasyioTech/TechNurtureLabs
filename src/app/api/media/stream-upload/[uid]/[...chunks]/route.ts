@@ -173,9 +173,13 @@ export async function PATCH(
         );
 
         // Forward response headers
-        const responseHeaders: Record<string, string> = {};
+        const responseHeaders: Record<string, string> = {
+            'Access-Control-Expose-Headers': 'Upload-Offset, Upload-Length, Tus-Resumable, Location',
+        };
         cfResponse.headers.forEach((value, key) => {
-            responseHeaders[key] = value;
+            if (!['content-encoding', 'content-length', 'transfer-encoding', 'connection'].includes(key.toLowerCase())) {
+                responseHeaders[key] = value;
+            }
         });
 
         return new NextResponse(cfResponse.body, {
@@ -231,9 +235,13 @@ export async function HEAD(
         );
 
         // Forward response headers (especially Upload-Offset for resumability)
-        const responseHeaders: Record<string, string> = {};
+        const responseHeaders: Record<string, string> = {
+            'Access-Control-Expose-Headers': 'Upload-Offset, Upload-Length, Tus-Resumable, Location',
+        };
         cfResponse.headers.forEach((value, key) => {
-            responseHeaders[key] = value;
+            if (!['content-encoding', 'content-length', 'transfer-encoding', 'connection'].includes(key.toLowerCase())) {
+                responseHeaders[key] = value;
+            }
         });
 
         return new NextResponse(null, {

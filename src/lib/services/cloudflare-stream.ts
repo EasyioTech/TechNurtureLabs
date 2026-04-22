@@ -195,19 +195,48 @@ export async function createTusUploadUrl(
         throw new Error(`Cloudflare Stream rejected TUS init: ${errorMsg}`);
     }
 
-    const uploadUrl = data.result.uploadURL;
+    const signedUrl = data.result.uploadURL;
     const uid = data.result.uid;
 
-    if (!uploadUrl || !uid) {
+    if (!signedUrl || !uid) {
         throw new Error(`Cloudflare returned incomplete response: missing uploadURL or uid`);
     }
 
-    console.log('[CF Stream] ✓ TUS upload initialized:', {
-        uid,
-        uploadUrl: uploadUrl.substring(0, 50) + '...',
+    // CRITICAL: The signedUrl from /direct_upload is the CREATION endpoint.
+    // To get the actual TUS session URL for PATCH requests, we must perform a handshake.
+    console.log(`[CF Stream] Performing TUS handshake for ${uid}...`);
+    
+    const handshakeRes = await fetch(signedUrl, {
+        method: 'POST',
+        headers: {
+            'Tus-Resumable': '1.0.0',
+            'Upload-Length': fileSize.toString(),
+            // Metadata is already handled by the /direct_upload call if tusv2: true is set,
+            // but we can provide it again or just let Cloudflare use the preset one.
+        }
     });
 
-    return { uploadUrl, uid };
+    if (!handshakeRes.ok && handshakeRes.status !== 201) {
+        const text = await getResponseErrorText(handshakeRes);
+        console.error(`[CF Stream] TUS handshake failed (${handshakeRes.status}):`, text);
+        // Fallback to signedUrl if handshake fails, though PATCH might fail later
+        return { uploadUrl: signedUrl, uid };
+    }
+
+    // The REAL session URL is in the Location header
+    const sessionUrl = handshakeRes.headers.get('Location');
+    
+    if (!sessionUrl) {
+        console.warn(`[CF Stream] Handshake succeeded but no Location header for ${uid}. Using signed URL.`);
+        return { uploadUrl: signedUrl, uid };
+    }
+
+    console.log('[CF Stream] ✓ TUS session created:', {
+        uid,
+        sessionUrl: sessionUrl.substring(0, 50) + '...',
+    });
+
+    return { uploadUrl: sessionUrl, uid };
 }
 
 // ─────────────────────────────────────────────────────────────
