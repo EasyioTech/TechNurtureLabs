@@ -45,15 +45,16 @@ async function proxyToCloudflare(
 function buildProxyHeaders(req: NextRequest): Record<string, string> {
     const headers: Record<string, string> = {};
 
-    // Forward all headers except hop-by-hop ones
+    // Forward all headers except hop-by-hop ones and authorization
     req.headers.forEach((value, key) => {
         if (!['host', 'connection', 'transfer-encoding', 'authorization'].includes(key.toLowerCase())) {
             headers[key] = value;
         }
     });
 
-    // CRITICAL FIX: Inject Cloudflare API authentication
-    headers['Authorization'] = `Bearer ${serverEnv.CLOUDFLARE_STREAM_API_TOKEN}`;
+    // NOTE: We do NOT inject Authorization: Bearer here because the tusUploadUrl 
+    // from Cloudflare Stream direct_upload is already a SIGNED URL.
+    // Adding an Authorization header can cause conflicts or "Decoding Errors".
 
     // TUS protocol requirements
     headers['Tus-Resumable'] = '1.0.0';
@@ -105,47 +106,22 @@ export async function POST(
             );
         }
 
-        // CRITICAL FIX: Forward POST to Cloudflare to initialize the TUS session
-        // This ensures Cloudflare receives the Upload-Length and Upload-Metadata headers
-        // which are required for protocol compliance.
-        const headers = buildProxyHeaders(req);
-        
-        console.log(`[TUS Proxy] Forwarding POST for ${uid} to Cloudflare`);
-        
-        const cfResponse = await proxyToCloudflare(
-            'POST',
-            tusUploadUrl,
-            headers,
-            null // TUS POST usually has no body
-        );
+        // CRITICAL REVERSION: POST should NOT forward to Cloudflare
+        // TUS session was already created server-side by createTusUploadUrl()
+        // tus-js-client expects POST to return 201 Created with Location header
+        // Location header MUST point to our proxy (not Cloudflare), so PATCH goes through proxy
+        console.log(`[TUS Proxy] POST for ${uid}: returning 201 with proxy location`);
 
-        if (!cfResponse.ok) {
-            const errorText = await cfResponse.text().catch(() => 'Unknown error');
-            console.error(`[TUS Proxy] Cloudflare POST failed (${cfResponse.status}): ${errorText}`);
-            return new NextResponse(errorText, { status: cfResponse.status });
-        }
-
-        // Cloudflare returns 201 Created with a Location header for the session
-        // We must return OUR proxy URL as the Location so tus-js-client continues through us
         const baseUrl = new URL(req.url).origin;
         const proxyLocationUrl = `${baseUrl}/api/media/stream-upload/${uid}/chunk`;
 
-        // Forward important TUS headers from Cloudflare
-        const responseHeaders: Record<string, string> = {
-            'Location': proxyLocationUrl,
-            'Tus-Resumable': '1.0.0',
-            'Tus-Version': '1.0.0',
-        };
-
-        cfResponse.headers.forEach((value, key) => {
-            if (['tus-resumable', 'tus-version', 'tus-extension', 'tus-max-chunk-size'].includes(key.toLowerCase())) {
-                responseHeaders[key] = value;
-            }
-        });
-
         return new NextResponse(null, {
             status: 201,
-            headers: responseHeaders,
+            headers: {
+                'Location': proxyLocationUrl,
+                'Tus-Resumable': '1.0.0',
+                'Tus-Version': '1.0.0',
+            },
         });
     } catch (error: any) {
         console.error('[TUS Proxy POST Error]:', error);
