@@ -218,29 +218,47 @@ export function LessonDialog({ open, onOpenChange, editingLesson, setEditingLess
                         setIsStreamUploading(true);
                         setStreamProgress(0);
 
-                        // 1. Perform TUS Upload using the official client
+                        // 1. Manual TUS Chunked Upload Loop
                         await new Promise<void>((resolve, reject) => {
-                            const upload = new tus.Upload(file, {
-                                endpoint: uploadURL,
-                                uploadUrl: uploadURL,
-                                chunkSize: Infinity,
-                                retryDelays: [0, 3000, 5000],
-                                onProgress: (bytesUploaded, bytesTotal) => {
-                                    const pct = Math.round((bytesUploaded / bytesTotal) * 100);
-                                    setStreamProgress(Math.min(99, pct));
-                                },
-                                onSuccess: () => {
+                            const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+                            let offset = 0;
+
+                            const uploadNextChunk = () => {
+                                if (offset >= file.size) {
                                     resolve();
-                                },
-                                onError: (error) => {
-                                    console.error('[TUS Error]:', error);
-                                    reject(error);
+                                    return;
                                 }
-                            });
-                            
-                            // Track for abort
-                            xhrRef.current = { abort: () => upload.abort() } as any;
-                            upload.start();
+
+                                const chunk = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size));
+                                const xhr = new XMLHttpRequest();
+                                xhr.open('PATCH', uploadURL);
+                                
+                                xhr.setRequestHeader('Upload-Offset', offset.toString());
+                                xhr.setRequestHeader('Content-Type', 'application/offset+octet-stream');
+
+                                xhr.upload.onprogress = (e) => {
+                                    if (e.lengthComputable) {
+                                        const chunkPct = (e.loaded / e.total) * (chunk.size / file.size);
+                                        const totalPct = Math.round(((offset / file.size) + chunkPct) * 100);
+                                        setStreamProgress(Math.min(99, totalPct));
+                                    }
+                                };
+
+                                xhr.onload = () => {
+                                    if (xhr.status >= 200 && xhr.status < 300) {
+                                        offset += chunk.size;
+                                        uploadNextChunk();
+                                    } else {
+                                        reject(new Error(`Upload failed with status ${xhr.status}`));
+                                    }
+                                };
+
+                                xhr.onerror = () => reject(new Error('Network error during TUS upload'));
+                                xhrRef.current = xhr;
+                                xhr.send(chunk);
+                            };
+
+                            uploadNextChunk();
                         });
 
                         // 2. Poll for Status (Encoding)
