@@ -26,7 +26,7 @@ import {
     restoreSchoolFromBackupFileAdmin,
     getBackupDownloadUrlAdmin
 } from '@/app/(super-admin)/admin-portal/actions/backup-actions';
-import { BackupCard } from './backups/backup-card';
+import { BackupTable } from './backups/backup-table';
 import { BackupDetailView } from './backups/backup-detail-view';
 
 interface BackupsTabProps {
@@ -323,31 +323,24 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                    {groupedBackups.map((backup, idx) => (
-                        <BackupCard 
-                            key={backup.id}
-                            backup={backup}
-                            index={idx}
-                            onPreview={() => handlePreview(backup)}
-                            onDownload={() => handleDownload(backup)}
-                            onDelete={() => handleDelete(backup)}
-                            onRestore={() => handlePreview(backup)}
-                        />
-                    ))}
+            <BackupTable 
+                backups={groupedBackups}
+                onPreview={handlePreview}
+                onDownload={handleDownload}
+                onDelete={handleDelete}
+            />
 
-                {groupedBackups.length === 0 && (
-                    <div className={`col-span-full py-20 sm:py-32 rounded-[2rem] sm:rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center space-y-4 opacity-30 ${t.border(isDark)}`}>
-                        <div className={`w-16 h-16 sm:w-20 h-20 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-neutral-50'}`}>
-                            <Database size={40} />
-                        </div>
-                        <div className="text-center px-4">
-                            <h3 className={`text-lg sm:text-xl font-black ${t.textPrimary(isDark)}`}>No Vaults Found</h3>
-                            <p className={`text-xs font-bold max-w-xs mx-auto mt-2 ${t.textMuted(isDark)}`}>Initialize your first school backup to start securing institutional data.</p>
-                        </div>
+            {groupedBackups.length === 0 && (
+                <div className={`py-20 sm:py-32 rounded-[2rem] sm:rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center space-y-4 opacity-30 ${t.border(isDark)}`}>
+                    <div className={`w-16 h-16 sm:w-20 h-20 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-neutral-50'}`}>
+                        <Database size={40} />
                     </div>
-                )}
-            </div>
+                    <div className="text-center px-4">
+                        <h3 className={`text-lg sm:text-xl font-black ${t.textPrimary(isDark)}`}>No Vaults Found</h3>
+                        <p className={`text-xs font-bold max-w-xs mx-auto mt-2 ${t.textMuted(isDark)}`}>Initialize your first school backup to start securing institutional data.</p>
+                    </div>
+                </div>
+            )}
 
             {/* Roadmap Section */}
             <div className={`mt-10 sm:mt-20 p-6 sm:p-10 rounded-2xl sm:rounded-[3rem] border overflow-hidden relative ${isDark ? 'bg-gradient-to-br from-gray-900 to-black border-white/5' : 'bg-gradient-to-br from-indigo-600 to-purple-700 border-indigo-500 shadow-2xl shadow-indigo-200'}`}>

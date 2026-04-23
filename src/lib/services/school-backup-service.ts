@@ -1502,6 +1502,13 @@ export async function syncSchoolBackupsToDb(schoolId: string): Promise<number> {
     const r2Backups = await listSchoolBackups(schoolId);
     if (r2Backups.length === 0) return 0;
 
+    // Pre-fetch all valid school IDs to avoid foreign key violations during sync
+    // This prevents errors when R2 contains backups for schools that were deleted from DB
+    const schools = await db.query.schools.findMany({
+        columns: { id: true }
+    });
+    const validSchoolIds = new Set(schools.map(s => s.id));
+
     let syncCount = 0;
     
     // Batch process to avoid too many DB hits? For now one by one is fine for < 100 backups
@@ -1510,6 +1517,13 @@ export async function syncSchoolBackupsToDb(schoolId: string): Promise<number> {
             // Ensure we have a valid school ID before inserting
             if (!backup.schoolId) {
                 console.warn(`[Backup Sync] Skipping file without school ID: ${backup.fileName}`);
+                continue;
+            }
+
+            // Verify the school actually exists in our database
+            if (!validSchoolIds.has(backup.schoolId)) {
+                // If we are syncing a specific school and it doesn't exist, we might want to log it
+                // but generally we just skip it to prevent DB errors
                 continue;
             }
 
