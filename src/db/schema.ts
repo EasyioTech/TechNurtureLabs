@@ -747,7 +747,7 @@ export const courseMetricsDaily = pgTable('course_metrics_daily', {
 // ============================================================================
 
 export const auditLogs = pgTable('audit_logs', {
-    id: uuid('id').defaultRandom(),
+    id: uuid('id').defaultRandom().notNull(),
     user_id: text('user_id'),
     user_type: userTypeEnum('user_type'),
     school_id: uuid('school_id').references(() => schools.id, { onDelete: 'set null' }),
