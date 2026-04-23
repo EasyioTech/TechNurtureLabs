@@ -201,7 +201,7 @@ export async function createTusUploadUrl(
     // We send maxDurationSeconds as a specific header as required by CF Stream TUS
     // IMPORTANT: We do NOT use getHeaders() here because it includes 'Content-Type: application/json'
     // which can confuse Cloudflare into thinking this is a basic upload instead of TUS.
-    const res = await fetchWithTimeout(getAccountUrl(), {
+    const res = await fetchWithTimeout(`${getAccountUrl()}?direct_user=true`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${serverEnv.CLOUDFLARE_STREAM_API_TOKEN}`,
