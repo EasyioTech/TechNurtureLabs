@@ -422,10 +422,9 @@ export async function restoreBackup(backupData: CourseBackupData, superAdminId: 
                     await tx.insert(schema.courseClassMapping).values({
                         course_id: courseId,
                         class_id: newClassId,
-                        is_active: mapping.is_active
                     }).onConflictDoUpdate({
                         target: [schema.courseClassMapping.course_id, schema.courseClassMapping.class_id],
-                        set: { is_active: mapping.is_active, deleted_at: null }
+                        set: { deleted_at: null }
                     });
                 }
             }

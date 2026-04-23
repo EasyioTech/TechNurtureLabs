@@ -1,6 +1,6 @@
 import { redis } from './redis';
 import { db } from './db';
-import { students, schoolAdmins, superAdmins, lessonProgress, quizAttempts } from '@/db/schema';
+import { students, schoolAdmins, superAdmins, lessonProgress, quizAttempts, xpEvents } from '@/db/schema';
 import { eq, sql, and, isNotNull, count, isNull } from 'drizzle-orm';
 import { invalidateStudentDashboardCache } from '@/modules/student/actions';
 
@@ -50,7 +50,14 @@ export async function awardXP(
     xp: number,
     schoolId?: string | null,
     userType: 'student' | 'school_admin' | 'super_admin' = 'student',
-    options?: { skipEmit?: boolean }
+    options?: { 
+        skipEmit?: boolean, 
+        source?: 'lesson_completion' | 'quiz_score' | 'daily_streak' | 'bonus',
+        referenceId?: string,
+        referenceType?: string,
+        description?: string
+    },
+    externalTx?: any
 ) {
     try {
         if (!Number.isFinite(xp) || xp <= 0) return { leveledUp: false, newLevel: 1 };
@@ -63,43 +70,73 @@ export async function awardXP(
         // Only students earn XP in the current schema
         if (userType !== 'student') return { leveledUp: false, newLevel: 1 };
 
-        // Fetch current XP before update to check for level up
-        const student = await db.query.students.findFirst({
-            where: eq(students.id, userId),
-            columns: { cumulative_xp: true, school_id: true }
-        });
+        const runInTransaction = async (tx: any) => {
+            // 1. Update Student XP with returning to get precise new value
+            const [student] = await tx.update(students)
+                .set({
+                    cumulative_xp: sql`${students.cumulative_xp} + ${xp}`,
+                    updated_at: new Date()
+                })
+                .where(and(eq(students.id, userId), isNull(students.deleted_at)))
+                .returning({ 
+                    cumulative_xp: students.cumulative_xp, 
+                    school_id: students.school_id 
+                });
 
-        if (!student) return { leveledUp: false, newLevel: 1 };
+            if (!student) return null;
 
-        const oldXp = student.cumulative_xp || 0;
-        const newXp = oldXp + xp;
-        
-        const oldLevelData = calculateLevel(oldXp);
-        const newLevelData = calculateLevel(newXp);
-        const leveledUp = newLevelData.level > oldLevelData.level;
+            const targetSchoolId = schoolId || student.school_id;
 
-        await db.update(students)
-            .set({
-                cumulative_xp: sql`cumulative_xp + ${xp}`,
-                updated_at: new Date()
-            })
-            .where(eq(students.id, userId));
+            // 2. Log to XP Ledger (Source of Truth)
+            if (targetSchoolId) {
+                await tx.insert(xpEvents).values({
+                    user_id: userId,
+                    school_id: targetSchoolId,
+                    source: options?.source || 'bonus',
+                    xp_amount: xp,
+                    reference_id: options?.referenceId,
+                    reference_type: options?.referenceType,
+                    description: options?.description,
+                    created_at: new Date()
+                } as any);
+            }
 
+            const newXp = student.cumulative_xp || 0;
+            const oldXp = newXp - xp;
+            
+            const oldLevelData = calculateLevel(oldXp);
+            const newLevelData = calculateLevel(newXp);
+            const leveledUp = newLevelData.level > oldLevelData.level;
+
+            return {
+                leveledUp,
+                oldLevel: oldLevelData.level,
+                newLevel: newLevelData.level,
+                totalXp: newXp,
+                schoolId: targetSchoolId
+            };
+        };
+
+        // SECURITY & ATOMICITY: Use transaction to ensure student total and XP ledger remain in sync
+        const result = externalTx ? await runInTransaction(externalTx) : await db.transaction(runInTransaction);
+
+        if (!result) return { leveledUp: false, newLevel: 1 };
+
+        // 3. Sync to Redis for real-time leaderboards
         const pipeline = redis.pipeline();
         pipeline.zincrby('lb:global', xp, userId);
         pipeline.expire('lb:global', LB_CACHE_TTL);
 
-        const targetSchoolId = schoolId || student.school_id;
-        if (targetSchoolId) {
-            pipeline.zincrby(`lb:school:${targetSchoolId}`, xp, userId);
-            pipeline.expire(`lb:school:${targetSchoolId}`, LB_CACHE_TTL);
+        if (result.schoolId) {
+            pipeline.zincrby(`lb:school:${result.schoolId}`, xp, userId);
+            pipeline.expire(`lb:school:${result.schoolId}`, LB_CACHE_TTL);
         }
 
         pipeline.setex(`user:${userId}:achievements_dirty`, 3600, '1');
         pipeline.zremrangebyrank('lb:global', 0, -1001);
         
-        if (targetSchoolId) {
-            pipeline.zremrangebyrank(`lb:school:${targetSchoolId}`, 0, -1001);
+        if (result.schoolId) {
+            pipeline.zremrangebyrank(`lb:school:${result.schoolId}`, 0, -1001);
         }
 
         await pipeline.exec();
@@ -111,21 +148,21 @@ export async function awardXP(
                 .then(({ eventService }) =>
                     eventService.emit('student.xp_gained', {
                         userId,
-                        schoolId: targetSchoolId ?? undefined,
+                        schoolId: result.schoolId ?? undefined,
                         amount: xp,
                         timestamp: Date.now(),
-                        leveledUp,
-                        newLevel: newLevelData.level
+                        leveledUp: result.leveledUp,
+                        newLevel: result.newLevel
                     }).catch(() => {})
                 )
                 .catch(() => {});
         }
 
         return {
-            leveledUp,
-            oldLevel: oldLevelData.level,
-            newLevel: newLevelData.level,
-            totalXp: newXp
+            leveledUp: result.leveledUp,
+            oldLevel: result.oldLevel,
+            newLevel: result.newLevel,
+            totalXp: result.totalXp
         };
     } catch (err) {
         console.error("Error awarding XP:", err);

@@ -45,10 +45,7 @@ export async function fetchApprovedSchools() {
     });
 
     const classMappings = await db.query.schoolClassMapping.findMany({
-        where: and(
-            eq(schoolClassMapping.is_active, true),
-            isNull(schoolClassMapping.deleted_at)
-        ),
+        where: isNull(schoolClassMapping.deleted_at),
         with: {
             academicClass: true
         } as any
@@ -360,7 +357,6 @@ export async function registerSchool(formData: any, paymentDetails?: { order_id:
                     formData.classes_available.map((classId: string) => ({
                         school_id: newSchool.id,
                         class_id: classId,
-                        is_active: true
                     }))
                 );
             }
@@ -401,12 +397,7 @@ export async function registerSchool(formData: any, paymentDetails?: { order_id:
                         updated_at: now
                     } as any);
 
-                    // 7. Atomic Promo Code Increment (only now that it's successful)
-                    if (formData.promo_code_id) {
-                        await tx.update(promoCodes)
-                            .set({ current_uses: sql`${promoCodes.current_uses} + 1` })
-                            .where(eq(promoCodes.id, formData.promo_code_id));
-                    }
+
                 }
             }
 

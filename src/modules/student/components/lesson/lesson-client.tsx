@@ -132,7 +132,7 @@ export function LessonClient({ initialData, completeLesson }: LessonClientProps)
 
       const res = await completeLessonAndReward(lesson.id, quizPercentage, isPerfect);
 
-      if (res?.success || res?.alreadyCompleted) {
+      if (res?.success) {
         setLessonComplete(true);
         if (res?.leveledUp) {
           setLeveledUpInfo({ show: true, level: res.newLevel || 1 });

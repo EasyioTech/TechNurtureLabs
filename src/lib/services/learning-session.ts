@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { eq, and, desc, sql, isNotNull } from 'drizzle-orm';
+import { eq, and, desc, sql, isNotNull, isNull } from 'drizzle-orm';
 import { redis } from '@/lib/redis';
 import { awardXP, incrementProgressCounter, handleStudentEngagement } from '@/lib/gamification';
 import { students, schoolAdmins, superAdmins, lessonSessions, lessonProgress, lessons, enrollments, auditLogs, xpEvents } from '@/db/schema';
@@ -37,7 +37,8 @@ export async function initLessonSession(context: SessionContext) {
     const enrollment = await db.query.enrollments.findFirst({
         where: and(
             eq(enrollments.user_id, userId),
-            eq(enrollments.course_id, lesson.course_id)
+            eq(enrollments.course_id, lesson.course_id),
+            isNull(enrollments.deleted_at)
         )
     });
 
@@ -286,9 +287,9 @@ export async function syncSessionToDb(token: string) {
         } as any).onConflictDoUpdate({
             target: [lessonProgress.user_id, lessonProgress.lesson_id, lessonProgress.enrollment_id],
             set: {
-                verified_watch_seconds: Math.floor(session.verifiedSeconds),
-                progress_pct: progressPct,
-                last_position_secs: Math.floor(session.lastPlaybackTime),
+                verified_watch_seconds: sql`GREATEST(lesson_progress.verified_watch_seconds, ${Math.floor(session.verifiedSeconds)})`,
+                progress_pct: sql`CASE WHEN lesson_progress.completion_locked = true THEN lesson_progress.progress_pct ELSE ${progressPct}::numeric END`,
+                last_position_secs: sql`CASE WHEN lesson_progress.completion_locked = true THEN lesson_progress.last_position_secs ELSE ${Math.floor(session.lastPlaybackTime)} END`,
                 updated_at: new Date()
             }
         });
@@ -392,21 +393,17 @@ export async function finalizeAndCompleteLesson(lessonId: string, token: string)
             } as any);
         }
 
-        // Create XP Event
-        await tx.insert(xpEvents).values({
-            user_id: userId,
-            school_id: schoolId,
+        // Award XP and log to ledger in ONE transaction
+        await awardXP(userId, xpToAdd, schoolId, 'student', {
             source: 'lesson_completion',
-            xp_amount: xpToAdd,
-            reference_type: 'lesson',
-            reference_id: lessonId,
+            referenceId: lessonId,
+            referenceType: 'lesson',
             description: `Completed lesson: ${lesson.title}`
-        });
+        }, tx);
     });
 
-    // 6. Gamification Hooks (outside transaction so Redis failures are non-fatal)
+    // 6. Gamification Hooks (Redis-based, non-critical)
     try {
-        await awardXP(userId, xpToAdd, schoolId, 'student');
         await incrementProgressCounter(userId, 'lessons');
         await handleStudentEngagement(userId);
 

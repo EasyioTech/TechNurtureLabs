@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { academicSessions, schoolClassMapping, classes, studentAcademicRecords } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { verifySchoolAdminContext } from './shared';
 import { invalidateSchoolCache } from './profile-actions';
 import { createAuditLog } from '@/lib/audit';
@@ -12,7 +12,7 @@ export async function fetchSchoolClasses(schoolId: string) {
     const mappings = await db.query.schoolClassMapping.findMany({
         where: and(
             eq(schoolClassMapping.school_id, schoolId),
-            eq(schoolClassMapping.is_active, true)
+            isNull(schoolClassMapping.deleted_at)
         )
     });
     return mappings.map(m => m.class_id);
@@ -22,9 +22,10 @@ export async function updateSchoolClasses(schoolId: string, classIds: string[]) 
     await verifySchoolAdminContext(schoolId);
 
     return await db.transaction(async (tx) => {
+        // Soft-delete all existing active mappings for this school
         await tx.update(schoolClassMapping)
-            .set({ is_active: false })
-            .where(eq(schoolClassMapping.school_id, schoolId));
+            .set({ deleted_at: new Date() })
+            .where(and(eq(schoolClassMapping.school_id, schoolId), isNull(schoolClassMapping.deleted_at)));
 
         if (classIds.length > 0) {
             for (const classId of classIds) {
@@ -37,15 +38,14 @@ export async function updateSchoolClasses(schoolId: string, classIds: string[]) 
 
                 if (existing) {
                     await tx.update(schoolClassMapping)
-                        .set({ is_active: true })
+                        .set({ deleted_at: null })
                         .where(eq(schoolClassMapping.id, existing.id));
                 } else {
                     await tx.insert(schoolClassMapping)
                         .values({
                             school_id: schoolId,
                             class_id: classId,
-                            is_active: true
-                        } as any);
+                        });
                 }
             }
         }
@@ -82,7 +82,7 @@ export async function promoteStudentsAction(schoolId: string, newSessionName: st
     const levelClassMap = new Map(allClasses.map(c => [c.level, c.id]));
 
     const schoolClassesMap = await db.query.schoolClassMapping.findMany({
-        where: and(eq(schoolClassMapping.school_id, schoolId), eq(schoolClassMapping.is_active, true))
+        where: and(eq(schoolClassMapping.school_id, schoolId), isNull(schoolClassMapping.deleted_at))
     });
     const schoolClassIds = new Set(schoolClassesMap.map(c => c.class_id));
 

@@ -130,7 +130,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-redis_dev_password_docker} --raw incr ping"]
       interval: 5s
       timeout: 3s
       retries: 5

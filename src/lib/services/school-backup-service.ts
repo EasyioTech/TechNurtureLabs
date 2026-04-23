@@ -90,7 +90,6 @@ export interface PromoCodeBackup {
     discount_type: 'percentage' | 'fixed';
     discount_value: string;
     max_uses?: number;
-    current_uses: number;
     valid_from?: string;
     valid_until?: string;
     is_active: boolean;
@@ -195,7 +194,6 @@ export interface SchoolClassMappingBackup {
     id: string;
     school_id: string;
     class_id: string;
-    is_active: boolean;
     created_at: string;
 }
 
@@ -619,7 +617,6 @@ export async function exportSubscriptionData(schoolId: string): Promise<{
                     discount_type: promo.discount_type as 'percentage' | 'fixed',
                     discount_value: promo.discount_value.toString(),
                     max_uses: promo.max_uses || undefined,
-                    current_uses: promo.current_uses,
                     valid_from: promo.valid_from?.toISOString(),
                     valid_until: promo.valid_until?.toISOString(),
                     is_active: promo.is_active,
@@ -751,7 +748,6 @@ export async function exportAcademicData(schoolId: string): Promise<{
         id: m.id,
         school_id: m.school_id,
         class_id: m.class_id,
-        is_active: m.is_active,
         created_at: m.created_at.toISOString(),
     }));
 
@@ -1727,7 +1723,6 @@ export async function restoreSchoolFromBackup(
                 console.log(`[Backup] Restoring ${backup.classMappings.length} class mappings...`);
                 for (const mapping of backup.classMappings) {
                     await tx.update(schema.schoolClassMapping).set({
-                        is_active: mapping.is_active,
                         deleted_at: null,
                     }).where(eq(schema.schoolClassMapping.id, mapping.id));
                 }

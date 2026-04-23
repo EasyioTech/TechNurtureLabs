@@ -45,9 +45,10 @@ interface QuizBuilderProps {
     lessonId: string;
     courseId: string;
     onClose: () => void;
+    initialData?: any;
 }
 
-export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
+export function QuizBuilder({ lessonId, courseId, onClose, initialData }: QuizBuilderProps) {
     const { isDark, accent } = useAdminTheme();
     const [quiz, setQuiz] = React.useState<Quiz | null>(null);
     const [loading, setLoading] = React.useState(true);
@@ -58,7 +59,10 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
         async function load() {
             setLoading(true);
             try {
-                const data = await fetchQuizAdmin(lessonId);
+                // Determine if we already have the data or if it was fetched as null (new quiz)
+                // If initialData is explicitly passed (including null), we don't fetch
+                const data = (initialData !== undefined) ? initialData : await fetchQuizAdmin(lessonId);
+                
                 if (data) {
                     setQuiz({
                         ...data,
@@ -96,7 +100,7 @@ export function QuizBuilder({ lessonId, courseId, onClose }: QuizBuilderProps) {
             }
         }
         load();
-    }, [lessonId, courseId]);
+    }, [lessonId, courseId, initialData]);
 
     const handleSave = async () => {
         if (!quiz) return;

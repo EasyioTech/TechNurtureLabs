@@ -45,7 +45,7 @@ export async function fetchAdminMetadata() {
             discount_type: promoCodes.discount_type,
             discount_value: promoCodes.discount_value,
             max_uses: promoCodes.max_uses,
-            current_uses: promoCodes.current_uses,
+            current_uses: sql<number>`(SELECT count(*)::int FROM ${schoolSubscriptions} WHERE ${schoolSubscriptions.promo_code_id} = ${promoCodes.id})`,
             valid_from: promoCodes.valid_from,
             valid_until: promoCodes.valid_until,
             is_active: promoCodes.is_active,
@@ -123,7 +123,8 @@ export async function savePromoCode(promoData: unknown) {
     const [existing] = await db.select({
         id: promoCodes.id, code: promoCodes.code, is_active: promoCodes.is_active,
         discount_type: promoCodes.discount_type, discount_value: promoCodes.discount_value,
-        max_uses: promoCodes.max_uses, current_uses: promoCodes.current_uses,
+        max_uses: promoCodes.max_uses,
+        current_uses: sql<number>`(SELECT count(*)::int FROM ${schoolSubscriptions} WHERE ${schoolSubscriptions.promo_code_id} = ${promoCodes.id})`,
         valid_from: promoCodes.valid_from, valid_until: promoCodes.valid_until,
         created_at: promoCodes.created_at, updated_at: promoCodes.updated_at,
     }).from(promoCodes).where(eq(promoCodes.code, code)).limit(1);
@@ -190,7 +191,8 @@ export async function deletePromoCode(id: string) {
     const [promo] = await db.select({
         id: promoCodes.id, code: promoCodes.code, is_active: promoCodes.is_active,
         discount_type: promoCodes.discount_type, discount_value: promoCodes.discount_value,
-        max_uses: promoCodes.max_uses, current_uses: promoCodes.current_uses,
+        max_uses: promoCodes.max_uses,
+        current_uses: sql<number>`(SELECT count(*)::int FROM ${schoolSubscriptions} WHERE ${schoolSubscriptions.promo_code_id} = ${promoCodes.id})`,
         valid_from: promoCodes.valid_from, valid_until: promoCodes.valid_until,
         created_at: promoCodes.created_at, updated_at: promoCodes.updated_at,
     }).from(promoCodes).where(eq(promoCodes.id, id)).limit(1);
@@ -238,7 +240,7 @@ export async function savePlanAdmin(planData: unknown) {
     return await db.transaction(async (tx) => {
         // Unmark any previously-popular plan before setting a new one
         if (data.is_popular) {
-            await tx.update(paymentPlans).set({ is_popular: false });
+            await tx.update(paymentPlans).set({ is_popular: false }).where(isNull(paymentPlans.deleted_at));
         }
 
         const planPayload = {
@@ -555,7 +557,8 @@ export async function validatePromoCode(code: string) {
         const [promo] = await db.select({
             id: promoCodes.id, code: promoCodes.code, is_active: promoCodes.is_active,
             discount_type: promoCodes.discount_type, discount_value: promoCodes.discount_value,
-            max_uses: promoCodes.max_uses, current_uses: promoCodes.current_uses,
+            max_uses: promoCodes.max_uses,
+            current_uses: sql<number>`(SELECT count(*)::int FROM ${schoolSubscriptions} WHERE ${schoolSubscriptions.promo_code_id} = ${promoCodes.id})`,
             valid_from: promoCodes.valid_from, valid_until: promoCodes.valid_until,
             created_at: promoCodes.created_at, updated_at: promoCodes.updated_at,
         }).from(promoCodes).where(and(
@@ -735,6 +738,20 @@ export async function purgeDeletedRecords() {
                 .returning({ id: quizzes.id });
 
             // 4. Purge Tenant Infrastructure
+            // paymentTransactions and schoolSubscriptions have onDelete: 'restrict' on school_id,
+            // so they must be deleted before schools to avoid FK constraint violations.
+            await tx.delete(paymentTransactions)
+                .where(inArray(
+                    paymentTransactions.school_id,
+                    tx.select({ id: schools.id }).from(schools).where(isNotNull(schools.deleted_at)) as any
+                ));
+
+            await tx.delete(schoolSubscriptions)
+                .where(inArray(
+                    schoolSubscriptions.school_id,
+                    tx.select({ id: schools.id }).from(schools).where(isNotNull(schools.deleted_at)) as any
+                ));
+
             const deletedSchools = await tx.delete(schools)
                 .where(isNotNull(schools.deleted_at))
                 .returning({ id: schools.id });

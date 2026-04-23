@@ -128,7 +128,12 @@ export async function updateDailyChallengeProgress(userId: string, actionType: s
             const stud = await db.query.students.findFirst({
                 where: and(eq(students.id, userId), sql`${students.deleted_at} IS NULL`)
             });
-            await awardXP(userId, challenge.xp_reward, stud?.school_id);
+            await awardXP(userId, challenge.xp_reward, stud?.school_id, 'student', {
+                source: 'bonus',
+                referenceId: challenge.id,
+                referenceType: 'daily_challenge',
+                description: `Completed challenge: ${challenge.title}`
+            });
         }
     }
 }

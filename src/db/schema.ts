@@ -1,7 +1,7 @@
 import {
     pgTable, pgEnum,
     text, timestamp, boolean, integer, bigint, numeric, jsonb, uuid, date, inet,
-    uniqueIndex, index, check, primaryKey, unique
+    uniqueIndex, index, check
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
@@ -25,6 +25,7 @@ export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'issued', 'p
 export const storageTypeEnum = pgEnum('storage_type', ['r2', 'cloudflare_stream']);
 export const assetTypeEnum = pgEnum('asset_type', ['video', 'image', 'document']);
 export const discountTypeEnum = pgEnum('discount_type', ['percentage', 'fixed']);
+export const pinResetStatusEnum = pgEnum('pin_reset_status', ['pending', 'approved', 'rejected']);
 
 // ============================================================================
 // CORE TENANT TABLES
@@ -62,7 +63,12 @@ export const academicSessions = pgTable('academic_sessions', {
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+    uniqueIndex('uq_school_current_session')
+        .on(table.school_id)
+        .where(sql`is_current = true`),
+    index('idx_sessions_school_current').on(table.school_id, table.is_current),
+]);
 
 // ============================================================================
 // USER SYSTEM (specialized)
@@ -103,7 +109,7 @@ export const schoolAdmins = pgTable('school_admins', {
 }, (table) => [
     uniqueIndex('uq_school_admins_email')
         .on(table.email)
-        .where(sql`deleted_at IS NULL`),
+        .where(sql`email IS NOT NULL AND deleted_at IS NULL`),
     index('idx_school_admins_school').on(table.school_id),
 ]);
 
@@ -148,12 +154,13 @@ export const students = pgTable('students', {
 }, (table) => [
     uniqueIndex('uq_students_email')
         .on(table.email)
-        .where(sql`deleted_at IS NULL`),
+        .where(sql`email IS NOT NULL AND deleted_at IS NULL`),
     uniqueIndex('uq_students_phone')
         .on(table.phone)
-        .where(sql`deleted_at IS NULL`),
+        .where(sql`phone IS NOT NULL AND deleted_at IS NULL`),
     index('idx_students_school').on(table.school_id),
     index('idx_students_xp').on(table.cumulative_xp),
+    check('cumulative_xp_nonneg', sql`${table.cumulative_xp} >= 0`),
 ]);
 
 // ============================================================================
@@ -187,7 +194,6 @@ export const promoCodes = pgTable('promo_codes', {
     discount_type: discountTypeEnum('discount_type').notNull(),
     discount_value: numeric('discount_value', { precision: 12, scale: 2 }).notNull(),
     max_uses: integer('max_uses'),
-    current_uses: integer('current_uses').notNull().default(0),
     valid_from: timestamp('valid_from', { withTimezone: true }),
     valid_until: timestamp('valid_until', { withTimezone: true }),
     is_active: boolean('is_active').notNull().default(true),
@@ -294,7 +300,6 @@ export const schoolClassMapping = pgTable('school_class_mapping', {
     id: uuid('id').defaultRandom().primaryKey(),
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
     class_id: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
-    is_active: boolean('is_active').notNull().default(true),
     // ISSUE 21: soft delete — unassigning a class must NOT permanently erase historical context
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -356,12 +361,12 @@ export const courseClassMapping = pgTable('course_class_mapping', {
     course_id: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
     class_id: uuid('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
     // ISSUE 21: soft delete — de-mapping a course/class must not lose historical context
-    is_active: boolean('is_active').notNull().default(true),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    unique('uq_course_class')
-        .on(table.course_id, table.class_id),
+    uniqueIndex('uq_course_class')
+        .on(table.course_id, table.class_id)
+        .where(sql`deleted_at IS NULL`),
 ]);
 
 export const lessons = pgTable('lessons', {
@@ -370,8 +375,7 @@ export const lessons = pgTable('lessons', {
     title: text('title').notNull(),
     description: text('description'),
     content_type: lessonContentTypeEnum('content_type').notNull(),
-    // SCHEMA FIX: content_url now required (video/pdf/quiz lessons require URL)
-    content_url: text('content_url').notNull(),
+    content_url: text('content_url'),
     content_items: text('content_items'), // JSON: Array<{id,type,url}> for multi-block lessons
     asset_id: uuid('asset_id').references(() => mediaAssets.id, { onDelete: 'set null' }),
     sequence_order: integer('sequence_order').notNull(),
@@ -453,7 +457,6 @@ export const enrollments = pgTable('enrollments', {
     session_id: uuid('session_id').notNull().references(() => academicSessions.id, { onDelete: 'restrict' }),
     enrolled_at: timestamp('enrolled_at', { withTimezone: true }).notNull().defaultNow(),
     completed_at: timestamp('completed_at', { withTimezone: true }),
-    is_active: boolean('is_active').notNull().default(true),
     deleted_at: timestamp('deleted_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -463,8 +466,6 @@ export const enrollments = pgTable('enrollments', {
         .on(table.user_id, table.course_id, table.session_id)
         .where(sql`deleted_at IS NULL`),
     index('idx_enrollments_school').on(table.school_id),
-    // ISSUE 11: Composite index for "active enrollments for a user" query
-    index('idx_enroll_user_active').on(table.user_id, table.is_active),
 ]);
 
 export const lessonProgress = pgTable('lesson_progress', {
@@ -480,7 +481,7 @@ export const lessonProgress = pgTable('lesson_progress', {
     completed_at: timestamp('completed_at', { withTimezone: true }),
     progress_pct: numeric('progress_pct', { precision: 5, scale: 2 }).notNull().default('0'),
     last_position_secs: integer('last_position_secs').notNull().default(0),
-    time_spent_secs: integer('time_spent_secs').notNull().default(0),
+    time_spent_secs: bigint('time_spent_secs', { mode: 'number' }).notNull().default(0),
     verified_watch_seconds: integer('verified_watch_seconds').notNull().default(0),
     content_watched: boolean('content_watched').notNull().default(false),
     completion_locked: boolean('completion_locked').notNull().default(false),
@@ -491,6 +492,7 @@ export const lessonProgress = pgTable('lesson_progress', {
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
     uniqueIndex('uq_user_lesson').on(table.user_id, table.lesson_id, table.enrollment_id),
+    index('idx_lp_user_lesson').on(table.user_id, table.lesson_id),
     index('idx_lp_user').on(table.user_id),
     index('idx_lp_enrollment').on(table.enrollment_id),
     index('idx_lp_session').on(table.session_id),
@@ -537,7 +539,7 @@ export const courseProgress = pgTable('course_progress', {
     total_lessons: integer('total_lessons').notNull().default(0),
     progress_pct: numeric('progress_pct', { precision: 5, scale: 2 }).notNull().default('0'),
     total_xp_earned: integer('total_xp_earned').notNull().default(0),
-    total_time_secs: integer('total_time_secs').notNull().default(0),
+    total_time_secs: bigint('total_time_secs', { mode: 'number' }).notNull().default(0),
     started_at: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     completed_at: timestamp('completed_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -569,6 +571,7 @@ export const quizAttempts = pgTable('quiz_attempts', {
     // COMPOUND INDEX: Speeds up max-attempts check (WHERE user_id = ? AND quiz_id = ?)
     // without this, high quiz traffic causes a partial index scan on user_id alone.
     index('idx_qattempts_user_quiz').on(table.user_id, table.quiz_id),
+    uniqueIndex('uq_quiz_attempt_number').on(table.user_id, table.quiz_id, table.attempt_number),
 ]);
 
 export const quizAttemptAnswers = pgTable('quiz_attempt_answers', {
@@ -606,6 +609,8 @@ export const xpEvents = pgTable('xp_events', {
     // IDEMPOTENCY INDEX: Required for duplicate XP award prevention in background workers.
     // Query: WHERE user_id = ? AND reference_id = ? AND source = ?
     index('idx_xp_user_ref_source').on(table.user_id, table.reference_id, table.source),
+    check('xp_amount_nonzero', sql`${table.xp_amount} != 0`),
+    check('xp_amount_bounds', sql`${table.xp_amount} BETWEEN -10000 AND 10000`),
 ]);
 
 export const achievements = pgTable('achievements', {
@@ -664,7 +669,7 @@ export const userDailyChallenges = pgTable('user_daily_challenges', {
 
 export const certificates = pgTable('certificates', {
     id: uuid('id').defaultRandom().primaryKey(),
-    course_id: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
+    course_id: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'restrict' }),
     title: text('title').notNull(),
     description: text('description'),
     template_url: text('template_url'),
@@ -747,7 +752,7 @@ export const courseMetricsDaily = pgTable('course_metrics_daily', {
 // ============================================================================
 
 export const auditLogs = pgTable('audit_logs', {
-    id: uuid('id').defaultRandom().notNull(),
+    id: uuid('id').defaultRandom().primaryKey().notNull(),
     user_id: text('user_id'),
     user_type: userTypeEnum('user_type'),
     school_id: uuid('school_id').references(() => schools.id, { onDelete: 'set null' }),
@@ -761,7 +766,6 @@ export const auditLogs = pgTable('audit_logs', {
     user_agent: text('user_agent'),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    primaryKey({ columns: [table.id, table.created_at] }),
     index('idx_audit_user').on(table.user_id),
     index('idx_audit_created').on(table.created_at),
     index('idx_audit_user_created').on(table.user_id, table.created_at),
@@ -772,7 +776,7 @@ export const pinResetRequests = pgTable('pin_reset_requests', {
     id: uuid('id').defaultRandom().primaryKey(),
     student_id: uuid('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
-    status: text('status').notNull().default('pending'), // 'pending', 'approved', 'rejected'
+    status: pinResetStatusEnum('status').notNull().default('pending'),
     requested_at: timestamp('requested_at', { withTimezone: true }).notNull().defaultNow(),
     resolved_at: timestamp('resolved_at', { withTimezone: true }),
     resolved_by: uuid('resolved_by').references(() => schoolAdmins.id, { onDelete: 'set null' }),
@@ -806,7 +810,7 @@ export const loginAttempts = pgTable('login_attempts', {
 
 export const schoolBackups = pgTable('school_backups', {
     id: uuid('id').defaultRandom().primaryKey(),
-    school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+    school_id: uuid('school_id').references(() => schools.id, { onDelete: 'cascade' }),
     batch_id: uuid('batch_id'), // NEW: Group ID for multiple schools in one session
     backup_type: text('backup_type').notNull().default('individual'), // NEW: 'system_wide' or 'individual'
     file_name: text('file_name').notNull().unique(),
@@ -822,6 +826,7 @@ export const schoolBackups = pgTable('school_backups', {
     index('idx_backups_school').on(table.school_id),
     index('idx_backups_timestamp').on(table.timestamp),
     index('idx_backups_batch').on(table.batch_id),
+    check('backup_school_consistency', sql`backup_type = 'individual' OR school_id IS NOT NULL`),
 ]);
 
 // ============================================================================
@@ -831,7 +836,7 @@ export const schoolBackups = pgTable('school_backups', {
 export const mediaAssets = pgTable('media_assets', {
     id: uuid('id').defaultRandom().primaryKey(),
     file_name: text('file_name').notNull(),         // UUID-based storage key/filename
-    original_name: text('original_name').notNull(), // Original filename from the user
+    original_name: text('original_name'), // Original filename from the user
     file_url: text('file_url').notNull(),
     file_path: text('file_path').notNull(),          // Storage key (R2) or relative local path
     mime_type: text('mime_type').notNull(),
@@ -883,9 +888,12 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
     used_at: timestamp('used_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    index('idx_prt_token').on(table.token_hash),
+    uniqueIndex('uq_prt_token').on(table.token_hash),
     index('idx_prt_user').on(table.user_id),
     index('idx_prt_expires').on(table.expires_at),
+    uniqueIndex('uq_prt_user_active')
+        .on(table.user_id, table.user_type)
+        .where(sql`used_at IS NULL AND expires_at > now()`),
 ]);
 
 export const emailVerificationTokens = pgTable('email_verification_tokens', {
@@ -897,7 +905,7 @@ export const emailVerificationTokens = pgTable('email_verification_tokens', {
     verified_at: timestamp('verified_at', { withTimezone: true }),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-    index('idx_evt_token').on(table.token_hash),
+    uniqueIndex('uq_evt_token').on(table.token_hash),
     index('idx_evt_user').on(table.user_id),
 ]);
 

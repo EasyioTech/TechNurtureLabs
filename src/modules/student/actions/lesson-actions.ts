@@ -136,21 +136,11 @@ export async function getLessonData(lessonId: string) {
 /**
  * Handle lesson completion and reward logic
  */
-export async function completeLessonAndReward(lessonId: string, quizScore?: number, isPerfect?: boolean) {
+export async function completeLessonAndReward(lessonId: string, quizScore?: number, isPerfect?: boolean, externalTx?: any) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
     const userId = session.userId;
     const role = session.userType;
-
-    let existingUser: any = null;
-    if (role === 'student') {
-        existingUser = await db.query.students.findFirst({ where: eq(students.id, userId) });
-    } else if (role === 'school_admin') {
-        existingUser = await db.query.schoolAdmins.findFirst({ where: eq(schoolAdmins.id, userId) });
-    } else {
-        existingUser = await db.query.superAdmins.findFirst({ where: eq(superAdmins.id, userId) });
-    }
-    if (!existingUser) return { success: false, error: 'User not found' };
 
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
     if (!lesson) return { success: false, error: 'Lesson not found' };
@@ -158,29 +148,14 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
     const enrollment = await ensureEnrollment(lesson.course_id);
     if (!enrollment) return { success: false, error: 'Enrollment failed' };
 
-    const existingProgress = await db.query.lessonProgress.findFirst({
-        where: and(
-            eq(lessonProgress.user_id, userId),
-            eq(lessonProgress.lesson_id, lessonId),
-            isNotNull(lessonProgress.completed_at)
-        )
-    });
-
-    if (existingProgress) return { success: true, alreadyCompleted: true };
-
-    // Watch threshold check removed as per user request to allow immediate completion
-
-    if (lesson.content_type === 'quiz' && quizScore === undefined) {
-        return { success: false, error: 'Quizzes must be submitted via the assessment engine.' };
-    }
-
     const xpToAdd = lesson.xp_reward || 10;
 
-    // SCALE BREAKER C: Core Completion Write (The only synchronous DB hit)
-    const xpResult = await db.transaction(async (tx) => {
+    const runInTransaction = async (tx: any) => {
         const existing = await tx.query.lessonProgress.findFirst({
             where: and(eq(lessonProgress.user_id, userId), eq(lessonProgress.lesson_id, lessonId))
         });
+
+        if (existing?.completed_at) return { success: true, alreadyCompleted: true };
 
         if (existing) {
             await tx.update(lessonProgress).set({
@@ -202,54 +177,33 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
             });
         }
 
-        // SECURITY: Award XP inside transaction (not outside) to prevent partial writes
-        // If outer transaction rolls back, XP award is also rolled back
-        const student = await tx.query.students.findFirst({
-            where: eq(students.id, userId),
-            columns: { cumulative_xp: true, school_id: true }
-        });
-
-        if (!student) {
-            throw new Error('Student not found');
-        }
-
-        const oldXp = student.cumulative_xp || 0;
-        const newXp = oldXp + xpToAdd;
-        const oldLevelData = calculateLevel(oldXp);
-        const newLevelData = calculateLevel(newXp);
-        const leveledUp = newLevelData.level > oldLevelData.level;
-
-        // Update XP inside transaction
-        await tx.update(students)
-            .set({
-                cumulative_xp: sql`cumulative_xp + ${xpToAdd}`,
-                updated_at: new Date()
-            })
-            .where(eq(students.id, userId));
-
-        const result = {
-            leveledUp,
-            oldLevel: oldLevelData.level,
-            newLevel: newLevelData.level
-        };
+        // Use atomic awardXP with ledger logging
+        const xpResult = await awardXP(userId, xpToAdd, enrollment.school_id, 'student', {
+            source: 'lesson_completion',
+            referenceId: lessonId,
+            referenceType: 'lesson',
+            description: `Completed lesson: ${lesson.title}`
+        }, tx);
 
         const { eventService } = await import('@/lib/services/event-service');
         await eventService.emit('student.lesson_completed_full', {
             userId,
-            schoolId: existingUser.school_id || undefined,
+            schoolId: enrollment.school_id || undefined,
             courseId: lesson.course_id,
             lessonId,
             xpAmount: xpToAdd,
             role,
             quizScore,
             isPerfect,
-            leveledUp: result?.leveledUp,
-            newLevel: result?.newLevel,
+            leveledUp: xpResult?.leveledUp,
+            newLevel: xpResult?.newLevel,
             timestamp: Date.now()
         });
 
-        return result;
-    });
+        return xpResult;
+    };
+
+    const xpResult = externalTx ? await runInTransaction(externalTx) : await db.transaction(runInTransaction);
 
     // Update leaderboards and caches AFTER transaction commits (OK if these fail)
     if (xpResult && xpToAdd > 0) {
@@ -257,7 +211,7 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
         pipeline.zincrby('lb:global', xpToAdd, userId);
         pipeline.expire('lb:global', 86400 * 7); // 7 days
 
-        const targetSchoolId = existingUser.school_id;
+        const targetSchoolId = enrollment.school_id;
         if (targetSchoolId) {
             pipeline.zincrby(`lb:school:${targetSchoolId}`, xpToAdd, userId);
             pipeline.expire(`lb:school:${targetSchoolId}`, 86400 * 7);
@@ -269,10 +223,11 @@ export async function completeLessonAndReward(lessonId: string, quizScore?: numb
         await invalidateStudentDashboardCache(userId).catch(() => {});
     }
 
+    const xpData = xpResult && 'alreadyCompleted' in xpResult ? null : xpResult;
     return {
         success: true,
-        leveledUp: xpResult?.leveledUp,
-        newLevel: xpResult?.newLevel,
+        leveledUp: xpData?.leveledUp,
+        newLevel: xpData?.newLevel,
         xpEarned: xpToAdd
     };
 }
@@ -317,7 +272,7 @@ export async function saveVideoProgress(lessonId: string, seconds: number, perce
             FROM enrollments e
             WHERE e.user_id = ${session.userId}::uuid
               AND e.course_id = (SELECT course_id FROM lessons WHERE id = ${lessonId}::uuid)
-              AND e.is_active = true
+              AND e.deleted_at IS NULL
               AND e.session_id = (SELECT id FROM academic_sessions WHERE school_id = e.school_id AND is_current = true LIMIT 1)
             LIMIT 1
             ON CONFLICT (user_id, lesson_id, enrollment_id)
@@ -435,7 +390,7 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
         xpEarned = lessonData?.xp_reward || 10;
     }
 
-    const attemptId = await db.transaction(async (tx) => {
+    const resultData = await db.transaction(async (tx) => {
         // SECURITY: Recount attempts inside transaction to prevent race condition
         const attemptCountResult = await tx.select({ count: sql<number>`COUNT(*)::integer` })
             .from(quizAttempts)
@@ -466,7 +421,12 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
             );
         }
 
-        return attempt.id;
+        let rewardResult = null;
+        if (passed && quiz.lesson_id) {
+            rewardResult = await completeLessonAndReward(quiz.lesson_id, percentage, percentage === 100, tx);
+        }
+
+        return { attemptId: attempt.id, rewardResult };
     });
 
     // CRITICAL FIX #4: Invalidate cache after quiz submission
@@ -487,11 +447,6 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
         }
     } catch (err) {
         console.warn('[Quiz Submit] Cache invalidation error:', (err as any).message);
-        // Non-fatal: Cache invalidation failure doesn't block quiz submission
-    }
-
-    if (passed && quiz.lesson_id) {
-        await completeLessonAndReward(quiz.lesson_id, percentage, percentage === 100);
     }
 
     return {
@@ -501,6 +456,8 @@ export async function submitQuizAttempt(quizId: string, responses: Record<string
         percentage,
         passed,
         xp_earned: xpEarned,
+        leveledUp: resultData.rewardResult?.leveledUp,
+        newLevel: resultData.rewardResult?.newLevel,
         feedback
     };
 }

@@ -155,16 +155,72 @@ export async function saveQuizAdmin(quizData: unknown) {
             const hasAttempts = Number(attemptCount[0]?.val || 0) > 0;
 
             if (hasAttempts) {
-                // Return quiz as-is — question edits are blocked to protect student records
-                return await tx.query.quizzes.findFirst({
+                // Determine if questions were actually changed. 
+                // If they were, we must throw an error because we cannot update questions with existing attempts.
+                // If only settings changed, we can proceed (settings were already updated above).
+                const existingQuiz = await tx.query.quizzes.findFirst({
                     where: eq(quizzes.id, quizId!),
                     with: {
                         questions: {
-                            orderBy: [asc(quizQuestions.sequence_order)],
-                            with: { options: { orderBy: [asc(quizOptions.sequence_order)] } }
+                            with: { options: true }
                         }
                     }
                 });
+
+                const incomingQuestions = data.questions || [];
+                const currentQuestions = existingQuiz?.questions || [];
+
+                // Simple check: if count differs, it's a change
+                let questionsChanged = incomingQuestions.length !== currentQuestions.length;
+
+                // Deep check if counts match
+                if (!questionsChanged) {
+                    for (let i = 0; i < incomingQuestions.length; i++) {
+                        const incQ = incomingQuestions[i];
+                        const currQ = currentQuestions[i];
+                        
+                        if (incQ.question_text !== currQ.question_text || 
+                            incQ.question_type !== currQ.question_type ||
+                            incQ.points !== currQ.points) {
+                            questionsChanged = true;
+                            break;
+                        }
+
+                        // Check options
+                        const incOpts = incQ.options || [];
+                        const currOpts = currQ.options || [];
+                        if (incOpts.length !== currOpts.length) {
+                            questionsChanged = true;
+                            break;
+                        }
+
+                        for (let j = 0; j < incOpts.length; j++) {
+                            const incOptText = typeof incOpts[j] === 'string' ? incOpts[j] : (incOpts[j] as any).option_text;
+                            if (incOptText !== currOpts[j].option_text) {
+                                questionsChanged = true;
+                                break;
+                            }
+                            
+                            // Check correctness
+                            const incIsCorrect = typeof incOpts[j] === 'string' 
+                                ? (j === Number(incQ.correct_answer)) 
+                                : (incOpts[j] as any).is_correct;
+                            
+                            if (incIsCorrect !== currOpts[j].is_correct) {
+                                questionsChanged = true;
+                                break;
+                            }
+                        }
+                        if (questionsChanged) break;
+                    }
+                }
+
+                if (questionsChanged) {
+                    throw new Error('UNABLE_TO_UPDATE_QUESTIONS: This quiz has existing student attempts. Modifying questions would invalidate their records. Please clone this quiz if you need to make structural changes.');
+                }
+
+                // If questions didn't change, just return the quiz (settings update is already done)
+                return existingQuiz;
             }
 
             // No student attempts — safe to delete and recreate questions
@@ -190,7 +246,7 @@ export async function saveQuizAdmin(quizData: unknown) {
                     allOptionsToInsert.push(...q.options.map((opt, optIdx) => ({
                         question_id: insertedQId,
                         option_text: typeof opt === 'string' ? opt : opt.option_text,
-                        is_correct: typeof opt === 'string' ? (opt === q.correct_answer) : opt.is_correct,
+                        is_correct: typeof opt === 'string' ? (optIdx === Number(q.correct_answer)) : opt.is_correct,
                         sequence_order: optIdx + 1,
                     })));
                 }

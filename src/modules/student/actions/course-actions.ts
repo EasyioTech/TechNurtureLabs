@@ -89,31 +89,22 @@ export async function ensureEnrollment(courseId: string) {
         if (!course) return null;
     }
 
-    const softDeleted = await db.query.enrollments.findFirst({
-        where: and(
-            eq(enrollments.user_id, userId),
-            eq(enrollments.course_id, courseId),
-            eq(enrollments.session_id, currentSession.id),
-            isNotNull(enrollments.deleted_at)
-        )
-    });
-
-    if (softDeleted) {
-        const [reactivated] = await db.update(enrollments)
-            .set({ deleted_at: null, is_active: true, updated_at: new Date() })
-            .where(eq(enrollments.id, softDeleted.id))
-            .returning();
-        return reactivated;
-    }
-
-
+    // UPSERT enrollment to handle concurrency and re-enrollment atomically
     const [newEnrollment] = await db.insert(enrollments).values({
         user_id: userId,
         course_id: courseId,
         school_id: user.school_id,
         session_id: currentSession.id,
-        is_active: true,
-    } as any).returning();
+        updated_at: new Date()
+    } as any)
+    .onConflictDoUpdate({
+        target: [enrollments.user_id, enrollments.course_id, enrollments.session_id],
+        set: {
+            deleted_at: null,
+            updated_at: new Date()
+        }
+    })
+    .returning();
 
     if (role === 'student') {
         await invalidateStudentDashboardCache(userId);
@@ -327,7 +318,6 @@ export async function getStudentDashboardCourses(bypassCache = false) {
         db.query.enrollments.findMany({
             where: and(
                 eq(enrollments.user_id, userId),
-                eq(enrollments.is_active, true),
                 isNull(enrollments.deleted_at),
                 sessionId ? eq(enrollments.session_id, sessionId) : isNotNull(enrollments.id)
             ),

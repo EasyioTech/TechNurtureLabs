@@ -18,7 +18,7 @@ import { Worker, Job } from 'bullmq';
 import { db } from '@/lib/db';
 import { redis } from '@/lib/redis';
 import { xpEvents, lessons, lessonProgress, enrollments, courseProgress, auditLogs } from '@/db/schema';
-import { eq, and, isNotNull, inArray, sql } from 'drizzle-orm';
+import { eq, and, isNotNull, isNull, inArray, sql } from 'drizzle-orm';
 
 let worker: Worker | null = null;
 
@@ -83,26 +83,15 @@ async function handleEvent(data: any, jobId?: string) {
                 alreadyAwarded = true;
             }
 
-            if (!alreadyAwarded && schoolId) {
-                try {
-                    await db.insert(xpEvents).values({
-                        user_id: userId,
-                        school_id: schoolId,
-                        source: 'lesson_completion',
-                        xp_amount: xpAmount || 0,
-                        reference_type: 'lesson',
-                        reference_id: lessonId,
-                        created_at: new Date()
-                    });
-                } catch (err: any) {
-                    alreadyAwarded = true;
-                }
-            }
-
             if (!alreadyAwarded) {
                 try {
                     const typeMap: any = { student: 'student', school_admin: 'school_admin', super_admin: 'super_admin' };
-                    await awardXP(userId, xpAmount || 0, schoolId, typeMap[role] || 'student', { skipEmit: true });
+                    await awardXP(userId, xpAmount || 0, schoolId, typeMap[role] || 'student', { 
+                        skipEmit: true,
+                        source: 'lesson_completion',
+                        referenceId: lessonId,
+                        referenceType: 'lesson'
+                    });
                 } catch (err) {}
             }
 
@@ -144,7 +133,7 @@ async function handleEvent(data: any, jobId?: string) {
                             ), 0),
                             NOW(), NOW()
                         FROM enrollments e
-                        WHERE e.user_id = ${userId}::uuid AND e.course_id = ${courseId}::uuid AND e.is_active = true
+                        WHERE e.user_id = ${userId}::uuid AND e.course_id = ${courseId}::uuid AND e.deleted_at IS NULL
                         LIMIT 1
                         ON CONFLICT (user_id, course_id, enrollment_id)
                         DO UPDATE SET
@@ -158,7 +147,7 @@ async function handleEvent(data: any, jobId?: string) {
                     if (completedCount === totalCount) {
                         await db.update(enrollments)
                             .set({ completed_at: new Date(), updated_at: new Date() })
-                            .where(and(eq(enrollments.user_id, userId), eq(enrollments.course_id, courseId), eq(enrollments.is_active, true)));
+                            .where(and(eq(enrollments.user_id, userId), eq(enrollments.course_id, courseId), isNull(enrollments.deleted_at)));
                     }
                 }
             } catch (err) {}

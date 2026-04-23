@@ -103,35 +103,38 @@ export async function POST(req: NextRequest) {
             // 1. Only updates if conditions are met (not expired, has capacity, is active)
             // 2. Returns the UPDATED row
             // 3. If conditions fail, returns empty array — promo is invalid/exhausted
-            const [updatedPromo] = await db
-                .update(promoCodes)
-                .set({ current_uses: sql`current_uses + 1` })
-                .where(
-                    and(
-                        eq(promoCodes.id, promo_code_id),
-                        eq(promoCodes.is_active, true),
-                        // max_uses IS NULL means unlimited; otherwise must have capacity BEFORE increment
-                        or(
-                            isNull(promoCodes.max_uses),
-                            sql`${promoCodes.current_uses} < ${promoCodes.max_uses}`
-                        ),
-                        // validity window: valid_from IS NULL or now >= valid_from
-                        or(isNull(promoCodes.valid_from), lte(promoCodes.valid_from, now)),
-                        // validity window: valid_until IS NULL or now <= valid_until
-                        or(isNull(promoCodes.valid_until), gte(promoCodes.valid_until, now))
-                    )
+            const [updatedPromo] = await db.select({
+                id: promoCodes.id,
+                code: promoCodes.code,
+                is_active: promoCodes.is_active,
+                discount_type: promoCodes.discount_type,
+                discount_value: promoCodes.discount_value,
+                max_uses: promoCodes.max_uses,
+                current_uses: sql<number>`(SELECT count(*)::int FROM ${schoolSubscriptions} WHERE ${schoolSubscriptions.promo_code_id} = ${promoCodes.id})`,
+                valid_from: promoCodes.valid_from,
+                valid_until: promoCodes.valid_until,
+            })
+            .from(promoCodes)
+            .where(
+                and(
+                    eq(promoCodes.id, promo_code_id),
+                    eq(promoCodes.is_active, true),
+                    // validity window: valid_from IS NULL or now >= valid_from
+                    or(isNull(promoCodes.valid_from), lte(promoCodes.valid_from, now)),
+                    // validity window: valid_until IS NULL or now <= valid_until
+                    or(isNull(promoCodes.valid_until), gte(promoCodes.valid_until, now))
                 )
-                .returning();
+            )
+            .limit(1);
 
-            if (updatedPromo) {
+            // Double check max_uses since we are no longer using an atomic update
+            if (updatedPromo && (updatedPromo.max_uses === null || updatedPromo.current_uses < updatedPromo.max_uses)) {
                 appliedPromoId = updatedPromo.id;
                 // SECURITY: Validate discount calculation to prevent negative amounts
                 if (updatedPromo.discount_type === 'percentage') {
                     const percentage = Number(updatedPromo.discount_value);
                     if (percentage < 0 || percentage > 100) {
                         logger.error('[Create Order] Invalid percentage discount', { percentage, promo_code_id });
-                        // ROLLBACK: Decrement promo usage since we're rejecting
-                        await db.update(promoCodes).set({ current_uses: sql`current_uses - 1` }).where(eq(promoCodes.id, appliedPromoId));
                         return NextResponse.json({ error: 'Invalid discount' }, { status: 400 });
                     }
                     discountAmount = (finalAmount * percentage) / 100;
@@ -139,8 +142,6 @@ export async function POST(req: NextRequest) {
                     discountAmount = Number(updatedPromo.discount_value);
                     if (discountAmount < 0) {
                         logger.error('[Create Order] Negative fixed discount', { discountAmount, promo_code_id });
-                        // ROLLBACK: Decrement promo usage since we're rejecting
-                        await db.update(promoCodes).set({ current_uses: sql`current_uses - 1` }).where(eq(promoCodes.id, appliedPromoId));
                         return NextResponse.json({ error: 'Invalid discount' }, { status: 400 });
                     }
                 }
@@ -153,7 +154,7 @@ export async function POST(req: NextRequest) {
                     discount_value: updatedPromo.discount_value,
                     discount_amount: discountAmount,
                 };
-                logger.info('[Create Order] Promo code applied atomically', {
+                logger.info('[Create Order] Promo code applied', {
                     code: updatedPromo.code,
                     discount: discountAmount,
                     final_amount: finalAmount,
@@ -248,27 +249,7 @@ export async function POST(req: NextRequest) {
             };
             logger.error('[Create Order] Razorpay API error', errorDetails);
 
-            // CRITICAL FIX #8: Rollback promo code usage with retry logic
-            // Ensures promo code counter is decremented even if first attempt fails
-            if (appliedPromoId) {
-                let rollbackSuccess = false;
-                for (let attempt = 0; attempt < 3; attempt++) {
-                    try {
-                        await db.update(promoCodes).set({ current_uses: sql`current_uses - 1` }).where(eq(promoCodes.id, appliedPromoId));
-                        logger.info('[Create Order] Promo code usage rolled back after Razorpay failure', { promo_code_id: appliedPromoId, attempt: attempt + 1 });
-                        rollbackSuccess = true;
-                        break;
-                    } catch (rollbackErr: any) {
-                        if (attempt === 2) {
-                            // Final attempt failed — log critical issue
-                            logger.error('[Create Order] CRITICAL: Failed to rollback promo code after 3 attempts', {
-                                promo_code_id: appliedPromoId,
-                                error: rollbackErr?.message
-                            });
-                        }
-                    }
-                }
-            }
+
 
             return NextResponse.json(
                 { error: 'Failed to create payment order. Please try again.' },

@@ -255,20 +255,20 @@ export async function assignPlanToSchool(schoolId: string, planId: string, billi
 
     return await db.transaction(async (tx) => {
         if (promoCodeId) {
-            const [promo] = await tx.select({
-                id: promoCodes.id, is_active: promoCodes.is_active,
-                valid_until: promoCodes.valid_until, max_uses: promoCodes.max_uses,
-                current_uses: promoCodes.current_uses,
-            }).from(promoCodes).where(eq(promoCodes.id, promoCodeId)).limit(1);
+            const promoRows = await tx.execute(sql`
+                SELECT p.id, p.is_active, p.valid_until, p.max_uses,
+                       (SELECT count(*)::int FROM school_subscriptions WHERE promo_code_id = p.id) AS current_uses
+                FROM promo_codes p
+                WHERE p.id = ${promoCodeId}::uuid
+                FOR UPDATE
+            `);
+            const promo = (promoRows as any)[0] as any;
             if (!promo) throw new Error('Promo code not found');
             if (!promo.is_active) throw new Error('Promo code is no longer active');
             if (promo.valid_until && new Date(promo.valid_until) < now) throw new Error('Promo code has expired');
             if (promo.max_uses != null && Number(promo.current_uses) >= promo.max_uses) {
                 throw new Error('Promo code has reached its usage limit');
             }
-            await tx.update(promoCodes)
-                .set({ current_uses: sql`${promoCodes.current_uses} + 1` })
-                .where(eq(promoCodes.id, promoCodeId));
         }
 
         const existing = await tx.query.schoolSubscriptions.findFirst({
