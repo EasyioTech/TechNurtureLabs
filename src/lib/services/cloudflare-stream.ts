@@ -189,11 +189,11 @@ export async function createTusUploadUrl(
     }
 
     // 1. Prepare TUS Metadata (Base64 encoded)
-    const uploadMetadata = meta 
-        ? Object.entries(meta)
-            .map(([key, value]) => `${key} ${Buffer.from(value).toString('base64')}`)
-            .join(',')
-        : '';
+    const metaEntries = meta
+        ? Object.entries(meta).map(([key, value]) => `${key} ${Buffer.from(value).toString('base64')}`)
+        : [];
+    metaEntries.push(`maxDurationSeconds ${Buffer.from(maxDurationSeconds.toString()).toString('base64')}`);
+    const uploadMetadata = metaEntries.join(',');
 
     console.log('[CF Stream] Creating TUS session:', { fileSize, maxDurationSeconds });
 
@@ -207,8 +207,7 @@ export async function createTusUploadUrl(
             'Authorization': `Bearer ${serverEnv.CLOUDFLARE_STREAM_API_TOKEN}`,
             'Tus-Resumable': '1.0.0',
             'Upload-Length': fileSize.toString(),
-            ...(uploadMetadata && { 'Upload-Metadata': uploadMetadata }),
-            'Upload-Max-Duration-Seconds': maxDurationSeconds.toString(),
+            'Upload-Metadata': uploadMetadata,
         },
     });
 
@@ -230,19 +229,14 @@ export async function createTusUploadUrl(
         if (sessionUrl.startsWith('/')) {
             sessionUrl = `${origin}${sessionUrl}`;
         } else {
-            // It's relative to the creation endpoint
             const base = accountUrl.endsWith('/') ? accountUrl : `${accountUrl}/`;
             sessionUrl = `${base}${sessionUrl}`;
         }
     }
 
-    // Extract UID reliably from the session URL
-    const urlObj = new URL(sessionUrl);
-    const pathParts = urlObj.pathname.split('/').filter(Boolean);
-    const uid = pathParts[pathParts.length - 1];
-
+    const uid = res.headers.get('stream-media-id');
     if (!uid) {
-        throw new Error(`Could not extract UID from TUS session URL: ${sessionUrl}`);
+        throw new Error('Cloudflare Stream TUS creation succeeded but missing stream-media-id header');
     }
 
     return { uploadUrl: sessionUrl, uid };

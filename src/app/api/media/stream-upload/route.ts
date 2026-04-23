@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth';
 import { createDirectUpload, createTusUploadUrl, isStreamConfigured } from '@/lib/services/cloudflare-stream';
-import { redis } from '@/lib/redis';
-import { serverEnv } from '@/lib/env.server';
 import { db } from '@/lib/db';
 import { mediaAssets } from '@/db/schema';
 import crypto from 'crypto';
@@ -156,30 +154,10 @@ export async function POST(req: NextRequest) {
             // Continue anyway — upload is already initiated
         }
 
-        try {
-            // Store TUS config in Redis with 1 hour expiry
-            // CRITICAL FIX: Store the actual TUS upload URL from Cloudflare (result.uploadUrl),
-            // not the list endpoint. This is the URL that tus-js-client will proxy through.
-            await redis.setex(
-                `tusUpload:${result.uid}`,
-                3600,
-                JSON.stringify({
-                    tusUploadUrl: result.uploadUrl, // FIXED: Store actual TUS URL, not list endpoint
-                    fileName,
-                    fileSize: fileSizeBytes,
-                    createdAt: new Date().toISOString(),
-                })
-            );
-        } catch (err) {
-            console.warn('[Stream Upload] Redis unavailable, TUS proxy will not work', err);
-        }
-
-        // Return our proxy URL for tus-js-client to upload through
-        const proxyUrl = `/api/media/stream-upload/${result.uid}/chunk`;
-        console.log(`[Stream Upload] UID: ${result.uid}, TUS via proxy, asset: ${assetId}`);
+        console.log(`[Stream Upload] UID: ${result.uid}, TUS direct, asset: ${assetId}`);
 
         return NextResponse.json({
-            uploadURL: proxyUrl,
+            uploadURL: result.uploadUrl,
             uid: result.uid,
             assetId,
             isTus: true,

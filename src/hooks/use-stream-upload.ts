@@ -245,7 +245,8 @@ export function useStreamUpload(options?: UseStreamUploadOptions): UseStreamUplo
                 if (cancelledRef.current) return reject(new Error('Upload cancelled'));
 
                 const upload = new tus.Upload(file, {
-                    endpoint: uploadURL,
+                    uploadUrl: uploadURL,
+                    storeFingerprintForResuming: false,
                     retryDelays: [0, 3000, 5000, 10000, 20000],
                     chunkSize: 50 * 1024 * 1024, // 50MB chunks (Cloudflare recommended)
                     uploadSize: file.size, // Required for Cloudflare TUS

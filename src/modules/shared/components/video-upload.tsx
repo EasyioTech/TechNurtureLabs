@@ -48,9 +48,9 @@ export function VideoUpload({
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const maxSize = 2 * 1024 * 1024 * 1024;
+        const maxSize = 30 * 1024 * 1024 * 1024;
         if (file.size > maxSize) {
-            toast.error('File size limit is 2GB');
+            toast.error('File size limit is 30GB');
             return;
         }
 
@@ -77,6 +77,14 @@ export function VideoUpload({
                         }
                     `}
                 >
+                    {isUploading && (
+                        <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-10">
+                            <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
+                            <p className="text-white font-bold text-lg mb-1">Processing Video</p>
+                            <p className="text-slate-400 text-sm">Uploading to Stream...</p>
+                            <p className="text-slate-400 text-xs mt-2">{progress}%</p>
+                        </div>
+                    )}
                     {value ? (
                         <>
                             {value.startsWith('cf-stream://') || (value.length === 32 && !value.includes('/') && !value.includes('.')) ? (
@@ -92,14 +100,6 @@ export function VideoUpload({
                         </>
                     ) : (
                         <div onClick={handlePickerClick} className="flex flex-col items-center">
-                            {isUploading && (
-                                <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
-                                    <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
-                                    <p className="text-white font-bold text-lg mb-1">Processing Video</p>
-                                    <p className="text-slate-400 text-sm">Uploading to Stream...</p>
-                                    <p className="text-slate-400 text-xs mt-2">{progress}%</p>
-                                </div>
-                            )}
                             <div className={`${compact ? 'w-8 h-8 rounded-xl' : 'w-12 h-12 rounded-2xl'} flex items-center justify-center ${compact ? '' : 'mb-3'} ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
                                 <Video size={compact ? 16 : 24} />
                             </div>
