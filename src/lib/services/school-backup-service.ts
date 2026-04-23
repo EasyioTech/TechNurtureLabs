@@ -1390,6 +1390,8 @@ export async function uploadSchoolBackupToR2(
     try {
         await db.insert(schema.schoolBackups).values({
             school_id: schoolId,
+            batch_id: batchId,
+            backup_type: batchId ? 'system_wide' : 'individual',
             file_name: fileName,
             file_size: compressed.length,
             hash: currentHash,
@@ -1401,6 +1403,8 @@ export async function uploadSchoolBackupToR2(
         }).onConflictDoUpdate({
             target: schema.schoolBackups.file_name,
             set: {
+                batch_id: batchId,
+                backup_type: batchId ? 'system_wide' : 'individual',
                 file_size: compressed.length,
                 hash: currentHash,
                 student_count: backup.students.length,
@@ -1448,7 +1452,10 @@ export async function listSchoolBackups(schoolId: string): Promise<BackupListIte
 
     try {
         const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
-        const prefix = `${BACKUP_PREFIX}${schoolId}/`;
+        
+        // If schoolId is empty, list all backups under the base prefix
+        const prefix = schoolId ? `${BACKUP_PREFIX}${schoolId}/` : BACKUP_PREFIX;
+        
         const command = new ListObjectsV2Command({
             Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
             Prefix: prefix,
@@ -1457,20 +1464,27 @@ export async function listSchoolBackups(schoolId: string): Promise<BackupListIte
         const response = await s3Client.send(command);
         const files = (response.Contents || [])
             .filter(item => item.Key?.endsWith('.json.gz'))
-            .map(item => ({
-                fileName: item.Key || '',
-                key: item.Key || '',
-                schoolId,
-                schoolName: '', // Would fetch from backup
-                size: item.Size || 0,
-                lastModified: item.LastModified || new Date(),
-                hash: '', // From metadata
-                studentCount: 0, // From metadata
-                timestamp: item.LastModified?.toISOString() || ''
-            }))
+            .map(item => {
+                const key = item.Key || '';
+                // Extract schoolId from key if not provided: backups/schools/{schoolId}/{fileName}
+                const pathParts = key.split('/');
+                const extractedSchoolId = schoolId || pathParts[2] || '';
+
+                return {
+                    fileName: key,
+                    key: key,
+                    schoolId: extractedSchoolId,
+                    schoolName: '', // Would fetch from backup metadata if needed
+                    size: item.Size || 0,
+                    lastModified: item.LastModified || new Date(),
+                    hash: '', // From metadata
+                    studentCount: 0, // From metadata
+                    timestamp: item.LastModified?.toISOString() || ''
+                };
+            })
             .sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
 
-        console.log(`[Backup] ✓ Found ${files.length} backups for school: ${schoolId}`);
+        console.log(`[Backup] ✓ Found ${files.length} backups ${schoolId ? `for school: ${schoolId}` : 'system-wide'}`);
         return files;
     } catch (error) {
         console.error('[Backup] Error listing backups:', error);
@@ -1493,8 +1507,15 @@ export async function syncSchoolBackupsToDb(schoolId: string): Promise<number> {
     // Batch process to avoid too many DB hits? For now one by one is fine for < 100 backups
     for (const backup of r2Backups) {
         try {
+            // Ensure we have a valid school ID before inserting
+            if (!backup.schoolId) {
+                console.warn(`[Backup Sync] Skipping file without school ID: ${backup.fileName}`);
+                continue;
+            }
+
             await db.insert(schema.schoolBackups).values({
-                school_id: schoolId,
+                school_id: backup.schoolId,
+                backup_type: 'individual', // Default for synced files
                 file_name: backup.fileName,
                 file_size: backup.size,
                 timestamp: new Date(backup.timestamp),

@@ -24,6 +24,9 @@ export function startStatsWorker() {
 }
 
 async function runLoop() {
+    // Wait for Redis connection to be ready before first flush
+    await new Promise(resolve => setTimeout(resolve, 10000));
+
     while (true) {
         try {
             await flushTimeSpent();

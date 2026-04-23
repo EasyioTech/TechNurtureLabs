@@ -54,11 +54,16 @@ if [ $# -eq 0 ]; then
         echo "⚠️ No migration script found, skipping migrations"
     fi
 
-    echo "🌱 Seeding default database data..."
-    if npm run db:seed; then
-        echo "✅ Database seeding completed successfully"
+    SEED_DONE=$(psql "${DATABASE_URL}" -tAc "SELECT COUNT(*) FROM platform_settings WHERE id = 'global'" 2>/dev/null || echo "0")
+    if [ "${SEED_DONE}" = "0" ]; then
+        echo "🌱 Seeding default database data..."
+        if npm run db:seed; then
+            echo "✅ Database seeding completed successfully"
+        else
+            echo "⚠️ Database seeding failed! Check logs."
+        fi
     else
-        echo "⚠️ Database seeding failed! Check logs."
+        echo "✅ Database already seeded — skipping."
     fi
 
     # Start the application

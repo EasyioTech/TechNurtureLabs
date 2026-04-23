@@ -9,7 +9,7 @@ import { createAuditLog } from '@/lib/audit';
  * SUPER ADMIN ONLY: Trigger backup for a specific school
  * Only super admins can initiate backups
  */
-export async function performSchoolBackupAdmin(schoolId: string) {
+export async function performSchoolBackupAdmin(schoolId: string, batchId?: string) {
     const session = await verifySession();
     if (!session) throw new Error('Unauthorized');
 
@@ -25,7 +25,7 @@ export async function performSchoolBackupAdmin(schoolId: string) {
         const backup = await exportCompleteSchoolData(schoolId);
 
         // 2. Upload to R2
-        const result = await uploadSchoolBackupToR2(backup, schoolId);
+        const result = await uploadSchoolBackupToR2(backup, schoolId, batchId);
 
         // 3. Log the action
         await createAuditLog({
@@ -80,12 +80,13 @@ export async function performSystemWideBackupAdmin() {
             where: eq(schools.is_active, true)
         });
 
-        console.log(`[Admin Backup] Starting system-wide backup for ${allSchools.length} schools`);
+        const batchId = crypto.randomUUID();
+        console.log(`[Admin Backup] Starting system-wide backup for ${allSchools.length} schools with Batch ID: ${batchId}`);
         
         const results = [];
         for (const school of allSchools) {
             try {
-                const res = await performSchoolBackupAdmin(school.id);
+                const res = await performSchoolBackupAdmin(school.id, batchId);
                 results.push({ schoolId: school.id, name: school.name, success: res.success });
             } catch (err) {
                 results.push({ schoolId: school.id, name: school.name, success: false, error: 'Timed out or failed' });
@@ -158,6 +159,9 @@ export async function listSchoolBackupsAdmin(schoolId: string) {
                     studentCount: b.student_count || 0,
                     revenueTotal: b.revenue_total || "0",
                     recordsCount: b.records_count || {},
+                    batchId: b.batch_id,
+                    backupType: b.backup_type,
+                    schoolId: b.school_id,
                     inDb: true
                 }))
             };
@@ -165,6 +169,17 @@ export async function listSchoolBackupsAdmin(schoolId: string) {
 
         // Fallback to R2 scan
         const backups = await listSchoolBackups(isSystemWide ? '' : schoolId);
+        
+        // If we found backups in R2 but not in DB, trigger a sync in the background
+        if (backups.length > 0) {
+            console.log(`[Admin Backup] DB out of sync. Found ${backups.length} backups in R2. Triggering background sync...`);
+            // Non-blocking sync
+            const { syncSchoolBackupsToDb } = await import('@/lib/services/school-backup-service');
+            syncSchoolBackupsToDb(isSystemWide ? '' : schoolId).catch(err => {
+                console.error('[Admin Backup] Background sync failed:', err);
+            });
+        }
+
         return {
             success: true,
             backups: backups.map(b => ({
@@ -172,7 +187,7 @@ export async function listSchoolBackupsAdmin(schoolId: string) {
                 size: b.size,
                 timestamp: b.timestamp,
                 created: new Date(b.timestamp).toLocaleDateString(),
-                inDb: false
+                inDb: false // Mark as not yet indexed in DB
             }))
         };
     } catch (error: any) {

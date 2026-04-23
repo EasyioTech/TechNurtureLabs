@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { 
     CloudUpload, RefreshCw, AlertCircle, Info, 
     Search, Filter, LayoutGrid, List, Database,
@@ -49,18 +48,77 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
     const [isRestoring, setIsRestoring] = useState(false);
 
     // Derived
-    const filteredBackups = useMemo(() => {
-        return backups.filter(b => 
-            b.fileName.toLowerCase().includes(searchQuery.toLowerCase())
-        ).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    // Group backups by batchId
+    const groupedBackups = useMemo(() => {
+        const groups: any[] = [];
+        const batchMap = new Map();
+
+        // 1. Process all backups
+        backups.forEach(b => {
+            const hasBatch = b.batchId;
+            
+            if (hasBatch) {
+                if (!batchMap.has(b.batchId)) {
+                    batchMap.set(b.batchId, {
+                        id: b.batchId,
+                        type: 'system-wide',
+                        fileName: `SYSTEM_SESSION_${b.batchId.slice(0, 8)}`,
+                        timestamp: b.timestamp,
+                        created: b.created,
+                        size: 0,
+                        studentCount: 0,
+                        revenueTotal: 0,
+                        nodeCount: 0,
+                        nodes: [],
+                        inDb: true
+                    });
+                    groups.push(batchMap.get(b.batchId));
+                }
+                const group = batchMap.get(b.batchId);
+                group.nodes.push({
+                    fileName: b.fileName,
+                    schoolId: b.schoolId,
+                    schoolName: b.schoolName || 'Unknown School',
+                    size: b.size,
+                    studentCount: b.studentCount,
+                    revenueTotal: b.revenueTotal,
+                    timestamp: b.timestamp
+                });
+                group.size += b.size || 0;
+                group.studentCount += b.studentCount || 0;
+                group.revenueTotal += parseFloat(b.revenueTotal || "0");
+                group.nodeCount++;
+                
+                // Keep the most recent timestamp
+                if (new Date(b.timestamp) > new Date(group.timestamp)) {
+                    group.timestamp = b.timestamp;
+                    group.created = b.created;
+                }
+            } else {
+                groups.push({
+                    ...b,
+                    id: b.fileName,
+                    type: 'single'
+                });
+            }
+        });
+
+        // 2. Filter by search query
+        return groups.filter(g => {
+            const searchLower = searchQuery.toLowerCase();
+            if (g.type === 'system-wide') {
+                return g.id.toLowerCase().includes(searchLower) || 
+                       g.nodes.some((n: any) => n.fileName.toLowerCase().includes(searchLower));
+            }
+            return g.fileName.toLowerCase().includes(searchLower);
+        }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }, [backups, searchQuery]);
 
     // Actions
     const handleSync = async () => {
-        if (!activeSchoolId) return;
         setIsSyncing(true);
         try {
-            const result = await syncBackupsFromR2Admin(activeSchoolId);
+            const result = await syncBackupsFromR2Admin(activeSchoolId || '');
             if (result.success) {
                 toast.success(result.message);
                 window.location.reload();
@@ -96,9 +154,16 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
     const handlePreview = async (backupOrFileName: any) => {
         const isString = typeof backupOrFileName === 'string';
         const fileName = isString ? backupOrFileName : backupOrFileName.fileName;
-        
+        const isBatch = !isString && backupOrFileName.type === 'system-wide' && !backupOrFileName.schoolId;
+
         if (!isString) setSelectedBackup(backupOrFileName);
         
+        if (isBatch) {
+            setPreviewData(null);
+            setIsLoadingPreview(false);
+            return;
+        }
+
         setIsLoadingPreview(true);
         setPreviewData(null); // Clear previous preview
         
@@ -169,6 +234,7 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
     if (selectedBackup) {
         return (
             <BackupDetailView
+                key={selectedBackup.id || selectedBackup.fileName}
                 backup={selectedBackup}
                 previewData={previewData}
                 isLoading={isLoadingPreview}
@@ -197,7 +263,7 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                             <TooltipTrigger asChild>
                                 <Button
                                     onClick={handleSync}
-                                    disabled={isSyncing || !activeSchoolId}
+                                    disabled={isSyncing}
                                     variant="ghost"
                                     className={cn(
                                         "h-11 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest transition-all",
@@ -257,12 +323,10 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                 </div>
             </div>
 
-            {/* Grid View */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                <AnimatePresence mode="popLayout">
-                    {filteredBackups.map((backup, idx) => (
+                    {groupedBackups.map((backup, idx) => (
                         <BackupCard 
-                            key={backup.fileName}
+                            key={backup.id}
                             backup={backup}
                             index={idx}
                             onPreview={() => handlePreview(backup)}
@@ -271,9 +335,8 @@ export function BackupsTab({ backups: initialBackups, activeSchoolId }: BackupsT
                             onRestore={() => handlePreview(backup)}
                         />
                     ))}
-                </AnimatePresence>
 
-                {filteredBackups.length === 0 && (
+                {groupedBackups.length === 0 && (
                     <div className={`col-span-full py-20 sm:py-32 rounded-[2rem] sm:rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center space-y-4 opacity-30 ${t.border(isDark)}`}>
                         <div className={`w-16 h-16 sm:w-20 h-20 rounded-full flex items-center justify-center ${isDark ? 'bg-white/5' : 'bg-neutral-50'}`}>
                             <Database size={40} />

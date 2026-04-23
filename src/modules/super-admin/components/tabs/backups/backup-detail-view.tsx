@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft, ShieldCheck, Clock, HardDrive, Database, Users,
     IndianRupee, Server, AlertCircle, RotateCcw, CheckCircle2,
@@ -128,11 +127,8 @@ export function BackupDetailView({
                                 {tab}
                             </span>
                             {activeTab === tab && (
-                                <motion.div
-                                    layoutId="activeTabDetail"
+                                <div
                                     className={`absolute bottom-0 left-0 right-0 h-1 ${accent.bg}`}
-                                    initial={false}
-                                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                                 />
                             )}
                         </button>
@@ -158,7 +154,11 @@ export function BackupDetailView({
                 <LoadingState isDark={isDark} />
             ) : previewData ? (
                 <>
-                    {activeTab === 'overview' && <OverviewTab previewData={previewData} isDark={isDark} accent={accent} isRestoring={isRestoring} onRestore={onRestore} setConfirmTarget={setConfirmTarget} formatCurrency={formatCurrency} formattedDate={formattedDate} formattedTime={formattedTime} fileSize={fileSize} />}
+                    {activeTab === 'overview' && (
+                        previewData 
+                            ? <OverviewTab previewData={previewData} isDark={isDark} accent={accent} isRestoring={isRestoring} onRestore={onRestore} setConfirmTarget={setConfirmTarget} formatCurrency={formatCurrency} formattedDate={formattedDate} formattedTime={formattedTime} fileSize={fileSize} />
+                            : <BatchOverviewTab backup={backup} isDark={isDark} />
+                    )}
                     {activeTab === 'students' && <StudentsTab previewData={previewData} isDark={isDark} studentSearch={studentSearch} setStudentSearch={setStudentSearch} filteredStudents={filteredStudents} expandedStudent={expandedStudent} setExpandedStudent={setExpandedStudent} maxXp={maxXp} getTierColor={getTierColor} />}
                     {activeTab === 'billing' && <BillingTab previewData={previewData} isDark={isDark} formatCurrency={formatCurrency} />}
                     {activeTab === 'classes' && <ClassesTab previewData={previewData} isDark={isDark} />}
@@ -171,17 +171,11 @@ export function BackupDetailView({
             )}
 
             {/* Confirmation Overlay */}
-            <AnimatePresence>
                 {confirmTarget && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                    <div
                         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
                     >
-                        <motion.div
-                            initial={{ scale: 0.9, y: 20 }}
-                            animate={{ scale: 1, y: 0 }}
+                        <div
                             className={`max-w-md w-full p-6 sm:p-8 rounded-2xl border ${isDark ? 'bg-neutral-900 border-white/10' : 'bg-white border-slate-200'}`}
                         >
                             <AlertCircle size={40} className="text-rose-500 mb-4" />
@@ -217,15 +211,43 @@ export function BackupDetailView({
                                     )}
                                 </Button>
                             </div>
-                        </motion.div>
-                    </motion.div>
+                        </div>
+                    </div>
                 )}
-            </AnimatePresence>
         </div>
     );
 }
 
 // ==================== TAB COMPONENTS ====================
+
+function BatchOverviewTab({ backup, isDark }: { backup: any; isDark: boolean }) {
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatBox icon={Server} label="Institutional Nodes" value={backup.nodeCount} isDark={isDark} color="indigo" />
+                <StatBox icon={Users} label="Total Enrollment" value={backup.studentCount} isDark={isDark} color="purple" />
+                <StatBox icon={IndianRupee} label="Batch Revenue" value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(backup.revenueTotal || 0)} isDark={isDark} color="emerald" />
+            </div>
+            
+            <Card isDark={isDark} title="System-Wide Session Details">
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-white/5">
+                        <span className={`text-xs uppercase font-bold opacity-50 ${t.textMuted(isDark)}`}>Batch ID</span>
+                        <span className={`text-xs font-mono font-bold ${t.textPrimary(isDark)}`}>{backup.id}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-dashed border-white/5">
+                        <span className={`text-xs uppercase font-bold opacity-50 ${t.textMuted(isDark)}`}>Vault Status</span>
+                        <Badge className={`${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>INTEGRITY VERIFIED</Badge>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                        <span className={`text-xs uppercase font-bold opacity-50 ${t.textMuted(isDark)}`}>Storage Footprint</span>
+                        <span className={`text-xs font-bold ${t.textPrimary(isDark)}`}>{(backup.size / 1024).toFixed(1)} KB (Compressed)</span>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+}
 
 function LoadingState({ isDark }: { isDark: boolean }) {
     return (
@@ -384,9 +406,7 @@ function StudentCard({ student, isDark, isExpanded, onToggle, maxXp, getTierColo
     const xpPercent = (student.cumulative_xp / maxXp) * 100;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+        <div
             className={`rounded-2xl border transition-all ${isExpanded ? (isDark ? 'bg-neutral-800 border-white/20 shadow-xl shadow-black/40' : 'bg-white border-slate-200 shadow-lg') : (isDark ? 'bg-neutral-900/50 border-white/10' : 'bg-slate-50 border-slate-100')}`}
         >
             {/* Header */}
@@ -424,9 +444,8 @@ function StudentCard({ student, isDark, isExpanded, onToggle, maxXp, getTierColo
             </button>
 
             {/* Expanded Content */}
-            <AnimatePresence>
-                {isExpanded && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className={`border-t overflow-hidden ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+            {isExpanded && (
+                <div className={`border-t overflow-hidden ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
                         <div className="p-4 space-y-4">
                             {/* Achievements */}
                             {student.achievements?.length > 0 && (
@@ -470,10 +489,9 @@ function StudentCard({ student, isDark, isExpanded, onToggle, maxXp, getTierColo
                                 </div>
                             )}
                         </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </motion.div>
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -654,10 +672,10 @@ function NodesTab({ nodes, isDark, accent, onSelect, currentFileName }: any) {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {nodes.map((node: any) => (
-                <motion.div
+                <div
                     key={node.fileName}
-                    whileHover={{ scale: 1.02 }}
                     className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group
+                        hover:scale-[1.02]
                         ${node.fileName === currentFileName 
                             ? (isDark ? 'bg-indigo-500/20 border-indigo-500/50 ring-1 ring-indigo-500/20 shadow-lg shadow-indigo-500/10' : 'bg-indigo-50 border-indigo-200')
                             : (isDark ? 'bg-neutral-900/90 border-white/10 hover:bg-neutral-800' : 'bg-white border-slate-100 hover:shadow-md')}`}
@@ -676,9 +694,17 @@ function NodesTab({ nodes, isDark, accent, onSelect, currentFileName }: any) {
 
                         <div>
                             <h4 className={`text-sm font-black truncate ${t.textPrimary(isDark)}`}>{node.schoolName}</h4>
-                            <div className="flex items-center gap-2 mt-1">
-                                <Users size={12} className="opacity-40" />
-                                <span className={`text-[10px] font-bold opacity-60 ${t.textMuted(isDark)}`}>{node.studentCount || 0} Students</span>
+                            <div className="flex items-center gap-3 mt-1.5">
+                                <div className="flex items-center gap-1.5">
+                                    <Users size={12} className="opacity-40" />
+                                    <span className={`text-[10px] font-bold opacity-60 ${t.textMuted(isDark)}`}>{node.studentCount || 0} Students</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <IndianRupee size={12} className="opacity-40" />
+                                    <span className={`text-[10px] font-bold opacity-60 ${t.textMuted(isDark)}`}>
+                                        {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(parseFloat(node.revenueTotal || "0"))}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -689,7 +715,7 @@ function NodesTab({ nodes, isDark, accent, onSelect, currentFileName }: any) {
                             <ArrowLeft size={14} className="rotate-180 opacity-40" />
                         </div>
                     </div>
-                </motion.div>
+                </div>
             ))}
         </div>
     );

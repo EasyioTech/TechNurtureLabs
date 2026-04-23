@@ -807,6 +807,8 @@ export const loginAttempts = pgTable('login_attempts', {
 export const schoolBackups = pgTable('school_backups', {
     id: uuid('id').defaultRandom().primaryKey(),
     school_id: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+    batch_id: uuid('batch_id'), // NEW: Group ID for multiple schools in one session
+    backup_type: text('backup_type').notNull().default('individual'), // NEW: 'system_wide' or 'individual'
     file_name: text('file_name').notNull().unique(),
     file_size: bigint('file_size', { mode: 'number' }).notNull(),
     hash: text('hash'),
@@ -819,6 +821,7 @@ export const schoolBackups = pgTable('school_backups', {
 }, (table) => [
     index('idx_backups_school').on(table.school_id),
     index('idx_backups_timestamp').on(table.timestamp),
+    index('idx_backups_batch').on(table.batch_id),
 ]);
 
 // ============================================================================

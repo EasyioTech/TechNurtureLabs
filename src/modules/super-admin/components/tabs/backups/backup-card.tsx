@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import { 
     Clock, HardDrive, History, Download, RotateCcw, 
-    Trash2, Info, Lock, ShieldCheck, Check, Database
+    Trash2, Info, Lock, ShieldCheck, Check, Database,
+    Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -63,15 +63,12 @@ export function BackupCard({
     };
 
     const fileNameDisplay = backup.type === 'system-wide' 
-        ? `SYSTEM WIDE VAULT (${backup.nodeCount} NODES)`
+        ? `SYSTEM VAULT: ${backup.nodeCount} INSTITUTIONS`
         : (backup.schoolName ? `${backup.schoolName.toUpperCase()} ARCHIVE` : (backup.fileName.split('/').pop()?.replace('.json.gz', '') || 'Untitled Archive'));
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05, duration: 0.4 }}
-            className={`group relative p-5 sm:p-6 rounded-3xl border transition-all duration-500 overflow-hidden cursor-pointer
+        <div
+            className={`group relative p-5 sm:p-6 rounded-[2rem] border transition-all duration-500 overflow-hidden cursor-pointer
                 ${isDark
                     ? 'bg-neutral-900/90 border-white/10 hover:bg-neutral-800 hover:border-white/20 hover:-translate-y-1 shadow-2xl shadow-black/40'
                     : 'bg-white border-neutral-100 hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-1'}`}
@@ -112,13 +109,25 @@ export function BackupCard({
                             <Clock size={12} className={isDark ? accent.text : 'text-indigo-500'} />
                             <span className={`text-[10px] font-bold ${t.textSecondary(isDark)}`}>{formatDate(backup.timestamp)}</span>
                         </div>
-                        {backup.type === 'system-wide' && (
-                            <div className="flex items-center gap-1.5 mt-2">
-                                <ShieldCheck size={12} className="text-emerald-500" />
-                                <span className={`text-[9px] font-black uppercase tracking-wider ${accent.text}`}>Consolidated Snapshot</span>
-                            </div>
-                        )}
                     </div>
+
+                    {/* School List for Grouped Backups */}
+                    {backup.nodes && backup.nodes.length > 0 && (
+                        <div className={`p-3 rounded-2xl border border-dashed transition-colors ${isDark ? 'bg-black/20 border-white/5 group-hover:border-white/10' : 'bg-neutral-50 border-neutral-200 group-hover:border-neutral-300'}`}>
+                            <div className="flex flex-wrap gap-1.5">
+                                {backup.nodes.slice(0, 3).map((node: any, i: number) => (
+                                    <div key={i} className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider ${isDark ? 'bg-white/5 text-white/60' : 'bg-white text-slate-500 border border-slate-100'}`}>
+                                        {node.schoolName}
+                                    </div>
+                                ))}
+                                {backup.nodes.length > 3 && (
+                                    <div className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider ${isDark ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}>
+                                        +{backup.nodes.length - 3} MORE
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <Badge className={`h-5 text-[8px] font-black tracking-wider px-2 border-0 ${isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
@@ -129,9 +138,9 @@ export function BackupCard({
                                 <Database size={8} className="mr-1" /> {backup.nodeCount} NODES
                             </Badge>
                         )}
-                        {backup.studentCount !== undefined && (
+                        {backup.studentCount !== undefined && backup.studentCount > 0 && (
                              <Badge className={`h-5 text-[8px] font-black tracking-wider px-2 border-0 ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-700'}`}>
-                                <Database size={8} className="mr-1" /> {backup.studentCount} RECORDS
+                                <Users size={8} className="mr-1" /> {backup.studentCount} RECORDS
                             </Badge>
                         )}
                     </div>
@@ -170,7 +179,7 @@ export function BackupCard({
                 </div>
             </div>
 
-        </motion.div>
+        </div>
     );
 }
 
