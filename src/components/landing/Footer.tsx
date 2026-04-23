@@ -119,9 +119,22 @@ export const Footer = ({ settings }: { settings?: any }) => {
                 {/* Bottom Bar */}
                 <div className="border-t border-slate-200 py-6 sm:py-8">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-                        <p className="text-[10px] sm:text-xs font-medium text-slate-400 tracking-wide">
-                            © {new Date().getFullYear()} {settings?.platform_name || 'TechNurture'}. All rights reserved.
-                        </p>
+                        <div className="flex flex-col items-center sm:items-start gap-1">
+                            <p className="text-[10px] sm:text-xs font-medium text-slate-400 tracking-wide">
+                                © {new Date().getFullYear()} {settings?.platform_name || 'TechNurture'}. All rights reserved.
+                            </p>
+                            <p className="text-[9px] sm:text-[11px] text-slate-400">
+                                Developed by{' '}
+                                <a
+                                    href="https://easyio.tech/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold text-blue-500 hover:text-blue-700 transition-colors"
+                                >
+                                    Easyio Technologies
+                                </a>
+                            </p>
+                        </div>
 
                         {/* Social Links */}
                         <div className="flex items-center gap-0.5 sm:gap-1">

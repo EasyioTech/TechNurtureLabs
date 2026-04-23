@@ -45,6 +45,7 @@ export async function generateMetadata(): Promise<Metadata> {
     authors: [{ name: "TechNurture Labs", url: siteUrl }],
     creator: "TechNurture Labs",
     publisher: "TechNurture Labs",
+    generator: "Easyio Technologies — https://easyio.tech/",
     robots: {
       index: true,
       follow: true,
@@ -161,6 +162,11 @@ export default function RootLayout({
                     "https://www.linkedin.com/company/technurturelabs",
                     "https://www.instagram.com/technurturelabs",
                   ],
+                  developer: {
+                    "@type": "Organization",
+                    name: "Easyio Technologies",
+                    url: "https://easyio.tech/",
+                  },
                 },
                 {
                   "@type": "WebSite",

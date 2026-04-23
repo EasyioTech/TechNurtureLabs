@@ -221,6 +221,7 @@ export default function SchoolPortalLanding() {
               <Link href="#" className="hover:text-slate-900 transition-colors">Ethics</Link>
             </div>
             <p className="text-[10px] text-slate-400 font-bold">© {new Date().getFullYear()} {settings?.platform_name || 'TechNurture'}. Secure Institutional Endpoint.</p>
+            <p className="text-[9px] text-slate-400 mt-0.5">Developed by <a href="https://easyio.tech/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-600 transition-colors">Easyio Technologies</a></p>
           </div>
         </div>
       </footer>

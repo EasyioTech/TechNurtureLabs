@@ -164,6 +164,7 @@ export async function GET(
                         <p>Thank you for choosing TechNurture Labs to empower your institution.</p>
                         <p>This is a computer generated invoice and does not require a physical signature.</p>
                         <p>&copy; ${new Date().getFullYear()} TechNurture Labs. All rights reserved.</p>
+                        <p style="margin-top:6px;font-size:11px;color:#94a3b8;">Developed by <a href="https://easyio.tech/" style="color:#3b82f6;text-decoration:none;">Easyio Technologies</a></p>
                     </div>
                 </div>
             </body>

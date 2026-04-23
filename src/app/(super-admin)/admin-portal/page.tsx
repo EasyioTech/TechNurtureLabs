@@ -209,6 +209,7 @@ export default function AdminPortalLanding() {
               <span className="font-black text-slate-900 tracking-tight">{settings?.platform_name || 'TechNurture'} Core Console</span>
             </div>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">© {new Date().getFullYear()} Platform Operations. Proprietary Infrastructure.</p>
+            <p className="text-[9px] text-slate-400 mt-0.5">Developed by <a href="https://easyio.tech/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-600 transition-colors">Easyio Technologies</a></p>
           </div>
         </div>
       </footer>
