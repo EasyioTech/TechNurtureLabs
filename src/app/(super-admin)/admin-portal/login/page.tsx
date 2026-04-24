@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -9,9 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/providers/auth-provider';
-import { ArrowLeft, Loader2, Crown, Eye, EyeOff, Shield, Sparkles, CheckCircle2, Lock } from 'lucide-react';
+import { ArrowLeft, Loader2, Crown, Eye, EyeOff, Shield, Sparkles, CheckCircle2, Lock, ChevronRight } from 'lucide-react';
 import { PrimaryButton } from '@/components/landing/PrimaryButton';
-import { ScrollReveal } from '@/components/landing/ScrollReveal';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 export default function AdminLoginPage() {
@@ -95,161 +94,208 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-50 text-slate-900 flex flex-col items-center justify-center p-6 selection:bg-indigo-100 selection:text-indigo-900">
-
-      {/* Background Matrix & Ambient Intensity */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div
-          className="absolute inset-0 opacity-[0.02]"
-          style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 0)', backgroundSize: '30px 30px' }}
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col items-center justify-center p-4 sm:p-6 selection:bg-indigo-100 selection:text-indigo-900 overflow-x-hidden">
+      
+      {/* Dynamic Background Elements */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div 
+          className="absolute inset-0 opacity-[0.03]" 
+          style={{ backgroundImage: 'radial-gradient(#6366f1 1px, transparent 0)', backgroundSize: '40px 40px' }}
         />
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-slate-100/50 via-white to-transparent" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-100/30 rounded-full blur-[160px]" />
+        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-100/40 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-50/60 rounded-full blur-[120px]" />
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
-        className="w-full max-w-4xl relative z-10 overflow-y-auto my-auto shrink-0 scroll-smooth px-4"
-      >
-        <Link href="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-900 mb-8 transition-all font-bold group cursor-pointer">
-          <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
-          Exit Secure Console
-        </Link>
-
-        {/* Pro Glass Card */}
-        <div className="p-6 md:p-8 rounded-[2.5rem] bg-white border border-slate-200 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] backdrop-blur-xl relative overflow-hidden flex flex-col md:flex-row gap-10 items-stretch">
-
-          {/* Left Branding Section */}
-          <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50/80 rounded-3xl border border-slate-100">
-            <div className="mb-8">
-              <img src="/assets/admin-login.svg" alt="Admin Terminal" className="w-56 h-auto mx-auto drop-shadow-2xl hover:scale-105 transition-transform duration-500" />
+      <div className="w-full max-w-md relative z-10">
+        {/* Top Navigation */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Link 
+            href="/" 
+            className="inline-flex items-center gap-2 text-slate-400 hover:text-indigo-600 mb-8 transition-all font-semibold group"
+          >
+            <div className="p-1.5 rounded-lg bg-white border border-slate-200 shadow-sm group-hover:border-indigo-200 group-hover:bg-indigo-50 transition-all">
+              <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
             </div>
-            <div className="text-center">
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-3 uppercase">Root Access</h1>
-              <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] px-2 leading-relaxed">Secure Infrastructure Management Environment</p>
-            </div>
+            <span className="text-sm tracking-tight">Exit Console</span>
+          </Link>
+        </motion.div>
+
+        {/* Main Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="bg-white rounded-[2rem] border border-slate-200/60 shadow-[0_20px_50px_rgba(0,0,0,0.05)] backdrop-blur-sm overflow-hidden"
+        >
+          {/* Header Section */}
+          <div className="pt-10 pb-6 px-8 text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500" />
+            <motion.div 
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-900 mb-6 shadow-2xl shadow-slate-900/20"
+            >
+              <Crown className="text-white" size={32} />
+            </motion.div>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">Root Access</h1>
+            <p className="text-slate-500 text-sm font-medium tracking-wide uppercase px-4">
+              Secure Admin Infrastructure
+            </p>
           </div>
 
-          {/* Right Form Section */}
-          <div className="flex-1 flex flex-col justify-center py-4 pr-2 hover:bg-transparent">
-            {!twoFactorRequired ? (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-slate-600 font-bold text-xs uppercase tracking-[0.1em] ml-1">Identity Endpoint</Label>
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-slate-50 border-slate-200 h-14 px-5 text-slate-900 placeholder:text-slate-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl transition-all font-medium text-base shadow-inner"
-                    placeholder="admin@technurture.com"
-                    required
-                  />
-                </div>
+          <div className="px-8 pb-10">
+            <AnimatePresence mode="wait">
+              {!twoFactorRequired ? (
+                <motion.form 
+                  key="login-form"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  onSubmit={handleSubmit} 
+                  className="space-y-5"
+                >
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest ml-1">
+                      Identity Endpoint
+                    </Label>
+                    <div className="relative group">
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="bg-slate-50/50 border-slate-200 h-13 px-5 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 rounded-xl transition-all font-medium text-sm"
+                        placeholder="admin@technurture.com"
+                        required
+                      />
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label className="text-slate-600 font-bold text-xs uppercase tracking-[0.1em] ml-1">Access Protocol</Label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="bg-slate-50 border-slate-200 h-14 px-5 text-slate-900 placeholder:text-slate-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl transition-all font-medium text-base pr-14 shadow-inner"
-                      placeholder="••••••••"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest ml-1">
+                      Access Protocol
+                    </Label>
+                    <div className="relative group">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="bg-slate-50/50 border-slate-200 h-13 px-5 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 rounded-xl transition-all font-medium text-sm pr-12"
+                        placeholder="••••••••"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      <Shield size={12} className="text-emerald-500" />
+                      Encrypted Link
+                    </div>
+                    <button type="button" className="text-[10px] text-indigo-600 hover:text-indigo-700 font-bold uppercase tracking-wider transition-colors">
+                      Forgot Access?
                     </button>
                   </div>
-                </div>
 
-                <div className="pt-4">
                   <PrimaryButton
                     type="submit"
                     disabled={loading}
-                    variant="primary"
-                    className="w-full !h-16 !text-base !rounded-2xl !bg-slate-900 hover:!bg-slate-800 shadow-xl shadow-slate-900/20 transition-all font-black uppercase tracking-widest cursor-pointer"
+                    className="w-full !h-14 !text-sm !rounded-xl !bg-slate-900 hover:!bg-slate-800 shadow-xl shadow-slate-900/10 transition-all font-bold uppercase tracking-widest group"
                   >
                     {loading ? (
-                      <>
-                        <Loader2 className="mr-2 animate-spin" size={24} />
-                        Validating...
-                      </>
+                      <Loader2 className="animate-spin" size={20} />
                     ) : (
-                      <>
-                        Login
-                        <Shield size={20} className="ml-2" />
-                      </>
+                      <span className="flex items-center gap-2">
+                        Initialize Access
+                        <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
+                      </span>
                     )}
                   </PrimaryButton>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handle2FAVerify} className="space-y-8 animate-in fade-in zoom-in duration-300">
-                <div className="flex flex-col items-center gap-6">
-                  <div className="p-4 rounded-2xl bg-indigo-500/10 text-indigo-600">
-                    <Shield size={32} className="animate-pulse" />
+                </motion.form>
+              ) : (
+                <motion.form 
+                  key="2fa-form"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  onSubmit={handle2FAVerify} 
+                  className="space-y-6"
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center mb-4">
+                      <Lock className="text-indigo-600" size={24} />
+                    </div>
+                    <h2 className="text-xl font-bold text-slate-900 mb-1">Verify Identity</h2>
+                    <p className="text-sm text-slate-500 mb-8">Enter the 6-digit code from your authenticator</p>
+
+                    <InputOTP maxLength={6} value={otpToken} onChange={setOtpToken}>
+                      <InputOTPGroup className="gap-2 sm:gap-3">
+                        {[0, 1, 2, 3, 4, 5].map(i => (
+                          <InputOTPSlot 
+                            key={i} 
+                            index={i} 
+                            className="w-10 h-12 sm:w-12 sm:h-14 rounded-xl border border-slate-200 font-bold text-lg bg-slate-50 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all" 
+                          />
+                        ))}
+                      </InputOTPGroup>
+                    </InputOTP>
+
+                    <div className="w-full space-y-4 mt-8">
+                      <Button
+                        type="submit"
+                        disabled={otpToken.length !== 6 || verifying2FA}
+                        className="w-full h-14 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold uppercase tracking-widest shadow-lg shadow-indigo-100 transition-all"
+                      >
+                        {verifying2FA ? <Loader2 className="animate-spin" size={20} /> : 'Verify Access'}
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => setTwoFactorRequired(false)}
+                        className="text-xs font-bold text-slate-400 hover:text-slate-600 uppercase tracking-widest transition-colors"
+                      >
+                        Return to Login
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Identity Token Required</h2>
-                    <p className="text-sm text-slate-500 font-medium mt-1 uppercase tracking-wider text-[10px]">Verification Protocol Active</p>
-                  </div>
-
-                  <InputOTP maxLength={6} value={otpToken} onChange={setOtpToken}>
-                    <InputOTPGroup className="gap-2">
-                      {[0, 1, 2, 3, 4, 5].map(i => (
-                        <InputOTPSlot key={i} index={i} className="w-12 h-14 rounded-xl border-2 border-slate-200 font-black text-xl bg-slate-50 focus:border-indigo-500" />
-                      ))}
-                    </InputOTPGroup>
-                  </InputOTP>
-
-                  <div className="w-full space-y-3">
-                    <Button
-                      type="submit"
-                      disabled={otpToken.length !== 6 || verifying2FA}
-                      className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest shadow-lg shadow-indigo-200 transition-all disabled:opacity-50"
-                    >
-                      {verifying2FA ? <Loader2 className="animate-spin mr-2" /> : 'Confirm Identity'}
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={() => setTwoFactorRequired(false)}
-                      className="w-full text-xs font-black text-slate-400 hover:text-slate-600 uppercase tracking-[0.2em] transition-colors"
-                    >
-                      Back to Login
-                    </button>
-                  </div>
-                </div>
-              </form>
-            )}
-
-            {/* Security Indicator Footer */}
-            <div className="mt-10 p-5 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-start gap-4">
-              <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                <Lock size={18} />
-              </div>
-              <div className="text-left">
-                <p className="text-[10px] font-black text-indigo-900 uppercase tracking-widest mb-1">Encrypted Terminal</p>
-                <p className="text-xs text-indigo-700/70 font-medium leading-tight">
-                  All activities within this console are tracked via hardware-level logging and encrypted with AES-256.
-                </p>
-              </div>
-            </div>
-
+                </motion.form>
+              )}
+            </AnimatePresence>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="mt-10 flex items-center justify-center gap-6 text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em]">
-          <div className="flex items-center gap-2"><CheckCircle2 size={14} className="text-indigo-400" /> Layer 7 Security</div>
-          <div className="flex items-center gap-2"><CheckCircle2 size={14} className="text-indigo-400" /> Root Authentication</div>
-        </div>
-      </motion.div>
+        {/* Footer Info */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="mt-8 flex flex-col items-center gap-4"
+        >
+          <div className="flex items-center gap-6 text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em]">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 size={12} className="text-indigo-400" /> 
+              AES-256 Valid
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 size={12} className="text-indigo-400" /> 
+              Tier 4 Secure
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 font-medium text-center opacity-60">
+            Authorized Personnel Only • IP Logged for Security
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 }
