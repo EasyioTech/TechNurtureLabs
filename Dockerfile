@@ -1,4 +1,5 @@
 FROM node:20-slim AS base
+RUN apt-get update && apt-get install -y postgresql-client redis-tools && rm -rf /var/lib/apt/lists/*
 
 # ----------------------------
 # Stage 1: Install dependencies
