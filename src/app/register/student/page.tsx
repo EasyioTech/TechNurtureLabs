@@ -94,12 +94,14 @@ export default function StudentRegistrationPage() {
   const checkStudentLimit = async (schoolId: string) => {
     setCheckingLimit(true);
     try {
-      const res = await fetch(`/api/admin/check-student-limit?school_id=${schoolId}`);
+      // USE PUBLIC ENDPOINT: Admin endpoint requires session and was returning 401 for students
+      const res = await fetch(`/api/school/check-registration-limit?school_id=${schoolId}`);
       const data = await res.json();
       setStudentLimitInfo(data);
     } catch (err) {
       console.error('Failed to check student limit:', err);
-      setStudentLimitInfo(null);
+      // On error, we default to allowing registration to not block users due to API glitches
+      setStudentLimitInfo({ can_add: true });
     } finally {
       setCheckingLimit(false);
     }
@@ -200,7 +202,7 @@ export default function StudentRegistrationPage() {
     try {
       // CRITICAL FIX: Recheck student limit before submission to catch race conditions
       // Another student might have registered between school selection and form submission
-      if (formData.school_id && studentLimitInfo && !studentLimitInfo.can_add) {
+      if (formData.school_id && studentLimitInfo && studentLimitInfo.can_add === false) {
         toast.error('Student registration limit has been reached for this school. Please contact your school administrator.', { id: toastId });
         setLoading(false);
         return;
@@ -526,7 +528,7 @@ export default function StudentRegistrationPage() {
 
                   {/* Student Limit Warning */}
                   <AnimatePresence>
-                    {selectedSchool && studentLimitInfo && !studentLimitInfo.can_add && (
+                    {selectedSchool && studentLimitInfo && studentLimitInfo.can_add === false && (
                       <motion.div
                         initial={{ opacity: 0, y: -8 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -543,7 +545,7 @@ export default function StudentRegistrationPage() {
                               {studentLimitInfo.message}
                             </p>
                             <p className="text-xs text-rose-600 mt-2 font-semibold">
-                              ℹ️ The registration button below will be disabled. Please contact your school administrator to upgrade the plan.
+                              The registration button below will be disabled. Please contact your school administrator to upgrade the plan.
                             </p>
                           </div>
                         </div>
@@ -820,10 +822,10 @@ export default function StudentRegistrationPage() {
                           loading ||
                           formData.password.length !== 6 ||
                           formData.confirm_password !== formData.password ||
-                          (studentLimitInfo && !studentLimitInfo.can_add)
+                          (studentLimitInfo && studentLimitInfo.can_add === false)
                         }
                         className="flex-1 h-14 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-indigo-200 flex items-center justify-center gap-3 group"
-                        title={studentLimitInfo && !studentLimitInfo.can_add ? 'Student registration limit reached for this school' : ''}
+                        title={studentLimitInfo && studentLimitInfo.can_add === false ? 'Student registration limit reached for this school' : ''}
                       >
                         {loading
                           ? <><Loader2 className="animate-spin" size={18} /> Creating…</>
