@@ -85,8 +85,8 @@ export async function GET(request: NextRequest) {
             available_slots: availableSlots,
             plan_name: plan.name,
             message: canAdd
-                ? `${availableSlots} slot${availableSlots !== 1 ? 's' : ''} available for registration.`
-                : `Student registration limit reached! This school has reached its capacity of ${maxStudents} students. Please contact the school administrator.`
+                ? `Capacity: ${currentCount}/${maxStudents} students registered. ${availableSlots} slot${availableSlots !== 1 ? 's' : ''} remaining on the ${plan.name} plan.`
+                : `Capacity Reached: ${currentCount}/${maxStudents} students registered. This school has no more available slots. Please contact the school administrator.`
         });
 
     } catch (error: any) {

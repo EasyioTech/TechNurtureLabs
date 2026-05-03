@@ -566,10 +566,10 @@ export default function StudentRegistrationPage() {
                           <CheckCircle2 className="text-emerald-600 mt-0.5 shrink-0" size={20} />
                           <div>
                             <p className="text-sm font-bold text-emerald-900 mb-1">
-                              {studentLimitInfo.plan_name}{studentLimitInfo.max_students ? ` (${studentLimitInfo.available_slots} slot${studentLimitInfo.available_slots !== 1 ? 's' : ''} available)` : ' (Unlimited)'}
+                              Registration Open
                             </p>
                             <p className="text-xs text-emerald-700 font-medium">
-                              ✓ You can register for this school
+                              {studentLimitInfo.message}
                             </p>
                           </div>
                         </div>
