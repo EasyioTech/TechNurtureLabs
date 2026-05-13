@@ -143,6 +143,11 @@ export async function listFiles(prefix: string) {
 async function verifyObjectExists(key: string): Promise<boolean> {
     if (!s3Client || !isCloudflareConfigured) return false;
 
+    // Validate key is not empty
+    if (!key || key.trim() === '') {
+        return false;
+    }
+
     try {
         await withRetry(async () => {
             const command = new HeadObjectCommand({

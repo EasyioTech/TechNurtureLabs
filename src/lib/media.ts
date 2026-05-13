@@ -93,8 +93,13 @@ export async function getSecureMediaUrl(asset: {
     file_path: string;
     file_url?: string | null;
 }, variant: 'original' | 'hls' = 'original'): Promise<string> {
+    // Validate file_path is not empty
+    if (!asset.file_path || asset.file_path.trim() === '') {
+        throw new Error('Invalid file path: empty or missing');
+    }
+
     const isVideo = asset.file_path.toLowerCase().match(/\.(mp4|mov|avi|mkv)$/);
-    
+
     // 1. If it's R2, we prefer a direct Signed URL for binary,
     // and our Smart Gateway for HLS.
     if (asset.storage_type === 'r2') {

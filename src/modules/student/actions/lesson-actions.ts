@@ -90,15 +90,25 @@ export async function getLessonData(lessonId: string) {
 
     // M-10: Secure Media Redirect flow with graceful fallback
     let contentUrl: string | null = null;
-    try {
-        contentUrl = await getSecureMediaUrl(
-            lesson.asset ? (lesson.asset as any) : { storage_type: 'r2', file_path: lesson.content_url || '' },
-            useHls ? 'hls' : 'original'
-        );
-    } catch (err: any) {
-        console.warn(`[Lesson ${lessonId}] Content unavailable:`, err.message);
-        // Graceful fallback: null content_url signals UI to show unavailable state
+
+    // Determine the media source (asset or legacy content_url)
+    const mediaSource = lesson.asset || { storage_type: 'r2', file_path: lesson.content_url };
+    const filePath = (mediaSource as any)?.file_path;
+
+    // Check if we have a valid file path to fetch
+    if (!filePath || filePath.trim() === '') {
+        console.warn(`[Lesson ${lessonId}] No file path available`);
         contentUrl = null;
+    } else {
+        try {
+            contentUrl = await getSecureMediaUrl(
+                mediaSource as any,
+                useHls ? 'hls' : 'original'
+            );
+        } catch (err: any) {
+            console.warn(`[Lesson ${lessonId}] Content unavailable:`, err.message);
+            contentUrl = null;
+        }
     }
 
     // 3. Optimized Quiz Logic Mapping
