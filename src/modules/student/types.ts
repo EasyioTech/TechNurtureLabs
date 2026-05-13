@@ -58,6 +58,7 @@ export type Lesson = {
     sequence_index: number;
     quiz_data?: QuizData | null;
     status?: 'locked' | 'available' | 'completed';
+    content_unavailable?: boolean; // Content missing in R2 or inaccessible
     user_progress?: {
       last_position_secs: number;
       progress_pct: number;

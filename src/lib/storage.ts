@@ -137,7 +137,33 @@ export async function listFiles(prefix: string) {
 }
 
 /**
+ * Validates file exists in R2 before signing URL.
+ * Prevents broken links from being served to students.
+ */
+async function verifyObjectExists(key: string): Promise<boolean> {
+    if (!s3Client || !isCloudflareConfigured) return false;
+
+    try {
+        await withRetry(async () => {
+            const command = new HeadObjectCommand({
+                Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+                Key: key,
+            });
+            await s3Client!.send(command);
+        });
+        return true;
+    } catch (err: any) {
+        const status = err?.$metadata?.httpStatusCode;
+        if (status === 404 || err.name === 'NoSuchKey') {
+            return false;
+        }
+        throw err;
+    }
+}
+
+/**
  * Generates a short-lived signed URL for an R2 object.
+ * Validates existence before signing to prevent broken links.
  * Perfect for protected video streaming.
  */
 export async function getSignedDownloadUrl(key: string, expiresIn: number = 300, method: string = 'GET'): Promise<string> {
@@ -145,12 +171,18 @@ export async function getSignedDownloadUrl(key: string, expiresIn: number = 300,
         throw new Error("Cloudflare R2 not configured. Local fallback is disabled.");
     }
 
+    // Verify object exists before signing
+    const exists = await verifyObjectExists(key);
+    if (!exists) {
+        throw new Error(`Content not found in storage: ${key}`);
+    }
+
     const commandParams = {
         Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
         Key: key,
     };
 
-    const command = method.toUpperCase() === 'HEAD' 
+    const command = method.toUpperCase() === 'HEAD'
         ? new HeadObjectCommand(commandParams)
         : new GetObjectCommand(commandParams);
 

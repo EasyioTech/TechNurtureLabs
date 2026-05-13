@@ -2,7 +2,7 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { Download, ArrowRight, ChevronLeft, ChevronRight, Timer } from 'lucide-react';
+import { Download, ArrowRight, ChevronLeft, ChevronRight, Timer, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VideoPlayer } from '@/modules/student/components/video/video-player';
@@ -292,6 +292,31 @@ export function LessonContent({
   onDocStateChange,
   onPageChange,
 }: LessonContentProps) {
+  // Content unavailable state
+  if (lesson.content_unavailable) {
+    return (
+      <section className={cn(
+        'relative transition-all duration-700',
+        isFocusMode ? 'fixed inset-0 top-0 z-[100] bg-black overflow-auto' : 'bg-white'
+      )}>
+        <div className="flex items-center justify-center min-h-screen bg-white">
+          <div className="max-w-md text-center">
+            <div className="w-20 h-20 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-6">
+              <AlertCircle size={40} className="text-red-500" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 mb-2">Content Unavailable</h2>
+            <p className="text-slate-500 mb-6 leading-relaxed">
+              The course material for this lesson is temporarily unavailable. Please contact your instructor for support.
+            </p>
+            <div className="text-sm text-slate-400 p-4 bg-slate-50 rounded-lg">
+              Lesson ID: {lesson.id}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   // Memoized so the array reference is stable across renders — prevents the completion
   // effect from re-firing every render after all blocks are done.
   const blocks = React.useMemo(

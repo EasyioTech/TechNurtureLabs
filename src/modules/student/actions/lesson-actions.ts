@@ -84,15 +84,22 @@ export async function getLessonData(lessonId: string) {
     }
 
     // 2. Media Logic
-    const useHls = lesson.content_type === 'video' && 
-                   lesson.asset && 
+    const useHls = lesson.content_type === 'video' &&
+                   lesson.asset &&
                    (lesson.asset as any).processing_status === 'completed';
-    
-    // M-10: Secure Media Redirect flow
-    const contentUrl = await getSecureMediaUrl(
-        lesson.asset ? (lesson.asset as any) : { storage_type: 'r2', file_path: lesson.content_url || '' },
-        useHls ? 'hls' : 'original'
-    );
+
+    // M-10: Secure Media Redirect flow with graceful fallback
+    let contentUrl: string | null = null;
+    try {
+        contentUrl = await getSecureMediaUrl(
+            lesson.asset ? (lesson.asset as any) : { storage_type: 'r2', file_path: lesson.content_url || '' },
+            useHls ? 'hls' : 'original'
+        );
+    } catch (err: any) {
+        console.warn(`[Lesson ${lessonId}] Content unavailable:`, err.message);
+        // Graceful fallback: null content_url signals UI to show unavailable state
+        contentUrl = null;
+    }
 
     // 3. Optimized Quiz Logic Mapping
     let quizData: any = null;
@@ -119,11 +126,12 @@ export async function getLessonData(lessonId: string) {
 
     return {
         ...lesson,
-        content_url: contentUrl,
+        content_url: contentUrl, // null if file unavailable
         sequence_index: lesson.sequence_order,
         duration: lesson.duration_minutes || 10,
         quiz_data: quizData,
         processing_status: (lesson as any).asset?.processing_status || 'completed',
+        content_unavailable: contentUrl === null, // Flag for UI
         user_progress: firstProgress ? {
             completed_at: firstProgress.completed_at,
             progress_pct: Number(firstProgress.progress_pct) || 0,
