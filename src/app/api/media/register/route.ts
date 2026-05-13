@@ -3,8 +3,10 @@ import path from 'path';
 import { db } from '@/lib/db';
 import { mediaAssets, schools } from '@/db/schema';
 import { verifySession } from '@/lib/auth';
-import { getAssetType } from '@/lib/storage';
+import { getAssetType, s3Client, isCloudflareConfigured } from '@/lib/storage';
 import { eq } from 'drizzle-orm';
+import { HeadObjectCommand } from '@aws-sdk/client-s3';
+import { serverEnv } from '@/lib/env.server';
 
 /**
  * 📝 ASSET REGISTRATION API
@@ -47,6 +49,29 @@ export async function POST(req: NextRequest) {
         // file_name = the UUID-based storage key (basename of filePath)
         // original_name = the human-readable filename the user uploaded
         const uuidFileName = path.basename(filePath);
+
+        // PHASE 4: Verify file actually exists in R2 before registering DB record
+        if (isCloudflareConfigured && s3Client) {
+            try {
+                const headCmd = new HeadObjectCommand({
+                    Bucket: serverEnv.CLOUDFLARE_BUCKET_NAME,
+                    Key: filePath,
+                });
+                await s3Client.send(headCmd);
+            } catch (err: any) {
+                const status = err?.$metadata?.httpStatusCode;
+                if (status === 404 || err.name === 'NoSuchKey') {
+                    return new NextResponse(
+                        JSON.stringify({
+                            error: `File not found in R2: ${filePath}`,
+                            code: 'FILE_NOT_UPLOADED'
+                        }),
+                        { status: 422, headers: { 'Content-Type': 'application/json' } }
+                    );
+                }
+                throw err;
+            }
+        }
 
         const [asset] = await db.insert(mediaAssets).values({
             file_name: uuidFileName,
