@@ -90,26 +90,38 @@ export async function ensureEnrollment(courseId: string) {
     }
 
     // UPSERT enrollment to handle concurrency and re-enrollment atomically
-    const [newEnrollment] = await db.insert(enrollments).values({
+    // NOTE: Constraint is partial index (WHERE deleted_at IS NULL), so use raw SQL
+    const result = await db.execute(sql`
+        INSERT INTO enrollments (id, user_id, course_id, school_id, session_id, updated_at)
+        VALUES (
+            gen_random_uuid(),
+            ${userId}::uuid,
+            ${courseId}::uuid,
+            ${user.school_id}::uuid,
+            ${currentSession.id}::uuid,
+            NOW()
+        )
+        ON CONFLICT (user_id, course_id, session_id)
+        WHERE deleted_at IS NULL
+        DO UPDATE SET
+            deleted_at = NULL,
+            updated_at = NOW()
+        RETURNING *
+    `);
+
+    // Extract enrollment from result
+    const enrollmentArray = Array.isArray(result) ? result : [result];
+    const newEnrollment = enrollmentArray[0] || {
         user_id: userId,
         course_id: courseId,
         school_id: user.school_id,
-        session_id: currentSession.id,
-        updated_at: new Date()
-    } as any)
-    .onConflictDoUpdate({
-        target: [enrollments.user_id, enrollments.course_id, enrollments.session_id],
-        set: {
-            deleted_at: null,
-            updated_at: new Date()
-        }
-    })
-    .returning();
+        session_id: currentSession.id
+    };
 
     if (role === 'student') {
         await invalidateStudentDashboardCache(userId);
     }
-    
+
     analyticsService.incrementMetric('total_enrollments').catch(() => {});
 
     return newEnrollment;
